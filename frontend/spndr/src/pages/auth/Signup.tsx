@@ -12,7 +12,7 @@ const Signup = () => {
 
   const navigate = useNavigate()
 
-  const handleSignup = async(e) => {
+  const handleSignup = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if(!FullName){
@@ -43,7 +43,7 @@ const Signup = () => {
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <Input
               value = {FullName}
-              onChange={({target}) => setFullName(target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
               label='Full Name'
               placeholder='Atharv Dewangan'
               type='text'
@@ -51,7 +51,7 @@ const Signup = () => {
 
             <Input 
               value={email}
-              onChange={({target}) => setEmail(target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               label = 'Email address'
               placeholder = 'abc@example.com'
               type = 'text'
@@ -60,7 +60,7 @@ const Signup = () => {
             <div className='col-span-2'>
               <Input
                 value={password}
-                onChange={({target}) => setPassword(target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 label = 'Password'
                 placeholder = 'Minimum 8 Characters'
                 type = 'password'

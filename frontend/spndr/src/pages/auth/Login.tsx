@@ -7,10 +7,10 @@ import { validateEmail } from '../../utils/helper'
 const Login = () => {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  const handleLogin = async(e) => {
+  const handleLogin = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateEmail(email)) {
@@ -35,7 +35,7 @@ const Login = () => {
         <form onSubmit={handleLogin}>
           <Input 
             value={email}
-            onChange={({target}) => setEmail(target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
             label = 'Email address'
             placeholder = 'abc@example.com'
             type = 'text'
@@ -43,7 +43,7 @@ const Login = () => {
 
           <Input
             value={password}
-            onChange={({target}) => setPassword(target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
             label = 'Password'
             placeholder = 'Minimum 8 Characters'
             type = 'password'

@@ -1,0 +1,37 @@
+{
+  "name": "spndr-backend",
+  "version": "1.0.0",
+  "description": "simple expense tracker",
+  "homepage": "https://github.com/RRI-Atharv37/spndr#readme",
+  "bugs": {
+    "url": "https://github.com/RRI-Atharv37/spndr/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RRI-Atharv37/spndr.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Atharv Dewangan",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.2",
+    "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.1",
+    "nodemon": "^3.1.9",
+    "typescript": "^5.8.3"
+  }
+}
