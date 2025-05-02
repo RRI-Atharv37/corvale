@@ -13,10 +13,11 @@
   "license": "Apache-2.0",
   "author": "Atharv Dewangan",
   "type": "commonjs",
-  "main": "index.js",
+  "main": "server.ts",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon",
+    "build": "tsc",
+    "start": "node backend/dist/server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -30,8 +31,10 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.14.1",
     "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
 }
