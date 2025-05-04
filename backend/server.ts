@@ -6,6 +6,7 @@ import cors from 'cors'
 import path from 'path'
 import connectDB from './config/db'
 import authRoutes from './routes/authRoutes'
+import incomeRoutes from './routes/incomeRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 const app = express()
@@ -23,6 +24,7 @@ app.use(express.json())
 connectDB()
 
 app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/income', incomeRoutes)
 app.use(errorHandler)
 
 process.on('unhandledRejection', (err) => {

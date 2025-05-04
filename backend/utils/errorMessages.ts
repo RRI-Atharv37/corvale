@@ -4,6 +4,7 @@ export const ERROR_MESSAGES = {
         INVALID_CREDENTIALS: 'Invalid credentials',
         TOKEN_MISSING: 'Not authorized, no token',
         TOKEN_INVALID: 'Not authorized, token failed',
+        NOT_AUTHORIZED: 'Not authorized to perform this action',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',
@@ -11,5 +12,15 @@ export const ERROR_MESSAGES = {
     },
     GENERAL: {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
+    },
+    INCOME: {
+        FILL_ALL_FIELDS: 'Please fill in all fields',
+        INCOME_NOT_FOUND: 'Income entry not found',
+        INCOME_ALREADY_EXISTS: 'Income already exists',
+    },
+    EXPENSE: {
+        FILL_ALL_FIELDS: 'Please fill in all fields',
+        EXPENSE_NOT_FOUND: 'Expense entry not found',
+        EXPENSE_ALREADY_EXISTS: 'Expense already exists',
     },
 }
