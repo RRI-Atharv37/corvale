@@ -4,18 +4,18 @@ import {Request, Response} from 'express'
 import Income from '../models/Income'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { aggregateIncomes, getUserId, handleReponses, validateOwnership, validateRequiredFields } from '../utils/incomeUtils'
 
 interface AuthRequest extends Request {
     user?: { id: string }
 }
 
 export const addIncome = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
-    const { title, amount, source, description, category, date } = req.body
+    const userId = getUserId(req as AuthRequest)
+    
+    validateRequiredFields(req.body, ['userId', 'title', 'amount', 'date'])
 
-    if(!userId || !date || !title || !amount) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
-    }
+    const { title, amount, source, description, category, date } = req.body
 
     if (isNaN(amount) || isNaN(Date.parse(date))) {
         throw new CustomError('Invalid amount or date format', 400)
@@ -31,7 +31,7 @@ export const addIncome = asyncHandler(async(req: Request, res: Response) => {
         date: new Date(date),
     })
 
-    res.status(201).json({success: true, data: newIncome})
+    handleReponses(res, 201, newIncome)
 })
 
 export const getIncome = asyncHandler(async(req: Request, res: Response) => {
@@ -53,8 +53,7 @@ export const getIncome = asyncHandler(async(req: Request, res: Response) => {
     const totalIncomes = await Income.countDocuments({userId})
     const totalPages = Math.ceil(totalIncomes / limitNumber)
 
-    res.status(200).json({
-        success: true,
+    handleReponses(res, 200, {
         data: incomes,
         meta: {
             totalIncomes,
@@ -63,48 +62,31 @@ export const getIncome = asyncHandler(async(req: Request, res: Response) => {
             limit: limitNumber,
         }
     })
+
 })
 
 export const getIncomeById = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { incomeId } = req.params
 
-    if (!incomeId) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({incomeId}, ['incomeId'])
 
-    const income = await Income.findOne({ _id: incomeId, userId })
+    const income = await validateOwnership(Income, incomeId, userId)
 
-    if (!income) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
-    }
-
-    if (income.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
-
-    res.status(200).json({success: true, data: income})
+    handleReponses(res, 200, income)
 })
 
 export const deleteIncome = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { incomeId } = req.params
 
-    if (!incomeId) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({incomeId}, ['incomeId'])
 
-    const income = await Income.findById(incomeId)
-    if (!income) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
-    }
-
-    if (income.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
+    await validateOwnership(Income, incomeId, userId)
 
     await Income.deleteOne({ _id: incomeId })
-    res.status(200).json({success: true, message: 'Income deleted successfully'})
+
+    handleReponses(res, 200, { message: 'Income deleted successfully' })
 })
 
 export const downloadIncome = asyncHandler(async(req: Request, res: Response) => {
@@ -138,29 +120,18 @@ export const downloadIncome = asyncHandler(async(req: Request, res: Response) =>
 })
 
 export const updateIncome = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { incomeId } = req.params
     const { icon, title, amount, source, description, category, date } = req.body
 
-    if (!incomeId || !date || !title || !amount) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({incomeId}, ['incomeId'])
+    const income = await validateOwnership(Income, incomeId, userId)
 
     if (amount && isNaN(amount)) {
         throw new CustomError('Invalid amount format', 400)
     }
     if (date && isNaN(Date.parse(date))) {
         throw new CustomError('Invalid date format', 400)
-    }
-
-    const income = await Income.findById(incomeId)
-
-    if (!income) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
-    }
-
-    if (income.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
     }
 
     if (icon) income.icon = icon
@@ -172,60 +143,41 @@ export const updateIncome = asyncHandler(async(req: Request, res: Response) => {
     if (date) income.date = new Date(date)
 
     const updatedIncome = await income.save()
-    res.status(200).json({success: true, data: updatedIncome})
+    handleReponses(res, 200, updatedIncome)
 })
 
 export const filterIncomeByDate = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { startDate, endDate } = req.query
 
-    if (!startDate || !endDate) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({startDate, endDate}, ['startDate', 'endDate'])
 
-    const incomes = await Income.find({
-        userId,
-        date: {
-            $gte: new Date(startDate as string),
-            $lte: new Date(endDate as string),
-        },
-    }).sort({ date: -1 })
+    const incomes = await aggregateIncomes(userId, 'date')
 
     if (!incomes || incomes.length === 0) {
         throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
     }
 
-    res.status(200).json({success: true, data: incomes})
+    handleReponses(res, 200, incomes)
 })
 
-// export const getTotalIncome = asyncHandler(async(req: Request, res: Response) => {})
-
 export const groupIncomeByCategory = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
 
-    const incomes = await Income.aggregate([
-        { $match: { userId }},
-        { $group: {
-            _id: '$category',
-            totalAmount: { $sum: '$amount' },
-        }},
-        { $sort: { totalAmount: -1 }}
-    ])
+    const incomes = await aggregateIncomes(userId, 'category')
 
     if(!incomes || incomes.length === 0) {
         throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
     }
 
-    res.status(200).json({success: true, data: incomes})
+    handleReponses(res, 200, incomes)
 })
 
 export const searchIncome = asyncHandler(async(req: Request, res: Response) => {
     const userId = (req as AuthRequest).user?.id
     const {keyword} = req.query
 
-    if(!keyword) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({keyword}, ['keyword'])
 
     const numericKeyword = !isNaN(Number(keyword)) ? Number(keyword) : null
     const dateKeyword = !isNaN(Date.parse(keyword as string)) ? new Date(keyword as string) : null
@@ -246,26 +198,16 @@ export const searchIncome = asyncHandler(async(req: Request, res: Response) => {
         throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
     }
 
-    res.status(200).json({success: true, data: incomes})
+    handleReponses(res, 200, incomes)
 })
 
 export const duplicateIncome = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { incomeId } = req.params
 
-    if (!incomeId) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({incomeId}, ['incomeId'])
 
-    const income = await Income.findById(incomeId)
-
-    if (!income) {
-        throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
-    }
-
-    if (income.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
+    const income = await validateOwnership(Income, incomeId, userId)
 
     const duplicateIncome = await Income.create({
         ...income.toObject(),
@@ -273,5 +215,5 @@ export const duplicateIncome = asyncHandler(async(req: Request, res: Response) =
         date: new Date(),
     })
 
-    res.status(201).json({success: true, data: duplicateIncome})
+    handleReponses(res, 201, duplicateIncome)
 })

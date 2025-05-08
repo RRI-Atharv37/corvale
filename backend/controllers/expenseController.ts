@@ -4,18 +4,17 @@ import {Request, Response} from 'express'
 import Expense from '../models/Expense'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { aggregateExpenses, getUserId, handleReponses, validateOwnership, validateRequiredFields } from '../utils/expenseUtils'
 
 interface AuthRequest extends Request {
     user?: { id: string }
 }
 
 export const addExpense = asyncHandler(async(req: Request, res: Response) => {
-        const userId = (req as AuthRequest).user?.id
+        const userId = getUserId(req as AuthRequest)
+        validateRequiredFields(req.body, ['userId', 'title', 'amount', 'category', 'date'])
+
         const { title, amount, source, description, category, date, paymentMethod, recurring, tags } = req.body
-    
-        if(!userId || !date || !title || !amount || !category) {
-            throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-        }
     
         if (isNaN(amount) || isNaN(Date.parse(date))) {
             throw new CustomError('Invalid amount or date format', 400)
@@ -34,11 +33,11 @@ export const addExpense = asyncHandler(async(req: Request, res: Response) => {
             tags,
         })
     
-        res.status(201).json({success: true, data: newExpense})
+        handleReponses(res, 201, newExpense)
 })
 
 export const getExpense = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { page = 1, limit = 10 } = req.query
 
     const pageNumber = Number(page)
@@ -56,8 +55,7 @@ export const getExpense = asyncHandler(async(req: Request, res: Response) => {
     const totalExpenses = await Expense.countDocuments({userId})
     const totalPages = Math.ceil(totalExpenses / limitNumber)
 
-    res.status(200).json({
-        success: true,
+    handleReponses(res, 200, {
         data: incomes,
         meta: {
             totalExpenses,
@@ -69,40 +67,22 @@ export const getExpense = asyncHandler(async(req: Request, res: Response) => {
 })
 
 export const getExpenseById = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { expenseId } = req.params
 
-    if (!expenseId) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({expenseId}, ['expenseId'])
 
-    const expense = await Expense.findOne({ _id: expenseId, userId })
+    const expense = await validateOwnership(Expense, expenseId, userId)
 
-    if (!expense) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
-    }
-
-    if (expense.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
-
-    res.status(200).json({success: true, data: expense})
+    handleReponses(res, 200, expense)
 })
 
 export const updateExpense = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { expenseId } = req.params
     const { title, amount, description, category, date, paymentMethod, recurring, tags } = req.body
 
-    if(!expenseId || !userId) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-    }
-
-    const expense = await Expense.findById({_id: expenseId, userId})
-
-    if (!expense) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
-    }
+    const expense = await validateOwnership(Expense, expenseId, userId)
 
     expense.title = title || expense.title
     expense.amount = amount || expense.amount
@@ -114,41 +94,27 @@ export const updateExpense = asyncHandler(async(req: Request, res: Response) => 
     expense.tags = tags || expense.tags
 
     await expense.save()
-    res.status(200).json({success: true, data: expense})
+    handleReponses(res, 200, expense)
 })
 
 export const deleteExpense = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { expenseId } = req.params
 
-    if (!expenseId) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({expenseId}, ['expenseId'])
 
-    const expense = await Expense.findById(expenseId)
-    if (!expense) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
-    }
-
-    if (expense.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
+    await validateOwnership(Expense, expenseId, userId)
 
     await Expense.deleteOne({ _id: expenseId })
-    res.status(200).json({success: true, message: 'Expense deleted successfully'})
+    
+    handleReponses(res, 200, {message: 'Expense deleted successfully'})
 })
 
 export const filterExpense = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { startDate, endDate, } = req.query
 
-    if(!userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
-    
-    if (!startDate || !endDate) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({startDate, endDate}, ['startDate', 'endDate'])
 
     const expenses = await Expense.find({
         userId,
@@ -162,21 +128,19 @@ export const filterExpense = asyncHandler(async(req: Request, res: Response) => 
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    res.status(200).json({ success: true, data: expenses })
+    handleReponses(res, 200, expenses)
 
 })
 
 export const searchExpense = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { keyword } = req.query
 
     if(!userId) {
         throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
     }
 
-    if (!keyword) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields({keyword}, ['keyword'])
 
     const expenses = await Expense.find({
         userId,
@@ -192,48 +156,31 @@ export const searchExpense = asyncHandler(async(req: Request, res: Response) => 
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    res.status(200).json({ success: true, data: expenses })
+    handleReponses(res, 200, expenses)
 })
 export const groupExpenseByCategory = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
-
-    const expenses = await Expense.aggregate([
-        { $match: { userId } },
-        { $group: {
-            _id: '$category',
-            totalAmount: { $sum: '$amount' },
-        }},
-        { $sort: { totalAmount: -1 }}
-    ])
+    const userId = getUserId(req as AuthRequest)
+    const expenses = await aggregateExpenses(userId, 'category')
 
     if(!expenses || expenses.length === 0) {
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    res.status(200).json({success: true, data: expenses})
+    handleReponses(res, 200, expenses)
 })
 
 export const groupExpenseByPaymentMethod = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
-
-    const expenses = await Expense.aggregate([
-        { $match: { userId } },
-        { $group: {
-            _id: '$paymentMethod',
-            totalAmount: { $sum: '$amount' },
-        }},
-        { $sort: { totalAmount: -1 }}
-    ])
+    const userId = getUserId(req as AuthRequest)
+    const expenses = await aggregateExpenses(userId, 'paymentMethod')
 
     if(!expenses || expenses.length === 0) {
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    res.status(200).json({success: true, data: expenses})
+    handleReponses(res, 200, expenses)
 })
 export const downloadExpense = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
-
+    const userId = getUserId(req as AuthRequest)
     const expenses = await Expense.find({ userId }).sort({ date: -1 })
 
     if(!expenses || expenses.length === 0) {
@@ -262,12 +209,10 @@ export const downloadExpense = asyncHandler(async(req: Request, res: Response) =
 })
 
 export const generateExpenseReport = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { startDate, endDate } = req.query
 
-    if(!startDate || !endDate) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-    }
+    validateRequiredFields
 
     const expenses = await Expense.find({
         userId,
@@ -283,32 +228,21 @@ export const generateExpenseReport = asyncHandler(async(req: Request, res: Respo
 
     const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0)
 
-    res.status(200).json({
-        success: true,
-        data: {
+    handleReponses(res, 200, {
+        expenses,
+        meta:{
             totalAmount,
-            expenses,
-        },
+            totalExpenses: expenses.length,
+        }
     })
 })
 
 export const duplicateExpense = asyncHandler(async(req: Request, res: Response) => {
-    const userId = (req as AuthRequest).user?.id
+    const userId = getUserId(req as AuthRequest)
     const { expenseId } = req.params
 
-    if (!expenseId) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.FILL_ALL_FIELDS, 400)
-    }
-
-    const expense = await Expense.findById(expenseId)
-
-    if (!expense) {
-        throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
-    }
-
-    if (expense.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
+    validateRequiredFields({expenseId}, ['expenseId'])
+    const expense = await validateOwnership(Expense, expenseId, userId)
 
     const duplicatedExpense = await Expense.create({
         userId: expense.userId,
@@ -322,5 +256,5 @@ export const duplicateExpense = asyncHandler(async(req: Request, res: Response) 
         tags: expense.tags,
     })
 
-    res.status(201).json({success: true, data: duplicatedExpense})
+    handleReponses(res, 201, duplicatedExpense)
 })

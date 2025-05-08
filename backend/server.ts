@@ -1,9 +1,8 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import express, {Request, Response, NextFunction} from 'express'
+import express from 'express'
 import cors from 'cors'
-import path from 'path'
 import connectDB from './config/db'
 import authRoutes from './routes/authRoutes'
 import incomeRoutes from './routes/incomeRoutes'
