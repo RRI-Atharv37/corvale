@@ -11,7 +11,7 @@ interface AuthRequest extends Request {
 
 export const addIncome = asyncHandler(async(req: Request, res: Response) => {
     const userId = (req as AuthRequest).user?.id
-    const { icon, title, amount, source, description, category, date } = req.body
+    const { title, amount, source, description, category, date } = req.body
 
     if(!userId || !date || !title || !amount) {
         throw new CustomError(ERROR_MESSAGES.INCOME.FILL_ALL_FIELDS, 400)
@@ -23,7 +23,6 @@ export const addIncome = asyncHandler(async(req: Request, res: Response) => {
 
     const newIncome = await Income.create({
         userId,
-        icon,
         title,
         amount,
         source,
