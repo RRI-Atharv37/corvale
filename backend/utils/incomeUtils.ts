@@ -1,4 +1,4 @@
-import { Request } from 'express'
+import { Request, Response } from 'express'
 import Income from '../models/Income'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
@@ -15,7 +15,7 @@ export const getUserId = (req: AuthRequest): string => {
     return userId
 }
 
-export const handleReponses = (res: any, statusCode: number, data: any) => {
+export const handleReponses = (res: Response, statusCode: number, data: any) => {
     res.status(statusCode).json({
         success: true,
         data: data,

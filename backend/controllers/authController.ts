@@ -33,12 +33,16 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
         _id: user._id,
         fullName: user.fullName,
         email: user.email,
-        token,
+        data: {
+            token
+        }
     })
 })
 
 export const loginUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body
+
+    // console.log('Login Request:', req.body)
 
     if (!email || !password) {
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
@@ -60,7 +64,9 @@ export const loginUser = asyncHandler(async (req: Request, res: Response): Promi
         _id: user._id,
         fullName: user.fullName,
         email: user.email,
-        token
+        data: {
+            token
+        }
     })
 })
 

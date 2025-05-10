@@ -212,7 +212,7 @@ export const generateExpenseReport = asyncHandler(async(req: Request, res: Respo
     const userId = getUserId(req as AuthRequest)
     const { startDate, endDate } = req.query
 
-    validateRequiredFields
+    validateRequiredFields({startDate, endDate}, ['startDate', 'endDate'])
 
     const expenses = await Expense.find({
         userId,

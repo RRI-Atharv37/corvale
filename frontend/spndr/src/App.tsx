@@ -8,9 +8,11 @@ import Income from './pages/Dashboard/Income'
 import Expense from './pages/Dashboard/Expense'
 import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
+import UserProvider from './context/userContext'
 
 const App = () => {
   return(
+    <UserProvider>
     <div>
       <Router>
         <Routes>
@@ -25,6 +27,7 @@ const App = () => {
         </Routes>
       </Router>
     </div>
+    </UserProvider>
   )
 }
 
