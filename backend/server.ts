@@ -7,6 +7,8 @@ import connectDB from './config/db'
 import authRoutes from './routes/authRoutes'
 import incomeRoutes from './routes/incomeRoutes'
 import expenseRoutes from './routes/expenseRoutes'
+import saverRoutes from './routes/saverRoutes'
+import pushoverRoutes from './routes/pushoverRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 const app = express()
@@ -27,6 +29,8 @@ connectDB()
 app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/income', incomeRoutes)
 app.use('/api/v1/expense', expenseRoutes)
+app.use('/api/v1/saver', saverRoutes)
+app.use('/api/v1/pushover', pushoverRoutes)
 app.use(errorHandler)
 
 process.on('unhandledRejection', (err) => {

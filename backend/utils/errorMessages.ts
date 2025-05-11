@@ -23,4 +23,10 @@ export const ERROR_MESSAGES = {
         EXPENSE_NOT_FOUND: 'Expense entry not found',
         EXPENSE_ALREADY_EXISTS: 'Expense already exists',
     },
+    SAVER: {
+        FILL_ALL_FIELDS: 'Please fill in all fields',
+        SAVER_NOT_FOUND: 'Saver account not found',
+        INSUFFICIENT_FUNDS: 'Insufficient funds in saver account',
+
+    },
 }
