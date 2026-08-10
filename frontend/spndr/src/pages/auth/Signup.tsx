@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link, useNavigate } from 'react-router-dom'
-import Input from '../../components/Inputs/Input'
+import Input from '../../components/inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
 import { UserContext } from '../../context/UserContext'
@@ -45,7 +45,8 @@ const Signup = () => {
     try{
       const response = await axiosInstance.post('/auth/register', {fullName, email, password}, {withCredentials: true, headers: {'Content-Type': 'application/json'}})
 
-      const { token, user } = response.data
+      const authData = (response as any).data ?? response
+      const { token, user } = authData?.data ?? authData
 
       if(token){
         localStorage.setItem('token', token)

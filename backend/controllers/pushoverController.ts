@@ -2,7 +2,7 @@ import asyncHandler from 'express-async-handler'
 import { Request, Response } from 'express'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { getUserId, handleReponses } from '../utils/saverpushoverUtils'
+import { getUserId, handleResponses } from '../utils/saverpushoverUtils'
 import Saver from '../models/Saver'
 import Pushover from '../models/Pushover'
 
@@ -32,7 +32,7 @@ export const pushoverToNextMonth = asyncHandler(async (req: Request, res: Respon
     saver.pushoverAmount = 0
     await saver.save()
 
-    handleReponses(res, 200, {
+    handleResponses(res, 200, {
         message: 'Pushover to next month successful',
         data: {
             pushoverAmount: pushoverAmount,

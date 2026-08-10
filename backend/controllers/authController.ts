@@ -2,13 +2,13 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import asyncHandler from 'express-async-handler'
-
-import User, {IUser} from '../models/User'
 import jwt, {SignOptions} from 'jsonwebtoken'
+import User, {IUser} from '../models/User'
 import {Request, Response} from 'express'
 import { AuthRequest } from '../middleware/authMiddleware'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { handleResponses } from '../utils/authUtils'
 
 const generateToken = (userId: string) => {
     return jwt.sign({ id: userId }, process.env.JWT_SECRET as string, {expiresIn: process.env.JWT_EXPIRY as string} as SignOptions)
@@ -29,14 +29,14 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
     const user = await User.create({ fullName, email, password }) as IUser
     const token = generateToken(user._id.toString())
 
-    res.status(201).json({
-        _id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        data: {
-            token
-        }
-    })
+        handleResponses(res, 201, {
+            token,
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+            }
+        })
 })
 
 export const loginUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -60,14 +60,14 @@ export const loginUser = asyncHandler(async (req: Request, res: Response): Promi
 
     const token = generateToken(user._id.toString())
 
-    res.status(200).json({
-        _id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        data: {
-            token
-        }
-    })
+        handleResponses(res, 200, {
+            token,
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+            }
+        })
 })
 
 export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
@@ -79,5 +79,5 @@ export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response):
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
         
-    res.status(200).json(user)
+        handleResponses(res, 200, user)
 })

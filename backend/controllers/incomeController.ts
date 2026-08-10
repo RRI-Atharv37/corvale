@@ -4,7 +4,7 @@ import {Request, Response} from 'express'
 import Income from '../models/Income'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { aggregateIncomes, getUserId, handleReponses, validateOwnership, validateRequiredFields } from '../utils/incomeUtils'
+import { aggregateIncomes, getUserId, handleResponses, validateOwnership, validateRequiredFields } from '../utils/incomeUtils'
 
 interface AuthRequest extends Request {
     user?: { id: string }
@@ -31,7 +31,7 @@ export const addIncome = asyncHandler(async(req: Request, res: Response) => {
         date: new Date(date),
     })
 
-    handleReponses(res, 201, newIncome)
+    handleResponses(res, 201, newIncome)
 })
 
 export const getIncome = asyncHandler(async(req: Request, res: Response) => {
@@ -53,7 +53,7 @@ export const getIncome = asyncHandler(async(req: Request, res: Response) => {
     const totalIncomes = await Income.countDocuments({userId})
     const totalPages = Math.ceil(totalIncomes / limitNumber)
 
-    handleReponses(res, 200, {
+    handleResponses(res, 200, {
         data: incomes,
         meta: {
             totalIncomes,
@@ -73,7 +73,7 @@ export const getIncomeById = asyncHandler(async(req: Request, res: Response) => 
 
     const income = await validateOwnership(Income, incomeId, userId)
 
-    handleReponses(res, 200, income)
+    handleResponses(res, 200, income)
 })
 
 export const deleteIncome = asyncHandler(async(req: Request, res: Response) => {
@@ -86,7 +86,7 @@ export const deleteIncome = asyncHandler(async(req: Request, res: Response) => {
 
     await Income.deleteOne({ _id: incomeId })
 
-    handleReponses(res, 200, { message: 'Income deleted successfully' })
+    handleResponses(res, 200, { message: 'Income deleted successfully' })
 })
 
 export const downloadIncome = asyncHandler(async(req: Request, res: Response) => {
@@ -143,7 +143,7 @@ export const updateIncome = asyncHandler(async(req: Request, res: Response) => {
     if (date) income.date = new Date(date)
 
     const updatedIncome = await income.save()
-    handleReponses(res, 200, updatedIncome)
+    handleResponses(res, 200, updatedIncome)
 })
 
 export const filterIncomeByDate = asyncHandler(async(req: Request, res: Response) => {
@@ -158,7 +158,7 @@ export const filterIncomeByDate = asyncHandler(async(req: Request, res: Response
         throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, incomes)
+    handleResponses(res, 200, incomes)
 })
 
 export const groupIncomeByCategory = asyncHandler(async(req: Request, res: Response) => {
@@ -170,7 +170,7 @@ export const groupIncomeByCategory = asyncHandler(async(req: Request, res: Respo
         throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, incomes)
+    handleResponses(res, 200, incomes)
 })
 
 export const searchIncome = asyncHandler(async(req: Request, res: Response) => {
@@ -198,7 +198,7 @@ export const searchIncome = asyncHandler(async(req: Request, res: Response) => {
         throw new CustomError(ERROR_MESSAGES.INCOME.INCOME_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, incomes)
+    handleResponses(res, 200, incomes)
 })
 
 export const duplicateIncome = asyncHandler(async(req: Request, res: Response) => {
@@ -215,5 +215,5 @@ export const duplicateIncome = asyncHandler(async(req: Request, res: Response) =
         date: new Date(),
     })
 
-    handleReponses(res, 201, duplicateIncome)
+    handleResponses(res, 201, duplicateIncome)
 })

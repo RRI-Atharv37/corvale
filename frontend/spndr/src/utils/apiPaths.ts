@@ -4,7 +4,7 @@ interface ImportMetaWithEnv extends ImportMeta {
     };
 }
 
-export const BASE_URL = (import.meta as ImportMetaWithEnv).env.VITE_API_URL || 'http://localhost:5000/api/v1/';
+export const BASE_URL = (import.meta as ImportMetaWithEnv).env.VITE_API_URL || 'http://localhost:8000/api/v1/';
 console.log('BASE_URL:', BASE_URL);
 
 export const API_PATHS = {

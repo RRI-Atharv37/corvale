@@ -1,9 +1,9 @@
 import asyncHandler from 'express-async-handler'
 import { Request, Response } from 'express'
 
-import {CustomError} from '../utils/customError'
+import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { getUserId, handleReponses, validateRequiredFields } from '../utils/saverpushoverUtils'
+import { getUserId, handleResponses, validateRequiredFields } from '../utils/saverpushoverUtils'
 import Saver from '../models/Saver'
 
 interface AuthRequest extends Request {
@@ -38,7 +38,7 @@ export const addSaver = asyncHandler(async(req: Request, res: Response) => {
         { new: true, upsert: true }
     )
 
-    handleReponses(res, 200, {
+    handleResponses(res, 200, {
         message: 'Amount added to saver successfully',
         data: {
             saverAmount: saver.saverAmount,
@@ -66,7 +66,7 @@ export const withdrawSaver = asyncHandler(async(req: Request, res: Response) => 
     saver.saverAmount = (saver.saverAmount ?? 0) - amount
     await saver.save()
 
-    handleReponses(res, 200, {
+    handleResponses(res, 200, {
         message: 'Amount withdrawn from saver successfully',
         data: {
             saverAmount: saver.saverAmount,
@@ -83,7 +83,7 @@ export const getSaver = asyncHandler(async(req: Request, res: Response) => {
         throw new CustomError(ERROR_MESSAGES.SAVER.SAVER_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, {
+    handleResponses(res, 200, {
         message: 'Saver account retrieved successfully',
         data: {
             saverAmount: saver.saverAmount,

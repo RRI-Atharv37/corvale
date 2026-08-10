@@ -15,7 +15,7 @@ export const getUserId = (req: AuthRequest): string => {
     return userId
 }
 
-export const handleReponses = (res: Response, statusCode: number, data: any) => {
+export const handleResponses = (res: Response, statusCode: number, data: any) => {
     res.status(statusCode).json({
         success: true,
         data: data,

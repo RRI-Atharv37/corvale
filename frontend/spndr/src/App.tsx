@@ -8,7 +8,8 @@ import Income from './pages/Dashboard/Income'
 import Expense from './pages/Dashboard/Expense'
 import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
-import UserProvider from './context/userContext'
+import UserProvider from './context/UserContext'
+import ProtectedRoute from './routes/ProtectedRoute'
 
 const App = () => {
   return(
@@ -19,11 +20,11 @@ const App = () => {
           <Route path="/" element={<Root />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard" element={<Home />} />
-          <Route path="/income" element={<Income />} />
-          <Route path="/expense" element={<Expense />} />
-          <Route path="/saver" element={<Saver />} />
-          <Route path="/pushover" element={<Pushover />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/income" element={<ProtectedRoute><Income /></ProtectedRoute>} />
+          <Route path="/expense" element={<ProtectedRoute><Expense /></ProtectedRoute>} />
+          <Route path="/saver" element={<ProtectedRoute><Saver /></ProtectedRoute>} />
+          <Route path="/pushover" element={<ProtectedRoute><Pushover /></ProtectedRoute>} />
         </Routes>
       </Router>
     </div>

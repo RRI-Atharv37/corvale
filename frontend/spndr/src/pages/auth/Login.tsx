@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link, useNavigate } from 'react-router-dom'
-import Input from '../../components/Inputs/Input'
+import Input from '../../components/inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -43,13 +43,13 @@ const Login = () => {
       const response = await axiosInstance.post(API_PATHS.AUTH.LOGIN, {email, password}, {withCredentials: true, headers: {'Content-Type': 'application/json'}})
       // console.log('Login Response:', response)
 
-      if(!response.data || !response.data.token){
+      const authData = (response as any).data ?? response
+      const { token, user } = authData?.data ?? authData
+
+      if(!token){
         setError('Invalid response from server. Please try again.')
         return
       } 
-
-      const { token } = response.data
-      const { user } = response.data
 
       if(token){
         localStorage.setItem('token', token)

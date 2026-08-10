@@ -4,7 +4,7 @@ import {Request, Response} from 'express'
 import Expense from '../models/Expense'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { aggregateExpenses, getUserId, handleReponses, validateOwnership, validateRequiredFields } from '../utils/expenseUtils'
+import { aggregateExpenses, getUserId, handleResponses, validateOwnership, validateRequiredFields } from '../utils/expenseUtils'
 
 interface AuthRequest extends Request {
     user?: { id: string }
@@ -33,7 +33,7 @@ export const addExpense = asyncHandler(async(req: Request, res: Response) => {
             tags,
         })
     
-        handleReponses(res, 201, newExpense)
+        handleResponses(res, 201, newExpense)
 })
 
 export const getExpense = asyncHandler(async(req: Request, res: Response) => {
@@ -55,7 +55,7 @@ export const getExpense = asyncHandler(async(req: Request, res: Response) => {
     const totalExpenses = await Expense.countDocuments({userId})
     const totalPages = Math.ceil(totalExpenses / limitNumber)
 
-    handleReponses(res, 200, {
+    handleResponses(res, 200, {
         data: incomes,
         meta: {
             totalExpenses,
@@ -74,7 +74,7 @@ export const getExpenseById = asyncHandler(async(req: Request, res: Response) =>
 
     const expense = await validateOwnership(Expense, expenseId, userId)
 
-    handleReponses(res, 200, expense)
+    handleResponses(res, 200, expense)
 })
 
 export const updateExpense = asyncHandler(async(req: Request, res: Response) => {
@@ -94,7 +94,7 @@ export const updateExpense = asyncHandler(async(req: Request, res: Response) => 
     expense.tags = tags || expense.tags
 
     await expense.save()
-    handleReponses(res, 200, expense)
+    handleResponses(res, 200, expense)
 })
 
 export const deleteExpense = asyncHandler(async(req: Request, res: Response) => {
@@ -107,7 +107,7 @@ export const deleteExpense = asyncHandler(async(req: Request, res: Response) => 
 
     await Expense.deleteOne({ _id: expenseId })
     
-    handleReponses(res, 200, {message: 'Expense deleted successfully'})
+    handleResponses(res, 200, {message: 'Expense deleted successfully'})
 })
 
 export const filterExpense = asyncHandler(async(req: Request, res: Response) => {
@@ -128,7 +128,7 @@ export const filterExpense = asyncHandler(async(req: Request, res: Response) => 
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, expenses)
+    handleResponses(res, 200, expenses)
 
 })
 
@@ -156,7 +156,7 @@ export const searchExpense = asyncHandler(async(req: Request, res: Response) => 
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, expenses)
+    handleResponses(res, 200, expenses)
 })
 export const groupExpenseByCategory = asyncHandler(async(req: Request, res: Response) => {
     const userId = getUserId(req as AuthRequest)
@@ -166,7 +166,7 @@ export const groupExpenseByCategory = asyncHandler(async(req: Request, res: Resp
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, expenses)
+    handleResponses(res, 200, expenses)
 })
 
 export const groupExpenseByPaymentMethod = asyncHandler(async(req: Request, res: Response) => {
@@ -177,7 +177,7 @@ export const groupExpenseByPaymentMethod = asyncHandler(async(req: Request, res:
         throw new CustomError(ERROR_MESSAGES.EXPENSE.EXPENSE_NOT_FOUND, 404)
     }
 
-    handleReponses(res, 200, expenses)
+    handleResponses(res, 200, expenses)
 })
 export const downloadExpense = asyncHandler(async(req: Request, res: Response) => {
     const userId = getUserId(req as AuthRequest)
@@ -228,7 +228,7 @@ export const generateExpenseReport = asyncHandler(async(req: Request, res: Respo
 
     const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0)
 
-    handleReponses(res, 200, {
+    handleResponses(res, 200, {
         expenses,
         meta:{
             totalAmount,
@@ -256,5 +256,5 @@ export const duplicateExpense = asyncHandler(async(req: Request, res: Response) 
         tags: expense.tags,
     })
 
-    handleReponses(res, 201, duplicatedExpense)
+    handleResponses(res, 201, duplicatedExpense)
 })
