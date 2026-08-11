@@ -1,16 +1,10 @@
-interface ImportMetaWithEnv extends ImportMeta {
-    env: {
-        VITE_API_URL?: string;
-    };
-}
-
-export const BASE_URL = (import.meta as ImportMetaWithEnv).env.VITE_API_URL || 'http://localhost:8000/api/v1/';
-console.log('BASE_URL:', BASE_URL);
+export const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api/v1'
 
 export const API_PATHS = {
     AUTH: {
         LOGIN: '/auth/login',
         REGISTER: '/auth/register',
+        USER: '/auth/user',
     },
     INCOME: {
         CREATE: '/income/create',
@@ -38,4 +32,12 @@ export const API_PATHS = {
         REPORT: '/expense/report',
         DUPLICATE: (expenseId: string) => `/expense/duplicate/${expenseId}`,
     },
-}
+    SAVER: {
+        ADD: '/saver/add',
+        WITHDRAW: '/saver/withdraw',
+        DETAILS: '/saver/details',
+    },
+    PUSHOVER: {
+        PUSHOVER: '/pushover/pushover',
+    },
+} as const

@@ -1,0 +1,63 @@
+export interface ApiResponse<T> {
+    success: boolean
+    data: T
+}
+
+export interface User {
+    _id: string
+    fullName: string
+    email: string
+}
+
+export interface AuthPayload {
+    token: string
+    user: User
+}
+
+export interface PaginationMeta {
+    totalIncomes?: number
+    totalExpenses?: number
+    pageNumber: number
+    totalPages: number
+    limit: number
+}
+
+export interface Income {
+    _id: string
+    userId: string
+    title: string
+    amount: number
+    date: string
+    source?: string
+    description?: string
+    category?: string
+    icon?: string
+}
+
+export interface Expense {
+    _id: string
+    userId: string
+    title: string
+    amount: number
+    category: string
+    date: string
+    description?: string
+    paymentMethod?: string
+    recurring?: string
+    tags?: string[]
+}
+
+export interface PaginatedIncome {
+    data: Income[]
+    meta: PaginationMeta
+}
+
+export interface PaginatedExpense {
+    data: Expense[]
+    meta: PaginationMeta
+}
+
+export interface SaverDetails {
+    saverAmount: number
+    saverDate?: string
+}

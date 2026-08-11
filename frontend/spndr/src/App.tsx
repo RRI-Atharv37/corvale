@@ -1,5 +1,6 @@
 import React from 'react'
-import{BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
@@ -10,36 +11,97 @@ import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
 import UserProvider from './context/UserContext'
 import ProtectedRoute from './routes/ProtectedRoute'
+import DashboardLayout from './components/layouts/DashboardLayout'
+import { useUser } from './hooks/useUser'
+import LoadingState from './components/ui/LoadingState'
+
+const AppRoutes = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+            <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
+
+            <Route
+                element={
+                    <ProtectedRoute>
+                        <DashboardLayout />
+                    </ProtectedRoute>
+                }
+            >
+                <Route path="/dashboard" element={<Home />} />
+                <Route path="/income" element={<Income />} />
+                <Route path="/expense" element={<Expense />} />
+                <Route path="/saver" element={<Saver />} />
+                <Route path="/pushover" element={<Pushover />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    )
+}
 
 const App = () => {
-  return(
-    <UserProvider>
-    <div>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Root />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/income" element={<ProtectedRoute><Income /></ProtectedRoute>} />
-          <Route path="/expense" element={<ProtectedRoute><Expense /></ProtectedRoute>} />
-          <Route path="/saver" element={<ProtectedRoute><Saver /></ProtectedRoute>} />
-          <Route path="/pushover" element={<ProtectedRoute><Pushover /></ProtectedRoute>} />
-        </Routes>
-      </Router>
-    </div>
-    </UserProvider>
-  )
+    return (
+        <UserProvider>
+            <Router>
+                <AppRoutes />
+                <Toaster
+                    position="top-right"
+                    toastOptions={{
+                        className: 'text-sm',
+                        style: {
+                            background: '#1e293b',
+                            color: '#e2e8f0',
+                            border: '1px solid #334155',
+                        },
+                        success: {
+                            iconTheme: { primary: '#22d3ee', secondary: '#0f172a' },
+                        },
+                        error: {
+                            iconTheme: { primary: '#f87171', secondary: '#0f172a' },
+                        },
+                    }}
+                />
+            </Router>
+        </UserProvider>
+    )
+}
+
+const RootRedirect = () => {
+    const { isAuthenticated, isInitializing } = useUser()
+
+    if (isInitializing) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <LoadingState message="Loading..." />
+            </div>
+        )
+    }
+
+    return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
+}
+
+interface GuestRouteProps {
+    children: React.ReactNode
+}
+
+const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
+    const { isAuthenticated, isInitializing } = useUser()
+
+    if (isInitializing) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <LoadingState message="Loading..." />
+            </div>
+        )
+    }
+
+    if (isAuthenticated) {
+        return <Navigate to="/dashboard" replace />
+    }
+
+    return <>{children}</>
 }
 
 export default App
-
-const Root = () => {
-  const isAuth = !!localStorage.getItem('token')
-
-  return isAuth ? (
-    <Navigate to='/dashboard' />
-  ) : (
-    <Navigate to='/login' />
-  )
-}

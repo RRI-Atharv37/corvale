@@ -1,17 +1,27 @@
 import React, { ReactNode } from 'react'
 
-interface AuthLayoutProps{
+interface AuthLayoutProps {
     children: ReactNode
 }
 
-// const AuthLayout = ({children}) => {
-const AuthLayout: React.FC<AuthLayoutProps> = ({children}) => {
-    return <div className='flex'>
-        <div className='w-screen h-screen md:w-[60vw] px-12 pt-8 pb-12'>
-            <h2 className='text-lg font-medium text-black'>Expense Tracker</h2>
-            {children}
+const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
+    return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-8">
+            <div className="w-full max-w-md">
+                <div className="mb-8 text-center">
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                        <span className="text-cyan-400">spnd</span>
+                        <span className="text-slate-100">r</span>
+                    </h1>
+                    <p className="text-xs text-slate-500 mt-1">Track. Save. Grow.</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6 sm:p-8 shadow-xl shadow-black/20">
+                    {children}
+                </div>
+            </div>
         </div>
-    </div>
+    )
 }
 
 export default AuthLayout

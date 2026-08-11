@@ -1,118 +1,116 @@
-import React, { useContext, useState } from 'react'
+import React, { useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link, useNavigate } from 'react-router-dom'
 import Input from '../../components/inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
-import { UserContext } from '../../context/UserContext'
+import { API_PATHS } from '../../utils/apiPaths'
+import { parseAuthPayload, setAuthSession } from '../../context/UserContext'
+import { useUser } from '../../hooks/useUser'
+import type { ApiResponse, AuthPayload } from '../../types/api'
+import { getApiErrorMessage } from '../../utils/apiError'
+import toast from 'react-hot-toast'
 
 const Signup = () => {
-  const [fullName, setFullName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+    const [fullName, setFullName] = useState('')
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [error, setError] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const navigate = useNavigate()
+    const { updateUser } = useUser()
 
-  const navigate = useNavigate()
+    const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
 
-  const userContext = useContext(UserContext);
+        if (!fullName) {
+            setError('Please enter your full name.')
+            return
+        }
 
-  if (!userContext) {
-    throw new Error('UserContext is not provided');
-  }
+        if (!validateEmail(email)) {
+            setError('Please enter a valid email address.')
+            return
+        }
 
-  const { updateUser } = userContext;
+        if (!password) {
+            setError('Please enter a password')
+            return
+        }
 
-  const handleSignup = async(e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+        setError('')
+        setIsSubmitting(true)
 
-    if(!fullName){
-      setError('Please enter your full name.')
-      return
+        try {
+            const response = await axiosInstance.post<ApiResponse<AuthPayload>>(
+                API_PATHS.AUTH.REGISTER,
+                { fullName, email, password }
+            )
+
+            const { token, user } = parseAuthPayload(response)
+            setAuthSession({ token, user })
+            updateUser(user)
+            toast.success('Account created successfully!')
+            navigate('/dashboard')
+        } catch (err) {
+            const message = getApiErrorMessage(err, 'An error occurred. Please try again.')
+            setError(message)
+            toast.error(message)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
-    if(!validateEmail(email)){
-      setError('Please enter a valid email address.')
-      return
-    }
+    return (
+        <AuthLayout>
+            <div>
+                <h3 className="text-xl font-semibold text-slate-100">Create an account</h3>
+                <p className="text-xs text-slate-400 mt-1 mb-6">Join spndr and start tracking your finances</p>
 
-    if(!password){
-      setError('Please enter a password')
-      return
-    }
+                <form onSubmit={handleSignup}>
+                    <Input
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        label="Full Name"
+                        placeholder="Your name"
+                        type="text"
+                        disabled={isSubmitting}
+                    />
 
-    setError("")
+                    <Input
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        label="Email address"
+                        placeholder="you@example.com"
+                        type="email"
+                        disabled={isSubmitting}
+                    />
 
-    try{
-      const response = await axiosInstance.post('/auth/register', {fullName, email, password}, {withCredentials: true, headers: {'Content-Type': 'application/json'}})
+                    <Input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        label="Password"
+                        placeholder="Minimum 8 characters"
+                        type="password"
+                        disabled={isSubmitting}
+                    />
 
-      const authData = (response as any).data ?? response
-      const { token, user } = authData?.data ?? authData
+                    {error && <p className="text-red-400 text-xs pb-2.5">{error}</p>}
 
-      if(token){
-        localStorage.setItem('token', token)
-        updateUser(user)
-        navigate('/dashboard')
-      }
-    } catch(error: any) {
-      console.error('Login Error:', error)
+                    <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                        {isSubmitting ? 'Creating account...' : 'Sign up'}
+                    </button>
 
-      if (error.response && error.response.data.message){
-        setError(error.response.data.message)
-      } else{
-        setError('An error occurred. Please try again.')
-      }
-    }
-  }
-  
-  return(
-    <AuthLayout>
-      <div className='lg:w-[100%] h-auto md:h-full mt-10 md:mt-0 flex flex-col justify-center'>
-        <h3 className='text-xl font-semibold text-black'>Create an Account</h3>
-        <p className='text-xs text-slate-700 mt-[5px] mb-6'>Join Us Today by Entering Your Details Below.</p>
-
-        <form onSubmit={handleSignup}>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <Input
-              value = {fullName}
-              // onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
-              onChange={(e) => setFullName(e.target.value)}
-              label='Full Name'
-              placeholder='Atharv Dewangan'
-              type='text'
-            />
-
-            <Input 
-              value={email}
-              // onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-              onChange={(e) => setEmail(e.target.value)}
-              label = 'Email address'
-              placeholder = 'abc@example.com'
-              type = 'text'
-            />
-
-            <div className='col-span-2'>
-              <Input
-                value={password}
-                // onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                onChange={(e) => setPassword(e.target.value)}
-                label = 'Password'
-                placeholder = 'Minimum 8 Characters'
-                type = 'password'
-              />
+                    <p className="text-[13px] text-slate-400 mt-3">
+                        Already have an account?{' '}
+                        <Link className="font-medium text-cyan-400 hover:text-cyan-300" to="/login">
+                            Sign in
+                        </Link>
+                    </p>
+                </form>
             </div>
-          </div>  
-
-          {error && <p className='text-red-500 text-xs pb-2.5'>{error}</p>}
-
-          <button type='submit' className='btn-primary'>SIGNUP</button>
-
-          <p className='text-[13px] text-slate-800 mt-3 '>Already have an account?{" "}
-            <Link className='font-medium text-purple-500 underline' to='/login'>Login</Link>
-          </p>
-        </form> 
-      </div>
-    </AuthLayout>
-  )
+        </AuthLayout>
+    )
 }
 
 export default Signup

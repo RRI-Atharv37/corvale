@@ -1,57 +1,52 @@
-import axios from 'axios'
+import axios, { AxiosRequestConfig } from 'axios'
 import { BASE_URL } from './apiPaths'
 
-const axiosInstance = axios.create({
+const client = axios.create({
     baseURL: BASE_URL,
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        Accept: 'application/json',
     },
     withCredentials: true,
 })
 
-axiosInstance.interceptors.request.use(
+client.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token')
         if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`
+            config.headers.Authorization = `Bearer ${token}`
         }
         return config
     },
-    (error) => {
-        return Promise.reject(error)
-    }
+    (error) => Promise.reject(error)
 )
 
-axiosInstance.interceptors.response.use(
-    (response) => {
-        return response.data
-    },
+client.interceptors.response.use(
+    (response) => response.data,
     (error) => {
-        if (error.response) {
-            const { status } = error.response
+        if (error.response?.status === 401) {
+            const isAuthRoute =
+                error.config?.url?.includes('/auth/login') ||
+                error.config?.url?.includes('/auth/register')
 
-            if (status === 401) {
+            if (!isAuthRoute) {
                 localStorage.removeItem('token')
-                window.location.href = '/login'
             }
-
-            if (status === 403) {
-                console.error('Access forbidden: You do not have permission to access this resource.')
-            }
-
-            if (status >= 500) {
-                console.error('Server error:', error.response.data)
-            }
-        } else if (error.code === 'ECONNABORTED') {
-            console.error('Request timeout: Please try again later.')
-        } else {
-            console.error('Network error or unexpected issue:', error.message)
         }
 
         return Promise.reject(error)
     }
 )
+
+/** Axios instance whose interceptors unwrap `response.data` — methods return `T` directly. */
+export interface ApiClient {
+    get<T>(url: string, config?: AxiosRequestConfig): Promise<T>
+    post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+    put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+    delete<T>(url: string, config?: AxiosRequestConfig): Promise<T>
+}
+
+const axiosInstance = client as unknown as ApiClient
 
 export default axiosInstance
