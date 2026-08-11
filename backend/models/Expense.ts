@@ -26,5 +26,7 @@ const ExpenseSchema = new Schema<IExpense>({
     tags: [{ type: String }],
 }, { timestamps: true })
 
+ExpenseSchema.index({ userId: 1, date: -1 })
+
 const Expense: Model<IExpense> = mongoose.model<IExpense>('Expense', ExpenseSchema)
 export default Expense

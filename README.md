@@ -1,5 +1,6 @@
 # spndr
- spndr - simple expense tracker
+
+spndr - a modern expense tracking, budgeting, savings, and personal finance application for students and young adults.
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr)
 ![GitHub License](https://img.shields.io/github/license/RRI-Atharv37/spndr)

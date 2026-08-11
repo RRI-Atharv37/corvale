@@ -23,5 +23,7 @@ const IncomeSchema = new Schema<IIncome>({
     category: { type: String, required: false },
 }, { timestamps: true })
 
+IncomeSchema.index({ userId: 1, date: -1 })
+
 const Income: Model<IIncome> = mongoose.model<IIncome>('Income', IncomeSchema)
 export default Income

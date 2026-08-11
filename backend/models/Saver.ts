@@ -15,5 +15,7 @@ const SaverSchema = new Schema<ISaver>({
     saverDate: { type: Date, default: Date.now },
 }, { timestamps: true })
 
+SaverSchema.index({ userId: 1 }, { unique: true })
+
 const Saver: Model<ISaver> = mongoose.model<ISaver>('Saver', SaverSchema)
 export default Saver

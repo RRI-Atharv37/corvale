@@ -1,0 +1,14 @@
+# Build output
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+ROADMAP.md
+TODO.md
+devtest.md

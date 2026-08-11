@@ -4,6 +4,7 @@ export const ERROR_MESSAGES = {
         INVALID_CREDENTIALS: 'Invalid credentials',
         TOKEN_MISSING: 'Not authorized, no token',
         TOKEN_INVALID: 'Not authorized, token failed',
+        TOKEN_EXPIRED: 'Not authorized, token expired',
         NOT_AUTHORIZED: 'Not authorized to perform this action',
     },
     USER: {

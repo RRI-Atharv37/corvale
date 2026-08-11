@@ -17,7 +17,7 @@
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
-    "start": "node backend/dist/server.js"
+    "start": "node ../dist/backend/server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
