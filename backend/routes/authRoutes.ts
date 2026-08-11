@@ -1,11 +1,17 @@
 import express from 'express'
 import { protect } from '../middleware/authMiddleware'
-
+import { createAuthRateLimiter } from '../middleware/rateLimitMiddleware'
 import { registerUser, loginUser, getUserInfo } from '../controllers/authController'
-const router = express.Router()
 
-router.post('/register', registerUser)
-router.post('/login', loginUser)
-router.get('/user', protect, getUserInfo)
+export const createAuthRoutes = (): express.Router => {
+    const router = express.Router()
+    const authRateLimiter = createAuthRateLimiter()
 
-export default router
+    router.post('/register', authRateLimiter, registerUser)
+    router.post('/login', authRateLimiter, loginUser)
+    router.get('/user', protect, getUserInfo)
+
+    return router
+}
+
+export default createAuthRoutes()

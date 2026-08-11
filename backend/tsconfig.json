@@ -19,7 +19,7 @@
     "rootDir": ".",
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist", "../dist"]
+  "exclude": ["node_modules", "dist", "../dist", "tests", "vitest.config.ts"]
 }
 
 // {

@@ -6,6 +6,7 @@ export const ERROR_MESSAGES = {
         TOKEN_INVALID: 'Not authorized, token failed',
         TOKEN_EXPIRED: 'Not authorized, token expired',
         NOT_AUTHORIZED: 'Not authorized to perform this action',
+        TOO_MANY_REQUESTS: 'Too many authentication attempts, please try again later',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',

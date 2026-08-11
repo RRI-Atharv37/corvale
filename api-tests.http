@@ -1,0 +1,574 @@
+# spndr API manual test collection
+# Requires: REST Client extension (VS Code / Cursor) or similar .http runner
+# Run top-to-bottom. Login must succeed before protected routes.
+# Set @baseUrl to match your backend PORT (default in server.ts is 5000).
+
+@baseUrl = http://localhost:5000/api/v1
+@email = admin@xora.com
+@password = admin123
+@fullName = Admin User
+
+# Date range used across filter/report requests
+@startDate = 2026-08-01
+@endDate = 2026-08-31
+
+###############################################################################
+# AUTH
+###############################################################################
+
+###
+# Register (run once; fails with 400 if user already exists)
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "{{fullName}}",
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+# Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+@token = {{login.response.body.data.token}}
+
+###
+# Auth: current user
+GET {{baseUrl}}/auth/user
+Authorization: Bearer {{token}}
+
+###
+# Auth error: missing token
+GET {{baseUrl}}/auth/user
+
+###
+# Auth error: invalid credentials
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "wrong-password"
+}
+
+###
+# Auth error: missing fields on register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "incomplete@example.com"
+}
+
+###############################################################################
+# INCOME
+# Required: title, amount, date
+# Optional: source, description, category, icon
+###############################################################################
+
+###
+# Income: create (all fields)
+# @name createIncome
+POST {{baseUrl}}/income/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "icon": "salary",
+  "title": "Salary August",
+  "amount": 50000,
+  "source": "Company Pvt Ltd",
+  "description": "Monthly salary credited",
+  "category": "Salary",
+  "date": "2026-08-01"
+}
+
+###
+@incomeId = {{createIncome.response.body.data._id}}
+
+###
+# Income: create (minimal required fields only)
+# @name createIncomeMinimal
+POST {{baseUrl}}/income/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Freelance gig",
+  "amount": 8000,
+  "date": "2026-08-15"
+}
+
+###
+@incomeIdMinimal = {{createIncomeMinimal.response.body.data._id}}
+
+###
+# Income: list (paginated)
+GET {{baseUrl}}/income?page=1&limit=10
+Authorization: Bearer {{token}}
+
+###
+# Income: list (page 2, smaller limit)
+GET {{baseUrl}}/income?page=2&limit=5
+Authorization: Bearer {{token}}
+
+###
+# Income: by id
+GET {{baseUrl}}/income/{{incomeId}}
+Authorization: Bearer {{token}}
+
+###
+# Income: update (all updatable fields)
+PUT {{baseUrl}}/income/{{incomeId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "icon": "salary-updated",
+  "title": "Salary August (revised)",
+  "amount": 52000,
+  "source": "Company Pvt Ltd",
+  "description": "Updated salary after appraisal",
+  "category": "Salary",
+  "date": "2026-08-02"
+}
+
+###
+# Income: duplicate
+# @name duplicateIncome
+POST {{baseUrl}}/income/duplicate/{{incomeId}}
+Authorization: Bearer {{token}}
+
+###
+@duplicatedIncomeId = {{duplicateIncome.response.body.data._id}}
+
+###
+# Income: search by title/category/source keyword
+GET {{baseUrl}}/income/search?keyword=Salary
+Authorization: Bearer {{token}}
+
+###
+# Income: search by amount (numeric keyword)
+GET {{baseUrl}}/income/search?keyword=8000
+Authorization: Bearer {{token}}
+
+###
+# Income: search by date keyword
+GET {{baseUrl}}/income/search?keyword=2026-08-15
+Authorization: Bearer {{token}}
+
+###
+# Income: filter by date range
+GET {{baseUrl}}/income/filter?startDate={{startDate}}&endDate={{endDate}}
+Authorization: Bearer {{token}}
+
+###
+# Income: group by category
+GET {{baseUrl}}/income/group-by-category
+Authorization: Bearer {{token}}
+
+###
+# Income: download CSV
+GET {{baseUrl}}/income/download
+Authorization: Bearer {{token}}
+
+###
+# Income error: missing required fields
+POST {{baseUrl}}/income/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Missing amount and date"
+}
+
+###
+# Income error: invalid amount or date
+POST {{baseUrl}}/income/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Bad data",
+  "amount": "not-a-number",
+  "date": "not-a-date"
+}
+
+###
+# Income error: not found
+GET {{baseUrl}}/income/000000000000000000000000
+Authorization: Bearer {{token}}
+
+###
+# Income error: search without keyword
+GET {{baseUrl}}/income/search
+Authorization: Bearer {{token}}
+
+###
+# Income error: filter without dates
+GET {{baseUrl}}/income/filter
+Authorization: Bearer {{token}}
+
+###############################################################################
+# EXPENSE
+# Required: title, amount, category, date
+# Optional: source, description, paymentMethod, recurring, tags
+###############################################################################
+
+###
+# Expense: create (all fields)
+# @name createExpense
+POST {{baseUrl}}/expense/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Weekly groceries",
+  "amount": 2200,
+  "source": "BigBasket",
+  "category": "Food",
+  "description": "Vegetables, milk, and staples",
+  "date": "2026-08-10",
+  "paymentMethod": "UPI",
+  "recurring": "weekly",
+  "tags": ["home", "food", "essentials"]
+}
+
+###
+@expenseId = {{createExpense.response.body.data._id}}
+
+###
+# Expense: create (minimal required fields)
+# @name createExpenseMinimal
+POST {{baseUrl}}/expense/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Bus pass",
+  "amount": 500,
+  "category": "Transport",
+  "date": "2026-08-05"
+}
+
+###
+@expenseIdMinimal = {{createExpenseMinimal.response.body.data._id}}
+
+###
+# Expense: create (recurring monthly subscription)
+# @name createExpenseRecurring
+POST {{baseUrl}}/expense/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Netflix",
+  "amount": 649,
+  "category": "Entertainment",
+  "description": "Monthly subscription",
+  "date": "2026-08-01",
+  "paymentMethod": "Credit Card",
+  "recurring": "monthly",
+  "tags": ["subscription", "entertainment"]
+}
+
+###
+@expenseIdRecurring = {{createExpenseRecurring.response.body.data._id}}
+
+###
+# Expense: list (paginated)
+GET {{baseUrl}}/expense?page=1&limit=10
+Authorization: Bearer {{token}}
+
+###
+# Expense: list (page 2)
+GET {{baseUrl}}/expense?page=2&limit=5
+Authorization: Bearer {{token}}
+
+###
+# Expense: by id
+GET {{baseUrl}}/expense/{{expenseId}}
+Authorization: Bearer {{token}}
+
+###
+# Expense: update (all updatable fields)
+PUT {{baseUrl}}/expense/{{expenseId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Weekly groceries (updated)",
+  "amount": 2400,
+  "description": "Added snacks and cleaning supplies",
+  "category": "Food",
+  "date": "2026-08-11",
+  "paymentMethod": "Debit Card",
+  "recurring": "weekly",
+  "tags": ["home", "food", "essentials", "updated"]
+}
+
+###
+# Expense: duplicate
+# @name duplicateExpense
+POST {{baseUrl}}/expense/duplicate/{{expenseId}}
+Authorization: Bearer {{token}}
+
+###
+@duplicatedExpenseId = {{duplicateExpense.response.body.data._id}}
+
+###
+# Expense: search by keyword (title, description, category, tags)
+GET {{baseUrl}}/expense/search?keyword=Food
+Authorization: Bearer {{token}}
+
+###
+# Expense: search by tag
+GET {{baseUrl}}/expense/search?keyword=subscription
+Authorization: Bearer {{token}}
+
+###
+# Expense: filter by date range
+GET {{baseUrl}}/expense/filter?startDate={{startDate}}&endDate={{endDate}}
+Authorization: Bearer {{token}}
+
+###
+# Expense: group by category
+GET {{baseUrl}}/expense/group-by-category
+Authorization: Bearer {{token}}
+
+###
+# Expense: group by payment method
+GET {{baseUrl}}/expense/group-by-payment-method
+Authorization: Bearer {{token}}
+
+###
+# Expense: report (date range + totals in meta)
+GET {{baseUrl}}/expense/report?startDate={{startDate}}&endDate={{endDate}}
+Authorization: Bearer {{token}}
+
+###
+# Expense: download CSV
+GET {{baseUrl}}/expense/download
+Authorization: Bearer {{token}}
+
+###
+# Expense error: missing required fields
+POST {{baseUrl}}/expense/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Incomplete expense"
+}
+
+###
+# Expense error: invalid amount or date
+POST {{baseUrl}}/expense/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Bad expense",
+  "amount": "abc",
+  "category": "Food",
+  "date": "invalid-date"
+}
+
+###
+# Expense error: not found
+GET {{baseUrl}}/expense/000000000000000000000000
+Authorization: Bearer {{token}}
+
+###
+# Expense error: search without keyword
+GET {{baseUrl}}/expense/search
+Authorization: Bearer {{token}}
+
+###
+# Expense error: filter without dates
+GET {{baseUrl}}/expense/filter
+Authorization: Bearer {{token}}
+
+###
+# Expense error: report without dates
+GET {{baseUrl}}/expense/report
+Authorization: Bearer {{token}}
+
+###
+# Expense error: invalid pagination
+GET {{baseUrl}}/expense?page=0&limit=-1
+Authorization: Bearer {{token}}
+
+###############################################################################
+# SAVER
+# add requires: remainingBalance
+# optional: percentage (default 30), customPercentage, customAmount
+# withdraw requires: amount
+###############################################################################
+
+###
+# Saver: add using default percentage (30% of remaining balance)
+POST {{baseUrl}}/saver/add
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "remainingBalance": 10000
+}
+
+###
+# Saver: add with custom percentage
+POST {{baseUrl}}/saver/add
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "remainingBalance": 10000,
+  "percentage": 25
+}
+
+###
+# Saver: add with customPercentage override
+POST {{baseUrl}}/saver/add
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "remainingBalance": 10000,
+  "customPercentage": 40
+}
+
+###
+# Saver: add with explicit customAmount
+POST {{baseUrl}}/saver/add
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "remainingBalance": 10000,
+  "customAmount": 1500
+}
+
+###
+# Saver: details
+GET {{baseUrl}}/saver/details
+Authorization: Bearer {{token}}
+
+###
+# Saver: withdraw
+POST {{baseUrl}}/saver/withdraw
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": 300
+}
+
+###
+# Saver error: missing remainingBalance
+POST {{baseUrl}}/saver/add
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "percentage": 30
+}
+
+###
+# Saver error: amount exceeds remaining balance
+POST {{baseUrl}}/saver/add
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "remainingBalance": 1000,
+  "customAmount": 5000
+}
+
+###
+# Saver error: invalid percentage
+POST {{baseUrl}}/saver/add
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "remainingBalance": 1000,
+  "customPercentage": 150
+}
+
+###
+# Saver error: withdraw more than balance
+POST {{baseUrl}}/saver/withdraw
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": 999999
+}
+
+###
+# Saver error: invalid withdraw amount
+POST {{baseUrl}}/saver/withdraw
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": 0
+}
+
+###############################################################################
+# PUSHOVER
+# Moves current saver balance to pushover record and resets saver to 0
+###############################################################################
+
+###
+# Pushover: move saver balance to next month
+POST {{baseUrl}}/pushover/pushover
+Authorization: Bearer {{token}}
+
+###
+# Pushover error: no saver account (run after pushover if saver was reset and not re-added)
+# POST {{baseUrl}}/pushover/pushover
+# Authorization: Bearer {{token}}
+
+###############################################################################
+# CLEANUP (uncomment to delete test data created above)
+###############################################################################
+
+###
+# DELETE {{baseUrl}}/income/{{incomeId}}
+# Authorization: Bearer {{token}}
+
+###
+# DELETE {{baseUrl}}/income/{{incomeIdMinimal}}
+# Authorization: Bearer {{token}}
+
+###
+# DELETE {{baseUrl}}/income/{{duplicatedIncomeId}}
+# Authorization: Bearer {{token}}
+
+###
+# DELETE {{baseUrl}}/expense/{{expenseId}}
+# Authorization: Bearer {{token}}
+
+###
+# DELETE {{baseUrl}}/expense/{{expenseIdMinimal}}
+# Authorization: Bearer {{token}}
+
+###
+# DELETE {{baseUrl}}/expense/{{expenseIdRecurring}}
+# Authorization: Bearer {{token}}
+
+###
+# DELETE {{baseUrl}}/expense/{{duplicatedExpenseId}}
+# Authorization: Bearer {{token}}
