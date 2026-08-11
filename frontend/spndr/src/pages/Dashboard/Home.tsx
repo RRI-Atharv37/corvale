@@ -5,43 +5,49 @@ import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { useUser } from '../../hooks/useUser'
-import type { ApiResponse, PaginatedExpense, PaginatedIncome } from '../../types/api'
+import type { ApiResponse, PaginatedExpense, PaginatedIncome, SaverResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { Link } from 'react-router-dom'
+import { formatCurrency } from '../../utils/format'
 
 interface DashboardSummary {
     incomeCount: number
     expenseCount: number
     incomeTotal: number
     expenseTotal: number
+    spendableBalance: number
+    saverBalance: number
+    netWorth: number
 }
-
-const formatCurrency = (amount: number): string =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)
 
 const Home = () => {
     const { user } = useUser()
 
     const fetchSummary = useCallback(async (): Promise<DashboardSummary> => {
         try {
-            const [incomeRes, expenseRes] = await Promise.all([
+            const [incomeRes, expenseRes, saverRes] = await Promise.all([
                 axiosInstance.get<ApiResponse<PaginatedIncome>>(API_PATHS.INCOME.GET_ALL, {
                     params: { page: 1, limit: 100 },
                 }),
                 axiosInstance.get<ApiResponse<PaginatedExpense>>(API_PATHS.EXPENSE.GET_ALL, {
                     params: { page: 1, limit: 100 },
                 }),
+                axiosInstance.get<ApiResponse<SaverResponse>>(API_PATHS.SAVER.DETAILS),
             ])
 
             const income = unwrapApiData(incomeRes)
             const expense = unwrapApiData(expenseRes)
+            const saver = unwrapApiData(saverRes).data
 
             return {
                 incomeCount: income.meta.totalIncomes ?? income.data.length,
                 expenseCount: expense.meta.totalExpenses ?? expense.data.length,
-                incomeTotal: income.data.reduce((sum, item) => sum + item.amount, 0),
-                expenseTotal: expense.data.reduce((sum, item) => sum + item.amount, 0),
+                incomeTotal: saver.totalIncome,
+                expenseTotal: saver.totalExpenses,
+                spendableBalance: saver.spendableBalance,
+                saverBalance: saver.saverBalance,
+                netWorth: saver.netWorth,
             }
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load dashboard summary'))
@@ -72,15 +78,16 @@ const Home = () => {
                         <StatCard label="Total Income" value={formatCurrency(summary.incomeTotal)} accent="cyan" />
                         <StatCard label="Total Expenses" value={formatCurrency(summary.expenseTotal)} accent="rose" />
                         <StatCard
-                            label="Net Balance"
-                            value={formatCurrency(summary.incomeTotal - summary.expenseTotal)}
+                            label="Spendable Balance"
+                            value={formatCurrency(summary.spendableBalance)}
                             accent="violet"
+                            subtitle={`Saver: ${formatCurrency(summary.saverBalance)}`}
                         />
                         <StatCard
-                            label="Transactions"
-                            value={`${summary.incomeCount + summary.expenseCount}`}
+                            label="Net Worth"
+                            value={formatCurrency(summary.netWorth)}
                             accent="slate"
-                            subtitle={`${summary.incomeCount} income · ${summary.expenseCount} expense`}
+                            subtitle={`${summary.incomeCount + summary.expenseCount} transactions`}
                         />
                     </div>
                 )}

@@ -29,6 +29,9 @@ export const ERROR_MESSAGES = {
         FILL_ALL_FIELDS: 'Please fill in all fields',
         SAVER_NOT_FOUND: 'Saver account not found',
         INSUFFICIENT_FUNDS: 'Insufficient funds in saver account',
-
+        INSUFFICIENT_SPENDABLE: 'Deposit amount exceeds spendable balance',
+    },
+    PUSHOVER: {
+        ZERO_BALANCE: 'No saver balance to roll over',
     },
 }

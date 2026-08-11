@@ -58,6 +58,57 @@ export interface PaginatedExpense {
 }
 
 export interface SaverDetails {
-    saverAmount: number
+    totalIncome: number
+    totalExpenses: number
+    saverBalance: number
+    spendableBalance: number
+    netWorth: number
+    remainingBalance: number
     saverDate?: string
+}
+
+export interface SaverResponse {
+    message: string
+    data: SaverDetails
+}
+
+export interface PushoverSnapshot {
+    _id: string
+    userId: string
+    pushoverAmount: number
+    pushoverDate: string
+}
+
+export interface PushoverRolloverResponse {
+    message: string
+    data: {
+        pushoverAmount: number
+        pushoverBaseline: number
+        totalIncome: number
+        totalExpenses: number
+        saverBalance: number
+        spendableBalance: number
+        netWorth: number
+        remainingBalance: number
+    }
+}
+
+export interface IncomeFormData {
+    title: string
+    amount: string
+    date: string
+    source: string
+    description: string
+    category: string
+}
+
+export interface ExpenseFormData {
+    title: string
+    amount: string
+    category: string
+    date: string
+    description: string
+    paymentMethod: string
+    recurring: string
+    tags: string
 }

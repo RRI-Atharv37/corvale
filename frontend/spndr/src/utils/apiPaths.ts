@@ -39,5 +39,6 @@ export const API_PATHS = {
     },
     PUSHOVER: {
         PUSHOVER: '/pushover/pushover',
+        HISTORY: '/pushover/history',
     },
 } as const

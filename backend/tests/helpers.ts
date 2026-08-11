@@ -48,6 +48,39 @@ export function authHeader(token: string): { Authorization: string } {
     return { Authorization: `Bearer ${token}` }
 }
 
+export async function createTestIncome(
+    app: Application,
+    token: string,
+    amount: number,
+    title = 'Test Income'
+): Promise<void> {
+    await request(app)
+        .post('/api/v1/income/create')
+        .set(authHeader(token))
+        .send({
+            title,
+            amount,
+            date: new Date().toISOString(),
+        })
+}
+
+export async function createTestExpense(
+    app: Application,
+    token: string,
+    amount: number,
+    title = 'Test Expense'
+): Promise<void> {
+    await request(app)
+        .post('/api/v1/expense/create')
+        .set(authHeader(token))
+        .send({
+            title,
+            amount,
+            category: 'Other',
+            date: new Date().toISOString(),
+        })
+}
+
 export async function seedUserDirectly(overrides: Partial<TestUser> = {}): Promise<RegisteredUser> {
     const userData = { ...defaultTestUser, ...overrides }
     const user = await User.create(userData)

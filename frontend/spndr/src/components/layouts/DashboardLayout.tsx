@@ -52,8 +52,7 @@ const DashboardLayout: React.FC = () => {
         <>
             <div className="px-4 py-6 border-b border-slate-800">
                 <p className="text-lg font-semibold tracking-tight">
-                    <span className="text-cyan-400">spnd</span>
-                    <span className="text-slate-100">r</span>
+                    <span className="text-cyan-400">spndr</span>
                 </p>
                 <p className="text-xs text-slate-500 mt-1">Personal finance</p>
             </div>
@@ -127,7 +126,7 @@ const DashboardLayout: React.FC = () => {
 
                     <div className="flex-1 lg:flex-none">
                         <p className="text-sm text-slate-400 hidden sm:block">
-                            Welcome back{user ? `, ${user.fullName.split(' ')[0]}` : ''}
+                            Welcome{user ? `, ${user.fullName.split(' ')[0]}` : ''}
                         </p>
                     </div>
 

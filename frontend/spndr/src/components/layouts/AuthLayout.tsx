@@ -10,8 +10,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
             <div className="w-full max-w-md">
                 <div className="mb-8 text-center">
                     <h1 className="text-2xl font-semibold tracking-tight">
-                        <span className="text-cyan-400">spnd</span>
-                        <span className="text-slate-100">r</span>
+                        <span className="text-cyan-400">spndr</span>
                     </h1>
                     <p className="text-xs text-slate-500 mt-1">Track. Save. Grow.</p>
                 </div>
