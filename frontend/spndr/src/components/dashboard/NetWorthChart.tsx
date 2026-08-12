@@ -52,9 +52,26 @@ const NetWorthChart: React.FC<NetWorthChartProps> = ({ series, currentBalances, 
             <p className="text-xs text-slate-500 mt-1">
                 Net worth over time with current balance breakdown
             </p>
-            <div className="h-72 mt-4">
+
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {balanceItems.map((item) => (
+                    <div
+                        key={item.label}
+                        className="rounded-lg border border-slate-800 bg-slate-900/50 p-3 min-w-0"
+                    >
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500 truncate">
+                            {item.label}
+                        </p>
+                        <p className="text-sm font-medium mt-1 truncate" style={{ color: item.color }}>
+                            {formatCurrency(item.value)}
+                        </p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="h-56 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={chartMargin}>
+                    <ComposedChart data={chartData} margin={{ ...chartMargin, bottom: 4 }}>
                         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
                         <YAxis
@@ -82,7 +99,11 @@ const NetWorthChart: React.FC<NetWorthChartProps> = ({ series, currentBalances, 
                             }}
                         />
                         <Legend
-                            wrapperStyle={{ fontSize: '0.75rem', color: CHART_COLORS.axis }}
+                            wrapperStyle={{
+                                fontSize: '0.75rem',
+                                color: CHART_COLORS.axis,
+                                paddingTop: 12,
+                            }}
                             formatter={(value) => {
                                 const labels: Record<string, string> = {
                                     netWorth: 'Net worth',
@@ -117,20 +138,6 @@ const NetWorthChart: React.FC<NetWorthChartProps> = ({ series, currentBalances, 
                         />
                     </ComposedChart>
                 </ResponsiveContainer>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                {balanceItems.map((item) => (
-                    <div
-                        key={item.label}
-                        className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2"
-                    >
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">{item.label}</p>
-                        <p className="text-sm font-medium mt-0.5" style={{ color: item.color }}>
-                            {formatCurrency(item.value)}
-                        </p>
-                    </div>
-                ))}
             </div>
         </div>
     )

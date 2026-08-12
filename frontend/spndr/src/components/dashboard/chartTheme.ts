@@ -25,6 +25,24 @@ export const CHART_CATEGORY_COLORS = [
 
 export const chartMargin = { top: 8, right: 12, left: 0, bottom: 0 }
 
+export const chartTooltipContentStyle = {
+    backgroundColor: CHART_COLORS.tooltipBg,
+    border: `1px solid ${CHART_COLORS.tooltipBorder}`,
+    borderRadius: '0.5rem',
+    color: '#e2e8f0',
+    fontSize: '0.75rem',
+} as const
+
+/** Tooltip props for bar charts - hides the default hover highlight band */
+export const barChartTooltipProps = {
+    contentStyle: chartTooltipContentStyle,
+    cursor: false as const,
+}
+
+export const chartTooltipProps = {
+    contentStyle: chartTooltipContentStyle,
+}
+
 export const axisTick: XAxisProps['tick'] = { fill: CHART_COLORS.axis, fontSize: 11 }
 export const yAxisTick: YAxisProps['tick'] = { fill: CHART_COLORS.axis, fontSize: 11 }
 

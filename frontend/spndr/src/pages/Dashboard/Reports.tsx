@@ -44,14 +44,31 @@ import {
 } from '../../utils/format'
 import {
     axisTick,
+    barChartTooltipProps,
     CHART_COLORS,
     chartMargin,
+    chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
     yAxisTick,
 } from '../../components/dashboard/chartTheme'
 import CategoryBreakdownChart from '../../components/dashboard/CategoryBreakdownChart'
-import type { CategoryBreakdownItem } from '../../types/api'
+import IncomeOverTimeChart from '../../components/dashboard/IncomeOverTimeChart'
+import SpendingOverTimeChart from '../../components/dashboard/SpendingOverTimeChart'
+import CashFlowChart from '../../components/dashboard/CashFlowChart'
+import NetWorthChart from '../../components/dashboard/NetWorthChart'
+import BudgetOverviewChart from '../../components/dashboard/BudgetOverviewChart'
+import DashboardCalendarCard from '../../components/dashboard/DashboardCalendarCard'
+import ThisMonthChart from '../../components/dashboard/ThisMonthChart'
+import type {
+    BudgetOverviewResponse,
+    CategoryBreakdownItem,
+    DashboardCashFlowResponse,
+    DashboardGroupBy,
+    NetWorthTrendResponse,
+    RecurringRule,
+    Transaction,
+} from '../../types/api'
 
 interface ReportsData {
     averages: PeriodAverages
@@ -65,6 +82,26 @@ interface ReportsData {
     spendingAnalysis: SpendingAnalysisReport
     crossoverPoint: CrossoverPointReport
     savedReports: SavedReport[]
+    cashFlow: DashboardCashFlowResponse
+    netWorthTrend: NetWorthTrendResponse
+    budgetOverview: BudgetOverviewResponse
+    thisMonthCashFlow: DashboardCashFlowResponse
+    recurringRules: RecurringRule[]
+    recurringDrafts: Transaction[]
+}
+
+const resolveGroupByFromDates = (startDate: string, endDate: string): DashboardGroupBy => {
+    const start = new Date(`${startDate}T12:00:00`)
+    const end = new Date(`${endDate}T12:00:00`)
+    const sameMonth =
+        start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()
+    return sameMonth ? 'day' : 'month'
+}
+
+const resolveThisMonthRange = (): { startDate: string; endDate: string } => {
+    const { year, month } = getCurrentMonthYear()
+    const endDate = toDateInputValue(new Date())
+    return { startDate: `${year}-${String(month).padStart(2, '0')}-01`, endDate }
 }
 
 const MONTH_OPTIONS = [
@@ -151,6 +188,16 @@ const Reports = () => {
         return { periodType, startDate, endDate }
     }, [periodType, reportYear, reportMonth, startDate, endDate])
 
+    const chartQuery = useMemo(() => {
+        const groupBy = resolveGroupByFromDates(periodDates.startDate, periodDates.endDate)
+        return { startDate: periodDates.startDate, endDate: periodDates.endDate, groupBy }
+    }, [periodDates])
+
+    const thisMonthQuery = useMemo(() => {
+        const { startDate, endDate } = resolveThisMonthRange()
+        return { startDate, endDate, groupBy: 'day' as DashboardGroupBy }
+    }, [])
+
     const fetchReports = useCallback(async (): Promise<ReportsData> => {
         try {
             const [
@@ -165,6 +212,12 @@ const Reports = () => {
                 spendingAnalysisRes,
                 crossoverRes,
                 savedReportsRes,
+                cashFlowRes,
+                netWorthRes,
+                budgetOverviewRes,
+                thisMonthRes,
+                rulesRes,
+                draftsRes,
             ] = await Promise.all([
                 axiosInstance.get<ApiResponse<PeriodAverages>>(API_PATHS.REPORTS.AVERAGES, {
                     params: periodParams,
@@ -204,6 +257,20 @@ const Reports = () => {
                     params: periodParams,
                 }),
                 axiosInstance.get<ApiResponse<SavedReport[]>>(API_PATHS.REPORTS.SAVED),
+                axiosInstance.get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, {
+                    params: chartQuery,
+                }),
+                axiosInstance.get<ApiResponse<NetWorthTrendResponse>>(API_PATHS.DASHBOARD.NET_WORTH_TREND, {
+                    params: chartQuery,
+                }),
+                axiosInstance.get<ApiResponse<BudgetOverviewResponse>>(API_PATHS.DASHBOARD.BUDGET_OVERVIEW),
+                axiosInstance.get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, {
+                    params: thisMonthQuery,
+                }),
+                axiosInstance.get<ApiResponse<RecurringRule[]>>(API_PATHS.RECURRING_RULES.GET_ALL, {
+                    params: { includeArchived: false },
+                }),
+                axiosInstance.get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS),
             ])
 
             const categoryPayload = unwrapApiData(categoryRes)
@@ -220,11 +287,17 @@ const Reports = () => {
                 spendingAnalysis: unwrapApiData(spendingAnalysisRes),
                 crossoverPoint: unwrapApiData(crossoverRes),
                 savedReports: unwrapApiData(savedReportsRes),
+                cashFlow: unwrapApiData(cashFlowRes),
+                netWorthTrend: unwrapApiData(netWorthRes),
+                budgetOverview: unwrapApiData(budgetOverviewRes),
+                thisMonthCashFlow: unwrapApiData(thisMonthRes),
+                recurringRules: unwrapApiData(rulesRes),
+                recurringDrafts: unwrapApiData(draftsRes),
             }
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load reports'))
         }
-    }, [periodParams, periodDates, savedReportsKey])
+    }, [periodParams, periodDates, chartQuery, thisMonthQuery, savedReportsKey])
 
     const { data, loading, error, refetch } = useAsyncData(fetchReports, [fetchReports])
 
@@ -388,6 +461,33 @@ const Reports = () => {
                         </div>
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <ThisMonthChart
+                                data={reports.thisMonthCashFlow.series}
+                                groupBy={reports.thisMonthCashFlow.groupBy}
+                                periodStart={reports.thisMonthCashFlow.periodStart}
+                                periodEnd={reports.thisMonthCashFlow.periodEnd}
+                            />
+                            <NetWorthChart
+                                series={reports.netWorthTrend.series}
+                                currentBalances={reports.netWorthTrend.currentBalances}
+                                balanceSource={reports.netWorthTrend.balanceSource}
+                            />
+                        </div>
+
+                        <CashFlowChart data={reports.cashFlow.series} groupBy={reports.cashFlow.groupBy} />
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <IncomeOverTimeChart
+                                data={reports.cashFlow.series}
+                                groupBy={reports.cashFlow.groupBy}
+                            />
+                            <SpendingOverTimeChart
+                                data={reports.cashFlow.series}
+                                groupBy={reports.cashFlow.groupBy}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             <IncomeVsExpenseChart data={reports.incomeVsExpense} />
                             <SpendingTrendsChart data={reports.spendingTrends.trends} />
                         </div>
@@ -470,6 +570,18 @@ const Reports = () => {
                         </div>
 
                         <CategoryBreakdownChart data={reports.categoryBreakdown} />
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <BudgetOverviewChart
+                                budgets={reports.budgetOverview.budgets}
+                                periodStart={reports.budgetOverview.periodStart}
+                                periodEnd={reports.budgetOverview.periodEnd}
+                            />
+                            <DashboardCalendarCard
+                                rules={reports.recurringRules}
+                                drafts={reports.recurringDrafts}
+                            />
+                        </div>
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             <BudgetAnalysisSection data={reports.budgetAnalysis} />
@@ -579,13 +691,7 @@ const IncomeVsExpenseChart: React.FC<{ data: IncomeVsExpenseResponse }> = ({ dat
                             width={52}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...barChartTooltipProps}
                             formatter={(value: number) => formatCurrency(value)}
                         />
                         <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={48} />
@@ -619,20 +725,14 @@ const SpendingTrendsChart: React.FC<{ data: SpendingTrendsResponse['trends'] }> 
                             width={52}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...chartTooltipProps}
                             formatter={(value: number, _name, item) => {
                                 const payload = item.payload as SpendingTrendsResponse['trends'][number] & {
                                     label: string
                                 }
                                 const change =
                                     payload.changePercent === null
-                                        ? '—'
+                                        ? '-'
                                         : `${payload.changePercent > 0 ? '+' : ''}${payload.changePercent}%`
                                 return [`${formatCurrency(value)} (${change})`, 'Spending']
                             }}
@@ -744,7 +844,7 @@ const SpendingAnalysisSection: React.FC<{ data: SpendingAnalysisReport }> = ({ d
             <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
                 <p className="text-xs text-slate-500">Top category</p>
                 <p className="text-sm font-medium text-slate-200 mt-1">
-                    {data.topCategories[0]?.categoryName ?? '—'}
+                    {data.topCategories[0]?.categoryName ?? '-'}
                 </p>
                 {data.topCategories[0] && (
                     <p className="text-xs text-slate-500">{formatCurrency(data.topCategories[0].amount)}</p>
@@ -753,7 +853,7 @@ const SpendingAnalysisSection: React.FC<{ data: SpendingAnalysisReport }> = ({ d
             <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
                 <p className="text-xs text-slate-500">Top payment type</p>
                 <p className="text-sm font-medium text-slate-200 mt-1">
-                    {data.topPaymentMethods[0]?.paymentMethod ?? '—'}
+                    {data.topPaymentMethods[0]?.paymentMethod ?? '-'}
                 </p>
                 {data.topPaymentMethods[0] && (
                     <p className="text-xs text-slate-500">{formatCurrency(data.topPaymentMethods[0].amount)}</p>
@@ -793,13 +893,7 @@ const CrossoverPointChart: React.FC<{ data: CrossoverPointReport }> = ({ data })
                             width={52}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...chartTooltipProps}
                             formatter={(value: number, name: string) => [
                                 formatCurrency(value),
                                 name === 'cumulativeIncome' ? 'Cumulative income' : 'Cumulative expenses',

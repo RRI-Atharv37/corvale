@@ -3,7 +3,14 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 
 import type { BudgetOverviewItem } from '../../types/api'
 import { formatCurrency } from '../../utils/format'
-import { axisTick, CHART_COLORS, chartMargin, formatChartCurrency, yAxisTick } from './chartTheme'
+import {
+    axisTick,
+    barChartTooltipProps,
+    CHART_COLORS,
+    chartMargin,
+    formatChartCurrency,
+    yAxisTick,
+} from './chartTheme'
 
 interface BudgetOverviewChartProps {
     budgets: BudgetOverviewItem[]
@@ -54,13 +61,7 @@ const BudgetOverviewChart: React.FC<BudgetOverviewChartProps> = ({
                                     width={88}
                                 />
                                 <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: CHART_COLORS.tooltipBg,
-                                        border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                        borderRadius: '0.5rem',
-                                        color: '#e2e8f0',
-                                        fontSize: '0.75rem',
-                                    }}
+                                    {...barChartTooltipProps}
                                     formatter={(value: number, name: string) => [
                                         formatCurrency(value),
                                         name === 'spent' ? 'Spent' : 'Remaining',

@@ -35,9 +35,11 @@ import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency, toDateInputValue } from '../../utils/format'
 import {
     axisTick,
+    barChartTooltipProps,
     CHART_CATEGORY_COLORS,
     CHART_COLORS,
     chartMargin,
+    chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
     yAxisTick,
@@ -186,7 +188,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
             <div>
                 <h3 className="text-sm font-medium text-slate-200">Custom reports</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                    Build visual reports by split, chart type, and date range — save configs to reuse
+                    Build visual reports by split, chart type, and date range - save configs to reuse
                 </p>
             </div>
 
@@ -324,7 +326,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                                             />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                    <Tooltip {...chartTooltipProps} formatter={(value: number) => formatCurrency(value)} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
@@ -335,7 +337,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                                     <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
                                     <YAxis tick={yAxisTick} axisLine={false} tickLine={false} tickFormatter={formatChartCurrency} width={52} />
-                                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                    <Tooltip {...chartTooltipProps} formatter={(value: number) => formatCurrency(value)} />
                                     <Area type="monotone" dataKey="value" stroke={CHART_COLORS.expense} fill={CHART_COLORS.expense} fillOpacity={0.2} />
                                 </AreaChart>
                             </ResponsiveContainer>
@@ -347,7 +349,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                                     <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
                                     <YAxis tick={yAxisTick} axisLine={false} tickLine={false} tickFormatter={formatChartCurrency} width={52} />
-                                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                    <Tooltip {...chartTooltipProps} formatter={(value: number) => formatCurrency(value)} />
                                     <Line type="monotone" dataKey="value" stroke={CHART_COLORS.income} strokeWidth={2} dot={{ r: 3 }} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -359,7 +361,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                                     <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
                                     <YAxis tick={yAxisTick} axisLine={false} tickLine={false} tickFormatter={formatChartCurrency} width={52} />
-                                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                    <Tooltip {...barChartTooltipProps} formatter={(value: number) => formatCurrency(value)} />
                                     <Bar dataKey="value" fill={CHART_COLORS.expense} radius={[4, 4, 0, 0]} maxBarSize={48} />
                                 </BarChart>
                             </ResponsiveContainer>
