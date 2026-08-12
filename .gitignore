@@ -9,6 +9,9 @@ dist/
 # Dependencies
 node_modules/
 
+# User uploads
+uploads/
+
 ROADMAP.md
 TODO.md
 devtest.md

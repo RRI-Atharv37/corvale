@@ -17,9 +17,101 @@ export interface AuthPayload {
 export interface PaginationMeta {
     totalIncomes?: number
     totalExpenses?: number
+    totalTransactions?: number
     pageNumber: number
     totalPages: number
     limit: number
+}
+
+export type TransactionType = 'income' | 'expense' | 'transfer'
+export type TransactionStatus = 'posted' | 'draft'
+
+export interface Receipt {
+    _id: string
+    originalFilename: string
+    mimeType: string
+    size: number
+    createdAt?: string
+}
+
+export interface Transaction {
+    _id: string
+    userId: string
+    workspaceId?: string | null
+    accountId: string
+    categoryId: string
+    type: TransactionType
+    status: TransactionStatus
+    amount: number
+    currency: string
+    title: string
+    description?: string
+    date: string
+    source?: string
+    paymentMethod?: string
+    tags?: string[]
+    transferPairId?: string | null
+    splitTransactionId?: string | null
+    splits?: SplitLine[]
+    transferPair?: Transaction
+    receipts?: Receipt[]
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface SplitLine {
+    _id: string
+    categoryId: string
+    amount: number
+    isSplitChild?: true
+}
+
+export interface SplitLineFormData {
+    categoryId: string
+    amount: string
+}
+
+export interface TransactionFormData {
+    type: 'income' | 'expense'
+    title: string
+    amount: string
+    date: string
+    accountId: string
+    categoryId: string
+    description: string
+    source: string
+    paymentMethod: string
+    tags: string
+    splitEnabled: boolean
+    splits: SplitLineFormData[]
+}
+
+export interface TransferFormData {
+    title: string
+    amount: string
+    date: string
+    fromAccountId: string
+    toAccountId: string
+    description: string
+}
+
+export interface TransferCreateResponse {
+    outbound: Transaction
+    inbound: Transaction
+}
+
+export interface BulkDeleteResponse {
+    message: string
+    deletedCount: number
+}
+
+export interface BulkCategoryResponse {
+    message: string
+    updatedCount: number
+}
+export interface PaginatedTransactions {
+    data: Transaction[]
+    meta: PaginationMeta
 }
 
 export interface Income {
@@ -144,4 +236,36 @@ export interface AccountFormData {
 export interface AccountEditFormData {
     name: string
     type: AccountType
+}
+
+export interface Category {
+    _id: string
+    userId: string | null
+    masterCategoryId: string | null
+    name: string
+    icon?: string
+    color?: string
+    isDefault: boolean
+    isArchived: boolean
+    sortOrder: number
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface CategoriesResponse {
+    masters: Category[]
+    userCategories: Category[]
+}
+
+export interface CategoryFormData {
+    masterCategoryId: string
+    name: string
+    icon: string
+    color: string
+}
+
+export interface CategoryEditFormData {
+    name: string
+    icon: string
+    color: string
 }

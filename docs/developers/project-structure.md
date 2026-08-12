@@ -13,21 +13,28 @@ spndr/
 │   │   └── db.ts             MongoDB connection
 │   ├── controllers/          Request handlers
 │   │   ├── authController.ts
-│   │   ├── incomeController.ts
-│   │   ├── expenseController.ts
+│   │   ├── transactionController.ts
+│   │   ├── categoryController.ts
+│   │   ├── receiptController.ts
 │   │   ├── accountController.ts
+│   │   ├── incomeController.ts      (legacy, deprecated)
+│   │   ├── expenseController.ts     (legacy, deprecated)
 │   │   ├── saverController.ts
 │   │   └── pushoverController.ts
 │   ├── models/               Mongoose schemas
 │   │   ├── User.ts
-│   │   ├── Income.ts
-│   │   ├── Expense.ts
+│   │   ├── Transaction.ts
+│   │   ├── Category.ts
+│   │   ├── Receipt.ts
 │   │   ├── Account.ts
+│   │   ├── Income.ts                (legacy, deprecated)
+│   │   ├── Expense.ts               (legacy, deprecated)
 │   │   ├── Saver.ts
 │   │   └── Pushover.ts
 │   ├── routes/               Express routers
-│   ├── middleware/           Auth, errors, rate limiting
-│   ├── utils/                Balance engine, shared helpers
+│   ├── middleware/           Auth, errors, rate limiting, receipt upload
+│   ├── utils/                Balance engine, transaction helpers, shared utils
+│   ├── scripts/              Migration CLI scripts
 │   └── tests/                Vitest integration and unit tests
 ├── frontend/spndr/           React SPA
 │   ├── src/
@@ -35,8 +42,8 @@ spndr/
 │   │   ├── main.tsx          Entry point
 │   │   ├── pages/            Page components
 │   │   │   ├── auth/         Login, Signup
-│   │   │   └── Dashboard/    Home, Income, Expense, Accounts, Saver, Pushover
-│   │   ├── components/       Layouts, UI, forms, inputs
+│   │   │   └── Dashboard/    Home, Transactions, Accounts, Categories, Saver, Pushover
+│   │   ├── components/       Layouts, UI, forms, pickers, receipts
 │   │   ├── context/          UserContext (auth state)
 │   │   ├── hooks/            useUser, useAsyncData
 │   │   ├── routes/           ProtectedRoute
@@ -66,9 +73,12 @@ spndr/
 | Model | Collection | One per user? |
 |-------|------------|---------------|
 | User | users | - |
-| Income | incomes | Many |
-| Expense | expenses | Many |
+| Transaction | transactions | Many |
+| Category | categories | Many (masters + user sub-categories) |
+| Receipt | receipts | Many |
 | Account | accounts | Many |
+| Income | incomes | Many (legacy, deprecated) |
+| Expense | expenses | Many (legacy, deprecated) |
 | Saver | savers | One (unique index on userId) |
 | Pushover | pushovers | Many (history records) |
 
@@ -80,9 +90,10 @@ The core balance logic lives in `backend/utils/balanceUtils.ts`:
 - `computeAccountTotals(userId)` - account aggregation
 - `roundMoney(amount)` - two-decimal rounding
 
-This engine powers the saver details endpoint, which the dashboard and saver pages consume.
+Transaction account updates live in `backend/utils/transactionUtils.ts`. This engine powers the saver details endpoint, which the dashboard and saver pages consume.
 
 ## Related pages
 
 - [Developer Overview](./overview.md)
 - [API Overview](./api-overview.md)
+- [Data Migration](./data-migration.md)

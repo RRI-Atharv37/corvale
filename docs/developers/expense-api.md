@@ -2,6 +2,8 @@
 title: Expense API
 ---
 
+> **Deprecated.** Use the [Transactions API](./transactions-api.md) instead. Legacy `/expense` routes remain for backward compatibility and return `Deprecation` headers. The frontend redirects `/expense` to `/transactions`.
+
 ## Endpoints
 
 All expense routes are mounted at `/api/v1/expense`. All require authentication.

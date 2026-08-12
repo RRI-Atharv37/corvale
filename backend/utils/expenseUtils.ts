@@ -1,5 +1,5 @@
 import Expense from '../models/Expense'
-import { toObjectId } from './sharedUtils'
+import { aggregateByField } from './sharedUtils'
 
 export {
     getUserId,
@@ -7,17 +7,9 @@ export {
     validateOwnership,
     validateRequiredFields,
     buildSearchRegex,
+    aggregateByField,
 } from './sharedUtils'
 
 export const aggregateExpenses = async (userId: string, groupBy: string) => {
-    return Expense.aggregate([
-        { $match: { userId: toObjectId(userId) } },
-        {
-            $group: {
-                _id: `$${groupBy}`,
-                totalAmount: { $sum: '$amount' },
-            },
-        },
-        { $sort: { totalAmount: -1 } },
-    ])
+    return aggregateByField(Expense, userId, groupBy)
 }

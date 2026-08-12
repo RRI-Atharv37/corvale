@@ -8,19 +8,19 @@ The dashboard displays a row of summary cards. Each card shows a label, a format
 
 ## Total Income
 
-Shows the sum of all income entries you have recorded, across all time.
+Shows the sum of all income activity recorded in your ledger.
 
 - **Color accent:** Cyan
-- **Source:** Aggregated from your income collection
+- **Source:** Aggregated income totals from the balance engine
 
-This number reflects activity tracking - how much income you have logged - not necessarily cash currently in your accounts.
+This number reflects activity tracking — how much income you have logged — not necessarily cash currently in your accounts when you use accounts mode.
 
 ## Total Expenses
 
-Shows the sum of all expense entries you have recorded, across all time.
+Shows the sum of all expense activity recorded in your ledger.
 
 - **Color accent:** Rose
-- **Source:** Aggregated from your expense collection
+- **Source:** Aggregated expense totals from the balance engine
 
 Like total income, this is an activity metric showing how much you have logged as spent.
 
@@ -52,7 +52,7 @@ Shows your overall financial position.
 
 **Subtitle when you have no accounts:**
 
-> N transactions (income + expense count)
+> N transactions
 
 ## In Accounts (accounts mode only)
 
@@ -72,6 +72,8 @@ spndr calculates spendable balance and net worth differently depending on whethe
 |------|-----------|------------------|------------------|
 | **Legacy** | No active accounts | Total income − total expenses | Net worth − saver balance |
 | **Accounts** | One or more active accounts | Sum of account balances | Checking + cash balances − saver balance |
+
+In accounts mode, transaction activity updates account balances directly. Income and expense totals on the dashboard remain activity metrics.
 
 See [How Balances Are Calculated](../balances/how-balances-are-calculated.md) for the full breakdown.
 

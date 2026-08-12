@@ -10,22 +10,22 @@ Below the summary cards on the dashboard, spndr displays three quick-link cards.
 
 | Link | Destination | Description |
 |------|-------------|-------------|
-| **Income** | `/income` | View and manage income entries |
-| **Expense** | `/expense` | View and manage expense entries |
+| **Transactions** | `/transactions` | View and manage income, expenses, and transfers |
+| **Income** | `/transactions?type=income` | Filter the transaction list to income only |
 | **Accounts** | `/accounts` | View and manage your accounts |
 
 Click any card to navigate directly to that page.
 
 ## What is not linked from the dashboard
 
-The dashboard quick links do not include Saver or Pushover. You reach those pages through the sidebar navigation:
+The dashboard quick links do not include Categories, Saver, or Pushover. You reach those pages through the sidebar navigation:
 
+- **Categories** - `/categories`
 - **Saver** - `/saver`
 - **Pushover** - `/pushover`
 
 ## Related pages
 
 - [Dashboard Overview](./overview.md)
-- [Adding Income](../income/adding-income.md)
-- [Adding Expenses](../expense/adding-expenses.md)
+- [Transactions Overview](../transactions/overview.md)
 - [Creating an Account](../accounts/creating-an-account.md)

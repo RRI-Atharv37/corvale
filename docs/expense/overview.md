@@ -2,6 +2,8 @@
 title: Expense Overview
 ---
 
+> **This page describes the legacy Expense section.** spndr now uses a unified [Transactions](../transactions/overview.md) page. The `/expense` route redirects to `/transactions?type=expense`.
+
 ## Track money going out
 
 The **Expense** page is where you record everything you spend - groceries, rent, subscriptions, transportation, and more.

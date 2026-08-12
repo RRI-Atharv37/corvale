@@ -5,7 +5,7 @@ import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { useUser } from '../../hooks/useUser'
-import type { ApiResponse, PaginatedExpense, PaginatedIncome, SaverResponse } from '../../types/api'
+import type { ApiResponse, PaginatedTransactions, SaverResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { Link } from 'react-router-dom'
@@ -30,11 +30,11 @@ const Home = () => {
     const fetchSummary = useCallback(async (): Promise<DashboardSummary> => {
         try {
             const [incomeRes, expenseRes, saverRes] = await Promise.all([
-                axiosInstance.get<ApiResponse<PaginatedIncome>>(API_PATHS.INCOME.GET_ALL, {
-                    params: { page: 1, limit: 100 },
+                axiosInstance.get<ApiResponse<PaginatedTransactions>>(API_PATHS.TRANSACTIONS.GET_ALL, {
+                    params: { page: 1, limit: 1, type: 'income' },
                 }),
-                axiosInstance.get<ApiResponse<PaginatedExpense>>(API_PATHS.EXPENSE.GET_ALL, {
-                    params: { page: 1, limit: 100 },
+                axiosInstance.get<ApiResponse<PaginatedTransactions>>(API_PATHS.TRANSACTIONS.GET_ALL, {
+                    params: { page: 1, limit: 1, type: 'expense' },
                 }),
                 axiosInstance.get<ApiResponse<SaverResponse>>(API_PATHS.SAVER.DETAILS),
             ])
@@ -44,8 +44,8 @@ const Home = () => {
             const saver = unwrapApiData(saverRes).data
 
             return {
-                incomeCount: income.meta.totalIncomes ?? income.data.length,
-                expenseCount: expense.meta.totalExpenses ?? expense.data.length,
+                incomeCount: income.meta.totalTransactions ?? income.data.length,
+                expenseCount: expense.meta.totalTransactions ?? expense.data.length,
                 incomeTotal: saver.totalIncome,
                 expenseTotal: saver.totalExpenses,
                 spendableBalance: saver.spendableBalance,
@@ -76,7 +76,7 @@ const Home = () => {
                 isEmpty={() => false}
                 loadingMessage="Loading dashboard..."
                 emptyTitle="No data yet"
-                emptyDescription="Start by adding income and expenses."
+                emptyDescription="Start by adding transactions."
                 onRetry={refetch}
             >
                 {(summary) => {
@@ -136,8 +136,8 @@ const Home = () => {
             </AsyncContent>
 
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <QuickLink to="/income" title="Income" description="View and manage income entries" />
-                <QuickLink to="/expense" title="Expense" description="View and manage expense entries" />
+                <QuickLink to="/transactions" title="Transactions" description="View and manage income & expenses" />
+                <QuickLink to="/transactions?type=income" title="Income" description="Filter to income entries" />
                 <QuickLink to="/accounts" title="Accounts" description="View and manage your accounts" />
             </div>
         </div>

@@ -6,7 +6,7 @@ titleTemplate: Personal Finance Documentation
 hero:
   name: spndr
   text: Personal finance, simplified
-  tagline: Track income, expenses, accounts, and savings in one place - built for students and young adults.
+  tagline: Track transactions, accounts, categories, and savings in one place - built for students and young adults.
   actions:
     - theme: brand
       text: Get Started
@@ -16,10 +16,10 @@ hero:
       link: /faq/frequently-asked-questions
 
 features:
-  - title: Track income and expenses
-    details: Log every dollar that comes in and goes out with categories, dates, and optional notes.
-  - title: Manage multiple accounts
-    details: Organize checking, cash, credit, and savings accounts with opening balances and a default account.
+  - title: Unified transactions
+    details: Record income, expenses, and transfers on one page with search, filters, receipts, and bulk actions.
+  - title: Categories and accounts
+    details: Classify activity with hierarchical categories and track balances across checking, cash, credit, and savings accounts.
   - title: Build a saver pool
     details: Move funds from your spendable balance into a dedicated saver pool by percentage or custom amount.
   - title: Month-end rollover

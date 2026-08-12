@@ -3,8 +3,14 @@ import {addIncome, getIncome, deleteIncome, downloadIncome, updateIncome, getInc
     //  getTotalIncome,
       searchIncome, duplicateIncome, groupIncomeByCategory} from '../controllers/incomeController'
 import {protect} from '../middleware/authMiddleware'
+import {
+    attachLegacyLedgerDeprecation,
+    deprecateLegacyLedgerRoutes,
+} from '../middleware/deprecationMiddleware'
 
 const router = express.Router()
+
+router.use(deprecateLegacyLedgerRoutes, attachLegacyLedgerDeprecation)
 
 router.post('/create', protect, addIncome)
 router.get('/download', protect, downloadIncome)

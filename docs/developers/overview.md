@@ -25,7 +25,8 @@ The frontend communicates with the backend over HTTP. All API routes live under 
 - MongoDB with Mongoose ODM
 - JWT authentication with bcryptjs password hashing
 - express-rate-limit for auth route protection
-- Vitest + Supertest for testing
+- Multer for receipt uploads
+- Vitest + Supertest for testing (87 backend tests)
 
 ### Frontend
 
@@ -46,8 +47,9 @@ backend/
   controllers/        Request handlers per domain
   models/             Mongoose schemas
   routes/             Route definitions
-  middleware/         Auth, errors, rate limiting
-  utils/              Shared helpers and balance engine
+  middleware/         Auth, errors, rate limiting, receipt upload
+  utils/              Shared helpers, balance engine, transaction logic
+  scripts/            Migration CLI
   tests/              Vitest test suites
 ```
 
@@ -83,6 +85,17 @@ Authorization: Bearer <jwt-token>
 ```
 
 Obtain a token via `POST /api/v1/auth/register` or `POST /api/v1/auth/login`.
+
+## Phase 1 highlights
+
+Phase 1 delivered accounts, categories, and a unified transaction model:
+
+- **Accounts** - multi-account tracking with server-derived balances
+- **Categories** - master seed plus user sub-categories with icons and colors
+- **Transactions** - income, expense, and transfer types with search, filter, sort, CSV export, splits, receipts, and bulk operations
+- **Migration** - CLI script to copy legacy Income/Expense data into Transaction records
+
+See [Transactions API](./transactions-api.md), [Categories API](./categories-api.md), and [Data Migration](./data-migration.md) for integration details.
 
 ## Related pages
 

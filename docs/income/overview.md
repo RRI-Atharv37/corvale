@@ -2,6 +2,8 @@
 title: Income Overview
 ---
 
+> **This page describes the legacy Income section.** spndr now uses a unified [Transactions](../transactions/overview.md) page. The `/income` route redirects to `/transactions?type=income`.
+
 ## Track money coming in
 
 The **Income** page is where you record every source of money you receive - salary, freelance payments, gifts, refunds, and more.
