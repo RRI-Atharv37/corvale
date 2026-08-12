@@ -89,4 +89,18 @@ export const ERROR_MESSAGES = {
         BUDGET_ALREADY_ARCHIVED: 'Budget is already archived',
         INVALID_ACCOUNT_IDS: 'One or more account ids are invalid or not owned by you',
     },
+    SAVINGS_GOAL: {
+        GOAL_NOT_FOUND: 'Savings goal not found',
+        GOAL_ARCHIVED: 'Cannot modify an archived savings goal',
+        GOAL_ALREADY_ARCHIVED: 'Savings goal is already archived',
+        GOAL_PAUSED: 'Savings goal is paused; resume before contributing',
+        GOAL_ALREADY_PAUSED: 'Savings goal is already paused',
+        GOAL_NOT_PAUSED: 'Savings goal is not paused',
+        GOAL_COMPLETED: 'Savings goal is already completed',
+        GOAL_ALREADY_COMPLETED: 'Savings goal is already completed',
+        INVALID_STATUS_TRANSITION: 'Invalid savings goal status transition',
+        INVALID_ACCOUNT_ID: 'Account id is invalid or not owned by you',
+        AUTO_CONTRIBUTION_DISABLED: 'Automatic contributions are not enabled for this goal',
+        AUTO_CONTRIBUTION_NOT_DUE: 'Automatic contribution is not due yet',
+    },
 }
