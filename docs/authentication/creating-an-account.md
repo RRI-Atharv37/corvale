@@ -11,9 +11,9 @@ You need an account before you can track finances. Registration is free and take
 1. Open spndr in your browser.
 2. On the login page, click **Sign up** (or navigate directly to `/signup`).
 3. Fill in the registration form:
-   - **Full Name** — your display name (required)
-   - **Email address** — a valid email you can access (required)
-   - **Password** — your chosen password (required)
+   - **Full Name** - your display name (required)
+   - **Email address** - a valid email you can access (required)
+   - **Password** - your chosen password (required)
 4. Click **Sign up**.
 
 If registration succeeds, spndr:

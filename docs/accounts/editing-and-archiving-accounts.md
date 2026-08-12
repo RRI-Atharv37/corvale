@@ -11,8 +11,8 @@ You can edit account details or archive accounts you no longer use.
 1. Find the account in the list on the **Accounts** page.
 2. Click the **pencil icon** on the right side of the row.
 3. In the edit modal, update:
-   - **Name** — the display name
-   - **Type** — checking, cash, credit, or savings
+   - **Name** - the display name
+   - **Type** - checking, cash, credit, or savings
 4. Click **Save changes**.
 
 You cannot edit the currency or balance through the edit form. Currency is set at creation time only.
@@ -35,8 +35,8 @@ When you archive an account:
 ## Restrictions
 
 - You cannot edit an archived account.
-- You cannot update `openingBalance` or `currentBalance` through the API or UI — balance fields are server-managed.
-- Archiving is a soft delete — the account record remains in the database.
+- You cannot update `openingBalance` or `currentBalance` through the API or UI - balance fields are server-managed.
+- Archiving is a soft delete - the account record remains in the database.
 
 ## Empty state
 

@@ -8,7 +8,7 @@ title: Project Structure
 spndr/
 ├── backend/                  API server
 │   ├── app.ts                Express app factory and route mounting
-│   ├── server.ts             Entry point — connects DB and listens
+│   ├── server.ts             Entry point - connects DB and listens
 │   ├── config/
 │   │   └── db.ts             MongoDB connection
 │   ├── controllers/          Request handlers
@@ -65,7 +65,7 @@ spndr/
 
 | Model | Collection | One per user? |
 |-------|------------|---------------|
-| User | users | — |
+| User | users | - |
 | Income | incomes | Many |
 | Expense | expenses | Many |
 | Account | accounts | Many |
@@ -76,9 +76,9 @@ spndr/
 
 The core balance logic lives in `backend/utils/balanceUtils.ts`:
 
-- `computeUserBalances(userId)` — full balance summary
-- `computeAccountTotals(userId)` — account aggregation
-- `roundMoney(amount)` — two-decimal rounding
+- `computeUserBalances(userId)` - full balance summary
+- `computeAccountTotals(userId)` - account aggregation
+- `roundMoney(amount)` - two-decimal rounding
 
 This engine powers the saver details endpoint, which the dashboard and saver pages consume.
 

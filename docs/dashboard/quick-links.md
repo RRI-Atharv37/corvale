@@ -20,8 +20,8 @@ Click any card to navigate directly to that page.
 
 The dashboard quick links do not include Saver or Pushover. You reach those pages through the sidebar navigation:
 
-- **Saver** — `/saver`
-- **Pushover** — `/pushover`
+- **Saver** - `/saver`
+- **Pushover** - `/pushover`
 
 ## Related pages
 

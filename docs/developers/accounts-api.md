@@ -30,7 +30,7 @@ Create a new account.
 | `openingBalance` | No | number | Defaults to `0`; sets `currentBalance` |
 | `isDefault` | No | boolean | First account auto-defaults |
 
-`currentBalance` cannot be set directly — the server derives it from `openingBalance`.
+`currentBalance` cannot be set directly - the server derives it from `openingBalance`.
 
 ### Success response (201)
 

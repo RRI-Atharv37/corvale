@@ -58,7 +58,7 @@ Authenticate an existing user. **Rate-limited.**
 
 ### Success response (200)
 
-Same shape as register — returns `token` and `user`.
+Same shape as register - returns `token` and `user`.
 
 ### Errors
 

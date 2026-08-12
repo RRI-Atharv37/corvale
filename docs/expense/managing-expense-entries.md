@@ -10,11 +10,11 @@ Manage your spending records directly from the Expense list page.
 
 Each expense entry in the list shows:
 
-- **Title** — the entry name
-- **Date** — formatted as "MMM D, YYYY"
-- **Category** — always shown (required field)
-- **Payment method** — if provided, shown after the category
-- **Amount** — displayed in rose/red on the right side
+- **Title** - the entry name
+- **Date** - formatted as "MMM D, YYYY"
+- **Category** - always shown (required field)
+- **Payment method** - if provided, shown after the category
+- **Amount** - displayed in rose/red on the right side
 
 ## Editing an entry
 

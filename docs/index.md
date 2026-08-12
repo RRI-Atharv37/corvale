@@ -6,7 +6,7 @@ titleTemplate: Personal Finance Documentation
 hero:
   name: spndr
   text: Personal finance, simplified
-  tagline: Track income, expenses, accounts, and savings in one place — built for students and young adults.
+  tagline: Track income, expenses, accounts, and savings in one place - built for students and young adults.
   actions:
     - theme: brand
       text: Get Started

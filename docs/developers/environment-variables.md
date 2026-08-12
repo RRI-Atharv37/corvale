@@ -9,10 +9,10 @@ Create a `.env` file in the `backend/` folder.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | `5000` | HTTP port for the API server |
-| `MONGO_URI` | Yes | — | MongoDB connection string |
-| `JWT_SECRET` | Yes | — | Secret key for signing JWT tokens |
-| `JWT_EXPIRY` | Yes | — | Token expiry duration (e.g., `7d`, `24h`) |
-| `CLIENT_URL` | Yes | — | Frontend origin for CORS (e.g., `http://localhost:5173`) |
+| `MONGO_URI` | Yes | - | MongoDB connection string |
+| `JWT_SECRET` | Yes | - | Secret key for signing JWT tokens |
+| `JWT_EXPIRY` | Yes | - | Token expiry duration (e.g., `7d`, `24h`) |
+| `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`) |
 | `AUTH_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for auth routes |
 | `AUTH_RATE_LIMIT_MAX` | No | `10` | Max auth requests per window per IP |
 

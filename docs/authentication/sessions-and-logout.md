@@ -33,7 +33,7 @@ To sign out:
 2. Scroll to the bottom where your name and email appear.
 3. Click **Logout**.
 
-Logout is client-side only — spndr clears your token and user state from memory and local storage, shows a success notification, and redirects you to the login page. There is no server-side token revocation.
+Logout is client-side only - spndr clears your token and user state from memory and local storage, shows a success notification, and redirects you to the login page. There is no server-side token revocation.
 
 ## Related pages
 

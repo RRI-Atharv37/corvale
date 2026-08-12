@@ -34,7 +34,7 @@ If this is your first visit:
 
 1. Click **Sign up** on the login page.
 2. Enter your full name, email, and password.
-3. Submit the form — spndr signs you in automatically and redirects you to the dashboard.
+3. Submit the form - spndr signs you in automatically and redirects you to the dashboard.
 
 ## Run the documentation site (optional)
 

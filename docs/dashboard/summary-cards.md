@@ -13,7 +13,7 @@ Shows the sum of all income entries you have recorded, across all time.
 - **Color accent:** Cyan
 - **Source:** Aggregated from your income collection
 
-This number reflects activity tracking — how much income you have logged — not necessarily cash currently in your accounts.
+This number reflects activity tracking - how much income you have logged - not necessarily cash currently in your accounts.
 
 ## Total Expenses
 

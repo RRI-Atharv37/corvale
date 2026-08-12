@@ -28,7 +28,7 @@ Each user has exactly one saver document. If you have never deposited, your save
 | Withdraw from saver | Decreases | Increases | Unchanged |
 | Pushover rollover | Resets to $0.00 | Unchanged | Unchanged |
 
-Net worth does not change when you move money between spendable and saver — you are reallocating, not gaining or losing money.
+Net worth does not change when you move money between spendable and saver - you are reallocating, not gaining or losing money.
 
 ## Last updated date
 

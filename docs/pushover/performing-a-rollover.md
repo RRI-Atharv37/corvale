@@ -31,7 +31,7 @@ Review the amount carefully before confirming. The rollover cannot be undone.
 
 ## When to roll over
 
-Pushover is designed for period-end savings snapshots — typically at the end of a month. You choose when to trigger it; spndr does not enforce a schedule.
+Pushover is designed for period-end savings snapshots - typically at the end of a month. You choose when to trigger it; spndr does not enforce a schedule.
 
 A common workflow:
 

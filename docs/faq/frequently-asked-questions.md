@@ -48,7 +48,7 @@ spndr treats savings as set-aside money. Spendable balance only includes checkin
 
 ### What is the difference between saver and pushover?
 
-The **saver** is your active savings pool — money you set aside during the current period. **Pushover** is the month-end action that snapshots your saver balance into history and resets the saver to zero.
+The **saver** is your active savings pool - money you set aside during the current period. **Pushover** is the month-end action that snapshots your saver balance into history and resets the saver to zero.
 
 ### Can I undo a pushover rollover?
 

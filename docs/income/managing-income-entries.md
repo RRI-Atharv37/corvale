@@ -10,11 +10,11 @@ Once you have income entries, you can manage them directly from the Income list 
 
 Each income entry in the list shows:
 
-- **Title** — the entry name
-- **Date** — formatted as "MMM D, YYYY"
-- **Category** — if provided, shown after the date
-- **Source** — if provided, shown after the category
-- **Amount** — displayed in cyan on the right side
+- **Title** - the entry name
+- **Date** - formatted as "MMM D, YYYY"
+- **Category** - if provided, shown after the date
+- **Source** - if provided, shown after the category
+- **Amount** - displayed in cyan on the right side
 
 ## Editing an entry
 

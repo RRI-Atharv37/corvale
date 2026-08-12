@@ -10,10 +10,10 @@ spndr computes your balances server-side using a central balance engine. Every t
 
 The engine aggregates four data sources:
 
-1. **Income collection** — sum of all income entry amounts
-2. **Expense collection** — sum of all expense entry amounts
-3. **Saver document** — your current saver pool balance
-4. **Active accounts** — all non-archived accounts and their current balances
+1. **Income collection** - sum of all income entry amounts
+2. **Expense collection** - sum of all expense entry amounts
+3. **Saver document** - your current saver pool balance
+4. **Active accounts** - all non-archived accounts and their current balances
 
 ## Legacy mode calculation
 
@@ -74,7 +74,7 @@ Savings account balances count toward net worth but **not** toward liquid/spenda
 
 ### Income and expense in accounts mode
 
-Total income and total expenses are still calculated and displayed on the dashboard. They serve as activity tracking metrics — a record of what you have logged — but they do not change net worth or spendable balance.
+Total income and total expenses are still calculated and displayed on the dashboard. They serve as activity tracking metrics - a record of what you have logged - but they do not change net worth or spendable balance.
 
 ## Saver impact
 

@@ -4,7 +4,7 @@ title: Accounts Overview
 
 ## Organize where your money lives
 
-The **Accounts** page lets you create and manage financial accounts — checking, cash, credit, and savings. Accounts give spndr a clearer picture of your net worth and spendable balance.
+The **Accounts** page lets you create and manage financial accounts - checking, cash, credit, and savings. Accounts give spndr a clearer picture of your net worth and spendable balance.
 
 Navigate to Accounts from the sidebar or go to `/accounts`.
 
@@ -36,7 +36,7 @@ Income and expense entries are **not linked** to specific accounts. Adding incom
 
 ## Archived accounts
 
-Archiving an account hides it from your account list and removes it from balance calculations. Archived accounts are not permanently deleted — they remain in the database with `isArchived: true`.
+Archiving an account hides it from your account list and removes it from balance calculations. Archived accounts are not permanently deleted - they remain in the database with `isArchived: true`.
 
 ## Related pages
 

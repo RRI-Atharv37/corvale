@@ -4,7 +4,7 @@ title: Expense Overview
 
 ## Track money going out
 
-The **Expense** page is where you record everything you spend — groceries, rent, subscriptions, transportation, and more.
+The **Expense** page is where you record everything you spend - groceries, rent, subscriptions, transportation, and more.
 
 Navigate to Expense from the sidebar or go to `/expense`.
 

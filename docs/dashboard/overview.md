@@ -12,8 +12,8 @@ Navigate to the dashboard from the sidebar by clicking **Dashboard**, or go dire
 
 The dashboard displays two main areas:
 
-1. **Summary cards** — key financial metrics at a glance
-2. **Quick links** — shortcuts to Income, Expense, and Accounts
+1. **Summary cards** - key financial metrics at a glance
+2. **Quick links** - shortcuts to Income, Expense, and Accounts
 
 The summary cards adapt based on whether you have active accounts. See [Summary Cards](./summary-cards.md) for details on each metric.
 

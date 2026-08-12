@@ -27,7 +27,7 @@ If you have never performed a rollover, spndr shows:
 
 ## Cumulative tracking
 
-Behind the scenes, spndr also tracks a cumulative `pushoverAmount` on your saver document — the running total of all rollovers. This value is maintained server-side and included in API responses but is not displayed as a separate card in the UI.
+Behind the scenes, spndr also tracks a cumulative `pushoverAmount` on your saver document - the running total of all rollovers. This value is maintained server-side and included in API responses but is not displayed as a separate card in the UI.
 
 ## History is permanent
 

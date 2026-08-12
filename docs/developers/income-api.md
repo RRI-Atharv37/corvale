@@ -67,7 +67,7 @@ Get a single income entry by ID. Ownership-checked.
 
 ## PUT /income/:incomeId
 
-Update an income entry. Supports partial updates — send only the fields you want to change.
+Update an income entry. Supports partial updates - send only the fields you want to change.
 
 ## DELETE /income/:incomeId
 

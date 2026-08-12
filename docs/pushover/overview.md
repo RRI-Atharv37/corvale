@@ -27,7 +27,7 @@ When you perform a rollover:
 4. Resets your saver balance to **$0.00**
 5. Updates the saver's last-modified date
 
-Your spendable balance and net worth are **not** affected — the money was already set aside in the saver.
+Your spendable balance and net worth are **not** affected - the money was already set aside in the saver.
 
 ## Requirements
 
@@ -41,7 +41,7 @@ Pushover does not:
 - Transfer money to a bank account
 - Create income or expense entries
 - Modify account balances
-- Automatically run on a schedule — you trigger it manually
+- Automatically run on a schedule - you trigger it manually
 
 ## Related pages
 

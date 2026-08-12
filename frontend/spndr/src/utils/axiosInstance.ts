@@ -39,7 +39,7 @@ client.interceptors.response.use(
     }
 )
 
-/** Axios instance whose interceptors unwrap `response.data` — methods return `T` directly. */
+/** Axios instance whose interceptors unwrap `response.data` - methods return `T` directly. */
 export interface ApiClient {
     get<T>(url: string, config?: AxiosRequestConfig): Promise<T>
     post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>

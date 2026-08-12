@@ -11,10 +11,10 @@ Follow these steps to create an account in spndr.
 1. Navigate to **Accounts** from the sidebar.
 2. Click the **Add account** button in the page header.
 3. Fill in the creation form:
-   - **Name** (required) — e.g., "Main checking", "Cash wallet"
-   - **Type** (required) — choose from Checking, Cash, Credit, or Savings
-   - **Currency** (required) — defaults to USD; options include USD, EUR, GBP, INR, CAD, AUD
-   - **Opening balance** (required) — the starting balance, defaults to `0.00`
+   - **Name** (required) - e.g., "Main checking", "Cash wallet"
+   - **Type** (required) - choose from Checking, Cash, Credit, or Savings
+   - **Currency** (required) - defaults to USD; options include USD, EUR, GBP, INR, CAD, AUD
+   - **Opening balance** (required) - the starting balance, defaults to `0.00`
 4. Click **Create account**.
 
 On success, spndr creates the account, sets `currentBalance` equal to your opening balance, and refreshes the list.

@@ -4,7 +4,7 @@ title: Income Overview
 
 ## Track money coming in
 
-The **Income** page is where you record every source of money you receive — salary, freelance payments, gifts, refunds, and more.
+The **Income** page is where you record every source of money you receive - salary, freelance payments, gifts, refunds, and more.
 
 Navigate to Income from the sidebar or go to `/income`.
 
@@ -30,7 +30,7 @@ Each income entry supports the following fields:
 | **Category** | No | A free-text category (e.g., "Salary", "Freelance") |
 | **Description** | No | Optional notes about the entry |
 
-Categories are free-text — spndr does not enforce a predefined list.
+Categories are free-text - spndr does not enforce a predefined list.
 
 ## How income affects your balances
 

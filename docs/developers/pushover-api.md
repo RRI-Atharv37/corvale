@@ -8,7 +8,7 @@ All pushover routes are mounted at `/api/v1/pushover`. All require authenticatio
 
 ## POST /pushover/pushover
 
-Perform a month-end rollover — snapshot the saver balance into history and reset the saver to zero.
+Perform a month-end rollover - snapshot the saver balance into history and reset the saver to zero.
 
 ### Request body
 
@@ -77,7 +77,7 @@ Returns an array of pushover snapshots, sorted by most recent first:
 }
 ```
 
-History records are immutable — there are no update or delete endpoints.
+History records are immutable - there are no update or delete endpoints.
 
 ## Related pages
 

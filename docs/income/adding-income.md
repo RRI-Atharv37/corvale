@@ -11,12 +11,12 @@ Follow these steps to add income to spndr.
 1. Navigate to **Income** from the sidebar.
 2. Click the **Add income** button in the page header.
 3. Fill in the form:
-   - **Title** (required) — e.g., "Freelance project payment"
-   - **Amount** (required) — enter a number such as `1500.00`
-   - **Date** (required) — defaults to today
-   - **Source** (optional) — e.g., "Acme Corp"
-   - **Category** (optional) — e.g., "Freelance"
-   - **Description** (optional) — any additional notes
+   - **Title** (required) - e.g., "Freelance project payment"
+   - **Amount** (required) - enter a number such as `1500.00`
+   - **Date** (required) - defaults to today
+   - **Source** (optional) - e.g., "Acme Corp"
+   - **Category** (optional) - e.g., "Freelance"
+   - **Description** (optional) - any additional notes
 4. Click **Add income**.
 
 On success, spndr closes the modal, shows a success notification, refreshes the list, and returns you to page 1.

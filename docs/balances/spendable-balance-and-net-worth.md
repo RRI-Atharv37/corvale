@@ -8,7 +8,7 @@ title: Spendable Balance and Net Worth
 
 ## Net worth
 
-Net worth represents your overall financial position — everything you own minus everything you owe.
+Net worth represents your overall financial position - everything you own minus everything you owe.
 
 ### In legacy mode
 
@@ -33,7 +33,7 @@ net worth = (2500 + 150 + 5000) − 800 = 6850.00
 
 ## Spendable balance
 
-Spendable balance represents money you can use right now — either to spend or to allocate to your saver pool.
+Spendable balance represents money you can use right now - either to spend or to allocate to your saver pool.
 
 ### In legacy mode
 
@@ -75,7 +75,7 @@ spendable balance = max(0, 2650 − 500) = 2150.00
 
 - Use **spendable balance** to decide how much you can move to the saver or spend this month.
 - Use **net worth** to understand your overall financial health over time.
-- Remember that income and expense totals on the dashboard are activity logs — in accounts mode, they do not change net worth.
+- Remember that income and expense totals on the dashboard are activity logs - in accounts mode, they do not change net worth.
 
 ## Related pages
 
