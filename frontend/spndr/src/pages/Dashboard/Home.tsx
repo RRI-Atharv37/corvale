@@ -138,6 +138,7 @@ const Home = () => {
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <QuickLink to="/transactions" title="Transactions" description="View and manage income & expenses" />
                 <QuickLink to="/budgets" title="Budgets" description="Set limits and track spending progress" />
+                <QuickLink to="/savings-goals" title="Savings Goals" description="Track progress toward your targets" />
                 <QuickLink to="/transactions?type=income" title="Income" description="Filter to income entries" />
                 <QuickLink to="/accounts" title="Accounts" description="View and manage your accounts" />
             </div>
