@@ -7,14 +7,20 @@ export interface IUser extends Document {
     email: string
     password: string
     timezone: string
+    tokenVersion: number
+    passwordResetTokenHash?: string
+    passwordResetExpires?: Date
     comparePassword(candidatePassword: string): Promise<boolean>
 }
 
 const userSchema = new Schema<IUser>({
-    fullName: {type: String, required: true},
+    fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     timezone: { type: String, default: 'UTC', trim: true },
+    tokenVersion: { type: Number, default: 0 },
+    passwordResetTokenHash: { type: String },
+    passwordResetExpires: { type: Date },
     }, {timestamps: true}
 )
 

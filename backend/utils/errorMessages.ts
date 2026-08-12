@@ -5,8 +5,14 @@ export const ERROR_MESSAGES = {
         TOKEN_MISSING: 'Not authorized, no token',
         TOKEN_INVALID: 'Not authorized, token failed',
         TOKEN_EXPIRED: 'Not authorized, token expired',
+        TOKEN_REVOKED: 'Not authorized, session revoked',
+        REFRESH_TOKEN_INVALID: 'Invalid or expired refresh token',
+        REFRESH_TOKEN_MISSING: 'Refresh token not found',
         NOT_AUTHORIZED: 'Not authorized to perform this action',
         TOO_MANY_REQUESTS: 'Too many authentication attempts, please try again later',
+        PASSWORD_RESET_EMAIL_SENT: 'If an account exists for that email, a password reset link has been sent',
+        PASSWORD_RESET_INVALID: 'Invalid or expired password reset token',
+        PASSWORD_TOO_SHORT: 'Password must be at least 8 characters',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',
@@ -74,5 +80,7 @@ export const ERROR_MESSAGES = {
         FILE_NOT_FOUND: 'Receipt file not found on disk',
         INVALID_FILE_TYPE: 'Receipt must be a JPEG, PNG, WebP image, or PDF',
         FILE_TOO_LARGE: 'Receipt file exceeds the 5 MB size limit',
+        VIRUS_DETECTED: 'Receipt file failed security scan',
+        VIRUS_SCAN_FAILED: 'Receipt upload temporarily unavailable; try again later',
     },
 }

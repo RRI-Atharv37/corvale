@@ -82,6 +82,15 @@ const Login = () => {
 
                     {error && <p className="text-red-400 text-xs pb-2.5">{error}</p>}
 
+                    <div className="flex justify-end mb-3">
+                        <Link
+                            className="text-xs font-medium text-cyan-400 hover:text-cyan-300"
+                            to="/forgot-password"
+                        >
+                            Forgot password?
+                        </Link>
+                    </div>
+
                     <button type="submit" className="btn-primary" disabled={isSubmitting}>
                         {isSubmitting ? 'Signing in...' : 'Sign in'}
                     </button>

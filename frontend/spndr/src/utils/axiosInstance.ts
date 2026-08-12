@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from 'axios'
+import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
 import { BASE_URL } from './apiPaths'
 
 const client = axios.create({
@@ -10,6 +10,33 @@ const client = axios.create({
     },
     withCredentials: true,
 })
+
+interface RetryableRequest extends InternalAxiosRequestConfig {
+    _retry?: boolean
+}
+
+let isRefreshing = false
+let refreshQueue: Array<(token: string | null) => void> = []
+
+const processRefreshQueue = (token: string | null): void => {
+    refreshQueue.forEach((callback) => callback(token))
+    refreshQueue = []
+}
+
+const isAuthMutationRoute = (url?: string): boolean => {
+    if (!url) return false
+    return (
+        url.includes('/auth/login') ||
+        url.includes('/auth/register') ||
+        url.includes('/auth/refresh') ||
+        url.includes('/auth/password-reset')
+    )
+}
+
+const shouldAttemptRefresh = (message: unknown): boolean => {
+    if (typeof message !== 'string') return false
+    return message.includes('expired') || message.includes('revoked')
+}
 
 client.interceptors.request.use(
     (config) => {
@@ -27,15 +54,61 @@ client.interceptors.request.use(
 
 client.interceptors.response.use(
     (response) => response.data,
-    (error) => {
-        if (error.response?.status === 401) {
-            const isAuthRoute =
-                error.config?.url?.includes('/auth/login') ||
-                error.config?.url?.includes('/auth/register')
+    async (error) => {
+        const originalRequest = error.config as RetryableRequest | undefined
+        const status = error.response?.status
+        const message = error.response?.data?.message
 
-            if (!isAuthRoute) {
-                localStorage.removeItem('token')
+        if (
+            status === 401 &&
+            originalRequest &&
+            !originalRequest._retry &&
+            !isAuthMutationRoute(originalRequest.url) &&
+            shouldAttemptRefresh(message)
+        ) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    refreshQueue.push((token) => {
+                        if (!token) {
+                            reject(error)
+                            return
+                        }
+                        originalRequest.headers.Authorization = `Bearer ${token}`
+                        resolve(client(originalRequest))
+                    })
+                })
             }
+
+            originalRequest._retry = true
+            isRefreshing = true
+
+            try {
+                const refreshResponse = await axios.post(
+                    `${BASE_URL}/auth/refresh`,
+                    {},
+                    { withCredentials: true }
+                )
+                const newToken = refreshResponse.data?.data?.token as string | undefined
+
+                if (!newToken) {
+                    throw new Error('Refresh response missing token')
+                }
+
+                localStorage.setItem('token', newToken)
+                processRefreshQueue(newToken)
+                originalRequest.headers.Authorization = `Bearer ${newToken}`
+                return client(originalRequest)
+            } catch (refreshError) {
+                processRefreshQueue(null)
+                localStorage.removeItem('token')
+                return Promise.reject(refreshError)
+            } finally {
+                isRefreshing = false
+            }
+        }
+
+        if (status === 401 && !isAuthMutationRoute(originalRequest?.url)) {
+            localStorage.removeItem('token')
         }
 
         return Promise.reject(error)

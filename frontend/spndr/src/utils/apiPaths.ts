@@ -5,6 +5,11 @@ export const API_PATHS = {
         LOGIN: '/auth/login',
         REGISTER: '/auth/register',
         USER: '/auth/user',
+        REFRESH: '/auth/refresh',
+        LOGOUT: '/auth/logout',
+        LOGOUT_ALL: '/auth/logout-all',
+        PASSWORD_RESET_REQUEST: '/auth/password-reset/request',
+        PASSWORD_RESET_CONFIRM: '/auth/password-reset/confirm',
     },
     INCOME: {
         CREATE: '/income/create',

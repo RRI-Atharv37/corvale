@@ -84,9 +84,13 @@ export async function createTestExpense(
 export async function seedUserDirectly(overrides: Partial<TestUser> = {}): Promise<RegisteredUser> {
     const userData = { ...defaultTestUser, ...overrides }
     const user = await User.create(userData)
-    const token = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET as string, {
+    const token = jwt.sign(
+        { id: user._id.toString(), tv: user.tokenVersion ?? 0 },
+        process.env.JWT_SECRET as string,
+        {
         expiresIn: '1h',
-    })
+    }
+    )
 
     return {
         token,

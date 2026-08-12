@@ -11,7 +11,8 @@ interface UserContextType {
     isInitializing: boolean
     updateUser: (user: User) => void
     clearUser: () => void
-    logout: () => void
+    logout: () => Promise<void>
+    logoutAllSessions: () => Promise<void>
     restoreSession: () => Promise<void>
 }
 
@@ -30,7 +31,21 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         setUser(userData)
     }, [])
 
-    const logout = useCallback(() => {
+    const logout = useCallback(async () => {
+        try {
+            await axiosInstance.post(API_PATHS.AUTH.LOGOUT)
+        } catch {
+            // Clear local session even if the server call fails
+        }
+        clearUser()
+    }, [clearUser])
+
+    const logoutAllSessions = useCallback(async () => {
+        try {
+            await axiosInstance.post(API_PATHS.AUTH.LOGOUT_ALL)
+        } catch {
+            // Clear local session even if the server call fails
+        }
         clearUser()
     }, [clearUser])
 
@@ -66,9 +81,10 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             updateUser,
             clearUser,
             logout,
+            logoutAllSessions,
             restoreSession,
         }),
-        [user, isInitializing, updateUser, clearUser, logout, restoreSession]
+        [user, isInitializing, updateUser, clearUser, logout, logoutAllSessions, restoreSession]
     )
 
     return <UserContext.Provider value={value}>{children}</UserContext.Provider>

@@ -24,11 +24,16 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
             return next(new CustomError(ERROR_MESSAGES.GENERAL.JWT_SECRET_MISSING, 500))
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id: string }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id: string; tv?: number }
 
         const user = await User.findById(decoded.id).select('-password')
         if (!user) {
             return next(new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 401))
+        }
+
+        const tokenVersion = decoded.tv ?? 0
+        if (tokenVersion !== user.tokenVersion) {
+            return next(new CustomError(ERROR_MESSAGES.AUTH.TOKEN_REVOKED, 401))
         }
 
         req.user = user

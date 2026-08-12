@@ -41,13 +41,24 @@ const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
     ].join(' ')
 
 const DashboardLayout: React.FC = () => {
-    const { user, logout } = useUser()
+    const { user, logout, logoutAllSessions } = useUser()
     const navigate = useNavigate()
     const [mobileOpen, setMobileOpen] = useState(false)
 
-    const handleLogout = () => {
-        logout()
+    const handleLogout = async () => {
+        await logout()
         toast.success('Logged out successfully')
+        navigate('/login', { replace: true })
+    }
+
+    const handleLogoutAll = async () => {
+        const confirmed = window.confirm(
+            'Sign out of all devices? You will need to sign in again everywhere.'
+        )
+        if (!confirmed) return
+
+        await logoutAllSessions()
+        toast.success('All sessions revoked')
         navigate('/login', { replace: true })
     }
 
@@ -99,7 +110,15 @@ const DashboardLayout: React.FC = () => {
                 )}
                 <button
                     type="button"
-                    onClick={handleLogout}
+                    onClick={() => void handleLogoutAll()}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors mb-1"
+                >
+                    <FiLogOut size={18} />
+                    Logout all devices
+                </button>
+                <button
+                    type="button"
+                    onClick={() => void handleLogout()}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
                 >
                     <FiLogOut size={18} />
