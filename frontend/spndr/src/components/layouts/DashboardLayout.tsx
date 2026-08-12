@@ -5,6 +5,7 @@ import {
     FiTrendingUp,
     FiTrendingDown,
     FiDollarSign,
+    FiBookOpen,
     FiRepeat,
     FiLogOut,
     FiMenu,
@@ -18,6 +19,7 @@ interface NavItem {
     to: string
     label: string
     icon: React.ReactNode
+    external?: boolean
 }
 
 const navItems: NavItem[] = [
@@ -27,6 +29,7 @@ const navItems: NavItem[] = [
     { to: '/accounts', label: 'Accounts', icon: <FiCreditCard size={18} /> },
     { to: '/saver', label: 'Saver', icon: <FiDollarSign size={18} /> },
     { to: '/pushover', label: 'Pushover', icon: <FiRepeat size={18} /> },
+    { to: 'http://localhost:5174', label: 'Docs', icon: <FiBookOpen size={18} />, external: true },
 ]
 
 const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
@@ -61,15 +64,29 @@ const DashboardLayout: React.FC = () => {
 
             <nav className="flex-1 px-3 py-4 space-y-1">
                 {navItems.map((item) => (
-                    <NavLink
-                        key={item.to}
-                        to={item.to}
-                        className={navLinkClass}
-                        onClick={closeMobile}
-                    >
-                        {item.icon}
-                        {item.label}
-                    </NavLink>
+                    item.external ? (
+                        <a
+                            key={item.to}
+                            href={item.to}
+                            className={navLinkClass({ isActive: false })}
+                            onClick={closeMobile}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            {item.icon}
+                            {item.label}
+                        </a>
+                    ) : (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            className={navLinkClass}
+                            onClick={closeMobile}
+                        >
+                            {item.icon}
+                            {item.label}
+                        </NavLink>
+                    )
                 ))}
             </nav>
 
