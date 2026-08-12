@@ -13,6 +13,7 @@ import {
     FiGrid,
     FiPieChart,
     FiFlag,
+    FiCalendar,
     FiSettings,
 } from 'react-icons/fi'
 import { useUser } from '../../hooks/useUser'
@@ -41,6 +42,7 @@ const navItems: NavItem[] = [
     { to: '/categories', label: 'Categories', icon: <FiGrid size={18} /> },
     { to: '/budgets', label: 'Budgets', icon: <FiPieChart size={18} /> },
     { to: '/savings-goals', label: 'Savings Goals', icon: <FiFlag size={18} /> },
+    { to: '/recurring', label: 'Recurring', icon: <FiCalendar size={18} /> },
     { to: '/saver', label: 'Saver', icon: <FiDollarSign size={18} /> },
     { to: '/pushover', label: 'Pushover', icon: <FiRepeat size={18} /> },
 ]

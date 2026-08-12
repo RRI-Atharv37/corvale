@@ -36,8 +36,8 @@ You cannot change the period type when editing an existing budget. Create a new 
 
 When **Monthly** is selected:
 
-- **Month** — the calendar month (January through December)
-- **Year** — the four-digit year (for example, `2026`)
+- **Month** - the calendar month (January through December)
+- **Year** - the four-digit year (for example, `2026`)
 
 spndr resolves the exact start and end timestamps using your account timezone.
 
@@ -45,8 +45,8 @@ spndr resolves the exact start and end timestamps using your account timezone.
 
 When **Custom duration** is selected:
 
-- **Start date** — first day of the budget window
-- **End date** — last day of the budget window (must be on or after the start date)
+- **Start date** - first day of the budget window
+- **End date** - last day of the budget window (must be on or after the start date)
 
 ### Budget scope
 
@@ -69,8 +69,8 @@ Enable **Rollover unused amount to next period** if you want unused budget capac
 
 Choose which accounts count toward this budget:
 
-- **All accounts** (default) — every active account contributes to spent totals
-- **Selected accounts** — check one or more accounts to scope spending
+- **All accounts** (default) - every active account contributes to spent totals
+- **Selected accounts** - check one or more accounts to scope spending
 
 If you deselect all accounts while active accounts exist, spndr asks you to pick at least one or revert to all accounts.
 

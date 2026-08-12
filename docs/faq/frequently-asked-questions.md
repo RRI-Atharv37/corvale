@@ -54,11 +54,11 @@ Create a budget on the **Budgets** page (`/budgets`). spndr compares your limit 
 
 ### What is the difference between saver and savings goals?
 
-The **Saver** is a discretionary pool you fund from spendable balance during the month. **Savings Goals** are named targets with progress bars, optional deadlines, and contribution history. They serve different purposes — see [Savings Goals Overview](../savings-goals/overview.md) and [Saver Overview](../saver/overview.md).
+The **Saver** is a discretionary pool you fund from spendable balance during the month. **Savings Goals** are named targets with progress bars, optional deadlines, and contribution history. They serve different purposes - see [Savings Goals Overview](../savings-goals/overview.md) and [Saver Overview](../saver/overview.md).
 
 ### Can savings goals automatically save for me?
 
-You can enable **automatic contributions** on a goal (weekly or monthly). When due, process the contribution from the goal card. spndr does not pull money from bank accounts — contributions track progress toward a target you define.
+You can enable **automatic contributions** on a goal (weekly or monthly). When due, process the contribution from the goal card. spndr does not pull money from bank accounts - contributions track progress toward a target you define.
 
 ## Accounts
 

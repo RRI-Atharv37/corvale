@@ -4,7 +4,7 @@ title: Savings Goals Overview
 
 ## Track progress toward named targets
 
-The **Savings Goals** page helps you define financial targets — an emergency fund, a laptop, tuition, or any goal with a dollar amount — and log contributions over time. Unlike the **Saver** pool (a discretionary monthly sweep), savings goals are named targets with optional deadlines, progress metrics, and a contribution history.
+The **Savings Goals** page helps you define financial targets - an emergency fund, a laptop, tuition, or any goal with a dollar amount - and log contributions over time. Unlike the **Saver** pool (a discretionary monthly sweep), savings goals are named targets with optional deadlines, progress metrics, and a contribution history.
 
 Navigate to Savings Goals from the sidebar or go to `/savings-goals`.
 

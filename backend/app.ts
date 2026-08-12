@@ -12,6 +12,7 @@ import transactionRoutes from './routes/transactionRoutes'
 import receiptRoutes from './routes/receiptRoutes'
 import budgetRoutes from './routes/budgetRoutes'
 import savingsGoalRoutes from './routes/savingsGoalRoutes'
+import recurringRuleRoutes from './routes/recurringRuleRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -40,6 +41,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/receipts', receiptRoutes)
     app.use('/api/v1/budgets', budgetRoutes)
     app.use('/api/v1/savings-goals', savingsGoalRoutes)
+    app.use('/api/v1/recurring-rules', recurringRuleRoutes)
     app.use(errorHandler)
 
     return app

@@ -21,7 +21,7 @@ Your **Default currency** preference pre-fills currency fields when you create b
 2. Under **Preferences**, use the **Default currency** dropdown.
 3. Select a supported currency (for example, USD, EUR, GBP).
 
-spndr saves the choice immediately via `PATCH /auth/user`. A success toast confirms the update. Existing records keep their original currency — only new forms default to the updated value.
+spndr saves the choice immediately via `PATCH /auth/user`. A success toast confirms the update. Existing records keep their original currency - only new forms default to the updated value.
 
 ## Logout
 

@@ -4,7 +4,7 @@ title: Transactions Overview
 
 ## One place for income, expenses, and transfers
 
-The **Transactions** page is spndr's unified ledger. Instead of separate Income and Expense pages, you record every money movement here — income you receive, expenses you pay, and transfers between your own accounts.
+The **Transactions** page is spndr's unified ledger. Instead of separate Income and Expense pages, you record every money movement here - income you receive, expenses you pay, and transfers between your own accounts.
 
 Navigate to Transactions from the sidebar or go to `/transactions`.
 
@@ -48,7 +48,7 @@ Use the tabs at the top of the list to narrow what you see:
 | **Expense** | Money spent |
 | **Transfer** | Moves between your accounts |
 
-You can also open a pre-filtered view from the dashboard — for example, `/transactions?type=income`.
+You can also open a pre-filtered view from the dashboard - for example, `/transactions?type=income`.
 
 ## Legacy income and expense pages
 

@@ -198,7 +198,7 @@ describe('migrateLegacyLedgerToTransactions', () => {
         expect(account?.currentBalance).toBe(474.5)
     })
 
-    it('is idempotent — re-run skips already-migrated records', async () => {
+    it('is idempotent - re-run skips already-migrated records', async () => {
         const { userId } = await seedUserDirectly({ email: 'migrate-idempotent@example.com' })
         await seedLegacyLedger(new Types.ObjectId(userId))
 

@@ -8,7 +8,7 @@ spndr supports two advanced transaction patterns: **transfers** (moving money be
 
 ## Transfers
 
-A transfer moves money from one account to another without changing your overall net worth. spndr creates a linked pair of transactions — one outbound from the source account and one inbound to the destination account.
+A transfer moves money from one account to another without changing your overall net worth. spndr creates a linked pair of transactions - one outbound from the source account and one inbound to the destination account.
 
 ### When to use a transfer
 
@@ -25,11 +25,11 @@ Transfers do **not** count as income or expense. They only redistribute money ac
 1. Navigate to **Transactions**.
 2. Click **Transfer** (or open the transfer modal).
 3. Fill in:
-   - **Title** — for example, "Move to savings"
-   - **Amount** — how much to move
-   - **Date** — when the transfer occurred
-   - **From account** — source account
-   - **To account** — destination account
+   - **Title** - for example, "Move to savings"
+   - **Amount** - how much to move
+   - **Date** - when the transfer occurred
+   - **From account** - source account
+   - **To account** - destination account
 4. Optionally add a **description**.
 5. Click **Save**.
 
@@ -49,14 +49,14 @@ A split lets you divide a single expense across multiple categories while postin
 
 ### When to use a split
 
-Use splits when one purchase spans several categories — for example, a grocery run with both Food and Household items on one receipt.
+Use splits when one purchase spans several categories - for example, a grocery run with both Food and Household items on one receipt.
 
 ### Creating a split expense
 
 1. Open the **Add transaction** modal and choose **Expense**.
 2. Enable **Split expense**.
 3. Enter the total **amount** and select the **account**.
-4. Add split lines — each line needs a **category** and **amount**.
+4. Add split lines - each line needs a **category** and **amount**.
 5. Ensure the split line amounts **sum to the total** amount.
 6. Click **Save**.
 

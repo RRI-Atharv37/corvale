@@ -31,7 +31,7 @@ Set a deadline if you want spndr to calculate **required monthly contribution** 
 
 ### Linked account (optional)
 
-Associate the goal with one of your active accounts for context on the goal card. Linking an account does not automatically move money or sync balances — it is informational only.
+Associate the goal with one of your active accounts for context on the goal card. Linking an account does not automatically move money or sync balances - it is informational only.
 
 ### Automatic contributions (optional)
 

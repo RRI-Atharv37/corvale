@@ -13,7 +13,7 @@ Shows the sum of all income activity recorded in your ledger.
 - **Color accent:** Cyan
 - **Source:** Aggregated income totals from the balance engine
 
-This number reflects activity tracking — how much income you have logged — not necessarily cash currently in your accounts when you use accounts mode.
+This number reflects activity tracking - how much income you have logged - not necessarily cash currently in your accounts when you use accounts mode.
 
 ## Total Expenses
 

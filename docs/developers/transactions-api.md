@@ -41,7 +41,7 @@ Create an income or expense transaction.
 | `paymentMethod` | No | Expense payment method |
 | `tags` | No | String array |
 | `status` | No | `posted` (default) or `draft` |
-| `splits` | No | Expense only — array of `{ categoryId, amount }` |
+| `splits` | No | Expense only - array of `{ categoryId, amount }` |
 
 Creating a transaction updates the linked account balance.
 
@@ -92,7 +92,7 @@ List transactions with pagination.
 |-----------|---------|-------------|
 | `page` | `1` | Page number |
 | `limit` | `10` | Items per page |
-| `type` | — | Filter: `income`, `expense`, or `transfer` |
+| `type` | - | Filter: `income`, `expense`, or `transfer` |
 
 Split children are excluded from list results.
 
@@ -104,7 +104,7 @@ Get a single transaction by ID. Ownership-checked. Includes split children when 
 
 Update a transaction. Recalculates account balance deltas.
 
-Transfer legs and split children have edit restrictions — see error responses for unsupported updates.
+Transfer legs and split children have edit restrictions - see error responses for unsupported updates.
 
 ## DELETE /transactions/:transactionId
 
