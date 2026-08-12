@@ -4,6 +4,8 @@ import { Toaster } from 'react-hot-toast'
 
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 import Home from './pages/Dashboard/Home'
 import Transactions from './pages/Dashboard/Transactions'
 import Saver from './pages/Dashboard/Saver'
@@ -22,6 +24,8 @@ const AppRoutes = () => {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
             <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             <Route
                 element={

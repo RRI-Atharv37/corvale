@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
 import { createAuthRoutes } from './routes/authRoutes'
 import incomeRoutes from './routes/incomeRoutes'
 import expenseRoutes from './routes/expenseRoutes'
@@ -24,6 +25,7 @@ export const createApp = (): express.Application => {
     )
 
     app.use(express.json())
+    app.use(cookieParser())
 
     app.use('/api/v1/auth', createAuthRoutes())
     app.use('/api/v1/income', incomeRoutes)

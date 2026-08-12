@@ -10,10 +10,12 @@ import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import {
     deleteReceiptRecord,
+    deleteReceiptFile,
     getReceiptFilePath,
     serializeReceipt,
     validateReceiptOwnership,
 } from '../utils/receiptUtils'
+import { scanUploadedFile } from '../utils/virusScanService'
 import { getUserId, handleResponses, validateRequiredFields } from '../utils/sharedUtils'
 
 export const uploadReceipt = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -21,6 +23,15 @@ export const uploadReceipt = asyncHandler(async (req: AuthRequest, res: Response
 
     if (!req.file) {
         throw new CustomError(ERROR_MESSAGES.RECEIPT.FILE_REQUIRED, 400)
+    }
+
+    const filePath = getReceiptFilePath(userId, req.file.filename)
+
+    try {
+        await scanUploadedFile(filePath)
+    } catch (error) {
+        deleteReceiptFile(userId, req.file.filename)
+        throw error
     }
 
     const receipt = await Receipt.create({
