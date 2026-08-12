@@ -5,8 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import Home from './pages/Dashboard/Home'
-import Income from './pages/Dashboard/Income'
-import Expense from './pages/Dashboard/Expense'
+import Transactions from './pages/Dashboard/Transactions'
 import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
 import Accounts from './pages/Dashboard/Accounts'
@@ -32,8 +31,9 @@ const AppRoutes = () => {
                 }
             >
                 <Route path="/dashboard" element={<Home />} />
-                <Route path="/income" element={<Income />} />
-                <Route path="/expense" element={<Expense />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/income" element={<Navigate to="/transactions?type=income" replace />} />
+                <Route path="/expense" element={<Navigate to="/transactions?type=expense" replace />} />
                 <Route path="/saver" element={<Saver />} />
                 <Route path="/pushover" element={<Pushover />} />
                 <Route path="/accounts" element={<Accounts />} />

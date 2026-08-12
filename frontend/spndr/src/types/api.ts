@@ -17,9 +17,51 @@ export interface AuthPayload {
 export interface PaginationMeta {
     totalIncomes?: number
     totalExpenses?: number
+    totalTransactions?: number
     pageNumber: number
     totalPages: number
     limit: number
+}
+
+export type TransactionType = 'income' | 'expense' | 'transfer'
+export type TransactionStatus = 'posted' | 'draft'
+
+export interface Transaction {
+    _id: string
+    userId: string
+    workspaceId?: string | null
+    accountId: string
+    categoryId: string
+    type: TransactionType
+    status: TransactionStatus
+    amount: number
+    currency: string
+    title: string
+    description?: string
+    date: string
+    source?: string
+    paymentMethod?: string
+    tags?: string[]
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface PaginatedTransactions {
+    data: Transaction[]
+    meta: PaginationMeta
+}
+
+export interface TransactionFormData {
+    type: 'income' | 'expense'
+    title: string
+    amount: string
+    date: string
+    accountId: string
+    categoryId: string
+    description: string
+    source: string
+    paymentMethod: string
+    tags: string
 }
 
 export interface Income {

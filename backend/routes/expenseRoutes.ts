@@ -14,8 +14,14 @@ import {
     duplicateExpense,
 } from '../controllers/expenseController'
 import { protect } from '../middleware/authMiddleware'
+import {
+    attachLegacyLedgerDeprecation,
+    deprecateLegacyLedgerRoutes,
+} from '../middleware/deprecationMiddleware'
 
 const router = express.Router()
+
+router.use(deprecateLegacyLedgerRoutes, attachLegacyLedgerDeprecation)
 
 router.post('/create', protect, addExpense)
 router.get('/', protect, getExpense)

@@ -7,6 +7,7 @@ import saverRoutes from './routes/saverRoutes'
 import pushoverRoutes from './routes/pushoverRoutes'
 import accountRoutes from './routes/accountRoutes'
 import categoryRoutes from './routes/categoryRoutes'
+import transactionRoutes from './routes/transactionRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -30,6 +31,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/pushover', pushoverRoutes)
     app.use('/api/v1/accounts', accountRoutes)
     app.use('/api/v1/categories', categoryRoutes)
+    app.use('/api/v1/transactions', transactionRoutes)
     app.use(errorHandler)
 
     return app

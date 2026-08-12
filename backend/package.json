@@ -19,7 +19,9 @@
     "build": "tsc",
     "start": "node ../dist/backend/server.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate:transactions": "ts-node scripts/migrateIncomeExpenseToTransactions.ts",
+    "migrate:transactions:dry-run": "ts-node scripts/migrateIncomeExpenseToTransactions.ts --dry-run"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

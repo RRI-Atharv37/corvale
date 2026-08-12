@@ -50,4 +50,12 @@ export const ERROR_MESSAGES = {
         CANNOT_UNSET_DEFAULT: 'Cannot unset default category; set another category as default instead',
         INVALID_REORDER: 'One or more categories are invalid or not owned by you',
     },
+    TRANSACTION: {
+        TRANSACTION_NOT_FOUND: 'Transaction not found',
+        ACCOUNT_NOT_FOUND: 'Account not found',
+        ACCOUNT_ARCHIVED: 'Cannot create or update a transaction on an archived account',
+        CATEGORY_NOT_FOUND: 'Category not found',
+        CATEGORY_ARCHIVED: 'Cannot use an archived category',
+        UNSUPPORTED_TYPE: 'Transaction type must be income or expense',
+    },
 }
