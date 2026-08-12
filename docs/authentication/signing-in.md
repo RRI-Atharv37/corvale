@@ -12,7 +12,11 @@ If you already registered, use the login page to access your data.
 2. Enter your **Email address** and **Password**.
 3. Click **Sign in**.
 
-On success, spndr stores your JWT token, updates your session, shows a welcome toast notification, and redirects you to the **Dashboard**.
+On success, spndr stores your access token, sets a refresh token cookie, updates your session, shows a welcome toast notification, and redirects you to the **Dashboard**.
+
+## Forgot password
+
+If you cannot remember your password, click **Forgot password?** on the login page. See [Resetting Your Password](./resetting-your-password.md).
 
 ## Validation rules
 

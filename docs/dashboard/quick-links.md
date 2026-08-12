@@ -4,13 +4,15 @@ title: Quick Links
 
 ## Jump to key features
 
-Below the summary cards on the dashboard, spndr displays three quick-link cards. Each card is a clickable link to a major section of the app.
+Below the summary cards on the dashboard, spndr displays quick-link cards. Each card is a clickable link to a major section of the app.
 
 ## Available quick links
 
 | Link | Destination | Description |
 |------|-------------|-------------|
 | **Transactions** | `/transactions` | View and manage income, expenses, and transfers |
+| **Budgets** | `/budgets` | Set limits and track spending progress |
+| **Savings Goals** | `/savings-goals` | Track progress toward your targets |
 | **Income** | `/transactions?type=income` | Filter the transaction list to income only |
 | **Accounts** | `/accounts` | View and manage your accounts |
 
@@ -27,5 +29,7 @@ The dashboard quick links do not include Categories, Saver, or Pushover. You rea
 ## Related pages
 
 - [Dashboard Overview](./overview.md)
+- [Budgets Overview](../budgets/overview.md)
+- [Savings Goals Overview](../savings-goals/overview.md)
 - [Transactions Overview](../transactions/overview.md)
 - [Creating an Account](../accounts/creating-an-account.md)
