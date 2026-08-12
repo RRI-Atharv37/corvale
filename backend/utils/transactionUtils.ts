@@ -6,8 +6,22 @@ import Transaction, { ITransaction, TransactionType } from '../models/Transactio
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from './moneyUtils'
-import { isMasterCategory } from './categorySeed'
+import { isMasterCategory, ensureMasterCategoriesSeeded } from './categorySeed'
 import { roundMoney } from './balanceUtils'
+
+export interface SplitInput {
+    categoryId: string
+    amount: unknown
+}
+
+export interface SerializedSplitLine extends SerializedTransaction {
+    isSplitChild: true
+}
+
+export interface SerializedTransactionWithSplits extends SerializedTransaction {
+    splits?: SerializedSplitLine[]
+    transferPair?: SerializedTransaction
+}
 
 export {
     getUserId,
@@ -114,12 +128,134 @@ const getBalanceDeltaMajor = (
 ): number => {
     const amountMajor = fromMinorUnits(amountMinor)
 
+    if (type === 'transfer') {
+        if (accountType === 'credit') {
+            return amountMajor
+        }
+        return -amountMajor
+    }
+
     if (accountType === 'credit') {
         return type === 'expense' ? amountMajor : -amountMajor
     }
 
     return type === 'income' ? amountMajor : -amountMajor
 }
+
+export const getTransferInDeltaMajor = (amountMinor: number, accountType: AccountType): number => {
+    return getBalanceDeltaMajor('income', amountMinor, accountType)
+}
+
+export const getTransferOutDeltaMajor = (amountMinor: number, accountType: AccountType): number => {
+    return getBalanceDeltaMajor('transfer', amountMinor, accountType)
+}
+
+export const LISTABLE_TRANSACTION_FILTER = {
+    splitTransactionId: null,
+} as const
+
+export const getOtherMasterCategoryId = async (): Promise<Types.ObjectId> => {
+    await ensureMasterCategoriesSeeded()
+    const category = await Category.findOne({ userId: null, name: 'Other' })
+    if (!category) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.CATEGORY_NOT_FOUND, 500)
+    }
+    return category._id
+}
+
+export const validateSplitInputs = (splits: SplitInput[], parentAmountMinor: number): SplitInput[] => {
+    if (splits.length < 2) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_MIN_COUNT, 400)
+    }
+
+    const normalized = splits.map((split, index) => {
+        if (!split.categoryId) {
+            throw new CustomError(`Split line ${index + 1} is missing a category`, 400)
+        }
+
+        return {
+            categoryId: split.categoryId,
+            amount: parseClientAmount(split.amount),
+        }
+    })
+
+    const splitTotal = normalized.reduce((sum, split) => sum + split.amount, 0)
+    if (splitTotal !== parentAmountMinor) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_SUM_MISMATCH, 400)
+    }
+
+    return normalized
+}
+
+export const applyTransferToAccounts = async (
+    fromAccount: IAccount,
+    toAccount: IAccount,
+    amountMinor: number
+): Promise<void> => {
+    const fromDelta = getTransferOutDeltaMajor(amountMinor, fromAccount.type)
+    const toDelta = getTransferInDeltaMajor(amountMinor, toAccount.type)
+
+    fromAccount.currentBalance = roundMoney(fromAccount.currentBalance + fromDelta)
+    toAccount.currentBalance = roundMoney(toAccount.currentBalance + toDelta)
+
+    await fromAccount.save()
+    await toAccount.save()
+}
+
+export const reverseTransferOnAccounts = async (
+    fromAccount: IAccount,
+    toAccount: IAccount,
+    amountMinor: number
+): Promise<void> => {
+    const fromDelta = getTransferOutDeltaMajor(amountMinor, fromAccount.type)
+    const toDelta = getTransferInDeltaMajor(amountMinor, toAccount.type)
+
+    fromAccount.currentBalance = roundMoney(fromAccount.currentBalance - fromDelta)
+    toAccount.currentBalance = roundMoney(toAccount.currentBalance - toDelta)
+
+    await fromAccount.save()
+    await toAccount.save()
+}
+
+export const fetchSplitChildren = async (
+    parentId: Types.ObjectId | string,
+    userId: string
+): Promise<ITransaction[]> => {
+    return Transaction.find({
+        userId: new Types.ObjectId(userId),
+        splitTransactionId: parentId,
+    }).sort({ createdAt: 1 })
+}
+
+export const serializeTransactionWithSplits = async (
+    transaction: ITransaction,
+    userId: string
+): Promise<SerializedTransactionWithSplits> => {
+    const serialized = serializeTransaction(transaction)
+
+    if (transaction.splitTransactionId) {
+        return serialized
+    }
+
+    const children = await fetchSplitChildren(transaction._id, userId)
+    if (children.length === 0) {
+        return serialized
+    }
+
+    return {
+        ...serialized,
+        splits: children.map((child) => ({
+            ...serializeTransaction(child),
+            isSplitChild: true as const,
+        })),
+    }
+}
+
+export const isSplitChild = (transaction: ITransaction): boolean =>
+    transaction.splitTransactionId != null
+
+export const isTransferLeg = (transaction: ITransaction): boolean =>
+    transaction.type === 'transfer' && transaction.transferPairId != null
 
 export const applyTransactionToAccount = async (
     account: IAccount,
@@ -244,5 +380,14 @@ export const duplicateTransactionFields = (transaction: ITransaction) => ({
     paymentMethod: transaction.paymentMethod,
     tags: transaction.tags,
 })
+
+export const assertEditableTransaction = (transaction: ITransaction): void => {
+    if (transaction.type === 'transfer') {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.TRANSFER_NOT_EDITABLE, 400)
+    }
+    if (transaction.splitTransactionId) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+    }
+}
 
 export { Transaction, toMinorUnits, fromMinorUnits }

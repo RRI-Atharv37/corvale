@@ -58,6 +58,7 @@ export const API_PATHS = {
     },
     TRANSACTIONS: {
         CREATE: '/transactions',
+        TRANSFER: '/transactions/transfer',
         GET_ALL: '/transactions',
         GET_BY_ID: (transactionId: string) => `/transactions/${transactionId}`,
         UPDATE: (transactionId: string) => `/transactions/${transactionId}`,

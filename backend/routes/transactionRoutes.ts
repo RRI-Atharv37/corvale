@@ -2,6 +2,7 @@ import express from 'express'
 
 import {
     createTransaction,
+    createTransfer,
     deleteTransaction,
     downloadTransactions,
     duplicateTransaction,
@@ -16,6 +17,7 @@ import { protect } from '../middleware/authMiddleware'
 const router = express.Router()
 
 router.post('/', protect, createTransaction)
+router.post('/transfer', protect, createTransfer)
 router.get('/', protect, getTransactions)
 router.get('/filter', protect, filterTransactions)
 router.get('/search', protect, searchTransactions)

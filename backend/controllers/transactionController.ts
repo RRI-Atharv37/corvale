@@ -9,26 +9,37 @@ import { DEFAULT_TIMEZONE, resolveDateRange } from '../utils/timezoneUtils'
 import {
     adjustAccountForTransactionChange,
     applyTransactionToAccount,
+    applyTransferToAccounts,
+    assertEditableTransaction,
     buildCsvString,
     buildTransactionSort,
     CSV_HEADERS,
     duplicateTransactionFields,
+    fetchSplitChildren,
     formatTransactionCsvRow,
+    getOtherMasterCategoryId,
     getUserId,
     handleResponses,
+    isSplitChild,
+    isTransferLeg,
+    LISTABLE_TRANSACTION_FILTER,
     parseClientAmount,
     reverseTransactionOnAccount,
+    reverseTransferOnAccounts,
     serializeTransaction,
     serializeTransactionPlain,
     serializeTransactions,
+    serializeTransactionWithSplits,
+    SplitInput,
     Transaction,
     validateAccountForTransaction,
     validateCategoryForTransaction,
     validateOwnership,
     validateRequiredFields,
+    validateSplitInputs,
     buildSearchRegex,
 } from '../utils/transactionUtils'
-import { TRANSACTION_TYPES } from '../models/Transaction'
+import { TRANSACTION_TYPES, ITransaction } from '../models/Transaction'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 
@@ -48,7 +59,10 @@ const parsePagination = (page: unknown, limit: unknown) => {
 }
 
 const buildListFilter = (userId: string, type?: unknown) => {
-    const filter: Record<string, unknown> = { userId: new Types.ObjectId(userId) }
+    const filter: Record<string, unknown> = {
+        userId: new Types.ObjectId(userId),
+        ...LISTABLE_TRANSACTION_FILTER,
+    }
 
     if (type !== undefined && type !== '') {
         if (!TRANSACTION_TYPES.includes(type as (typeof TRANSACTION_TYPES)[number])) {
@@ -63,10 +77,51 @@ const buildListFilter = (userId: string, type?: unknown) => {
     return filter
 }
 
+const createSplitChildren = async (
+    userId: string,
+    parentId: Types.ObjectId,
+    accountId: Types.ObjectId,
+    currency: string,
+    title: string,
+    date: Date,
+    status: string,
+    workspaceId: unknown,
+    splits: SplitInput[],
+    parentAmountMinor: number,
+    paymentMethod?: string,
+    tags?: string[],
+    description?: string
+) => {
+    const normalizedSplits = validateSplitInputs(splits, parentAmountMinor)
+
+    for (const split of normalizedSplits) {
+        await validateCategoryForTransaction(split.categoryId, userId)
+    }
+
+    await Transaction.insertMany(
+        normalizedSplits.map((split) => ({
+            userId,
+            workspaceId: workspaceId ?? null,
+            accountId,
+            categoryId: split.categoryId,
+            type: 'expense',
+            status,
+            amount: split.amount,
+            currency,
+            title,
+            description: description?.trim(),
+            date,
+            paymentMethod: paymentMethod?.trim(),
+            tags,
+            splitTransactionId: parentId,
+        }))
+    )
+}
+
 export const createTransaction = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
 
-    validateRequiredFields(req.body, ['type', 'title', 'amount', 'date', 'accountId', 'categoryId'])
+    validateRequiredFields(req.body, ['type', 'title', 'amount', 'date', 'accountId'])
 
     const {
         type,
@@ -81,6 +136,7 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         tags,
         status,
         workspaceId,
+        splits,
     } = req.body
 
     if (!SUPPORTED_CREATE_TYPES.includes(type)) {
@@ -93,13 +149,28 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
 
     const amountMinor = parseClientAmount(amount)
     const account = await validateAccountForTransaction(accountId, userId)
-    await validateCategoryForTransaction(categoryId, userId)
+    const hasSplits = Array.isArray(splits) && splits.length > 0
+
+    if (hasSplits) {
+        if (type !== 'expense') {
+            throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_REQUIRES_EXPENSE, 400)
+        }
+        validateSplitInputs(splits, amountMinor)
+    } else {
+        validateRequiredFields(req.body, ['categoryId'])
+        await validateCategoryForTransaction(categoryId, userId)
+    }
+
+    const resolvedCategoryId = hasSplits ? splits[0].categoryId : categoryId
+    if (hasSplits) {
+        await validateCategoryForTransaction(resolvedCategoryId, userId)
+    }
 
     const transaction = await Transaction.create({
         userId,
         workspaceId: workspaceId ?? null,
         accountId,
-        categoryId,
+        categoryId: resolvedCategoryId,
         type,
         status: status ?? 'posted',
         amount: amountMinor,
@@ -114,7 +185,112 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
 
     await applyTransactionToAccount(account, type, amountMinor)
 
-    handleResponses(res, 201, serializeTransaction(transaction))
+    if (hasSplits) {
+        await createSplitChildren(
+            userId,
+            transaction._id,
+            transaction.accountId,
+            transaction.currency,
+            transaction.title,
+            transaction.date,
+            transaction.status,
+            workspaceId,
+            splits,
+            amountMinor,
+            paymentMethod,
+            tags,
+            description
+        )
+    }
+
+    const payload = await serializeTransactionWithSplits(transaction, userId)
+    handleResponses(res, 201, payload)
+})
+
+export const createTransfer = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+
+    validateRequiredFields(req.body, ['title', 'amount', 'date', 'fromAccountId', 'toAccountId'])
+
+    const { title, amount, date, fromAccountId, toAccountId, description, status, workspaceId } =
+        req.body
+
+    if (fromAccountId === toAccountId) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SAME_TRANSFER_ACCOUNT, 400)
+    }
+
+    if (isNaN(Date.parse(date))) {
+        throw new CustomError('Invalid date format', 400)
+    }
+
+    const amountMinor = parseClientAmount(amount)
+    const fromAccount = await validateAccountForTransaction(fromAccountId, userId)
+    const toAccount = await validateAccountForTransaction(toAccountId, userId)
+
+    if (fromAccount.currency !== toAccount.currency) {
+        throw new CustomError('Transfer accounts must use the same currency', 400)
+    }
+
+    const transferCategoryId = await getOtherMasterCategoryId()
+    const parsedDate = new Date(date)
+    const trimmedTitle = title.trim()
+    const trimmedDescription = description?.trim()
+
+    const result = await (async () => {
+        let outbound: ITransaction | null = null
+        let inbound: ITransaction | null = null
+
+        try {
+            outbound = await Transaction.create({
+                userId,
+                workspaceId: workspaceId ?? null,
+                accountId: fromAccountId,
+                categoryId: transferCategoryId,
+                type: 'transfer',
+                status: status ?? 'posted',
+                amount: amountMinor,
+                currency: fromAccount.currency,
+                title: trimmedTitle,
+                description: trimmedDescription,
+                date: parsedDate,
+            })
+
+            inbound = await Transaction.create({
+                userId,
+                workspaceId: workspaceId ?? null,
+                accountId: toAccountId,
+                categoryId: transferCategoryId,
+                type: 'transfer',
+                status: status ?? 'posted',
+                amount: amountMinor,
+                currency: toAccount.currency,
+                title: trimmedTitle,
+                description: trimmedDescription,
+                date: parsedDate,
+                transferPairId: outbound._id,
+            })
+
+            outbound.transferPairId = inbound._id
+            await outbound.save()
+
+            await applyTransferToAccounts(fromAccount, toAccount, amountMinor)
+
+            return { outbound, inbound }
+        } catch (error) {
+            if (inbound) {
+                await Transaction.deleteOne({ _id: inbound._id })
+            }
+            if (outbound) {
+                await Transaction.deleteOne({ _id: outbound._id })
+            }
+            throw error
+        }
+    })()
+
+    handleResponses(res, 201, {
+        outbound: serializeTransaction(result.outbound),
+        inbound: serializeTransaction(result.inbound),
+    })
 })
 
 export const getTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -124,7 +300,6 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
     const filter = buildListFilter(userId, type)
 
     if (sortBy === 'category') {
-        const sort = buildTransactionSort(sortBy as string, sortOrder as string)
         const [results, totalCount] = await Promise.all([
             Transaction.aggregate([
                 { $match: filter },
@@ -137,7 +312,7 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
                     },
                 },
                 { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
-                { $sort: sort },
+                { $sort: buildTransactionSort(sortBy as string, sortOrder as string) },
                 { $skip: (pageNumber - 1) * limitNumber },
                 { $limit: limitNumber },
             ]),
@@ -191,7 +366,19 @@ export const getTransactionById = asyncHandler(async (req: AuthRequest, res: Res
         ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
     )
 
-    handleResponses(res, 200, serializeTransaction(transaction))
+    const payload = await serializeTransactionWithSplits(transaction, userId)
+
+    if (isTransferLeg(transaction) && transaction.transferPairId) {
+        const pair = await Transaction.findOne({
+            _id: transaction.transferPairId,
+            userId,
+        })
+        if (pair) {
+            payload.transferPair = serializeTransaction(pair)
+        }
+    }
+
+    handleResponses(res, 200, payload)
 })
 
 export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -219,6 +406,13 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         userId,
         ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
     )
+
+    assertEditableTransaction(transaction)
+
+    const splitChildren = await fetchSplitChildren(transaction._id, userId)
+    if (splitChildren.length > 0) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+    }
 
     if (type !== undefined && !SUPPORTED_CREATE_TYPES.includes(type)) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.UNSUPPORTED_TYPE, 400)
@@ -288,12 +482,51 @@ export const deleteTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
     )
 
+    if (isSplitChild(transaction)) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+    }
+
+    if (isTransferLeg(transaction) && transaction.transferPairId) {
+        const pair = await validateOwnership(
+            Transaction,
+            transaction.transferPairId.toString(),
+            userId,
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        )
+
+        const outbound =
+            transaction.createdAt <= pair.createdAt ? transaction : pair
+        const inbound = outbound._id.equals(transaction._id) ? pair : transaction
+
+        const fromAccount = await validateAccountForTransaction(
+            outbound.accountId.toString(),
+            userId
+        )
+        const toAccount = await validateAccountForTransaction(
+            inbound.accountId.toString(),
+            userId
+        )
+
+        await reverseTransferOnAccounts(fromAccount, toAccount, transaction.amount)
+        await Transaction.deleteOne({ _id: outbound._id })
+        await Transaction.deleteOne({ _id: inbound._id })
+
+        handleResponses(res, 200, { message: 'Transfer deleted successfully' })
+        return
+    }
+
+    const splitChildren = await fetchSplitChildren(transaction._id, userId)
     const account = await validateAccountForTransaction(
         transaction.accountId.toString(),
         userId
     )
 
     await reverseTransactionOnAccount(account, transaction.type, transaction.amount)
+
+    if (splitChildren.length > 0) {
+        await Transaction.deleteMany({ _id: { $in: splitChildren.map((child) => child._id) } })
+    }
+
     await Transaction.deleteOne({ _id: transactionId })
 
     handleResponses(res, 200, { message: 'Transaction deleted successfully' })
@@ -440,6 +673,13 @@ export const duplicateTransaction = asyncHandler(async (req: AuthRequest, res: R
         userId,
         ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
     )
+
+    assertEditableTransaction(transaction)
+
+    const splitChildren = await fetchSplitChildren(transaction._id, userId)
+    if (splitChildren.length > 0) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+    }
 
     const account = await validateAccountForTransaction(
         transaction.accountId.toString(),

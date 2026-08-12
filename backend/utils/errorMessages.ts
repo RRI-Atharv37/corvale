@@ -57,5 +57,11 @@ export const ERROR_MESSAGES = {
         CATEGORY_NOT_FOUND: 'Category not found',
         CATEGORY_ARCHIVED: 'Cannot use an archived category',
         UNSUPPORTED_TYPE: 'Transaction type must be income or expense',
+        SAME_TRANSFER_ACCOUNT: 'Transfer source and destination accounts must be different',
+        TRANSFER_NOT_EDITABLE: 'Transfers cannot be edited; delete and recreate the transfer instead',
+        SPLIT_NOT_EDITABLE: 'Split transactions cannot be edited; delete and recreate instead',
+        SPLIT_SUM_MISMATCH: 'Split amounts must equal the parent transaction amount',
+        SPLIT_MIN_COUNT: 'At least two split lines are required',
+        SPLIT_REQUIRES_EXPENSE: 'Split transactions are only supported for expenses',
     },
 }

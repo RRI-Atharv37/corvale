@@ -42,13 +42,24 @@ export interface Transaction {
     source?: string
     paymentMethod?: string
     tags?: string[]
+    transferPairId?: string | null
+    splitTransactionId?: string | null
+    splits?: SplitLine[]
+    transferPair?: Transaction
     createdAt?: string
     updatedAt?: string
 }
 
-export interface PaginatedTransactions {
-    data: Transaction[]
-    meta: PaginationMeta
+export interface SplitLine {
+    _id: string
+    categoryId: string
+    amount: number
+    isSplitChild?: true
+}
+
+export interface SplitLineFormData {
+    categoryId: string
+    amount: string
 }
 
 export interface TransactionFormData {
@@ -62,6 +73,26 @@ export interface TransactionFormData {
     source: string
     paymentMethod: string
     tags: string
+    splitEnabled: boolean
+    splits: SplitLineFormData[]
+}
+
+export interface TransferFormData {
+    title: string
+    amount: string
+    date: string
+    fromAccountId: string
+    toAccountId: string
+    description: string
+}
+
+export interface TransferCreateResponse {
+    outbound: Transaction
+    inbound: Transaction
+}
+export interface PaginatedTransactions {
+    data: Transaction[]
+    meta: PaginationMeta
 }
 
 export interface Income {

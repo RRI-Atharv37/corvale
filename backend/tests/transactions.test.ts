@@ -374,21 +374,186 @@ describe('Transactions', () => {
         expect(Array.isArray(searchRes.body.data)).toBe(true)
     })
 
-    it('rejects transfer type until sprint 1c.4', async () => {
+    it('creates a transfer between two accounts atomically', async () => {
+        const { token } = await seedUserDirectly({ email: 'transfer-create@example.com' })
+        const fromAccount = await createTestAccount(token, 500)
+        const toAccountRes = await request(app)
+            .post('/api/v1/accounts')
+            .set(authHeader(token))
+            .send({
+                name: 'Savings',
+                type: 'savings',
+                openingBalance: 100,
+            })
+        const toAccount = toAccountRes.body.data
+
+        const res = await request(app)
+            .post('/api/v1/transactions/transfer')
+            .set(authHeader(token))
+            .send({
+                title: 'Move to savings',
+                amount: 150,
+                date: '2026-01-01T12:00:00.000Z',
+                fromAccountId: fromAccount._id,
+                toAccountId: toAccount._id,
+            })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.outbound.type).toBe('transfer')
+        expect(res.body.data.inbound.type).toBe('transfer')
+        expect(res.body.data.outbound.transferPairId).toBe(res.body.data.inbound._id)
+        expect(res.body.data.inbound.transferPairId).toBe(res.body.data.outbound._id)
+
+        const updatedFrom = await Account.findById(fromAccount._id)
+        const updatedTo = await Account.findById(toAccount._id)
+        expect(updatedFrom?.currentBalance).toBe(350)
+        expect(updatedTo?.currentBalance).toBe(250)
+
+        const listed = await Transaction.find({ userId: res.body.data.outbound.userId })
+        expect(listed).toHaveLength(2)
+    })
+
+    it('rejects transfer when source and destination are the same account', async () => {
+        const { token } = await seedUserDirectly({ email: 'transfer-same@example.com' })
+        const account = await createTestAccount(token)
+
+        const res = await request(app)
+            .post('/api/v1/transactions/transfer')
+            .set(authHeader(token))
+            .send({
+                title: 'Invalid transfer',
+                amount: 10,
+                date: '2026-01-01T12:00:00.000Z',
+                fromAccountId: account._id,
+                toAccountId: account._id,
+            })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toMatch(/different/i)
+    })
+
+    it('deletes a transfer pair and restores both account balances', async () => {
+        const { token } = await seedUserDirectly({ email: 'transfer-delete@example.com' })
+        const fromAccount = await createTestAccount(token, 400)
+        const toAccountRes = await request(app)
+            .post('/api/v1/accounts')
+            .set(authHeader(token))
+            .send({
+                name: 'Cash',
+                type: 'cash',
+                openingBalance: 50,
+            })
+        const toAccount = toAccountRes.body.data
+
+        const createRes = await request(app)
+            .post('/api/v1/transactions/transfer')
+            .set(authHeader(token))
+            .send({
+                title: 'Temporary move',
+                amount: 75,
+                date: '2026-01-01T12:00:00.000Z',
+                fromAccountId: fromAccount._id,
+                toAccountId: toAccount._id,
+            })
+
+        const outboundId = createRes.body.data.outbound._id
+
+        const deleteRes = await request(app)
+            .delete(`/api/v1/transactions/${outboundId}`)
+            .set(authHeader(token))
+
+        expect(deleteRes.status).toBe(200)
+
+        const remaining = await Transaction.countDocuments({ userId: createRes.body.data.outbound.userId })
+        expect(remaining).toBe(0)
+
+        const updatedFrom = await Account.findById(fromAccount._id)
+        const updatedTo = await Account.findById(toAccount._id)
+        expect(updatedFrom?.currentBalance).toBe(400)
+        expect(updatedTo?.currentBalance).toBe(50)
+    })
+
+    it('creates a split expense with validated child lines', async () => {
+        const { token } = await seedUserDirectly({ email: 'split-create@example.com' })
+        const account = await createTestAccount(token, 200)
+        const foodCategoryId = await getFoodMasterId(token)
+        const transportCategoryId = await request(app)
+            .get('/api/v1/categories')
+            .set(authHeader(token))
+            .then((res) =>
+                res.body.data.masters.find((m: { name: string }) => m.name === 'Transport')._id
+            )
+
+        const res = await request(app)
+            .post('/api/v1/transactions')
+            .set(authHeader(token))
+            .send({
+                type: 'expense',
+                title: 'Mixed shopping trip',
+                amount: 100,
+                date: '2026-01-05T12:00:00.000Z',
+                accountId: account._id,
+                splits: [
+                    { categoryId: foodCategoryId, amount: 60 },
+                    { categoryId: transportCategoryId, amount: 40 },
+                ],
+            })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.amount).toBe(100)
+        expect(res.body.data.splits).toHaveLength(2)
+        expect(res.body.data.splits[0].amount).toBe(60)
+        expect(res.body.data.splits[1].amount).toBe(40)
+
+        const childCount = await Transaction.countDocuments({
+            splitTransactionId: res.body.data._id,
+        })
+        expect(childCount).toBe(2)
+
+        const listRes = await request(app)
+            .get('/api/v1/transactions')
+            .set(authHeader(token))
+
+        expect(listRes.body.data.data).toHaveLength(1)
+
+        const updatedAccount = await Account.findById(account._id)
+        expect(updatedAccount?.currentBalance).toBe(100)
+    })
+
+    it('rejects split expenses when amounts do not sum to the parent total', async () => {
+        const { token } = await seedUserDirectly({ email: 'split-reject@example.com' })
+        const account = await createTestAccount(token)
+        const foodCategoryId = await getFoodMasterId(token)
+        const transportCategoryId = await request(app)
+            .get('/api/v1/categories')
+            .set(authHeader(token))
+            .then((res) =>
+                res.body.data.masters.find((m: { name: string }) => m.name === 'Transport')._id
+            )
+
+        const res = await request(app)
+            .post('/api/v1/transactions')
+            .set(authHeader(token))
+            .send({
+                type: 'expense',
+                title: 'Bad split',
+                amount: 100,
+                date: '2026-01-05T12:00:00.000Z',
+                accountId: account._id,
+                splits: [
+                    { categoryId: foodCategoryId, amount: 60 },
+                    { categoryId: transportCategoryId, amount: 30 },
+                ],
+            })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toMatch(/split amounts/i)
+    })
+
+    it('rejects direct transfer type on the standard create endpoint', async () => {
         const { token } = await seedUserDirectly({ email: 'transfer-reject@example.com' })
         const account = await createTestAccount(token)
         const categoryId = await getFoodMasterId(token)
-
-        const res = await createTestTransaction(token, {
-            type: 'expense',
-            title: 'Placeholder',
-            amount: 10,
-            date: '2026-01-01T12:00:00.000Z',
-            accountId: account._id,
-            categoryId,
-        })
-
-        expect(res.status).toBe(201)
 
         const transferAttempt = await request(app)
             .post('/api/v1/transactions')
