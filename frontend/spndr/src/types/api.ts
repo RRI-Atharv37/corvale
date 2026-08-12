@@ -26,6 +26,14 @@ export interface PaginationMeta {
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type TransactionStatus = 'posted' | 'draft'
 
+export interface Receipt {
+    _id: string
+    originalFilename: string
+    mimeType: string
+    size: number
+    createdAt?: string
+}
+
 export interface Transaction {
     _id: string
     userId: string
@@ -46,6 +54,7 @@ export interface Transaction {
     splitTransactionId?: string | null
     splits?: SplitLine[]
     transferPair?: Transaction
+    receipts?: Receipt[]
     createdAt?: string
     updatedAt?: string
 }
@@ -89,6 +98,16 @@ export interface TransferFormData {
 export interface TransferCreateResponse {
     outbound: Transaction
     inbound: Transaction
+}
+
+export interface BulkDeleteResponse {
+    message: string
+    deletedCount: number
+}
+
+export interface BulkCategoryResponse {
+    message: string
+    updatedCount: number
 }
 export interface PaginatedTransactions {
     data: Transaction[]

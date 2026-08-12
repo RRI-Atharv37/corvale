@@ -59,13 +59,23 @@ export const API_PATHS = {
     TRANSACTIONS: {
         CREATE: '/transactions',
         TRANSFER: '/transactions/transfer',
+        BULK_DELETE: '/transactions/bulk/delete',
+        BULK_CATEGORY: '/transactions/bulk/category',
         GET_ALL: '/transactions',
         GET_BY_ID: (transactionId: string) => `/transactions/${transactionId}`,
         UPDATE: (transactionId: string) => `/transactions/${transactionId}`,
         DELETE: (transactionId: string) => `/transactions/${transactionId}`,
+        ATTACH_RECEIPT: (transactionId: string) => `/transactions/${transactionId}/receipts`,
+        DETACH_RECEIPT: (transactionId: string, receiptId: string) =>
+            `/transactions/${transactionId}/receipts/${receiptId}`,
         FILTER: '/transactions/filter',
         SEARCH: '/transactions/search',
         DOWNLOAD: '/transactions/download',
         DUPLICATE: (transactionId: string) => `/transactions/duplicate/${transactionId}`,
+    },
+    RECEIPTS: {
+        UPLOAD: '/receipts',
+        GET_FILE: (receiptId: string) => `/receipts/${receiptId}`,
+        DELETE: (receiptId: string) => `/receipts/${receiptId}`,
     },
 } as const

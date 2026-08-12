@@ -11,14 +11,18 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import FormField, { TextAreaField } from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
 import AccountPicker from '../../components/accounts/AccountPicker'
+import ReceiptAttachments from '../../components/transactions/ReceiptAttachments'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import type {
     Account,
     ApiResponse,
+    BulkCategoryResponse,
+    BulkDeleteResponse,
     CategoriesResponse,
     PaginatedTransactions,
+    Receipt,
     SplitLineFormData,
     Transaction,
     TransactionFormData,
@@ -29,6 +33,7 @@ import type {
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency, toDateInputValue } from '../../utils/format'
+import { attachReceiptToTransaction, uploadReceipt } from '../../utils/receiptApi'
 
 const PAGE_LIMIT = 10
 
@@ -109,6 +114,13 @@ const Transactions = () => {
     const [transferSubmitting, setTransferSubmitting] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
     const [deleting, setDeleting] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+    const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false)
+    const [bulkCategoryId, setBulkCategoryId] = useState('')
+    const [bulkSubmitting, setBulkSubmitting] = useState(false)
+    const [attachedReceipts, setAttachedReceipts] = useState<Receipt[]>([])
+    const [pendingReceiptFiles, setPendingReceiptFiles] = useState<File[]>([])
 
     const fetchLookups = useCallback(async () => {
         const [accountsRes, categoriesRes] = await Promise.all([
@@ -205,6 +217,8 @@ const Transactions = () => {
 
     const openCreate = (type: 'income' | 'expense' = typeFilter === 'income' ? 'income' : 'expense') => {
         setEditingId(null)
+        setAttachedReceipts([])
+        setPendingReceiptFiles([])
         setForm({
             ...emptyForm(type),
             accountId: defaultAccountId,
@@ -229,7 +243,7 @@ const Transactions = () => {
         setTransferForm(emptyTransferForm())
     }
 
-    const openEdit = (item: Transaction) => {
+    const openEdit = async (item: Transaction) => {
         if (item.type === 'transfer') {
             toast.error('Transfer editing is not available yet. Delete and recreate the transfer.')
             return
@@ -250,6 +264,18 @@ const Transactions = () => {
             splitEnabled: false,
             splits: [emptySplitLine(), emptySplitLine()],
         })
+        setPendingReceiptFiles([])
+
+        try {
+            const response = await axiosInstance.get<ApiResponse<Transaction>>(
+                API_PATHS.TRANSACTIONS.GET_BY_ID(item._id)
+            )
+            setAttachedReceipts(unwrapApiData(response).receipts ?? [])
+        } catch (err) {
+            setAttachedReceipts([])
+            toast.error(getApiErrorMessage(err, 'Failed to load transaction receipts'))
+        }
+
         setFormOpen(true)
     }
 
@@ -257,6 +283,8 @@ const Transactions = () => {
         setFormOpen(false)
         setEditingId(null)
         setForm(emptyForm())
+        setAttachedReceipts([])
+        setPendingReceiptFiles([])
     }
 
     const handleSearch = (e: React.FormEvent) => {
@@ -350,7 +378,19 @@ const Transactions = () => {
                 await axiosInstance.put(API_PATHS.TRANSACTIONS.UPDATE(editingId), payload)
                 toast.success('Transaction updated')
             } else {
-                await axiosInstance.post(API_PATHS.TRANSACTIONS.CREATE, payload)
+                const response = await axiosInstance.post<ApiResponse<Transaction>>(
+                    API_PATHS.TRANSACTIONS.CREATE,
+                    payload
+                )
+                const created = unwrapApiData(response)
+
+                if (pendingReceiptFiles.length > 0) {
+                    for (const file of pendingReceiptFiles) {
+                        const receipt = await uploadReceipt(file)
+                        await attachReceiptToTransaction(created._id, receipt._id)
+                    }
+                }
+
                 toast.success(
                     usingSplits
                         ? 'Split expense added'
@@ -359,6 +399,7 @@ const Transactions = () => {
             }
             closeForm()
             if (!editingId) setPage(1)
+            setSelectedIds([])
             await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to save transaction'))
@@ -442,6 +483,7 @@ const Transactions = () => {
             await axiosInstance.delete(API_PATHS.TRANSACTIONS.DELETE(deleteTarget._id))
             toast.success('Transaction deleted')
             setDeleteTarget(null)
+            setSelectedIds((current) => current.filter((id) => id !== deleteTarget._id))
             if (data?.items.length === 1 && page > 1) {
                 setPage((p) => p - 1)
             } else {
@@ -453,6 +495,81 @@ const Transactions = () => {
             setDeleting(false)
         }
     }
+
+    const toggleSelected = (transactionId: string) => {
+        setSelectedIds((current) =>
+            current.includes(transactionId)
+                ? current.filter((id) => id !== transactionId)
+                : [...current, transactionId]
+        )
+    }
+
+    const visibleIds = data?.items.map((item) => item._id) ?? []
+    const allVisibleSelected =
+        visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id))
+
+    const toggleSelectAllVisible = () => {
+        if (allVisibleSelected) {
+            setSelectedIds((current) => current.filter((id) => !visibleIds.includes(id)))
+            return
+        }
+        setSelectedIds((current) => [...new Set([...current, ...visibleIds])])
+    }
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.length === 0) return
+
+        setBulkSubmitting(true)
+        try {
+            const response = await axiosInstance.post<ApiResponse<BulkDeleteResponse>>(
+                API_PATHS.TRANSACTIONS.BULK_DELETE,
+                { transactionIds: selectedIds }
+            )
+            const result = unwrapApiData(response)
+            toast.success(result.message)
+            setBulkDeleteOpen(false)
+            setSelectedIds([])
+            setPage(1)
+            await refetch()
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, 'Failed to delete selected transactions'))
+        } finally {
+            setBulkSubmitting(false)
+        }
+    }
+
+    const handleBulkCategoryChange = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!bulkCategoryId || selectedIds.length === 0) {
+            toast.error('Choose a category for the selected transactions')
+            return
+        }
+
+        setBulkSubmitting(true)
+        try {
+            const response = await axiosInstance.patch<ApiResponse<BulkCategoryResponse>>(
+                API_PATHS.TRANSACTIONS.BULK_CATEGORY,
+                { transactionIds: selectedIds, categoryId: bulkCategoryId }
+            )
+            const result = unwrapApiData(response)
+            toast.success(result.message)
+            setBulkCategoryOpen(false)
+            setBulkCategoryId('')
+            setSelectedIds([])
+            await refetch()
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, 'Failed to update categories'))
+        } finally {
+            setBulkSubmitting(false)
+        }
+    }
+
+    const selectedHasTransfer = useMemo(() => {
+        if (!data || selectedIds.length === 0) return false
+        return data.items.some(
+            (item) => selectedIds.includes(item._id) && item.type === 'transfer'
+        )
+    }, [data, selectedIds])
 
     const hasActiveFilters = Boolean(searchQuery || dateFilterActive)
 
@@ -637,10 +754,67 @@ const Transactions = () => {
             >
                 {(result) => (
                     <>
+                        {selectedIds.length > 0 && (
+                            <div className="card mb-3 flex flex-wrap items-center justify-between gap-3">
+                                <p className="text-sm text-slate-300">
+                                    {selectedIds.length} selected
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setBulkCategoryOpen(true)}
+                                        disabled={selectedHasTransfer}
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={
+                                            selectedHasTransfer
+                                                ? 'Transfers cannot be bulk recategorized'
+                                                : undefined
+                                        }
+                                    >
+                                        Change category
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBulkDeleteOpen(true)}
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                                    >
+                                        Delete selected
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedIds([])}
+                                        className="px-3 py-1.5 text-sm rounded-lg text-slate-400 hover:text-slate-300"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {result.items.length > 0 && (
+                            <label className="flex items-center gap-2 mb-2 text-xs text-slate-500 px-1">
+                                <input
+                                    type="checkbox"
+                                    checked={allVisibleSelected}
+                                    onChange={toggleSelectAllVisible}
+                                    className="rounded border-slate-600 bg-slate-900"
+                                />
+                                Select all on this page
+                            </label>
+                        )}
+
                         <div className="space-y-3">
                             {result.items.map((item) => (
                                 <div key={item._id} className="card flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.includes(item._id)}
+                                            onChange={() => toggleSelected(item._id)}
+                                            className="rounded border-slate-600 bg-slate-900 shrink-0"
+                                            aria-label={`Select ${item.title}`}
+                                        />
+                                        <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm font-medium text-slate-200 truncate">
                                                 {item.title}
@@ -667,6 +841,7 @@ const Transactions = () => {
                                                 ? ` · ${accountNameById.get(item.accountId)}`
                                                 : ''}
                                         </p>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
                                         <p className={`text-sm font-semibold ${amountColor(item.type)}`}>
@@ -902,6 +1077,16 @@ const Transactions = () => {
                         placeholder="Optional notes"
                         disabled={submitting}
                     />
+                    {!form.splitEnabled && (
+                        <ReceiptAttachments
+                            transactionId={editingId}
+                            receipts={attachedReceipts}
+                            onChange={setAttachedReceipts}
+                            pendingFiles={pendingReceiptFiles}
+                            onPendingFilesChange={setPendingReceiptFiles}
+                            disabled={submitting}
+                        />
+                    )}
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"
@@ -1010,6 +1195,59 @@ const Transactions = () => {
                 }
                 loading={deleting}
             />
+
+            <ConfirmDialog
+                open={bulkDeleteOpen}
+                onClose={() => setBulkDeleteOpen(false)}
+                onConfirm={handleBulkDelete}
+                title="Delete selected transactions"
+                message={`Delete ${selectedIds.length} selected transaction${selectedIds.length === 1 ? '' : 's'}? Transfer pairs and split children will be handled automatically.`}
+                loading={bulkSubmitting}
+            />
+
+            <Modal
+                open={bulkCategoryOpen}
+                onClose={() => {
+                    setBulkCategoryOpen(false)
+                    setBulkCategoryId('')
+                }}
+                title="Change category"
+                size="md"
+            >
+                <form onSubmit={handleBulkCategoryChange} className="space-y-4">
+                    <p className="text-sm text-slate-400">
+                        Apply a new category to {selectedIds.length} selected transaction
+                        {selectedIds.length === 1 ? '' : 's'}. Transfers are excluded.
+                    </p>
+                    <CategoryPicker
+                        value={bulkCategoryId}
+                        onChange={setBulkCategoryId}
+                        categoriesData={lookups?.categories}
+                        required
+                        disabled={bulkSubmitting}
+                    />
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setBulkCategoryOpen(false)
+                                setBulkCategoryId('')
+                            }}
+                            disabled={bulkSubmitting}
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={bulkSubmitting || !bulkCategoryId}
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                        >
+                            {bulkSubmitting ? 'Updating...' : 'Update category'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     )
 }

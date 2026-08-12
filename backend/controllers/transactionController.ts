@@ -14,6 +14,7 @@ import {
     buildCsvString,
     buildTransactionSort,
     CSV_HEADERS,
+    deleteTransactionForUser,
     duplicateTransactionFields,
     fetchSplitChildren,
     formatTransactionCsvRow,
@@ -24,8 +25,6 @@ import {
     isTransferLeg,
     LISTABLE_TRANSACTION_FILTER,
     parseClientAmount,
-    reverseTransactionOnAccount,
-    reverseTransferOnAccounts,
     serializeTransaction,
     serializeTransactionPlain,
     serializeTransactions,
@@ -39,6 +38,7 @@ import {
     validateSplitInputs,
     buildSearchRegex,
 } from '../utils/transactionUtils'
+import { validateReceiptOwnership } from '../utils/receiptUtils'
 import { TRANSACTION_TYPES, ITransaction } from '../models/Transaction'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
@@ -482,54 +482,14 @@ export const deleteTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
     )
 
-    if (isSplitChild(transaction)) {
-        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
-    }
+    await deleteTransactionForUser(userId, transaction)
 
-    if (isTransferLeg(transaction) && transaction.transferPairId) {
-        const pair = await validateOwnership(
-            Transaction,
-            transaction.transferPairId.toString(),
-            userId,
-            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
-        )
-
-        const outbound =
-            transaction.createdAt <= pair.createdAt ? transaction : pair
-        const inbound = outbound._id.equals(transaction._id) ? pair : transaction
-
-        const fromAccount = await validateAccountForTransaction(
-            outbound.accountId.toString(),
-            userId
-        )
-        const toAccount = await validateAccountForTransaction(
-            inbound.accountId.toString(),
-            userId
-        )
-
-        await reverseTransferOnAccounts(fromAccount, toAccount, transaction.amount)
-        await Transaction.deleteOne({ _id: outbound._id })
-        await Transaction.deleteOne({ _id: inbound._id })
-
-        handleResponses(res, 200, { message: 'Transfer deleted successfully' })
-        return
-    }
-
-    const splitChildren = await fetchSplitChildren(transaction._id, userId)
-    const account = await validateAccountForTransaction(
-        transaction.accountId.toString(),
-        userId
-    )
-
-    await reverseTransactionOnAccount(account, transaction.type, transaction.amount)
-
-    if (splitChildren.length > 0) {
-        await Transaction.deleteMany({ _id: { $in: splitChildren.map((child) => child._id) } })
-    }
-
-    await Transaction.deleteOne({ _id: transactionId })
-
-    handleResponses(res, 200, { message: 'Transaction deleted successfully' })
+    handleResponses(res, 200, {
+        message:
+            isTransferLeg(transaction) && transaction.transferPairId
+                ? 'Transfer deleted successfully'
+                : 'Transaction deleted successfully',
+    })
 })
 
 export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -691,3 +651,161 @@ export const duplicateTransaction = asyncHandler(async (req: AuthRequest, res: R
 
     handleResponses(res, 201, serializeTransaction(duplicate))
 })
+
+export const attachReceiptToTransaction = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const { transactionId } = req.params
+    const { receiptId } = req.body
+
+    validateRequiredFields({ transactionId, receiptId }, ['transactionId', 'receiptId'])
+
+    const [transaction, receipt] = await Promise.all([
+        validateOwnership(
+            Transaction,
+            transactionId,
+            userId,
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        ),
+        validateReceiptOwnership(receiptId, userId),
+    ])
+
+    if (isSplitChild(transaction)) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+    }
+
+    const existingIds = transaction.receiptIds?.map((id) => id.toString()) ?? []
+    if (existingIds.includes(receipt._id.toString())) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.RECEIPT_ALREADY_ATTACHED, 400)
+    }
+
+    transaction.receiptIds = [...(transaction.receiptIds ?? []), receipt._id]
+    await transaction.save()
+
+    const payload = await serializeTransactionWithSplits(transaction, userId)
+    handleResponses(res, 200, payload)
+})
+
+export const detachReceiptFromTransaction = asyncHandler(
+    async (req: AuthRequest, res: Response) => {
+        const userId = getUserId(req)
+        const { transactionId, receiptId } = req.params
+
+        validateRequiredFields({ transactionId, receiptId }, ['transactionId', 'receiptId'])
+
+        const transaction = await validateOwnership(
+            Transaction,
+            transactionId,
+            userId,
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        )
+
+        if (isSplitChild(transaction)) {
+            throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+        }
+
+        const existingIds = transaction.receiptIds?.map((id) => id.toString()) ?? []
+        if (!existingIds.includes(receiptId)) {
+            throw new CustomError(ERROR_MESSAGES.TRANSACTION.RECEIPT_NOT_ATTACHED, 400)
+        }
+
+        transaction.receiptIds = transaction.receiptIds?.filter(
+            (id) => id.toString() !== receiptId
+        )
+        await transaction.save()
+
+        const payload = await serializeTransactionWithSplits(transaction, userId)
+        handleResponses(res, 200, payload)
+    }
+)
+
+const parseBulkTransactionIds = (transactionIds: unknown): string[] => {
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.BULK_EMPTY, 400)
+    }
+
+    const uniqueIds = [...new Set(transactionIds.map((id) => String(id).trim()).filter(Boolean))]
+    if (uniqueIds.length === 0) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.BULK_EMPTY, 400)
+    }
+
+    return uniqueIds
+}
+
+export const bulkDeleteTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const transactionIds = parseBulkTransactionIds(req.body.transactionIds)
+
+    const processedTransferPairs = new Set<string>()
+    let deletedCount = 0
+
+    for (const transactionId of transactionIds) {
+        const transaction = await validateOwnership(
+            Transaction,
+            transactionId,
+            userId,
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        )
+
+        if (isTransferLeg(transaction) && transaction.transferPairId) {
+            const pairKey = [transaction._id.toString(), transaction.transferPairId.toString()]
+                .sort()
+                .join(':')
+            if (processedTransferPairs.has(pairKey)) {
+                continue
+            }
+            processedTransferPairs.add(pairKey)
+        }
+
+        await deleteTransactionForUser(userId, transaction)
+        deletedCount += 1
+    }
+
+    handleResponses(res, 200, {
+        message: `${deletedCount} transaction${deletedCount === 1 ? '' : 's'} deleted`,
+        deletedCount,
+    })
+})
+
+export const bulkUpdateTransactionCategory = asyncHandler(
+    async (req: AuthRequest, res: Response) => {
+        const userId = getUserId(req)
+        const { categoryId } = req.body
+        const transactionIds = parseBulkTransactionIds(req.body.transactionIds)
+
+        validateRequiredFields({ categoryId }, ['categoryId'])
+        await validateCategoryForTransaction(categoryId, userId)
+
+        const transactions = await Promise.all(
+            transactionIds.map((transactionId) =>
+                validateOwnership(
+                    Transaction,
+                    transactionId,
+                    userId,
+                    ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+                )
+            )
+        )
+
+        for (const transaction of transactions) {
+            if (transaction.type === 'transfer') {
+                throw new CustomError(ERROR_MESSAGES.TRANSACTION.BULK_CATEGORY_TRANSFER, 400)
+            }
+            if (isSplitChild(transaction)) {
+                throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+            }
+        }
+
+        await Transaction.updateMany(
+            {
+                _id: { $in: transactions.map((transaction) => transaction._id) },
+                userId: new Types.ObjectId(userId),
+            },
+            { $set: { categoryId } }
+        )
+
+        handleResponses(res, 200, {
+            message: `${transactions.length} transaction${transactions.length === 1 ? '' : 's'} updated`,
+            updatedCount: transactions.length,
+        })
+    }
+)

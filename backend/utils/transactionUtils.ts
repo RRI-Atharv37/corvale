@@ -2,12 +2,31 @@ import { Types } from 'mongoose'
 
 import Account, { AccountType, IAccount } from '../models/Account'
 import Category, { ICategory } from '../models/Category'
+import Receipt from '../models/Receipt'
 import Transaction, { ITransaction, TransactionType } from '../models/Transaction'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from './moneyUtils'
 import { isMasterCategory, ensureMasterCategoriesSeeded } from './categorySeed'
 import { roundMoney } from './balanceUtils'
+import { serializeReceipt, SerializedReceipt } from './receiptUtils'
+import {
+    getUserId,
+    handleResponses,
+    validateOwnership,
+    validateRequiredFields,
+    buildSearchRegex,
+    toObjectId,
+} from './sharedUtils'
+
+export {
+    getUserId,
+    handleResponses,
+    validateOwnership,
+    validateRequiredFields,
+    buildSearchRegex,
+    toObjectId,
+} from './sharedUtils'
 
 export interface SplitInput {
     categoryId: string
@@ -21,16 +40,8 @@ export interface SerializedSplitLine extends SerializedTransaction {
 export interface SerializedTransactionWithSplits extends SerializedTransaction {
     splits?: SerializedSplitLine[]
     transferPair?: SerializedTransaction
+    receipts?: SerializedReceipt[]
 }
-
-export {
-    getUserId,
-    handleResponses,
-    validateOwnership,
-    validateRequiredFields,
-    buildSearchRegex,
-    toObjectId,
-} from './sharedUtils'
 
 export interface SerializedTransaction {
     _id: Types.ObjectId
@@ -227,6 +238,22 @@ export const fetchSplitChildren = async (
     }).sort({ createdAt: 1 })
 }
 
+export const fetchReceiptsForTransaction = async (
+    receiptIds: Types.ObjectId[] | undefined,
+    userId: string
+): Promise<SerializedReceipt[]> => {
+    if (!receiptIds || receiptIds.length === 0) {
+        return []
+    }
+
+    const receipts = await Receipt.find({
+        _id: { $in: receiptIds },
+        userId: new Types.ObjectId(userId),
+    }).sort({ createdAt: 1 })
+
+    return receipts.map(serializeReceipt)
+}
+
 export const serializeTransactionWithSplits = async (
     transaction: ITransaction,
     userId: string
@@ -237,18 +264,25 @@ export const serializeTransactionWithSplits = async (
         return serialized
     }
 
-    const children = await fetchSplitChildren(transaction._id, userId)
-    if (children.length === 0) {
-        return serialized
-    }
+    const [children, receipts] = await Promise.all([
+        fetchSplitChildren(transaction._id, userId),
+        fetchReceiptsForTransaction(transaction.receiptIds, userId),
+    ])
 
-    return {
-        ...serialized,
-        splits: children.map((child) => ({
+    const payload: SerializedTransactionWithSplits = { ...serialized }
+
+    if (children.length > 0) {
+        payload.splits = children.map((child) => ({
             ...serializeTransaction(child),
             isSplitChild: true as const,
-        })),
+        }))
     }
+
+    if (receipts.length > 0) {
+        payload.receipts = receipts
+    }
+
+    return payload
 }
 
 export const isSplitChild = (transaction: ITransaction): boolean =>
@@ -388,6 +422,55 @@ export const assertEditableTransaction = (transaction: ITransaction): void => {
     if (transaction.splitTransactionId) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
     }
+}
+
+export const deleteTransactionForUser = async (
+    userId: string,
+    transaction: ITransaction
+): Promise<void> => {
+    if (isSplitChild(transaction)) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+    }
+
+    if (isTransferLeg(transaction) && transaction.transferPairId) {
+        const pair = await validateOwnership(
+            Transaction,
+            transaction.transferPairId.toString(),
+            userId,
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        )
+
+        const outbound = transaction.createdAt <= pair.createdAt ? transaction : pair
+        const inbound = outbound._id.equals(transaction._id) ? pair : transaction
+
+        const fromAccount = await validateAccountForTransaction(
+            outbound.accountId.toString(),
+            userId
+        )
+        const toAccount = await validateAccountForTransaction(
+            inbound.accountId.toString(),
+            userId
+        )
+
+        await reverseTransferOnAccounts(fromAccount, toAccount, transaction.amount)
+        await Transaction.deleteOne({ _id: outbound._id })
+        await Transaction.deleteOne({ _id: inbound._id })
+        return
+    }
+
+    const splitChildren = await fetchSplitChildren(transaction._id, userId)
+    const account = await validateAccountForTransaction(
+        transaction.accountId.toString(),
+        userId
+    )
+
+    await reverseTransactionOnAccount(account, transaction.type, transaction.amount)
+
+    if (splitChildren.length > 0) {
+        await Transaction.deleteMany({ _id: { $in: splitChildren.map((child) => child._id) } })
+    }
+
+    await Transaction.deleteOne({ _id: transaction._id })
 }
 
 export { Transaction, toMinorUnits, fromMinorUnits }

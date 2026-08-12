@@ -63,5 +63,16 @@ export const ERROR_MESSAGES = {
         SPLIT_SUM_MISMATCH: 'Split amounts must equal the parent transaction amount',
         SPLIT_MIN_COUNT: 'At least two split lines are required',
         SPLIT_REQUIRES_EXPENSE: 'Split transactions are only supported for expenses',
+        BULK_EMPTY: 'At least one transaction id is required',
+        BULK_CATEGORY_TRANSFER: 'Transfers cannot be bulk recategorized',
+        RECEIPT_ALREADY_ATTACHED: 'Receipt is already attached to this transaction',
+        RECEIPT_NOT_ATTACHED: 'Receipt is not attached to this transaction',
+    },
+    RECEIPT: {
+        RECEIPT_NOT_FOUND: 'Receipt not found',
+        FILE_REQUIRED: 'Receipt file is required',
+        FILE_NOT_FOUND: 'Receipt file not found on disk',
+        INVALID_FILE_TYPE: 'Receipt must be a JPEG, PNG, WebP image, or PDF',
+        FILE_TOO_LARGE: 'Receipt file exceeds the 5 MB size limit',
     },
 }

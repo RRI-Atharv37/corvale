@@ -1,5 +1,6 @@
 {
-    "watch": ["backend"],
+    "watch": ["."],
     "ext": "ts",
+    "ignore": ["uploads/**", "node_modules/**", "dist/**"],
     "exec": "ts-node server.ts"
-  }
+}

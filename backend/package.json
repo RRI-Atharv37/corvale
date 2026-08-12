@@ -38,6 +38,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.14.1",
     "@types/supertest": "^7.2.1",
     "mongodb-memory-server": "^11.2.0",
