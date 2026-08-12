@@ -11,9 +11,17 @@ import {
     FiX,
     FiCreditCard,
     FiGrid,
+    FiPieChart,
 } from 'react-icons/fi'
 import { useUser } from '../../hooks/useUser'
 import toast from 'react-hot-toast'
+import axiosInstance from '../../utils/axiosInstance'
+import { API_PATHS } from '../../utils/apiPaths'
+import CurrencySelect from '../inputs/CurrencySelect'
+import { DEFAULT_CURRENCY } from '../../utils/currencies'
+import type { ApiResponse, User } from '../../types/api'
+import { unwrapApiData } from '../../utils/apiHelpers'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 interface NavItem {
     to: string
@@ -27,6 +35,7 @@ const navItems: NavItem[] = [
     { to: '/transactions', label: 'Transactions', icon: <FiList size={18} /> },
     { to: '/accounts', label: 'Accounts', icon: <FiCreditCard size={18} /> },
     { to: '/categories', label: 'Categories', icon: <FiGrid size={18} /> },
+    { to: '/budgets', label: 'Budgets', icon: <FiPieChart size={18} /> },
     { to: '/saver', label: 'Saver', icon: <FiDollarSign size={18} /> },
     { to: '/pushover', label: 'Pushover', icon: <FiRepeat size={18} /> },
     { to: 'http://localhost:5174', label: 'Docs', icon: <FiBookOpen size={18} />, external: true },
@@ -41,9 +50,27 @@ const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
     ].join(' ')
 
 const DashboardLayout: React.FC = () => {
-    const { user, logout, logoutAllSessions } = useUser()
+    const { user, updateUser, logout, logoutAllSessions } = useUser()
     const navigate = useNavigate()
     const [mobileOpen, setMobileOpen] = useState(false)
+    const [savingCurrency, setSavingCurrency] = useState(false)
+
+    const handlePreferredCurrencyChange = async (value: string) => {
+        if (!user) return
+
+        setSavingCurrency(true)
+        try {
+            const response = await axiosInstance.patch<ApiResponse<User>>(API_PATHS.AUTH.UPDATE_USER, {
+                preferredCurrency: value,
+            })
+            updateUser(unwrapApiData(response))
+            toast.success('Default currency updated')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update currency'))
+        } finally {
+            setSavingCurrency(false)
+        }
+    }
 
     const handleLogout = async () => {
         await logout()
@@ -103,9 +130,17 @@ const DashboardLayout: React.FC = () => {
 
             <div className="px-3 py-4 border-t border-slate-800">
                 {user && (
-                    <div className="px-3 py-2 mb-2">
-                        <p className="text-sm font-medium text-slate-200 truncate">{user.fullName}</p>
-                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                    <div className="px-3 py-2 mb-2 space-y-3">
+                        <div>
+                            <p className="text-sm font-medium text-slate-200 truncate">{user.fullName}</p>
+                            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                        </div>
+                        <CurrencySelect
+                            label="Default currency"
+                            value={user.preferredCurrency ?? DEFAULT_CURRENCY}
+                            onChange={(value) => void handlePreferredCurrencyChange(value)}
+                            disabled={savingCurrency}
+                        />
                     </div>
                 )}
                 <button

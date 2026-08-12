@@ -23,11 +23,15 @@ import {
     logPasswordResetLink,
     resetPasswordWithToken,
 } from '../utils/passwordResetUtils'
+import { parseSupportedCurrency } from '../utils/currencyUtils'
+import { isValidTimezone } from '../utils/timezoneUtils'
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
     fullName: user.fullName,
     email: user.email,
+    timezone: user.timezone,
+    preferredCurrency: user.preferredCurrency,
 })
 
 const issueAuthSession = async (user: IUser, res: Response) => {
@@ -147,6 +151,33 @@ export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response):
     }
 
     handleResponses(res, 200, user)
+})
+
+export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?._id
+
+    const user = (await User.findById(userId)) as IUser | null
+
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
+    }
+
+    const { preferredCurrency, timezone } = req.body
+
+    if (preferredCurrency !== undefined) {
+        user.preferredCurrency = parseSupportedCurrency(preferredCurrency)
+    }
+
+    if (timezone !== undefined) {
+        if (typeof timezone !== 'string' || !timezone.trim() || !isValidTimezone(timezone.trim())) {
+            throw new CustomError('Invalid timezone', 400)
+        }
+        user.timezone = timezone.trim()
+    }
+
+    await user.save()
+
+    handleResponses(res, 200, toPublicUser(user))
 })
 
 export const requestPasswordReset = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {

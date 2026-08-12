@@ -6,6 +6,7 @@ import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { roundMoney } from '../utils/balanceUtils'
+import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
 import {
     getUserId,
     handleResponses,
@@ -56,7 +57,7 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
         userId,
         name: name.trim(),
         type,
-        currency: currency?.trim().toUpperCase() ?? 'USD',
+        currency: parseOptionalSupportedCurrency(currency),
         openingBalance: parsedOpeningBalance,
         currentBalance: parsedOpeningBalance,
         isDefault: shouldBeDefault,
@@ -135,7 +136,7 @@ export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response
     }
 
     if (currency !== undefined) {
-        account.currency = currency.trim().toUpperCase()
+        account.currency = parseSupportedCurrency(currency)
     }
 
     if (isDefault === true) {

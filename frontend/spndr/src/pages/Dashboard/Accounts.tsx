@@ -13,6 +13,9 @@ import type { Account, AccountEditFormData, AccountFormData, AccountType, ApiRes
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
+import { DEFAULT_CURRENCY, formatCurrencyLabel } from '../../utils/currencies'
+import CurrencySelect from '../../components/inputs/CurrencySelect'
+import { useUser } from '../../hooks/useUser'
 
 const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
     { value: 'checking', label: 'Checking' },
@@ -21,12 +24,10 @@ const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
     { value: 'savings', label: 'Savings' },
 ]
 
-const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD'] as const
-
-const emptyCreateForm = (): AccountFormData => ({
+const emptyCreateForm = (preferredCurrency = DEFAULT_CURRENCY): AccountFormData => ({
     name: '',
     type: 'checking',
-    currency: 'USD',
+    currency: preferredCurrency,
     openingBalance: '0',
 })
 
@@ -79,6 +80,8 @@ const SelectField: React.FC<SelectFieldProps> = ({
 )
 
 const Accounts = () => {
+    const { user } = useUser()
+    const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
     const [createOpen, setCreateOpen] = useState(false)
     const [editOpen, setEditOpen] = useState(false)
     const [createForm, setCreateForm] = useState<AccountFormData>(emptyCreateForm)
@@ -101,13 +104,13 @@ const Accounts = () => {
     const { data: accounts, loading, error, refetch } = useAsyncData(fetchAccounts, [fetchAccounts])
 
     const openCreate = () => {
-        setCreateForm(emptyCreateForm())
+        setCreateForm(emptyCreateForm(preferredCurrency))
         setCreateOpen(true)
     }
 
     const closeCreate = () => {
         setCreateOpen(false)
-        setCreateForm(emptyCreateForm())
+        setCreateForm(emptyCreateForm(preferredCurrency))
     }
 
     const openEdit = (account: Account) => {
@@ -257,7 +260,7 @@ const Accounts = () => {
                                         )}
                                     </div>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        {formatAccountType(account.type)} · {account.currency}
+                                        {formatAccountType(account.type)} · {formatCurrencyLabel(account.currency)}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
@@ -322,14 +325,9 @@ const Accounts = () => {
                         required
                         disabled={submitting}
                     />
-                    <SelectField
-                        label="Currency"
+                    <CurrencySelect
                         value={createForm.currency}
                         onChange={(v) => setCreateForm((f) => ({ ...f, currency: v }))}
-                        options={CURRENCY_OPTIONS.map((currency) => ({
-                            value: currency,
-                            label: currency,
-                        }))}
                         required
                         disabled={submitting}
                     />

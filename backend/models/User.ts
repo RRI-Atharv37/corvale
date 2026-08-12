@@ -1,5 +1,6 @@
 import mongoose, {Document, Model, Schema, Types } from 'mongoose'
 import bcrypt from 'bcryptjs'
+import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES, SupportedCurrency } from '../utils/currencyUtils'
 
 export interface IUser extends Document {
     _id: Types.ObjectId
@@ -7,6 +8,7 @@ export interface IUser extends Document {
     email: string
     password: string
     timezone: string
+    preferredCurrency: SupportedCurrency
     tokenVersion: number
     passwordResetTokenHash?: string
     passwordResetExpires?: Date
@@ -18,6 +20,13 @@ const userSchema = new Schema<IUser>({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     timezone: { type: String, default: 'UTC', trim: true },
+    preferredCurrency: {
+        type: String,
+        enum: SUPPORTED_CURRENCIES,
+        default: DEFAULT_CURRENCY,
+        uppercase: true,
+        trim: true,
+    },
     tokenVersion: { type: Number, default: 0 },
     passwordResetTokenHash: { type: String },
     passwordResetExpires: { type: Date },

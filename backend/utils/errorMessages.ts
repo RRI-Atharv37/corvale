@@ -83,4 +83,10 @@ export const ERROR_MESSAGES = {
         VIRUS_DETECTED: 'Receipt file failed security scan',
         VIRUS_SCAN_FAILED: 'Receipt upload temporarily unavailable; try again later',
     },
+    BUDGET: {
+        BUDGET_NOT_FOUND: 'Budget not found',
+        BUDGET_ARCHIVED: 'Cannot update an archived budget',
+        BUDGET_ALREADY_ARCHIVED: 'Budget is already archived',
+        INVALID_ACCOUNT_IDS: 'One or more account ids are invalid or not owned by you',
+    },
 }

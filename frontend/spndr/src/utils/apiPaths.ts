@@ -5,6 +5,7 @@ export const API_PATHS = {
         LOGIN: '/auth/login',
         REGISTER: '/auth/register',
         USER: '/auth/user',
+        UPDATE_USER: '/auth/user',
         REFRESH: '/auth/refresh',
         LOGOUT: '/auth/logout',
         LOGOUT_ALL: '/auth/logout-all',
@@ -82,5 +83,13 @@ export const API_PATHS = {
         UPLOAD: '/receipts',
         GET_FILE: (receiptId: string) => `/receipts/${receiptId}`,
         DELETE: (receiptId: string) => `/receipts/${receiptId}`,
+    },
+    BUDGETS: {
+        CREATE: '/budgets',
+        GET_ALL: '/budgets',
+        GET_BY_ID: (budgetId: string) => `/budgets/${budgetId}`,
+        UPDATE: (budgetId: string) => `/budgets/${budgetId}`,
+        DELETE: (budgetId: string) => `/budgets/${budgetId}`,
+        PROGRESS: (budgetId: string) => `/budgets/${budgetId}/progress`,
     },
 } as const
