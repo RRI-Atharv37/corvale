@@ -1,4 +1,5 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
+import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
 
 export const ACCOUNT_TYPES = ['checking', 'cash', 'credit', 'savings'] as const
 export type AccountType = (typeof ACCOUNT_TYPES)[number]
@@ -22,7 +23,14 @@ const AccountSchema = new Schema<IAccount>(
         workspaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', default: null },
         name: { type: String, required: true, trim: true },
         type: { type: String, enum: ACCOUNT_TYPES, required: true },
-        currency: { type: String, required: true, default: 'USD', uppercase: true, trim: true },
+        currency: {
+            type: String,
+            enum: SUPPORTED_CURRENCIES,
+            required: true,
+            default: DEFAULT_CURRENCY,
+            uppercase: true,
+            trim: true,
+        },
         openingBalance: { type: Number, required: true, default: 0 },
         currentBalance: { type: Number, required: true, default: 0 },
         isDefault: { type: Boolean, default: false },

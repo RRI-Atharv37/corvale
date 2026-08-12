@@ -10,6 +10,7 @@ import {
     logoutAllSessions,
     requestPasswordReset,
     confirmPasswordReset,
+    updateUserPreferences,
 } from '../controllers/authController'
 
 export const createAuthRoutes = (): express.Router => {
@@ -24,6 +25,7 @@ export const createAuthRoutes = (): express.Router => {
     router.post('/password-reset/request', authRateLimiter, requestPasswordReset)
     router.post('/password-reset/confirm', authRateLimiter, confirmPasswordReset)
     router.get('/user', protect, getUserInfo)
+    router.patch('/user', protect, updateUserPreferences)
 
     return router
 }
