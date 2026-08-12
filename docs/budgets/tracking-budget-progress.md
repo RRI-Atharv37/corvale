@@ -23,9 +23,9 @@ Amounts appear in the budget's currency with standard dollar formatting (for exa
 
 The progress bar changes color as you approach or exceed your limit:
 
-- **Cyan** — comfortably under budget
-- **Amber** — nearing the limit
-- **Rose** — over budget
+- **Cyan** - comfortably under budget
+- **Amber** - nearing the limit
+- **Rose** - over budget
 
 When a budget is over limit, the card border turns rose and an **Over budget** badge appears.
 

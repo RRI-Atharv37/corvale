@@ -106,4 +106,18 @@ export const API_PATHS = {
         RESUME: (goalId: string) => `/savings-goals/${goalId}/resume`,
         COMPLETE: (goalId: string) => `/savings-goals/${goalId}/complete`,
     },
+    RECURRING_RULES: {
+        CREATE: '/recurring-rules',
+        GET_ALL: '/recurring-rules',
+        GET_BY_ID: (ruleId: string) => `/recurring-rules/${ruleId}`,
+        UPDATE: (ruleId: string) => `/recurring-rules/${ruleId}`,
+        DELETE: (ruleId: string) => `/recurring-rules/${ruleId}`,
+        GENERATE_DRAFTS: '/recurring-rules/generate-drafts',
+        GENERATE_DRAFTS_FOR_RULE: (ruleId: string) => `/recurring-rules/${ruleId}/generate-drafts`,
+        GET_DRAFTS: '/recurring-rules/drafts',
+        CONFIRM_DRAFT: (transactionId: string) =>
+            `/recurring-rules/drafts/${transactionId}/confirm`,
+        DISMISS_DRAFT: (transactionId: string) =>
+            `/recurring-rules/drafts/${transactionId}/dismiss`,
+    },
 } as const

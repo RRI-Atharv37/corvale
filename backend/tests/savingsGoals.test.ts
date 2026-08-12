@@ -27,7 +27,7 @@ async function createTestGoal(
         })
 }
 
-describe('Savings goals — CRUD and ownership', () => {
+describe('Savings goals - CRUD and ownership', () => {
     it('creates a savings goal with progress metrics', async () => {
         const { token } = await seedUserDirectly({ email: 'goal-create@example.com' })
 
@@ -257,7 +257,7 @@ describe('Savings goals — CRUD and ownership', () => {
     })
 })
 
-describe('Savings goals — progress calculations', () => {
+describe('Savings goals - progress calculations', () => {
     it('computes required monthly contribution from target date', async () => {
         const { token } = await seedUserDirectly({ email: 'goal-required-monthly@example.com' })
 
@@ -326,7 +326,7 @@ describe('Savings goals — progress calculations', () => {
     })
 })
 
-describe('Savings goals — contributions and auto-contribute', () => {
+describe('Savings goals - contributions and auto-contribute', () => {
     it('records manual contributions with optional note', async () => {
         const { token } = await seedUserDirectly({ email: 'goal-manual-contrib@example.com' })
         const createRes = await createTestGoal(token, { targetAmount: 1000 })
@@ -488,7 +488,7 @@ describe('Savings goals — contributions and auto-contribute', () => {
     })
 })
 
-describe('Savings goals — state transitions', () => {
+describe('Savings goals - state transitions', () => {
     it('pauses and resumes an active goal', async () => {
         const { token } = await seedUserDirectly({ email: 'goal-pause-resume@example.com' })
         const createRes = await createTestGoal(token)

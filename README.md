@@ -28,7 +28,7 @@ Built for students and young adults who want clarity over complexity.
 
 ### Unified Transactions
 
-One ledger for income, expenses, and transfers — with search, date filters, sort, receipt attachments, split expenses, and bulk delete/category actions.
+One ledger for income, expenses, and transfers - with search, date filters, sort, receipt attachments, split expenses, and bulk delete/category actions.
 
 ### Multi-Account Tracking
 
@@ -40,26 +40,26 @@ Nine master categories plus your own sub-categories with icons and colors. Reusa
 
 ### Budgets
 
-Set monthly or custom spending limits — overall or per category — with progress bars, over-budget warnings, and optional account scoping. Posted expenses count toward spent totals; drafts and transfers are excluded.
+Set monthly or custom spending limits - overall or per category - with progress bars, over-budget warnings, and optional account scoping. Posted expenses count toward spent totals; drafts and transfers are excluded.
 
 </td>
 <td width="50%" valign="top">
 
 ### Savings Goals
 
-Named targets with deadlines, progress metrics, manual contributions, and optional weekly or monthly auto-contributions. Separate from the Saver pool — built for goal tracking, not month-end sweeps.
+Named targets with deadlines, progress metrics, manual contributions, and optional weekly or monthly auto-contributions. Separate from the Saver pool - built for goal tracking, not month-end sweeps.
 
 ### Spendable Balance & Net Worth
 
-Dual metrics with smart **Saver pool** math — legacy mode (income − expenses) or **accounts mode** (checking, cash, credit, savings). Spendable balance excludes savings and reflects what you can actually use today.
+Dual metrics with smart **Saver pool** math - legacy mode (income − expenses) or **accounts mode** (checking, cash, credit, savings). Spendable balance excludes savings and reflects what you can actually use today.
 
 ### Pushover Month-End Rollover
 
-Automated rollover engine snapshots your Saver balance at month-end, resets the pool, and keeps a browsable history — so every month starts clean.
+Automated rollover engine snapshots your Saver balance at month-end, resets the pool, and keeps a browsable history - so every month starts clean.
 
 ### Battle-Tested Backend
 
-Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **159 tests** across 21 files covering auth lifecycle, accounts, categories, transactions, budgets, savings goals, transfers, splits, receipts, migration, saver, pushover, and ownership.
+Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **159 tests** across 21 files covering auth lifecycle, accounts, categories, transactions, budgets, savings goals, transfers, splits, receipts, migration, saver, pushover, and ownership.
 
 </td>
 </tr>
@@ -72,13 +72,13 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **159 tests
 - Auth rate limiting on login, register, and password reset
 - Optional ClamAV virus scan on receipt upload (env-gated)
 - Saver deposits by percentage or custom amount, with withdrawal guards
-- Transaction API extras — search, timezone-aware date filters, sort, CSV download, duplicate
+- Transaction API extras - search, timezone-aware date filters, sort, CSV download, duplicate
 - Receipt upload (JPEG/PNG/WebP/PDF, 5 MB max) with per-user storage isolation
-- Budget progress API — category vs overall scope, split attribution, draft exclusion
-- Savings goal lifecycle — pause, resume, complete, archive, contribution timeline
+- Budget progress API - category vs overall scope, split attribution, draft exclusion
+- Savings goal lifecycle - pause, resume, complete, archive, contribution timeline
 - Legacy data migration CLI (`npm run migrate:transactions`) from Income/Expense to Transaction
 - Compound database indexes and production-safe error handling
-- Modern dark UI — React 19, Vite 6, Tailwind CSS 4, responsive sidebar, settings modal, toast feedback
+- Modern dark UI - React 19, Vite 6, Tailwind CSS 4, responsive sidebar, settings modal, toast feedback
 
 </details>
 
@@ -101,7 +101,7 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **159 tests
 <p align="center">
   <img src="docs/public/screenshots/accounts.png" alt="Accounts page" width="720" />
   <br />
-  <em>Multi-account balances — checking, cash, credit, and savings</em>
+  <em>Multi-account balances - checking, cash, credit, and savings</em>
 </p>
 
 ### Transactions (unified ledger)
@@ -228,7 +228,7 @@ Run locally with `npm run dev` inside [`./docs`](./docs). Covers:
 
 - Getting started & installation
 - Dashboard, Transactions, Categories, Accounts, Budgets, Savings Goals, Saver, Pushover
-- Authentication — sign-in, password reset, sessions, account settings
+- Authentication - sign-in, password reset, sessions, account settings
 - Balance calculation deep-dives
 - Complete REST API reference (`/api/v1`) including transactions, budgets, savings goals, categories, and receipts
 
@@ -251,13 +251,13 @@ Source lives in [`./docs`](./docs) (VitePress). Build for production with `npm r
 
 | Phase | Focus | Status |
 | :--- | :--- | :--- |
-| **Phase 0** | Foundation — auth, CRUD, Saver, Pushover, test infra, dark UI | ✅ **Complete** · `v0.1.0` |
-| **Phase 1a** | Accounts — multi-account tracking, balance integration | ✅ **Complete** `v0.2.1` |
-| **Phase 1b** | Categories — master seed, sub-categories, dashboard UI | ✅ **Complete** `v0.2.2` |
-| **Phase 1c** | Unified transactions — migration, transfers, splits, receipts, bulk ops | ✅ **Complete** · `v0.2.3` |
-| **Phase 2** | Auth lifecycle — refresh tokens, logout-all, password reset, ClamAV | ✅ **Complete** `v0.3.0` |
-| **Phase 3** | Budgets — CRUD API, progress tracking, UI | ✅ **Complete** `v0.4.0` |
-| **Phase 4** | Savings goals — CRUD API, contributions, auto-contribute, UI | ✅ **Complete** · `v0.5.0` |
+| **Phase 0** | Foundation - auth, CRUD, Saver, Pushover, test infra, dark UI | ✅ **Complete** · `v0.1.0` |
+| **Phase 1a** | Accounts - multi-account tracking, balance integration | ✅ **Complete** `v0.2.1` |
+| **Phase 1b** | Categories - master seed, sub-categories, dashboard UI | ✅ **Complete** `v0.2.2` |
+| **Phase 1c** | Unified transactions - migration, transfers, splits, receipts, bulk ops | ✅ **Complete** · `v0.2.3` |
+| **Phase 2** | Auth lifecycle - refresh tokens, logout-all, password reset, ClamAV | ✅ **Complete** `v0.3.0` |
+| **Phase 3** | Budgets - CRUD API, progress tracking, UI | ✅ **Complete** `v0.4.0` |
+| **Phase 4** | Savings goals - CRUD API, contributions, auto-contribute, UI | ✅ **Complete** · `v0.5.0` |
 | **Phase 5** | Recurring transactions & bill drafts | 🔜 **Up next** |
 
 Phases **0–4** are complete with **159 backend tests**. Phase 5 adds recurring rules that generate draft transactions only.

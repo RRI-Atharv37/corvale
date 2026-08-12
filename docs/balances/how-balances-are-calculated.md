@@ -78,7 +78,7 @@ Savings account balances count toward net worth but **not** toward liquid/spenda
 
 ### Income and expense in accounts mode
 
-Total income and total expenses are still calculated and displayed on the dashboard. They serve as activity tracking metrics — a record of what you have logged — but they do not drive net worth or spendable balance. Net worth and spendable derive from account balances.
+Total income and total expenses are still calculated and displayed on the dashboard. They serve as activity tracking metrics - a record of what you have logged - but they do not drive net worth or spendable balance. Net worth and spendable derive from account balances.
 
 ## Saver impact
 

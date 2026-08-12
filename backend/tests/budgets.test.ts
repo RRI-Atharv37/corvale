@@ -63,7 +63,7 @@ async function createMonthlyBudget(
         })
 }
 
-describe('Budgets — CRUD and ownership', () => {
+describe('Budgets - CRUD and ownership', () => {
     it('creates a monthly overall budget with progress', async () => {
         const { token } = await seedUserDirectly({ email: 'budget-create-overall@example.com' })
 
@@ -286,7 +286,7 @@ describe('Budgets — CRUD and ownership', () => {
     })
 })
 
-describe('Budgets — progress calculations', () => {
+describe('Budgets - progress calculations', () => {
     it('counts posted expenses in period for category budgets', async () => {
         const { token } = await seedUserDirectly({ email: 'budget-category-progress@example.com' })
         const account = await createTestAccount(token)
@@ -418,7 +418,7 @@ describe('Budgets — progress calculations', () => {
     })
 })
 
-describe('Budgets — draft exclusion and over-budget state', () => {
+describe('Budgets - draft exclusion and over-budget state', () => {
     it('excludes draft transactions from spent totals', async () => {
         const { token, userId } = await seedUserDirectly({ email: 'draft-exclude@example.com' })
         const account = await createTestAccount(token)
@@ -510,7 +510,7 @@ describe('Budgets — draft exclusion and over-budget state', () => {
     })
 })
 
-describe('Budgets — split transaction attribution', () => {
+describe('Budgets - split transaction attribution', () => {
     it('attributes split child lines to matching category budgets', async () => {
         const { token } = await seedUserDirectly({ email: 'split-category@example.com' })
         const account = await createTestAccount(token)

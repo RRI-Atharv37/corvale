@@ -45,7 +45,7 @@ The bottom of the sidebar shows:
 
 - Your **full name**
 - Your **email address**
-- A **Settings** button (gear icon) — opens preferences and logout actions
+- A **Settings** button (gear icon) - opens preferences and logout actions
 
 Logout actions live inside the Settings modal, not as standalone sidebar buttons. See [Account Settings](../authentication/account-settings.md).
 

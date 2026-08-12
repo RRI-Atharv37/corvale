@@ -10,18 +10,18 @@ Follow these steps to add a new income or expense transaction.
 
 1. Navigate to **Transactions** from the sidebar.
 2. Click **Add transaction** (or the plus icon).
-3. Choose the transaction **type** — **Income** or **Expense**.
+3. Choose the transaction **type** - **Income** or **Expense**.
 4. Fill in the required fields:
-   - **Title** — a short label (for example, "Groceries" or "Paycheck")
-   - **Amount** — the dollar value
-   - **Date** — when the transaction occurred
-   - **Account** — which account receives or pays the money
-   - **Category** — pick from your category list
+   - **Title** - a short label (for example, "Groceries" or "Paycheck")
+   - **Amount** - the dollar value
+   - **Date** - when the transaction occurred
+   - **Account** - which account receives or pays the money
+   - **Category** - pick from your category list
 5. Optionally fill in:
-   - **Description** — extra notes
-   - **Source** (income) — where the money came from
-   - **Payment method** (expense) — how you paid
-   - **Tags** — comma-separated labels for filtering later
+   - **Description** - extra notes
+   - **Source** (income) - where the money came from
+   - **Payment method** (expense) - how you paid
+   - **Tags** - comma-separated labels for filtering later
 6. Click **Save** to create the transaction.
 
 spndr updates the selected account balance immediately when you save.

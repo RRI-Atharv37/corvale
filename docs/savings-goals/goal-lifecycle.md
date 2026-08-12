@@ -39,8 +39,8 @@ Click the **play** icon on a paused goal to return it to **Active** status. Cont
 
 You can complete a goal in two ways:
 
-1. **Automatically** — when contributions reach or exceed the target amount
-2. **Manually** — click the **checkmark** icon and confirm
+1. **Automatically** - when contributions reach or exceed the target amount
+2. **Manually** - click the **checkmark** icon and confirm
 
 Completed goals show a green status badge and move to the **Completed** tab. You cannot add contributions to completed goals unless you edit the target upward (which may reopen the goal).
 
@@ -51,7 +51,7 @@ Archive goals you no longer need on the active list:
 1. Click the **trash** icon on a goal card.
 2. Confirm in the dialog.
 
-Archived goals appear on the **Archived** tab when you include archived items in the list filter. Archiving is soft-delete — data is retained but hidden from default views.
+Archived goals appear on the **Archived** tab when you include archived items in the list filter. Archiving is soft-delete - data is retained but hidden from default views.
 
 ## Tab views
 
@@ -67,8 +67,8 @@ Switch tabs at the top of the Savings Goals page to change the view.
 
 The progress bar color reflects completion:
 
-- **Indigo / violet / cyan** — in progress
-- **Emerald** — target reached (100% or complete)
+- **Indigo / violet / cyan** - in progress
+- **Emerald** - target reached (100% or complete)
 
 Paused goals keep their progress but use an amber card accent. Completed goals use an emerald card accent.
 

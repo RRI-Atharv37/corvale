@@ -14,7 +14,7 @@ Run migration when:
 - You have existing income/expense data that does not appear on the Transactions page
 - You want account balances to reflect historical activity
 
-The script is **idempotent** — re-running it skips records that were already migrated.
+The script is **idempotent** - re-running it skips records that were already migrated.
 
 ## Commands
 

@@ -12,10 +12,10 @@ Follow these steps to create a new category for classifying transactions.
 2. Find the master group where you want the new category (for example, **Food**).
 3. Click **Add category** within that group (or use the global add button and pick a master).
 4. Fill in the form:
-   - **Master category** — which top-level group it belongs to
-   - **Name** — a short label (for example, "Coffee shops")
-   - **Icon** — pick from the icon palette
-   - **Color** — pick a highlight color
+   - **Master category** - which top-level group it belongs to
+   - **Name** - a short label (for example, "Coffee shops")
+   - **Icon** - pick from the icon palette
+   - **Color** - pick a highlight color
 5. Optionally check **Set as default** to make this your default category.
 6. Click **Save**.
 
@@ -31,7 +31,7 @@ Your new category appears in the master group and becomes available in the trans
 
 spndr provides a preset icon library and color swatches. Icons display next to category names in the Categories list and in the transaction picker.
 
-Choose colors that help you scan your category list quickly — for example, red tones for Food, blue for Transport.
+Choose colors that help you scan your category list quickly - for example, red tones for Food, blue for Transport.
 
 ## Related pages
 

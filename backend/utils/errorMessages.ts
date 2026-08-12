@@ -103,4 +103,11 @@ export const ERROR_MESSAGES = {
         AUTO_CONTRIBUTION_DISABLED: 'Automatic contributions are not enabled for this goal',
         AUTO_CONTRIBUTION_NOT_DUE: 'Automatic contribution is not due yet',
     },
+    RECURRING: {
+        RULE_NOT_FOUND: 'Recurring rule not found',
+        RULE_ARCHIVED: 'Cannot modify an archived recurring rule',
+        RULE_ALREADY_ARCHIVED: 'Recurring rule is already archived',
+        NOT_A_DRAFT: 'Transaction is not a draft',
+        NOT_RECURRING_DRAFT: 'Transaction is not a recurring draft',
+    },
 }

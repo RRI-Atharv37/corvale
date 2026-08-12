@@ -96,7 +96,7 @@ See [Authentication API](./authentication-api.md) for the full lifecycle includi
 | **0** | Foundation fixes, dashboard shell, test infrastructure |
 | **1a** | Accounts with server-derived balances |
 | **1b** | Category hierarchy, master seed, CRUD |
-| **1c** | Unified transactions — income, expense, transfer, splits, receipts, bulk ops |
+| **1c** | Unified transactions - income, expense, transfer, splits, receipts, bulk ops |
 | **2** | Refresh tokens, logout-all, password reset, ClamAV scan, production hardening |
 | **3** | Budgets API and UI with progress tracking |
 | **4** | Savings goals API and UI with contributions and auto-contribute |
