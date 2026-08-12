@@ -1,0 +1,45 @@
+---
+title: Dashboard Overview
+---
+
+## Your financial home base
+
+The **Dashboard** is the first page you see after signing in. It gives you a high-level snapshot of your finances without digging into individual entries.
+
+Navigate to the dashboard from the sidebar by clicking **Dashboard**, or go directly to `/dashboard`.
+
+## What the dashboard shows
+
+The dashboard displays two main areas:
+
+1. **Summary cards** - key financial metrics at a glance
+2. **Quick links** - shortcuts to Income, Expense, and Accounts
+
+The summary cards adapt based on whether you have active accounts. See [Summary Cards](./summary-cards.md) for details on each metric.
+
+## How dashboard data loads
+
+When you open the dashboard, spndr fetches three data sources in parallel:
+
+- Your income entries (up to 100 most recent)
+- Your expense entries (up to 100 most recent)
+- Your saver balance details (which includes computed totals)
+
+If any request fails, spndr shows an error state with a **Retry** button.
+
+## Empty state
+
+If you have no data yet, the summary cards still render with zero values. The empty-state message encourages you to start by adding income and expenses.
+
+## Page header
+
+The dashboard header shows:
+
+- **Title:** Dashboard
+- **Description:** "Overview for [your full name]"
+
+## Related pages
+
+- [Summary Cards](./summary-cards.md)
+- [Quick Links](./quick-links.md)
+- [How Balances Are Calculated](../balances/how-balances-are-calculated.md)

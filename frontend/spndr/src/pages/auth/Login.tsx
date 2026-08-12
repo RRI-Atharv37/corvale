@@ -1,0 +1,101 @@
+import React, { useState } from 'react'
+import AuthLayout from '../../components/layouts/AuthLayout'
+import { Link, useNavigate } from 'react-router-dom'
+import Input from '../../components/inputs/Input'
+import { validateEmail } from '../../utils/helper'
+import axiosInstance from '../../utils/axiosInstance'
+import { API_PATHS } from '../../utils/apiPaths'
+import { parseAuthPayload, setAuthSession } from '../../context/UserContext'
+import { useUser } from '../../hooks/useUser'
+import type { ApiResponse, AuthPayload } from '../../types/api'
+import { getApiErrorMessage } from '../../utils/apiError'
+import toast from 'react-hot-toast'
+
+const Login = () => {
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [error, setError] = useState<string | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const navigate = useNavigate()
+    const { updateUser } = useUser()
+
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+
+        if (!validateEmail(email)) {
+            setError('Please enter a valid email address')
+            return
+        }
+
+        if (!password) {
+            setError('Please enter a password.')
+            return
+        }
+
+        setError('')
+        setIsSubmitting(true)
+
+        try {
+            const response = await axiosInstance.post<ApiResponse<AuthPayload>>(API_PATHS.AUTH.LOGIN, {
+                email,
+                password,
+            })
+
+            const { token, user } = parseAuthPayload(response)
+            setAuthSession({ token, user })
+            updateUser(user)
+            toast.success('Welcome back!')
+            navigate('/dashboard')
+        } catch (err) {
+            const message = getApiErrorMessage(err, 'An error occurred. Please try again.')
+            setError(message)
+            toast.error(message)
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    return (
+        <AuthLayout>
+            <div>
+                <h3 className="text-xl font-semibold text-slate-100">Welcome back</h3>
+                <p className="text-xs text-slate-400 mt-1 mb-6">Sign in to your account</p>
+
+                <form onSubmit={handleLogin}>
+                    <Input
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        label="Email address"
+                        placeholder="you@example.com"
+                        type="email"
+                        disabled={isSubmitting}
+                    />
+
+                    <Input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        label="Password"
+                        placeholder="Minimum 8 characters"
+                        type="password"
+                        disabled={isSubmitting}
+                    />
+
+                    {error && <p className="text-red-400 text-xs pb-2.5">{error}</p>}
+
+                    <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                        {isSubmitting ? 'Signing in...' : 'Sign in'}
+                    </button>
+
+                    <p className="text-[13px] text-slate-400 mt-3">
+                        Don&apos;t have an account?{' '}
+                        <Link className="font-medium text-cyan-400 hover:text-cyan-300" to="/signup">
+                            Sign up
+                        </Link>
+                    </p>
+                </form>
+            </div>
+        </AuthLayout>
+    )
+}
+
+export default Login

@@ -1,0 +1,48 @@
+{
+  "name": "spndr-backend",
+  "version": "1.0.0",
+  "description": "simple expense tracker",
+  "homepage": "https://github.com/RRI-Atharv37/spndr#readme",
+  "bugs": {
+    "url": "https://github.com/RRI-Atharv37/spndr/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RRI-Atharv37/spndr.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Atharv Dewangan",
+  "type": "commonjs",
+  "main": "server.ts",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "tsc",
+    "start": "node ../dist/backend/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-async-handler": "^1.2.0",
+    "express-rate-limit": "^8.6.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.2",
+    "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.14.1",
+    "@types/supertest": "^7.2.1",
+    "mongodb-memory-server": "^11.2.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
+  }
+}
