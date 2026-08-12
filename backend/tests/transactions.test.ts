@@ -266,6 +266,45 @@ describe('Transactions', () => {
         expect(amountRes.body.data).toHaveLength(1)
     })
 
+    it('sorts transactions by category name', async () => {
+        const { token } = await registerUser(app)
+        const account = await createTestAccount(token, 1000)
+        const foodCategoryId = await getFoodMasterId(token)
+        const transportCategoryId = await request(app)
+            .get('/api/v1/categories')
+            .set(authHeader(token))
+            .then((res) =>
+                res.body.data.masters.find((m: { name: string }) => m.name === 'Transport')._id
+            )
+
+        await createTestTransaction(token, {
+            type: 'expense',
+            title: 'Bus',
+            amount: 5,
+            date: '2026-01-01T12:00:00.000Z',
+            accountId: account._id,
+            categoryId: transportCategoryId,
+        })
+
+        await createTestTransaction(token, {
+            type: 'expense',
+            title: 'Groceries',
+            amount: 20,
+            date: '2026-01-02T12:00:00.000Z',
+            accountId: account._id,
+            categoryId: foodCategoryId,
+        })
+
+        const sortRes = await request(app)
+            .get('/api/v1/transactions?sortBy=category&sortOrder=asc')
+            .set(authHeader(token))
+
+        expect(sortRes.status).toBe(200)
+        expect(sortRes.body.data.data).toHaveLength(2)
+        expect(sortRes.body.data.data[0].title).toBe('Groceries')
+        expect(sortRes.body.data.data[1].title).toBe('Bus')
+    })
+
     it('sorts transactions by amount and supports duplicate', async () => {
         const { token } = await registerUser(app)
         const account = await createTestAccount(token, 1000)
@@ -333,8 +372,8 @@ describe('Transactions', () => {
     })
 
     it('returns 403 when accessing another user transaction', async () => {
-        const owner = await registerUser(app)
-        const other = await createSecondUser(app)
+        const owner = await seedUserDirectly({ email: 'tx-owner@example.com' })
+        const other = await seedUserDirectly({ email: 'tx-other@example.com' })
         const account = await createTestAccount(owner.token)
         const categoryId = await getFoodMasterId(owner.token)
 

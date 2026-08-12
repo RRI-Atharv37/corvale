@@ -10,8 +10,8 @@ spndr tracks several balance metrics that appear on the dashboard, saver page, a
 
 | Metric | Where it appears | What it represents |
 |--------|------------------|--------------------|
-| **Total Income** | Dashboard | Sum of all logged income entries |
-| **Total Expenses** | Dashboard | Sum of all logged expense entries |
+| **Total Income** | Dashboard | Sum of logged income activity |
+| **Total Expenses** | Dashboard | Sum of logged expense activity |
 | **Net Worth** | Dashboard, Saver | Overall financial position |
 | **Spendable Balance** | Dashboard, Saver | Money available to spend or allocate to saver |
 | **Saver Balance** | Dashboard, Saver | Amount currently in your saver pool |
@@ -28,7 +28,7 @@ When you have zero active accounts:
 - **Net worth** = total income − total expenses
 - **Spendable balance** = max(0, net worth − saver balance)
 
-Income and expense entries directly drive your financial picture.
+Income and expense activity is recorded via **Transactions**. In accounts mode, transaction entries update account balances directly.
 
 ### Accounts mode (one or more active accounts)
 

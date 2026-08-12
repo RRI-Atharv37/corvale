@@ -13,23 +13,22 @@ Navigate to the dashboard from the sidebar by clicking **Dashboard**, or go dire
 The dashboard displays two main areas:
 
 1. **Summary cards** - key financial metrics at a glance
-2. **Quick links** - shortcuts to Income, Expense, and Accounts
+2. **Quick links** - shortcuts to Transactions, Income filter, and Accounts
 
 The summary cards adapt based on whether you have active accounts. See [Summary Cards](./summary-cards.md) for details on each metric.
 
 ## How dashboard data loads
 
-When you open the dashboard, spndr fetches three data sources in parallel:
+When you open the dashboard, spndr fetches data in parallel:
 
-- Your income entries (up to 100 most recent)
-- Your expense entries (up to 100 most recent)
-- Your saver balance details (which includes computed totals)
+- Transaction counts for income and expense types
+- Your saver balance details (which includes computed totals for net worth and spendable balance)
 
 If any request fails, spndr shows an error state with a **Retry** button.
 
 ## Empty state
 
-If you have no data yet, the summary cards still render with zero values. The empty-state message encourages you to start by adding income and expenses.
+If you have no data yet, the summary cards still render with zero values. The empty-state message encourages you to start by adding transactions.
 
 ## Page header
 

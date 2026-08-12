@@ -739,18 +739,29 @@ export const bulkDeleteTransactions = asyncHandler(async (req: AuthRequest, res:
     let deletedCount = 0
 
     for (const transactionId of transactionIds) {
-        const transaction = await validateOwnership(
-            Transaction,
-            transactionId,
-            userId,
-            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
-        )
+        const transaction = await Transaction.findById(transactionId)
+
+        if (!transaction) {
+            const deletedAsTransferPair = [...processedTransferPairs].some((pairKey) =>
+                pairKey.split(':').includes(transactionId)
+            )
+            if (deletedAsTransferPair) {
+                deletedCount += 1
+                continue
+            }
+            throw new CustomError(ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND, 404)
+        }
+
+        if (transaction.userId.toString() !== userId) {
+            throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
+        }
 
         if (isTransferLeg(transaction) && transaction.transferPairId) {
             const pairKey = [transaction._id.toString(), transaction.transferPairId.toString()]
                 .sort()
                 .join(':')
             if (processedTransferPairs.has(pairKey)) {
+                deletedCount += 1
                 continue
             }
             processedTransferPairs.add(pairKey)

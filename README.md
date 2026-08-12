@@ -3,11 +3,11 @@
 # spndr
 
 **Personal finance, simplified**
-**Track income, expenses, accounts, and savings in one place.**
+**Track transactions, accounts, categories, and savings in one place.**
 
 Built for students and young adults who want clarity over complexity.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.1.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.2.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
@@ -26,45 +26,47 @@ Built for students and young adults who want clarity over complexity.
 <tr>
 <td width="50%" valign="top">
 
-### Spendable Balance & Net Worth
+### Unified Transactions
 
-Dual metrics with smart **Saver pool** math - legacy mode (income - expenses) or **accounts mode** (checking, cash, credit, savings). Spendable balance excludes savings and reflects what you can actually use today.
-
-### Income & Expense Management
-
-Full CRUD in the dashboard with paginated lists, create/edit modals, and delete confirmations. Real-time summary metrics on the home dashboard.
+One ledger for income, expenses, and transfers — with search, date filters, sort, receipt attachments, split expenses, and bulk delete/category actions.
 
 ### Multi-Account Tracking
 
-Create checking, cash, credit, and savings accounts with opening balances. Set a default account, archive inactive ones, and let balances drive net worth automatically.
+Create checking, cash, credit, and savings accounts. Transaction activity updates balances automatically. Net worth and spendable balance derive from account totals.
+
+### Hierarchical Categories
+
+Nine master categories plus your own sub-categories with icons and colors. Reusable category picker on every transaction form.
 
 </td>
 <td width="50%" valign="top">
 
+### Spendable Balance & Net Worth
+
+Dual metrics with smart **Saver pool** math — legacy mode (income − expenses) or **accounts mode** (checking, cash, credit, savings). Spendable balance excludes savings and reflects what you can actually use today.
+
 ### Pushover Month-End Rollover
 
-Automated rollover engine snapshots your Saver balance at month-end, resets the pool, and keeps a browsable history - so every month starts clean.
+Automated rollover engine snapshots your Saver balance at month-end, resets the pool, and keeps a browsable history — so every month starts clean.
 
 ### Battle-Tested Backend
 
-Isolated **Vitest + Supertest** suite with **in-memory MongoDB**. Critical paths covered: auth, saver, pushover, ownership, aggregation, and route ordering.
-
-### Modern Dark UI
-
-Responsive dashboard shell - sidebar, mobile slide-out nav, loading/error/empty states, and toast feedback. Built with **React 19**, **Vite 6**, and **Tailwind CSS 4**.
+Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **87 tests** covering auth, accounts, categories, transactions, transfers, splits, receipts, bulk ops, migration, saver, pushover, and ownership.
 
 </td>
 </tr>
 </table>
 
 <details>
-<summary><strong>Also included in v0.1.0</strong></summary>
+<summary><strong>Also included in v0.2.0</strong></summary>
 
 - JWT authentication with session restore, bcrypt password hashing, and auth rate limiting
 - Saver deposits by percentage or custom amount, with withdrawal guards
-- Expense API extras - search, date filters, group-by-category, group-by-payment-method, CSV download, and reports
+- Transaction API extras — search, timezone-aware date filters, sort, CSV download, duplicate
+- Receipt upload (JPEG/PNG/WebP/PDF, 5 MB max) with per-user storage isolation
+- Legacy data migration CLI (`npm run migrate:transactions`) from Income/Expense to Transaction
 - Compound database indexes and production-safe error handling
-- Typed frontend API layer with reusable hooks and form components
+- Modern dark UI — React 19, Vite 6, Tailwind CSS 4, responsive sidebar, toast feedback
 
 </details>
 
@@ -82,28 +84,26 @@ Responsive dashboard shell - sidebar, mobile slide-out nav, loading/error/empty 
   <em>Summary cards & quick links</em>
 </p>
 
-### Income
-
-<p align="center">
-  <img src="docs/public/screenshots/income.png" alt="Income page" width="720" />
-  <br />
-  <em>Paginated list, create/edit modals, and delete confirmations</em>
-</p>
-
-### Expense
-
-<p align="center">
-  <img src="docs/public/screenshots/expense.png" alt="Expense page" width="720" />
-  <br />
-  <em>Track spending with categories, payment methods, and tags</em>
-</p>
-
 ### Accounts
 
 <p align="center">
   <img src="docs/public/screenshots/accounts.png" alt="Accounts page" width="720" />
   <br />
-  <em>Multi-account balances - checking, cash, credit, and savings</em>
+  <em>Multi-account balances — checking, cash, credit, and savings</em>
+</p>
+
+### Income & Expense (legacy)
+
+<p align="center">
+  <img src="docs/public/screenshots/income.png" alt="Income page" width="720" />
+  <br />
+  <em>Legacy income list — now unified under Transactions</em>
+</p>
+
+<p align="center">
+  <img src="docs/public/screenshots/expense.png" alt="Expense page" width="720" />
+  <br />
+  <em>Legacy expense list — now unified under Transactions</em>
 </p>
 
 ### Saver
@@ -189,9 +189,13 @@ npm run dev
 Open **[http://localhost:5173](http://localhost:5173)** → sign up → explore the dashboard.
 
 <details>
-<summary><strong>Optional: docs site & tests</strong></summary>
+<summary><strong>Optional: migrate legacy data, docs site & tests</strong></summary>
 
 ```bash
+# Migrate legacy Income/Expense to Transactions (from backend/)
+npm run migrate:transactions:dry-run   # preview
+npm run migrate:transactions           # apply
+
 # Documentation (from docs/) - http://localhost:5174
 cd docs && npm install && npm run dev
 
@@ -216,9 +220,9 @@ npm test
 Run locally with `npm run dev` inside [`./docs`](./docs). Covers:
 
 - Getting started & installation
-- Dashboard, Income, Expense, Accounts, Saver, Pushover
+- Dashboard, Transactions, Categories, Accounts, Saver, Pushover
 - Balance calculation deep-dives
-- Complete REST API reference (`/api/v1`)
+- Complete REST API reference (`/api/v1`) including transactions, categories, and receipts
 
 </td>
 <td align="center" width="120">
@@ -239,10 +243,13 @@ Source lives in [`./docs`](./docs) (VitePress). Build for production with `npm r
 
 | Phase | Focus | Status |
 | :--- | :--- | :--- |
-| **Phase 0** | Foundation - auth, CRUD, Saver, Pushover, test infra, dark UI | ✅ **Complete** · `v0.1.0` |
-| **Phase 1** | Accounts & Unified Transactions | 🔜 **Up next** |
+| **Phase 0** | Foundation — auth, CRUD, Saver, Pushover, test infra, dark UI | ✅ **Complete** · `v0.1.0` |
+| **Phase 1a** | Accounts — multi-account tracking, balance integration | ✅ **Complete** |
+| **Phase 1b** | Categories — master seed, sub-categories, dashboard UI | ✅ **Complete** |
+| **Phase 1c** | Unified transactions — migration, transfers, splits, receipts, bulk ops | ✅ **Complete** · `v0.2.0` |
+| **Phase 2** | Auth lifecycle — refresh tokens, logout-all, password reset | 🔜 **Up next** |
 
-Phase 0 delivered a production-ready core: secure API, income/expense/saver/pushover flows, Vitest coverage, and a polished dark dashboard. Phase 1 builds on that with hierarchical categories and a unified transaction model.
+Phase 1 delivered accounts, hierarchical categories, and a unified transaction model with 87 backend tests. Phase 2 focuses on token lifecycle and production hardening.
 
 ---
 

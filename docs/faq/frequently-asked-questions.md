@@ -6,7 +6,7 @@ title: Frequently Asked Questions
 
 ### What is spndr?
 
-spndr is a personal finance web application for tracking income, expenses, account balances, and savings. It is built for students and young adults who want a clear picture of their money without complexity.
+spndr is a personal finance web application for tracking transactions, account balances, categories, and savings. It is built for students and young adults who want a clear picture of their money without complexity.
 
 ### Is spndr free to use?
 
@@ -16,19 +16,35 @@ spndr is open source under the Apache-2.0 License. You can run it locally or dep
 
 Yes. spndr requires registration to keep your financial data private and scoped to your user account.
 
-## Income and expenses
+## Transactions and categories
+
+### Where do I add income and expenses?
+
+Use the **Transactions** page (`/transactions`). The old separate Income and Expense pages redirect there. You can filter by type using the tabs or query parameter (`?type=income` or `?type=expense`).
 
 ### Are categories predefined?
 
-No. Both income and expense categories are free-text fields. You type whatever category name makes sense to you.
+spndr provides nine master categories (Food, Transport, Entertainment, Housing, Education, Health, Shopping, Income, Other). You create your own sub-categories under each master with custom names, icons, and colors.
 
-### Does adding income or expenses update my account balances?
+### Does adding a transaction update my account balance?
 
-No. Income and expense entries are activity logs. They do not automatically change account balances. Account balances reflect the opening balance set at account creation.
+Yes. Every transaction links to an account. Creating, editing, or deleting a transaction updates that account's balance automatically.
+
+### Can I move money between accounts?
+
+Yes. Use **Transfers** on the Transactions page. Transfers create a linked pair of entries and move money between two accounts without changing your net worth.
+
+### Can I split one expense across categories?
+
+Yes. Enable **Split expense** when creating an expense. Each split line needs a category and amount, and the lines must sum to the total.
+
+### Can I attach receipts?
+
+Yes. Upload JPEG, PNG, WebP, or PDF files up to 5 MB per receipt. Attach them when creating or editing a transaction.
 
 ### Can I export my data?
 
-The backend supports CSV export for income and expense data via API endpoints. The web UI does not currently include export buttons.
+The backend supports CSV export for transactions via `GET /transactions/download`. The web UI does not currently include an export button.
 
 ## Accounts
 
@@ -94,6 +110,10 @@ spndr clears your token from local storage and redirects you to the login page. 
 - **Frontend:** React, Vite, TypeScript, Tailwind CSS, Axios
 
 See the [Developers](../developers/overview.md) section for more details.
+
+### I upgraded from an older version. Where is my data?
+
+Run the migration script from `backend/`: `npm run migrate:transactions`. See [Data Migration](../developers/data-migration.md) for details.
 
 ### Where can I report bugs?
 

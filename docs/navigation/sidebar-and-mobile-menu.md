@@ -11,11 +11,12 @@ spndr uses a persistent sidebar on desktop and a slide-out menu on mobile. Both 
 | Label | Route | Icon |
 |-------|-------|------|
 | Dashboard | `/dashboard` | Home |
-| Income | `/income` | Trending up |
-| Expense | `/expense` | Trending down |
+| Transactions | `/transactions` | List |
 | Accounts | `/accounts` | Credit card |
+| Categories | `/categories` | Grid |
 | Saver | `/saver` | Dollar sign |
 | Pushover | `/pushover` | Repeat |
+| Docs | `http://localhost:5174` | Book (opens docs site) |
 
 The currently active page is highlighted with a cyan accent border and background.
 
@@ -54,7 +55,12 @@ The sidebar header displays the **spndr** logo text in cyan with the subtitle "P
 
 Login and signup pages use a separate auth layout without the sidebar. After signing in, you enter the dashboard layout with full navigation.
 
+## Legacy routes
+
+The old `/income` and `/expense` routes redirect to `/transactions`. Use the Transactions page for all income and expense activity.
+
 ## Related pages
 
 - [Dashboard Overview](../dashboard/overview.md)
+- [Transactions Overview](../transactions/overview.md)
 - [Sessions and Logout](../authentication/sessions-and-logout.md)

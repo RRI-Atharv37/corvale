@@ -30,9 +30,9 @@ When you have no active accounts, spndr uses **legacy mode** where net worth equ
 
 See [How Balances Are Calculated](../balances/how-balances-are-calculated.md) for details.
 
-## Important: income and expenses are separate
+## Transactions update account balances
 
-Income and expense entries are **not linked** to specific accounts. Adding income or an expense does not automatically update any account balance. Account balances reflect the opening balance you set at creation.
+Every transaction links to an account. When you create, edit, or delete an income, expense, or transfer entry, spndr updates the linked account balance automatically. Opening balances set the starting point; transactions keep balances current.
 
 ## Archived accounts
 
@@ -44,3 +44,4 @@ Archiving an account hides it from your account list and removes it from balance
 - [Creating an Account](./creating-an-account.md)
 - [Editing and Archiving Accounts](./editing-and-archiving-accounts.md)
 - [Default Accounts](./default-accounts.md)
+- [Transactions Overview](../transactions/overview.md)

@@ -56,11 +56,16 @@ The `data` field shape varies by endpoint.
 | Prefix | Domain | Auth required |
 |--------|--------|---------------|
 | `/auth` | Authentication | Partial (see auth docs) |
-| `/income` | Income CRUD and queries | Yes |
-| `/expense` | Expense CRUD and queries | Yes |
+| `/transactions` | Unified transaction ledger | Yes |
+| `/categories` | Category management | Yes |
+| `/receipts` | Receipt upload and download | Yes |
 | `/accounts` | Account management | Yes |
 | `/saver` | Saver deposits and withdrawals | Yes |
 | `/pushover` | Rollover and history | Yes |
+| `/income` | Legacy income CRUD (deprecated) | Yes |
+| `/expense` | Legacy expense CRUD (deprecated) | Yes |
+
+Legacy `/income` and `/expense` routes return `Deprecation` and `Link` headers pointing to `/transactions`. Prefer the [Transactions API](./transactions-api.md) for all new integrations.
 
 ## HTTP methods
 
@@ -71,6 +76,7 @@ spndr uses standard REST conventions:
 | `GET` | Read data |
 | `POST` | Create resources or trigger actions |
 | `PUT` | Update resources |
+| `PATCH` | Partial bulk updates |
 | `DELETE` | Delete or archive resources |
 
 ## Ownership and security
@@ -82,11 +88,11 @@ spndr uses standard REST conventions:
 
 ## CORS
 
-The backend allows requests from the origin specified in `CLIENT_URL` with credentials support. Allowed methods: GET, POST, PUT, DELETE.
+The backend allows requests from the origin specified in `CLIENT_URL` with credentials support. Allowed methods: GET, POST, PUT, PATCH, DELETE.
 
 ## Pagination
 
-List endpoints for income and expense support pagination query parameters:
+List endpoints for transactions support pagination query parameters:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -95,11 +101,17 @@ List endpoints for income and expense support pagination query parameters:
 
 Paginated responses include a `meta` object with page number, total pages, and total count.
 
+## Money format
+
+Transaction amounts are stored as integer minor units (cents) in the database. API request and response bodies use major-unit decimals (for example, `42.99`) for client ergonomics.
+
 ## Related pages
 
 - [Authentication API](./authentication-api.md)
-- [Income API](./income-api.md)
-- [Expense API](./expense-api.md)
+- [Transactions API](./transactions-api.md)
+- [Categories API](./categories-api.md)
+- [Receipts API](./receipts-api.md)
 - [Accounts API](./accounts-api.md)
+- [Data Migration](./data-migration.md)
 - [Saver API](./saver-api.md)
 - [Pushover API](./pushover-api.md)

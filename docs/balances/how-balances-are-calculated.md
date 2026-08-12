@@ -10,10 +10,12 @@ spndr computes your balances server-side using a central balance engine. Every t
 
 The engine aggregates four data sources:
 
-1. **Income collection** - sum of all income entry amounts
-2. **Expense collection** - sum of all expense entry amounts
+1. **Income totals** - sum of recorded income activity
+2. **Expense totals** - sum of recorded expense activity
 3. **Saver document** - your current saver pool balance
 4. **Active accounts** - all non-archived accounts and their current balances
+
+When you use the unified Transactions page, creating or deleting income and expense entries updates the linked account balance. Transfer entries move money between accounts without changing net worth.
 
 ## Legacy mode calculation
 
@@ -64,6 +66,8 @@ total account balance (net worth) = asset total − credit total
 liquid balance = checking total + cash total
 ```
 
+Account balances reflect opening balances plus all transaction and transfer activity on each account.
+
 ### Spendable balance
 
 ```
@@ -74,7 +78,7 @@ Savings account balances count toward net worth but **not** toward liquid/spenda
 
 ### Income and expense in accounts mode
 
-Total income and total expenses are still calculated and displayed on the dashboard. They serve as activity tracking metrics - a record of what you have logged - but they do not change net worth or spendable balance.
+Total income and total expenses are still calculated and displayed on the dashboard. They serve as activity tracking metrics — a record of what you have logged — but they do not drive net worth or spendable balance. Net worth and spendable derive from account balances.
 
 ## Saver impact
 
@@ -85,3 +89,4 @@ The saver balance always reduces spendable balance in both modes. Money in the s
 - [Balances Overview](./overview.md)
 - [Spendable Balance and Net Worth](./spendable-balance-and-net-worth.md)
 - [Account Types](../accounts/account-types.md)
+- [Transactions Overview](../transactions/overview.md)

@@ -2,6 +2,8 @@
 title: Income API
 ---
 
+> **Deprecated.** Use the [Transactions API](./transactions-api.md) instead. Legacy `/income` routes remain for backward compatibility and return `Deprecation` headers. The frontend redirects `/income` to `/transactions`.
+
 ## Endpoints
 
 All income routes are mounted at `/api/v1/income`. All require authentication.
