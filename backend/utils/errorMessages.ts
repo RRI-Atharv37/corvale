@@ -110,4 +110,7 @@ export const ERROR_MESSAGES = {
         NOT_A_DRAFT: 'Transaction is not a draft',
         NOT_RECURRING_DRAFT: 'Transaction is not a recurring draft',
     },
+    NOTIFICATION: {
+        NOTIFICATION_NOT_FOUND: 'Notification not found',
+    },
 }

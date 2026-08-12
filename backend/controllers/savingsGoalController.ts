@@ -28,6 +28,7 @@ import {
     validateOwnership,
     validateRequiredFields,
 } from '../utils/sharedUtils'
+import { evaluateSavingsMilestoneNotifications } from '../utils/notificationUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
@@ -53,6 +54,8 @@ const recordContribution = async (
     type: 'manual' | 'automatic',
     note?: string
 ) => {
+    const previousAmountMinor = goal.currentAmount
+
     const contribution = await SavingsGoalContribution.create({
         userId,
         goalId: goal._id,
@@ -68,6 +71,8 @@ const recordContribution = async (
     }
     markGoalCompletedIfTargetMet(goal)
     await goal.save()
+
+    await evaluateSavingsMilestoneNotifications(userId, goal, previousAmountMinor)
 
     return contribution
 }

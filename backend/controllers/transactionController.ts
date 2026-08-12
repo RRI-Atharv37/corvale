@@ -6,6 +6,7 @@ import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { DEFAULT_TIMEZONE, resolveDateRange } from '../utils/timezoneUtils'
+import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
 import {
     adjustAccountForTransactionChange,
     applyTransactionToAccount,
@@ -204,6 +205,7 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     }
 
     const payload = await serializeTransactionWithSplits(transaction, userId)
+    await evaluateBudgetOverLimitNotifications(userId, transaction)
     handleResponses(res, 201, payload)
 })
 
@@ -466,6 +468,7 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     if (status !== undefined) transaction.status = status
 
     await transaction.save()
+    await evaluateBudgetOverLimitNotifications(userId, transaction)
     handleResponses(res, 200, serializeTransaction(transaction))
 })
 

@@ -142,4 +142,10 @@ export const API_PATHS = {
         SAVED: '/dashboard/reports/saved',
         SAVED_RUN: (reportId: string) => `/dashboard/reports/saved/${reportId}/run`,
     },
+    NOTIFICATIONS: {
+        GET_ALL: '/notifications',
+        MARK_READ: (notificationId: string) => `/notifications/${notificationId}/read`,
+        DISMISS: (notificationId: string) => `/notifications/${notificationId}/dismiss`,
+        MARK_ALL_READ: '/notifications/read-all',
+    },
 } as const

@@ -15,6 +15,7 @@ import savingsGoalRoutes from './routes/savingsGoalRoutes'
 import recurringRuleRoutes from './routes/recurringRuleRoutes'
 import dashboardRoutes from './routes/dashboardRoutes'
 import reportRoutes from './routes/reportRoutes'
+import notificationRoutes from './routes/notificationRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -46,6 +47,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/recurring-rules', recurringRuleRoutes)
     app.use('/api/v1/dashboard', dashboardRoutes)
     app.use('/api/v1/dashboard/reports', reportRoutes)
+    app.use('/api/v1/notifications', notificationRoutes)
     app.use(errorHandler)
 
     return app

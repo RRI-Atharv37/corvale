@@ -25,6 +25,7 @@ import {
 } from '../utils/passwordResetUtils'
 import { parseSupportedCurrency } from '../utils/currencyUtils'
 import { isValidTimezone } from '../utils/timezoneUtils'
+import { parseNotificationPreferences } from '../utils/notificationUtils'
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
@@ -32,6 +33,7 @@ const toPublicUser = (user: IUser) => ({
     email: user.email,
     timezone: user.timezone,
     preferredCurrency: user.preferredCurrency,
+    notificationPreferences: user.notificationPreferences,
 })
 
 const issueAuthSession = async (user: IUser, res: Response) => {
@@ -162,7 +164,7 @@ export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: 
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
 
-    const { preferredCurrency, timezone } = req.body
+    const { preferredCurrency, timezone, notificationPreferences } = req.body
 
     if (preferredCurrency !== undefined) {
         user.preferredCurrency = parseSupportedCurrency(preferredCurrency)
@@ -173,6 +175,23 @@ export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: 
             throw new CustomError('Invalid timezone', 400)
         }
         user.timezone = timezone.trim()
+    }
+
+    if (notificationPreferences !== undefined) {
+        try {
+            const parsed = parseNotificationPreferences(notificationPreferences)
+            if (parsed) {
+                user.notificationPreferences = {
+                    ...user.notificationPreferences,
+                    ...parsed,
+                }
+            }
+        } catch (error) {
+            throw new CustomError(
+                error instanceof Error ? error.message : 'Invalid notification preferences',
+                400
+            )
+        }
     }
 
     await user.save()

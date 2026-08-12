@@ -27,6 +27,7 @@ import { DEFAULT_CURRENCY } from '../../utils/currencies'
 import type { ApiResponse, User } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
+import NotificationCenter from '../notifications/NotificationCenter'
 
 const DOCS_URL = 'http://localhost:5174'
 
@@ -63,6 +64,7 @@ const DashboardLayout: React.FC = () => {
     const [mobileOpen, setMobileOpen] = useState(false)
     const [settingsOpen, setSettingsOpen] = useState(false)
     const [savingCurrency, setSavingCurrency] = useState(false)
+    const [savingNotifications, setSavingNotifications] = useState(false)
 
     const handlePreferredCurrencyChange = async (value: string) => {
         if (!user) return
@@ -78,6 +80,46 @@ const DashboardLayout: React.FC = () => {
             toast.error(getApiErrorMessage(error, 'Failed to update currency'))
         } finally {
             setSavingCurrency(false)
+        }
+    }
+
+    const handleBillRemindersToggle = async (enabled: boolean) => {
+        if (!user) return
+
+        setSavingNotifications(true)
+        try {
+            const response = await axiosInstance.patch<ApiResponse<User>>(API_PATHS.AUTH.UPDATE_USER, {
+                notificationPreferences: {
+                    billRemindersEnabled: enabled,
+                    billReminderDaysBefore: user.notificationPreferences?.billReminderDaysBefore ?? 3,
+                },
+            })
+            updateUser(unwrapApiData(response))
+            toast.success(enabled ? 'Bill reminders enabled' : 'Bill reminders disabled')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update notification preferences'))
+        } finally {
+            setSavingNotifications(false)
+        }
+    }
+
+    const handleBillReminderDaysChange = async (days: number) => {
+        if (!user) return
+
+        setSavingNotifications(true)
+        try {
+            const response = await axiosInstance.patch<ApiResponse<User>>(API_PATHS.AUTH.UPDATE_USER, {
+                notificationPreferences: {
+                    billRemindersEnabled: user.notificationPreferences?.billRemindersEnabled ?? true,
+                    billReminderDaysBefore: days,
+                },
+            })
+            updateUser(unwrapApiData(response))
+            toast.success('Bill reminder timing updated')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update notification preferences'))
+        } finally {
+            setSavingNotifications(false)
         }
     }
 
@@ -195,6 +237,7 @@ const DashboardLayout: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                        <NotificationCenter />
                         <a
                             href={DOCS_URL}
                             target="_blank"
@@ -222,6 +265,39 @@ const DashboardLayout: React.FC = () => {
                             onChange={(value) => void handlePreferredCurrencyChange(value)}
                             disabled={savingCurrency}
                         />
+                        <div className="mt-4 space-y-3">
+                            <label className="flex items-center justify-between gap-3 text-sm text-slate-300">
+                                <span>Bill due reminders</span>
+                                <input
+                                    type="checkbox"
+                                    checked={user?.notificationPreferences?.billRemindersEnabled ?? true}
+                                    onChange={(event) =>
+                                        void handleBillRemindersToggle(event.target.checked)
+                                    }
+                                    disabled={savingNotifications}
+                                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/40"
+                                />
+                            </label>
+                            <label className="block text-sm text-slate-300">
+                                Remind me before bills are due
+                                <select
+                                    value={user?.notificationPreferences?.billReminderDaysBefore ?? 3}
+                                    onChange={(event) =>
+                                        void handleBillReminderDaysChange(Number(event.target.value))
+                                    }
+                                    disabled={
+                                        savingNotifications ||
+                                        !(user?.notificationPreferences?.billRemindersEnabled ?? true)
+                                    }
+                                    className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/40 focus:outline-none"
+                                >
+                                    <option value={0}>Same day</option>
+                                    <option value={1}>1 day</option>
+                                    <option value={3}>3 days</option>
+                                    <option value={7}>7 days</option>
+                                </select>
+                            </label>
+                        </div>
                     </div>
 
                     <div>
