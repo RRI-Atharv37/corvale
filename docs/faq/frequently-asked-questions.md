@@ -46,6 +46,20 @@ Yes. Upload JPEG, PNG, WebP, or PDF files up to 5 MB per receipt. Attach them wh
 
 The backend supports CSV export for transactions via `GET /transactions/download`. The web UI does not currently include an export button.
 
+## Budgets and savings goals
+
+### How do budgets work?
+
+Create a budget on the **Budgets** page (`/budgets`). spndr compares your limit against **posted expense** transactions in the budget period. Draft transactions and transfers do not count. See [Budgets Overview](../budgets/overview.md).
+
+### What is the difference between saver and savings goals?
+
+The **Saver** is a discretionary pool you fund from spendable balance during the month. **Savings Goals** are named targets with progress bars, optional deadlines, and contribution history. They serve different purposes — see [Savings Goals Overview](../savings-goals/overview.md) and [Saver Overview](../saver/overview.md).
+
+### Can savings goals automatically save for me?
+
+You can enable **automatic contributions** on a goal (weekly or monthly). When due, process the contribution from the goal card. spndr does not pull money from bank accounts — contributions track progress toward a target you define.
+
 ## Accounts
 
 ### What happens when I archive an account?
@@ -90,17 +104,21 @@ Your spendable balance may be zero if:
 
 ## Authentication
 
-### Can I change my password or email?
+### Can I change my password?
 
-spndr does not currently provide a profile or settings page for changing account details.
+Use **Forgot password?** on the login page to request a reset link. See [Resetting Your Password](../authentication/resetting-your-password.md). There is no in-app password change form while signed in.
+
+### Can I change my email or name?
+
+spndr does not currently provide UI to edit your email or full name after registration.
 
 ### How long does my session last?
 
-Sessions last as long as your JWT token is valid. The default expiry is 7 days, configured on the server.
+Your access token expires after a short interval (default **15 minutes**). spndr refreshes it automatically using a longer-lived refresh token cookie (default **7 days**). See [Sessions and Logout](../authentication/sessions-and-logout.md).
 
 ### What happens if I log out?
 
-spndr clears your token from local storage and redirects you to the login page. Your data remains in the database.
+spndr revokes your refresh token, clears local storage, and redirects you to the login page. Use **Logout all devices** in Settings to invalidate every session. Your data remains in the database.
 
 ## Technical
 

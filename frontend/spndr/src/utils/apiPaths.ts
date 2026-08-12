@@ -92,4 +92,18 @@ export const API_PATHS = {
         DELETE: (budgetId: string) => `/budgets/${budgetId}`,
         PROGRESS: (budgetId: string) => `/budgets/${budgetId}/progress`,
     },
+    SAVINGS_GOALS: {
+        CREATE: '/savings-goals',
+        GET_ALL: '/savings-goals',
+        GET_BY_ID: (goalId: string) => `/savings-goals/${goalId}`,
+        UPDATE: (goalId: string) => `/savings-goals/${goalId}`,
+        DELETE: (goalId: string) => `/savings-goals/${goalId}`,
+        PROGRESS: (goalId: string) => `/savings-goals/${goalId}/progress`,
+        CONTRIBUTE: (goalId: string) => `/savings-goals/${goalId}/contribute`,
+        AUTO_CONTRIBUTE: (goalId: string) => `/savings-goals/${goalId}/auto-contribute`,
+        CONTRIBUTIONS: (goalId: string) => `/savings-goals/${goalId}/contributions`,
+        PAUSE: (goalId: string) => `/savings-goals/${goalId}/pause`,
+        RESUME: (goalId: string) => `/savings-goals/${goalId}/resume`,
+        COMPLETE: (goalId: string) => `/savings-goals/${goalId}/complete`,
+    },
 } as const

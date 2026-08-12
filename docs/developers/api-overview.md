@@ -60,6 +60,8 @@ The `data` field shape varies by endpoint.
 | `/categories` | Category management | Yes |
 | `/receipts` | Receipt upload and download | Yes |
 | `/accounts` | Account management | Yes |
+| `/budgets` | Budget CRUD and progress | Yes |
+| `/savings-goals` | Savings goal CRUD, contributions, lifecycle | Yes |
 | `/saver` | Saver deposits and withdrawals | Yes |
 | `/pushover` | Rollover and history | Yes |
 | `/income` | Legacy income CRUD (deprecated) | Yes |
@@ -112,6 +114,8 @@ Transaction amounts are stored as integer minor units (cents) in the database. A
 - [Categories API](./categories-api.md)
 - [Receipts API](./receipts-api.md)
 - [Accounts API](./accounts-api.md)
+- [Budgets API](./budgets-api.md)
+- [Savings Goals API](./savings-goals-api.md)
 - [Data Migration](./data-migration.md)
 - [Saver API](./saver-api.md)
 - [Pushover API](./pushover-api.md)

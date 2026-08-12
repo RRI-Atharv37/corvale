@@ -30,11 +30,14 @@ Create a new user account. **Rate-limited.**
     "user": {
       "_id": "...",
       "fullName": "Jane Doe",
-      "email": "jane@example.com"
+      "email": "jane@example.com",
+      "preferredCurrency": "USD"
     }
   }
 }
 ```
+
+Also sets an httpOnly refresh token cookie.
 
 ### Errors
 
@@ -58,7 +61,7 @@ Authenticate an existing user. **Rate-limited.**
 
 ### Success response (200)
 
-Same shape as register - returns `token` and `user`.
+Same shape as register — returns access `token`, `user`, and refresh cookie.
 
 ### Errors
 
@@ -66,6 +69,62 @@ Same shape as register - returns `token` and `user`.
 |--------|-----------|
 | 400 | Missing fields or invalid credentials |
 | 429 | Rate limit exceeded |
+
+## POST /auth/refresh
+
+Issue a new access token using the refresh token cookie. **Public** (no Bearer header). Rotates the refresh token on success.
+
+### Success response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+  }
+}
+```
+
+### Errors
+
+| Status | Condition |
+|--------|-----------|
+| 401 | Missing, invalid, expired, or revoked refresh token |
+
+## POST /auth/logout
+
+Revoke the current refresh token and clear the cookie. **Requires auth.**
+
+## POST /auth/logout-all
+
+Revoke all refresh tokens and increment `tokenVersion` (invalidates all access tokens). **Requires auth.**
+
+## POST /auth/password-reset/request
+
+Request a password reset link. **Rate-limited.** Always returns the same success message regardless of whether the email exists.
+
+### Request body
+
+```json
+{
+  "email": "jane@example.com"
+}
+```
+
+In development, the reset URL is logged to the server console.
+
+## POST /auth/password-reset/confirm
+
+Set a new password using a reset token. **Rate-limited.** Revokes all sessions on success.
+
+### Request body
+
+```json
+{
+  "token": "<reset-token-from-email>",
+  "password": "newsecurepassword"
+}
+```
 
 ## GET /auth/user
 
@@ -86,6 +145,8 @@ Authorization: Bearer <token>
     "_id": "...",
     "fullName": "Jane Doe",
     "email": "jane@example.com",
+    "preferredCurrency": "USD",
+    "timezone": "America/New_York",
     "createdAt": "...",
     "updatedAt": "..."
   }
@@ -98,22 +159,47 @@ Password is never included in the response.
 
 | Status | Condition |
 |--------|-----------|
-| 401 | Missing or invalid token |
+| 401 | Missing, expired, invalid, or revoked access token |
 | 404 | User not found |
+
+## PATCH /auth/user
+
+Update user preferences. **Requires auth.**
+
+### Request body
+
+```json
+{
+  "preferredCurrency": "EUR",
+  "timezone": "Europe/London"
+}
+```
+
+Both fields are optional. Supported currencies are validated server-side.
 
 ## JWT details
 
-- Signed with `JWT_SECRET` from environment
-- Expiry set by `JWT_EXPIRY` (e.g., `7d`)
-- Payload contains `{ id: userId }`
+- Access tokens signed with `JWT_SECRET`
+- Access expiry: `JWT_EXPIRY` (default: `15m`)
+- Payload includes `{ id: userId, tokenVersion }`
+- Auth middleware rejects tokens when `tokenVersion` does not match the user record
+
+## Refresh token cookie
+
+- Cookie name: `spndr_refresh` (override with `REFRESH_TOKEN_COOKIE_NAME`)
+- httpOnly, secure in production, sameSite `lax`
+- Expiry: `JWT_REFRESH_EXPIRY` (default: `7d`)
+- Stored hashed in the `RefreshToken` collection with rotation on each refresh
 
 ## Password hashing
 
-Passwords are hashed with bcrypt (10 salt rounds) via a Mongoose pre-save hook on the User model. Plain-text passwords are never stored.
+Passwords are hashed with bcrypt (10 salt rounds) via a Mongoose pre-save hook. Plain-text passwords are never stored.
+
+Reset tokens are hashed (SHA-256) before storage on the User document.
 
 ## Rate limiting
 
-Register and login share a rate limiter:
+Register, login, and password reset share a rate limiter:
 
 - Default: **10 requests per 15 minutes** per IP
 - Configurable via `AUTH_RATE_LIMIT_MAX` and `AUTH_RATE_LIMIT_WINDOW_MS`
@@ -121,4 +207,5 @@ Register and login share a rate limiter:
 ## Related pages
 
 - [API Overview](./api-overview.md)
-- [Creating an Account](../authentication/creating-an-account.md)
+- [Environment Variables](./environment-variables.md)
+- [Sessions and Logout](../authentication/sessions-and-logout.md)

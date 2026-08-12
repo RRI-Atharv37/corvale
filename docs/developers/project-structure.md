@@ -17,16 +17,22 @@ spndr/
 │   │   ├── categoryController.ts
 │   │   ├── receiptController.ts
 │   │   ├── accountController.ts
+│   │   ├── budgetController.ts
+│   │   ├── savingsGoalController.ts
 │   │   ├── incomeController.ts      (legacy, deprecated)
 │   │   ├── expenseController.ts     (legacy, deprecated)
 │   │   ├── saverController.ts
 │   │   └── pushoverController.ts
 │   ├── models/               Mongoose schemas
 │   │   ├── User.ts
+│   │   ├── RefreshToken.ts
 │   │   ├── Transaction.ts
 │   │   ├── Category.ts
 │   │   ├── Receipt.ts
 │   │   ├── Account.ts
+│   │   ├── Budget.ts
+│   │   ├── SavingsGoal.ts
+│   │   ├── SavingsGoalContribution.ts
 │   │   ├── Income.ts                (legacy, deprecated)
 │   │   ├── Expense.ts               (legacy, deprecated)
 │   │   ├── Saver.ts
@@ -41,8 +47,8 @@ spndr/
 │   │   ├── App.tsx           Route definitions
 │   │   ├── main.tsx          Entry point
 │   │   ├── pages/            Page components
-│   │   │   ├── auth/         Login, Signup
-│   │   │   └── Dashboard/    Home, Transactions, Accounts, Categories, Saver, Pushover
+│   │   │   ├── auth/         Login, Signup, Forgot/Reset password
+│   │   │   └── Dashboard/    Home, Transactions, Accounts, Categories, Budgets, SavingsGoals, Saver, Pushover
 │   │   ├── components/       Layouts, UI, forms, pickers, receipts
 │   │   ├── context/          UserContext (auth state)
 │   │   ├── hooks/            useUser, useAsyncData
@@ -64,7 +70,7 @@ spndr/
 ## Frontend conventions
 
 - Pages fetch data with the `useAsyncData` hook
-- API calls go through a shared Axios instance with JWT interceptor
+- API calls go through a shared Axios instance with JWT interceptor and automatic token refresh
 - Protected routes wrap the dashboard layout via `ProtectedRoute`
 - UI states (loading, error, empty) use shared components: `AsyncContent`, `LoadingState`, `ErrorState`, `EmptyState`
 
@@ -77,6 +83,10 @@ spndr/
 | Category | categories | Many (masters + user sub-categories) |
 | Receipt | receipts | Many |
 | Account | accounts | Many |
+| Budget | budgets | Many |
+| SavingsGoal | savingsgoals | Many |
+| SavingsGoalContribution | savingsgoalcontributions | Many |
+| RefreshToken | refreshtokens | Many (TTL index on expiresAt) |
 | Income | incomes | Many (legacy, deprecated) |
 | Expense | expenses | Many (legacy, deprecated) |
 | Saver | savers | One (unique index on userId) |
@@ -90,7 +100,7 @@ The core balance logic lives in `backend/utils/balanceUtils.ts`:
 - `computeAccountTotals(userId)` - account aggregation
 - `roundMoney(amount)` - two-decimal rounding
 
-Transaction account updates live in `backend/utils/transactionUtils.ts`. This engine powers the saver details endpoint, which the dashboard and saver pages consume.
+Transaction account updates live in `backend/utils/transactionUtils.ts`. Budget progress lives in `backend/utils/budgetUtils.ts`. Savings goal math lives in `backend/utils/savingsGoalUtils.ts`. This engine powers the saver details endpoint, which the dashboard and saver pages consume.
 
 ## Related pages
 

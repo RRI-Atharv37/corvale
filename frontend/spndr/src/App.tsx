@@ -13,6 +13,7 @@ import Pushover from './pages/Dashboard/Pushover'
 import Accounts from './pages/Dashboard/Accounts'
 import Categories from './pages/Dashboard/Categories'
 import Budgets from './pages/Dashboard/Budgets'
+import SavingsGoals from './pages/Dashboard/SavingsGoals'
 import UserProvider from './context/UserContext'
 import ProtectedRoute from './routes/ProtectedRoute'
 import DashboardLayout from './components/layouts/DashboardLayout'
@@ -44,6 +45,7 @@ const AppRoutes = () => {
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/budgets" element={<Budgets />} />
+                <Route path="/savings-goals" element={<SavingsGoals />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

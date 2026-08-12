@@ -11,6 +11,7 @@ import categoryRoutes from './routes/categoryRoutes'
 import transactionRoutes from './routes/transactionRoutes'
 import receiptRoutes from './routes/receiptRoutes'
 import budgetRoutes from './routes/budgetRoutes'
+import savingsGoalRoutes from './routes/savingsGoalRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -38,6 +39,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/transactions', transactionRoutes)
     app.use('/api/v1/receipts', receiptRoutes)
     app.use('/api/v1/budgets', budgetRoutes)
+    app.use('/api/v1/savings-goals', savingsGoalRoutes)
     app.use(errorHandler)
 
     return app

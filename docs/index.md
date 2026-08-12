@@ -18,10 +18,10 @@ hero:
 features:
   - title: Unified transactions
     details: Record income, expenses, and transfers on one page with search, filters, receipts, and bulk actions.
+  - title: Budgets and savings goals
+    details: Set spending limits with progress tracking, and save toward named targets with contributions and optional auto-deposits.
   - title: Categories and accounts
     details: Classify activity with hierarchical categories and track balances across checking, cash, credit, and savings accounts.
-  - title: Build a saver pool
-    details: Move funds from your spendable balance into a dedicated saver pool by percentage or custom amount.
-  - title: Month-end rollover
-    details: Snapshot your saver balance with pushover and start fresh each month with a clear history.
+  - title: Secure sessions
+    details: Refresh tokens, password reset, logout-all, and optional receipt virus scanning keep your data protected.
 ---

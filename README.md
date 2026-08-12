@@ -3,11 +3,11 @@
 # spndr
 
 **Personal finance, simplified**
-**Track transactions, accounts, categories, and savings in one place.**
+**Track transactions, accounts, budgets, savings goals, and more in one place.**
 
 Built for students and young adults who want clarity over complexity.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.2.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.5.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
@@ -38,8 +38,16 @@ Create checking, cash, credit, and savings accounts. Transaction activity update
 
 Nine master categories plus your own sub-categories with icons and colors. Reusable category picker on every transaction form.
 
+### Budgets
+
+Set monthly or custom spending limits — overall or per category — with progress bars, over-budget warnings, and optional account scoping. Posted expenses count toward spent totals; drafts and transfers are excluded.
+
 </td>
 <td width="50%" valign="top">
+
+### Savings Goals
+
+Named targets with deadlines, progress metrics, manual contributions, and optional weekly or monthly auto-contributions. Separate from the Saver pool — built for goal tracking, not month-end sweeps.
 
 ### Spendable Balance & Net Worth
 
@@ -51,22 +59,26 @@ Automated rollover engine snapshots your Saver balance at month-end, resets the 
 
 ### Battle-Tested Backend
 
-Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **87 tests** covering auth, accounts, categories, transactions, transfers, splits, receipts, bulk ops, migration, saver, pushover, and ownership.
+Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **159 tests** across 21 files covering auth lifecycle, accounts, categories, transactions, budgets, savings goals, transfers, splits, receipts, migration, saver, pushover, and ownership.
 
 </td>
 </tr>
 </table>
 
 <details>
-<summary><strong>Also included in v0.2.0</strong></summary>
+<summary><strong>Also included in v0.5.0</strong></summary>
 
-- JWT authentication with session restore, bcrypt password hashing, and auth rate limiting
+- JWT access tokens with refresh rotation (httpOnly cookie), logout-all, and password reset
+- Auth rate limiting on login, register, and password reset
+- Optional ClamAV virus scan on receipt upload (env-gated)
 - Saver deposits by percentage or custom amount, with withdrawal guards
 - Transaction API extras — search, timezone-aware date filters, sort, CSV download, duplicate
 - Receipt upload (JPEG/PNG/WebP/PDF, 5 MB max) with per-user storage isolation
+- Budget progress API — category vs overall scope, split attribution, draft exclusion
+- Savings goal lifecycle — pause, resume, complete, archive, contribution timeline
 - Legacy data migration CLI (`npm run migrate:transactions`) from Income/Expense to Transaction
 - Compound database indexes and production-safe error handling
-- Modern dark UI — React 19, Vite 6, Tailwind CSS 4, responsive sidebar, toast feedback
+- Modern dark UI — React 19, Vite 6, Tailwind CSS 4, responsive sidebar, settings modal, toast feedback
 
 </details>
 
@@ -81,7 +93,7 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **87 tests*
 <p align="center">
   <img src="docs/public/screenshots/dashboard-overview.png" alt="Dashboard overview" width="720" />
   <br />
-  <em>Summary cards & quick links</em>
+  <em>Summary cards & quick links to Transactions, Budgets, Savings Goals, and Accounts</em>
 </p>
 
 ### Accounts
@@ -92,18 +104,12 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** — **87 tests*
   <em>Multi-account balances — checking, cash, credit, and savings</em>
 </p>
 
-### Income & Expense (legacy)
+### Transactions (unified ledger)
 
 <p align="center">
-  <img src="docs/public/screenshots/income.png" alt="Income page" width="720" />
+  <img src="docs/public/screenshots/income.png" alt="Transactions page" width="720" />
   <br />
-  <em>Legacy income list — now unified under Transactions</em>
-</p>
-
-<p align="center">
-  <img src="docs/public/screenshots/expense.png" alt="Expense page" width="720" />
-  <br />
-  <em>Legacy expense list — now unified under Transactions</em>
+  <em>Unified income, expense, and transfer ledger (legacy income screenshot)</em>
 </p>
 
 ### Saver
@@ -164,7 +170,8 @@ cd frontend/spndr && npm install
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/spndr
 JWT_SECRET=replace-with-a-long-random-string
-JWT_EXPIRY=7d
+JWT_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
 ```
 
@@ -220,9 +227,10 @@ npm test
 Run locally with `npm run dev` inside [`./docs`](./docs). Covers:
 
 - Getting started & installation
-- Dashboard, Transactions, Categories, Accounts, Saver, Pushover
+- Dashboard, Transactions, Categories, Accounts, Budgets, Savings Goals, Saver, Pushover
+- Authentication — sign-in, password reset, sessions, account settings
 - Balance calculation deep-dives
-- Complete REST API reference (`/api/v1`) including transactions, categories, and receipts
+- Complete REST API reference (`/api/v1`) including transactions, budgets, savings goals, categories, and receipts
 
 </td>
 <td align="center" width="120">
@@ -244,12 +252,15 @@ Source lives in [`./docs`](./docs) (VitePress). Build for production with `npm r
 | Phase | Focus | Status |
 | :--- | :--- | :--- |
 | **Phase 0** | Foundation — auth, CRUD, Saver, Pushover, test infra, dark UI | ✅ **Complete** · `v0.1.0` |
-| **Phase 1a** | Accounts — multi-account tracking, balance integration | ✅ **Complete** |
-| **Phase 1b** | Categories — master seed, sub-categories, dashboard UI | ✅ **Complete** |
-| **Phase 1c** | Unified transactions — migration, transfers, splits, receipts, bulk ops | ✅ **Complete** · `v0.2.0` |
-| **Phase 2** | Auth lifecycle — refresh tokens, logout-all, password reset | 🔜 **Up next** |
+| **Phase 1a** | Accounts — multi-account tracking, balance integration | ✅ **Complete** `v0.2.1` |
+| **Phase 1b** | Categories — master seed, sub-categories, dashboard UI | ✅ **Complete** `v0.2.2` |
+| **Phase 1c** | Unified transactions — migration, transfers, splits, receipts, bulk ops | ✅ **Complete** · `v0.2.3` |
+| **Phase 2** | Auth lifecycle — refresh tokens, logout-all, password reset, ClamAV | ✅ **Complete** `v0.3.0` |
+| **Phase 3** | Budgets — CRUD API, progress tracking, UI | ✅ **Complete** `v0.4.0` |
+| **Phase 4** | Savings goals — CRUD API, contributions, auto-contribute, UI | ✅ **Complete** · `v0.5.0` |
+| **Phase 5** | Recurring transactions & bill drafts | 🔜 **Up next** |
 
-Phase 1 delivered accounts, hierarchical categories, and a unified transaction model with 87 backend tests. Phase 2 focuses on token lifecycle and production hardening.
+Phases **0–4** are complete with **159 backend tests**. Phase 5 adds recurring rules that generate draft transactions only.
 
 ---
 

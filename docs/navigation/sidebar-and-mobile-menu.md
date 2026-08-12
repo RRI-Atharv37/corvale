@@ -14,6 +14,8 @@ spndr uses a persistent sidebar on desktop and a slide-out menu on mobile. Both 
 | Transactions | `/transactions` | List |
 | Accounts | `/accounts` | Credit card |
 | Categories | `/categories` | Grid |
+| Budgets | `/budgets` | Pie chart |
+| Savings Goals | `/savings-goals` | Flag |
 | Saver | `/saver` | Dollar sign |
 | Pushover | `/pushover` | Repeat |
 | Docs | `http://localhost:5174` | Book (opens docs site) |
@@ -43,9 +45,9 @@ The bottom of the sidebar shows:
 
 - Your **full name**
 - Your **email address**
-- A **Logout** button
+- A **Settings** button (gear icon) — opens preferences and logout actions
 
-This is the only place in the app where your account information is displayed. There is no separate settings or profile page.
+Logout actions live inside the Settings modal, not as standalone sidebar buttons. See [Account Settings](../authentication/account-settings.md).
 
 ## Branding
 
@@ -63,4 +65,7 @@ The old `/income` and `/expense` routes redirect to `/transactions`. Use the Tra
 
 - [Dashboard Overview](../dashboard/overview.md)
 - [Transactions Overview](../transactions/overview.md)
+- [Budgets Overview](../budgets/overview.md)
+- [Savings Goals Overview](../savings-goals/overview.md)
+- [Account Settings](../authentication/account-settings.md)
 - [Sessions and Logout](../authentication/sessions-and-logout.md)
