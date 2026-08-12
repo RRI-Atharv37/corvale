@@ -120,4 +120,26 @@ export const API_PATHS = {
         DISMISS_DRAFT: (transactionId: string) =>
             `/recurring-rules/drafts/${transactionId}/dismiss`,
     },
+    DASHBOARD: {
+        SUMMARY: '/dashboard/summary',
+        CASH_FLOW: '/dashboard/cash-flow',
+        CATEGORY_BREAKDOWN: '/dashboard/category-breakdown',
+        NET_WORTH_TREND: '/dashboard/net-worth-trend',
+        BUDGET_OVERVIEW: '/dashboard/budget-overview',
+    },
+    REPORTS: {
+        AVERAGES: '/dashboard/reports/averages',
+        LARGEST_EXPENSES: '/dashboard/reports/largest-expenses',
+        SPENDING_TRENDS: '/dashboard/reports/spending-trends',
+        INCOME_VS_EXPENSE: '/dashboard/reports/income-vs-expense',
+        SAVINGS_RATE: '/dashboard/reports/savings-rate',
+        RECURRING_TOTALS: '/dashboard/reports/recurring-totals',
+        BUDGET_ANALYSIS: '/dashboard/reports/budget-analysis',
+        SPENDING_ANALYSIS: '/dashboard/reports/spending-analysis',
+        CROSSOVER_POINT: '/dashboard/reports/crossover-point',
+        QUERY: '/dashboard/reports/query',
+        GENERATE: '/dashboard/reports/generate',
+        SAVED: '/dashboard/reports/saved',
+        SAVED_RUN: (reportId: string) => `/dashboard/reports/saved/${reportId}/run`,
+    },
 } as const
