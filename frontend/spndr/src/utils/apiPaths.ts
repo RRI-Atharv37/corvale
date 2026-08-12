@@ -41,4 +41,11 @@ export const API_PATHS = {
         PUSHOVER: '/pushover/pushover',
         HISTORY: '/pushover/history',
     },
+    ACCOUNTS: {
+        CREATE: '/accounts',
+        GET_ALL: '/accounts',
+        GET_BY_ID: (accountId: string) => `/accounts/${accountId}`,
+        UPDATE: (accountId: string) => `/accounts/${accountId}`,
+        DELETE: (accountId: string) => `/accounts/${accountId}`,
+    },
 } as const

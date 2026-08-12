@@ -101,6 +101,8 @@ describe('Saver', () => {
             spendableBalance: 800,
             netWorth: 1000,
             remainingBalance: 800,
+            balanceSource: 'legacy',
+            accountCount: 0,
         })
     })
 })

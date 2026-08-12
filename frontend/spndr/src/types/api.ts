@@ -64,6 +64,10 @@ export interface SaverDetails {
     spendableBalance: number
     netWorth: number
     remainingBalance: number
+    totalAccountBalance: number
+    liquidBalance: number
+    accountCount: number
+    balanceSource: 'accounts' | 'legacy'
     saverDate?: string
 }
 
@@ -111,4 +115,33 @@ export interface ExpenseFormData {
     paymentMethod: string
     recurring: string
     tags: string
+}
+
+export type AccountType = 'checking' | 'cash' | 'credit' | 'savings'
+
+export interface Account {
+    _id: string
+    userId: string
+    workspaceId?: string | null
+    name: string
+    type: AccountType
+    currency: string
+    openingBalance: number
+    currentBalance: number
+    isDefault: boolean
+    isArchived: boolean
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface AccountFormData {
+    name: string
+    type: AccountType
+    currency: string
+    openingBalance: string
+}
+
+export interface AccountEditFormData {
+    name: string
+    type: AccountType
 }

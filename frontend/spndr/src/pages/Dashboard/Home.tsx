@@ -19,6 +19,9 @@ interface DashboardSummary {
     spendableBalance: number
     saverBalance: number
     netWorth: number
+    totalAccountBalance: number
+    accountCount: number
+    balanceSource: 'accounts' | 'legacy'
 }
 
 const Home = () => {
@@ -48,6 +51,9 @@ const Home = () => {
                 spendableBalance: saver.spendableBalance,
                 saverBalance: saver.saverBalance,
                 netWorth: saver.netWorth,
+                totalAccountBalance: saver.totalAccountBalance,
+                accountCount: saver.accountCount,
+                balanceSource: saver.balanceSource,
             }
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load dashboard summary'))
@@ -73,29 +79,66 @@ const Home = () => {
                 emptyDescription="Start by adding income and expenses."
                 onRetry={refetch}
             >
-                {(summary) => (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard label="Total Income" value={formatCurrency(summary.incomeTotal)} accent="cyan" />
-                        <StatCard label="Total Expenses" value={formatCurrency(summary.expenseTotal)} accent="rose" />
-                        <StatCard
-                            label="Spendable Balance"
-                            value={formatCurrency(summary.spendableBalance)}
-                            accent="violet"
-                            subtitle={`Saver: ${formatCurrency(summary.saverBalance)}`}
-                        />
-                        <StatCard
-                            label="Net Worth"
-                            value={formatCurrency(summary.netWorth)}
-                            accent="slate"
-                            subtitle={`${summary.incomeCount + summary.expenseCount} transactions`}
-                        />
-                    </div>
-                )}
+                {(summary) => {
+                    const spendableSubtitle =
+                        summary.balanceSource === 'accounts'
+                            ? `From checking & cash · Saver: ${formatCurrency(summary.saverBalance)}`
+                            : `Saver: ${formatCurrency(summary.saverBalance)}`
+
+                    const netWorthSubtitle =
+                        summary.balanceSource === 'accounts'
+                            ? `Across ${summary.accountCount} account${summary.accountCount === 1 ? '' : 's'}`
+                            : `${summary.incomeCount + summary.expenseCount} transactions`
+
+                    return (
+                        <>
+                            <div
+                                className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${
+                                    summary.balanceSource === 'accounts'
+                                        ? 'lg:grid-cols-5'
+                                        : 'lg:grid-cols-4'
+                                }`}
+                            >
+                                <StatCard
+                                    label="Total Income"
+                                    value={formatCurrency(summary.incomeTotal)}
+                                    accent="cyan"
+                                />
+                                <StatCard
+                                    label="Total Expenses"
+                                    value={formatCurrency(summary.expenseTotal)}
+                                    accent="rose"
+                                />
+                                <StatCard
+                                    label="Spendable Balance"
+                                    value={formatCurrency(summary.spendableBalance)}
+                                    accent="violet"
+                                    subtitle={spendableSubtitle}
+                                />
+                                <StatCard
+                                    label="Net Worth"
+                                    value={formatCurrency(summary.netWorth)}
+                                    accent="slate"
+                                    subtitle={netWorthSubtitle}
+                                />
+                                {summary.balanceSource === 'accounts' && (
+                                    <StatCard
+                                        label="In Accounts"
+                                        value={formatCurrency(summary.totalAccountBalance)}
+                                        accent="cyan"
+                                        subtitle="Sum of all account balances"
+                                    />
+                                )}
+                            </div>
+                        </>
+                    )
+                }}
             </AsyncContent>
 
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <QuickLink to="/income" title="Income" description="View and manage income entries" />
                 <QuickLink to="/expense" title="Expense" description="View and manage expense entries" />
+                <QuickLink to="/accounts" title="Accounts" description="View and manage your accounts" />
             </div>
         </div>
     )

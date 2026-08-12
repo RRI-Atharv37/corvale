@@ -125,7 +125,9 @@ const Saver = () => {
                                     {formatCurrency(balances.spendableBalance)}
                                 </p>
                                 <p className="text-xs text-slate-500 mt-2">
-                                    Income − expenses − saver allocations
+                                    {balances.balanceSource === 'accounts'
+                                        ? 'Checking & cash accounts minus saver'
+                                        : 'Income − expenses − saver allocations'}
                                 </p>
                             </div>
                             <div className="card border-violet-500/20 bg-violet-500/5">
@@ -133,7 +135,11 @@ const Saver = () => {
                                 <p className="text-3xl font-semibold text-violet-300 mt-2">
                                     {formatCurrency(balances.netWorth)}
                                 </p>
-                                <p className="text-xs text-slate-500 mt-2">Spendable + saver</p>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    {balances.balanceSource === 'accounts'
+                                        ? `Across ${balances.accountCount} account${balances.accountCount === 1 ? '' : 's'}`
+                                        : 'Spendable + saver'}
+                                </p>
                             </div>
                         </div>
 

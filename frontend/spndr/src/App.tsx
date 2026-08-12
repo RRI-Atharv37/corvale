@@ -9,6 +9,7 @@ import Income from './pages/Dashboard/Income'
 import Expense from './pages/Dashboard/Expense'
 import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
+import Accounts from './pages/Dashboard/Accounts'
 import UserProvider from './context/UserContext'
 import ProtectedRoute from './routes/ProtectedRoute'
 import DashboardLayout from './components/layouts/DashboardLayout'
@@ -34,6 +35,7 @@ const AppRoutes = () => {
                 <Route path="/expense" element={<Expense />} />
                 <Route path="/saver" element={<Saver />} />
                 <Route path="/pushover" element={<Pushover />} />
+                <Route path="/accounts" element={<Accounts />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

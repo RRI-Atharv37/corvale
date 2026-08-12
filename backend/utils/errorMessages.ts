@@ -34,4 +34,10 @@ export const ERROR_MESSAGES = {
     PUSHOVER: {
         ZERO_BALANCE: 'No saver balance to roll over',
     },
+    ACCOUNT: {
+        ACCOUNT_NOT_FOUND: 'Account not found',
+        ACCOUNT_ARCHIVED: 'Cannot update an archived account',
+        ACCOUNT_ALREADY_ARCHIVED: 'Account is already archived',
+        CANNOT_UNSET_DEFAULT: 'Cannot unset default account; set another account as default instead',
+    },
 }

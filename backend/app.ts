@@ -5,6 +5,7 @@ import incomeRoutes from './routes/incomeRoutes'
 import expenseRoutes from './routes/expenseRoutes'
 import saverRoutes from './routes/saverRoutes'
 import pushoverRoutes from './routes/pushoverRoutes'
+import accountRoutes from './routes/accountRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -26,6 +27,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/expense', expenseRoutes)
     app.use('/api/v1/saver', saverRoutes)
     app.use('/api/v1/pushover', pushoverRoutes)
+    app.use('/api/v1/accounts', accountRoutes)
     app.use(errorHandler)
 
     return app
