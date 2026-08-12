@@ -40,4 +40,14 @@ export const ERROR_MESSAGES = {
         ACCOUNT_ALREADY_ARCHIVED: 'Account is already archived',
         CANNOT_UNSET_DEFAULT: 'Cannot unset default account; set another account as default instead',
     },
+    CATEGORY: {
+        CATEGORY_NOT_FOUND: 'Category not found',
+        MASTER_NOT_FOUND: 'Master category not found',
+        CATEGORY_ALREADY_EXISTS: 'A category with this name already exists under this master category',
+        CATEGORY_ARCHIVED: 'Cannot update an archived category',
+        CATEGORY_ALREADY_ARCHIVED: 'Category is already archived',
+        CANNOT_MODIFY_MASTER: 'Master categories cannot be modified',
+        CANNOT_UNSET_DEFAULT: 'Cannot unset default category; set another category as default instead',
+        INVALID_REORDER: 'One or more categories are invalid or not owned by you',
+    },
 }

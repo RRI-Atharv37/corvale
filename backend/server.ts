@@ -3,8 +3,9 @@ dotenv.config()
 
 import app from './app'
 import connectDB from './config/db'
+import { ensureMasterCategoriesSeeded } from './utils/categorySeed'
 
-connectDB()
+connectDB().then(() => ensureMasterCategoriesSeeded())
 
 process.on('unhandledRejection', (err) => {
     console.error('Unhandled Rejection:', err)

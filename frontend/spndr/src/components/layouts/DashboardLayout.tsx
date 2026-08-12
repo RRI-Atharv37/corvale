@@ -11,6 +11,7 @@ import {
     FiMenu,
     FiX,
     FiCreditCard,
+    FiGrid,
 } from 'react-icons/fi'
 import { useUser } from '../../hooks/useUser'
 import toast from 'react-hot-toast'
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
     { to: '/income', label: 'Income', icon: <FiTrendingUp size={18} /> },
     { to: '/expense', label: 'Expense', icon: <FiTrendingDown size={18} /> },
     { to: '/accounts', label: 'Accounts', icon: <FiCreditCard size={18} /> },
+    { to: '/categories', label: 'Categories', icon: <FiGrid size={18} /> },
     { to: '/saver', label: 'Saver', icon: <FiDollarSign size={18} /> },
     { to: '/pushover', label: 'Pushover', icon: <FiRepeat size={18} /> },
     { to: 'http://localhost:5174', label: 'Docs', icon: <FiBookOpen size={18} />, external: true },

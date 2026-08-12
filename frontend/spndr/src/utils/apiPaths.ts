@@ -48,4 +48,12 @@ export const API_PATHS = {
         UPDATE: (accountId: string) => `/accounts/${accountId}`,
         DELETE: (accountId: string) => `/accounts/${accountId}`,
     },
+    CATEGORIES: {
+        CREATE: '/categories',
+        GET_ALL: '/categories',
+        GET_BY_ID: (categoryId: string) => `/categories/${categoryId}`,
+        UPDATE: (categoryId: string) => `/categories/${categoryId}`,
+        DELETE: (categoryId: string) => `/categories/${categoryId}`,
+        REORDER: '/categories/reorder',
+    },
 } as const

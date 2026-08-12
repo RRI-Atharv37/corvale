@@ -145,3 +145,35 @@ export interface AccountEditFormData {
     name: string
     type: AccountType
 }
+
+export interface Category {
+    _id: string
+    userId: string | null
+    masterCategoryId: string | null
+    name: string
+    icon?: string
+    color?: string
+    isDefault: boolean
+    isArchived: boolean
+    sortOrder: number
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface CategoriesResponse {
+    masters: Category[]
+    userCategories: Category[]
+}
+
+export interface CategoryFormData {
+    masterCategoryId: string
+    name: string
+    icon: string
+    color: string
+}
+
+export interface CategoryEditFormData {
+    name: string
+    icon: string
+    color: string
+}
