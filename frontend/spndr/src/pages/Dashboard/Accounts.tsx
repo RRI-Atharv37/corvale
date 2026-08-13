@@ -18,6 +18,9 @@ import { formatCurrency } from '../../utils/format'
 import { DEFAULT_CURRENCY, formatCurrencyLabel } from '../../utils/currencies'
 import CurrencySelect from '../../components/inputs/CurrencySelect'
 import { useUser } from '../../hooks/useUser'
+import { useWorkspace } from '../../hooks/useWorkspace'
+import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
+import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 
 const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
     { value: 'checking', label: 'Checking' },
@@ -83,6 +86,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 
 const Accounts = () => {
     const { user } = useUser()
+    const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
     const pageSize = usePageSize()
     const [createOpen, setCreateOpen] = useState(false)
@@ -97,12 +101,14 @@ const Accounts = () => {
 
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
         try {
-            const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL)
+            const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
+                params: buildWorkspaceQueryParams(activeWorkspaceId),
+            })
             return unwrapApiData(response)
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load accounts'))
         }
-    }, [])
+    }, [activeWorkspaceId])
 
     const { data: accounts, loading, error, refetch } = useAsyncData(fetchAccounts, [fetchAccounts])
 
@@ -152,6 +158,7 @@ const Accounts = () => {
                 type: createForm.type,
                 currency: createForm.currency,
                 openingBalance,
+                ...buildWorkspaceBodyFields(activeWorkspaceId),
             })
             toast.success('Account created')
             closeCreate()
@@ -223,18 +230,26 @@ const Accounts = () => {
         <div>
             <PageHeader
                 title="Accounts"
-                description="Manage your checking, savings, and cash accounts"
+                description={
+                    isPersonal
+                        ? 'Manage your checking, savings, and cash accounts'
+                        : `Shared accounts in ${activeWorkspace?.name ?? 'workspace'}`
+                }
                 actions={
-                    <button
-                        type="button"
-                        onClick={openCreate}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
-                    >
-                        <IoAdd size={18} />
-                        Add account
-                    </button>
+                    canEdit ? (
+                        <button
+                            type="button"
+                            onClick={openCreate}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                        >
+                            <IoAdd size={18} />
+                            Add account
+                        </button>
+                    ) : undefined
                 }
             />
+
+            <WorkspaceReadOnlyBanner />
 
             <AsyncContent
                 loading={loading}
@@ -275,7 +290,7 @@ const Accounts = () => {
                                         </p>
                                         <p className="text-[11px] text-fg-muted">Current balance</p>
                                     </div>
-                                    {!account.isDefault && (
+                                    {!account.isDefault && isPersonal && canEdit && (
                                         <button
                                             type="button"
                                             onClick={() => handleSetDefault(account)}
@@ -287,22 +302,26 @@ const Accounts = () => {
                                             <IoStarOutline size={16} />
                                         </button>
                                     )}
-                                    <button
-                                        type="button"
-                                        onClick={() => openEdit(account)}
-                                        className="p-1.5 text-fg-muted hover:text-accent transition-colors"
-                                        aria-label="Edit account"
-                                    >
-                                        <IoPencil size={16} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setArchiveTarget(account)}
-                                        className="p-1.5 text-fg-muted hover:text-expense transition-colors"
-                                        aria-label="Archive account"
-                                    >
-                                        <IoTrash size={16} />
-                                    </button>
+                                    {canEdit && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => openEdit(account)}
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors"
+                                                aria-label="Edit account"
+                                            >
+                                                <IoPencil size={16} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setArchiveTarget(account)}
+                                                className="p-1.5 text-fg-muted hover:text-expense transition-colors"
+                                                aria-label="Archive account"
+                                            >
+                                                <IoTrash size={16} />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ))}

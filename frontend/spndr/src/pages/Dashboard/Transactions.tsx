@@ -34,6 +34,9 @@ import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency, formatDisplayDate, toDateInputValue } from '../../utils/format'
 import { attachReceiptToTransaction, uploadReceipt } from '../../utils/receiptApi'
+import { useWorkspace } from '../../hooks/useWorkspace'
+import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
+import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 import {
     buildExportFilename,
     downloadExportBlob,
@@ -95,6 +98,7 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
 ]
 
 const Transactions = () => {
+    const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const [searchParams, setSearchParams] = useSearchParams()
     const pageSize = usePageSize()
 
@@ -136,15 +140,18 @@ const Transactions = () => {
     const [exporting, setExporting] = useState(false)
 
     const fetchLookups = useCallback(async () => {
+        const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
         const [accountsRes, categoriesRes] = await Promise.all([
-            axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL),
+            axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
+                params: workspaceParams,
+            }),
             axiosInstance.get<ApiResponse<CategoriesResponse>>(API_PATHS.CATEGORIES.GET_ALL),
         ])
         return {
             accounts: unwrapApiData(accountsRes),
             categories: unwrapApiData(categoriesRes),
         }
-    }, [])
+    }, [activeWorkspaceId])
 
     const { data: lookups } = useAsyncData(fetchLookups, [fetchLookups])
 
@@ -193,13 +200,16 @@ const Transactions = () => {
 
     useEffect(() => {
         setPage(1)
-    }, [pageSize])
+        setSelectedIds([])
+    }, [pageSize, activeWorkspaceId])
 
     const fetchTransactions = useCallback(async (): Promise<TransactionsPageData> => {
         try {
+            const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
             const sharedParams: Record<string, string> = {
                 sortBy,
                 sortOrder,
+                ...workspaceParams,
             }
             if (typeFilter) sharedParams.type = typeFilter
 
@@ -228,7 +238,18 @@ const Transactions = () => {
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load transactions'))
         }
-    }, [page, pageSize, typeFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder])
+    }, [
+        page,
+        pageSize,
+        typeFilter,
+        searchQuery,
+        dateFilterActive,
+        startDate,
+        endDate,
+        sortBy,
+        sortOrder,
+        activeWorkspaceId,
+    ])
 
     const { data, loading, error, refetch } = useAsyncData(fetchTransactions, [fetchTransactions])
 
@@ -342,6 +363,7 @@ const Transactions = () => {
             const params: Record<string, string> = {
                 type: exportType,
                 format: exportFormat,
+                ...buildWorkspaceQueryParams(activeWorkspaceId),
             }
 
             if (exportStartDate && exportEndDate) {
@@ -402,6 +424,7 @@ const Transactions = () => {
             date: form.date,
             accountId: form.accountId,
             description: form.description.trim() || undefined,
+            ...buildWorkspaceBodyFields(activeWorkspaceId),
         }
 
         if (usingSplits) {
@@ -490,6 +513,7 @@ const Transactions = () => {
                     fromAccountId: transferForm.fromAccountId,
                     toAccountId: transferForm.toAccountId,
                     description: transferForm.description.trim() || undefined,
+                    ...buildWorkspaceBodyFields(activeWorkspaceId),
                 }
             )
             toast.success('Transfer completed')
@@ -641,36 +665,44 @@ const Transactions = () => {
         <div>
             <PageHeader
                 title="Transactions"
-                description="Unified income, expense, and transfer ledger"
+                description={
+                    isPersonal
+                        ? 'Unified income, expense, and transfer ledger'
+                        : `Shared ledger in ${activeWorkspace?.name ?? 'workspace'}`
+                }
                 actions={
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => openCreate('income')}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
-                        >
-                            <IoAdd size={16} />
-                            Income
-                        </button>
-                        <button
-                            type="button"
-                            onClick={openTransfer}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
-                        >
-                            <IoSwapHorizontal size={16} />
-                            Transfer
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => openCreate('expense')}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
-                        >
-                            <IoAdd size={18} />
-                            Expense
-                        </button>
-                    </div>
+                    canEdit ? (
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => openCreate('income')}
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <IoAdd size={16} />
+                                Income
+                            </button>
+                            <button
+                                type="button"
+                                onClick={openTransfer}
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <IoSwapHorizontal size={16} />
+                                Transfer
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => openCreate('expense')}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                            >
+                                <IoAdd size={18} />
+                                Expense
+                            </button>
+                        </div>
+                    ) : undefined
                 }
             />
+
+            <WorkspaceReadOnlyBanner />
 
             <div className="card mb-4 space-y-4">
                 <div className="flex flex-wrap gap-2">
@@ -874,7 +906,7 @@ const Transactions = () => {
             >
                 {(result) => (
                     <>
-                        {selectedIds.length > 0 && (
+                        {canEdit && selectedIds.length > 0 && (
                             <div className="card mb-3 flex flex-wrap items-center justify-between gap-3">
                                 <p className="text-sm text-fg-secondary">
                                     {selectedIds.length} selected
@@ -911,7 +943,7 @@ const Transactions = () => {
                             </div>
                         )}
 
-                        {result.items.length > 0 && (
+                        {canEdit && result.items.length > 0 && (
                             <label className="flex items-center gap-2 mb-2 text-xs text-fg-muted px-1">
                                 <input
                                     type="checkbox"
@@ -927,13 +959,15 @@ const Transactions = () => {
                             {result.items.map((item) => (
                                 <div key={item._id} className="card flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.includes(item._id)}
-                                            onChange={() => toggleSelected(item._id)}
-                                            className="rounded border-border bg-surface shrink-0"
-                                            aria-label={`Select ${item.title}`}
-                                        />
+                                        {canEdit && (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(item._id)}
+                                                onChange={() => toggleSelected(item._id)}
+                                                className="rounded border-border bg-surface shrink-0"
+                                                aria-label={`Select ${item.title}`}
+                                            />
+                                        )}
                                         <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm font-medium text-fg truncate">
@@ -968,7 +1002,7 @@ const Transactions = () => {
                                             {amountPrefix(item.type)}
                                             {formatCurrency(item.amount, item.currency)}
                                         </p>
-                                        {item.type !== 'transfer' && (
+                                        {canEdit && item.type !== 'transfer' && (
                                             <button
                                                 type="button"
                                                 onClick={() => openEdit(item)}
@@ -978,14 +1012,16 @@ const Transactions = () => {
                                                 <IoPencil size={16} />
                                             </button>
                                         )}
-                                        <button
-                                            type="button"
-                                            onClick={() => setDeleteTarget(item)}
-                                            className="p-1.5 text-fg-muted hover:text-expense transition-colors"
-                                            aria-label="Delete transaction"
-                                        >
-                                            <IoTrash size={16} />
-                                        </button>
+                                        {canEdit && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setDeleteTarget(item)}
+                                                className="p-1.5 text-fg-muted hover:text-expense transition-colors"
+                                                aria-label="Delete transaction"
+                                            >
+                                                <IoTrash size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

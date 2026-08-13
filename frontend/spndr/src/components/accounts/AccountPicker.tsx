@@ -6,6 +6,8 @@ import type { Account, ApiResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
+import { useWorkspace } from '../../hooks/useWorkspace'
+import { buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 
 export interface AccountPickerProps {
     value: string
@@ -34,16 +36,19 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     disabled,
     accountsData,
 }) => {
+    const { activeWorkspaceId } = useWorkspace()
+
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
         try {
             const response = await axiosInstance.get<ApiResponse<Account[]>>(
-                API_PATHS.ACCOUNTS.GET_ALL
+                API_PATHS.ACCOUNTS.GET_ALL,
+                { params: buildWorkspaceQueryParams(activeWorkspaceId) }
             )
             return unwrapApiData(response)
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load accounts'))
         }
-    }, [])
+    }, [activeWorkspaceId])
 
     const { data, loading, error } = useAsyncData(fetchAccounts, [fetchAccounts])
 

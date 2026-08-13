@@ -15,6 +15,9 @@ import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { usePageSize } from '../../hooks/usePaginatedList'
 import { useUser } from '../../hooks/useUser'
+import { useWorkspace } from '../../hooks/useWorkspace'
+import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
+import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 import type {
     Account,
     ApiResponse,
@@ -151,6 +154,7 @@ const budgetToForm = (budget: Budget): BudgetFormData => {
 
 const Budgets = () => {
     const { user } = useUser()
+    const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
     const pageSize = usePageSize()
     const [view, setView] = useState<BudgetView>('active')
@@ -165,13 +169,16 @@ const Budgets = () => {
     const fetchBudgets = useCallback(async (): Promise<Budget[]> => {
         try {
             const response = await axiosInstance.get<ApiResponse<Budget[]>>(API_PATHS.BUDGETS.GET_ALL, {
-                params: { includeArchived: view === 'history' ? 'true' : 'false' },
+                params: {
+                    includeArchived: view === 'history' ? 'true' : 'false',
+                    ...buildWorkspaceQueryParams(activeWorkspaceId),
+                },
             })
             return unwrapApiData(response)
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load budgets'))
         }
-    }, [view])
+    }, [view, activeWorkspaceId])
 
     const fetchCategories = useCallback(async (): Promise<CategoriesResponse> => {
         const response = await axiosInstance.get<ApiResponse<CategoriesResponse>>(
@@ -181,9 +188,11 @@ const Budgets = () => {
     }, [])
 
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL)
+        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
+            params: buildWorkspaceQueryParams(activeWorkspaceId),
+        })
         return unwrapApiData(response).filter((account) => !account.isArchived)
-    }, [])
+    }, [activeWorkspaceId])
 
     const { data: budgets, loading, error, refetch } = useAsyncData(fetchBudgets, [fetchBudgets])
     const { data: categories } = useAsyncData(fetchCategories, [fetchCategories])
@@ -263,7 +272,10 @@ const Budgets = () => {
         setSubmitting(true)
         try {
             const payload = buildPayload(form)
-            await axiosInstance.post(API_PATHS.BUDGETS.CREATE, payload)
+            await axiosInstance.post(API_PATHS.BUDGETS.CREATE, {
+                ...payload,
+                ...buildWorkspaceBodyFields(activeWorkspaceId),
+            })
             toast.success('Budget created')
             closeCreate()
             await refetch()
@@ -458,18 +470,26 @@ const Budgets = () => {
         <div>
             <PageHeader
                 title="Budgets"
-                description="Set spending limits and track progress against your expenses"
+                description={
+                    isPersonal
+                        ? 'Set spending limits and track progress against your expenses'
+                        : `Shared budgets in ${activeWorkspace?.name ?? 'workspace'}`
+                }
                 actions={
-                    <button
-                        type="button"
-                        onClick={openCreate}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
-                    >
-                        <IoAdd size={18} />
-                        Create budget
-                    </button>
+                    canEdit ? (
+                        <button
+                            type="button"
+                            onClick={openCreate}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                        >
+                            <IoAdd size={18} />
+                            Create budget
+                        </button>
+                    ) : undefined
                 }
             />
+
+            <WorkspaceReadOnlyBanner />
 
             <div className="flex gap-2 mb-6">
                 <button
@@ -580,7 +600,7 @@ const Budgets = () => {
                                                 </span>
                                             </div>
                                         </div>
-                                        {!budget.isArchived && view === 'active' && (
+                                        {!budget.isArchived && view === 'active' && canEdit && (
                                             <div className="flex items-center gap-1 shrink-0">
                                                 <button
                                                     type="button"

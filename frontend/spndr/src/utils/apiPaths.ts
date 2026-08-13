@@ -148,4 +148,15 @@ export const API_PATHS = {
         DISMISS: (notificationId: string) => `/notifications/${notificationId}/dismiss`,
         MARK_ALL_READ: '/notifications/read-all',
     },
+    WORKSPACES: {
+        CREATE: '/workspaces',
+        GET_ALL: '/workspaces',
+        GET_BY_ID: (workspaceId: string) => `/workspaces/${workspaceId}`,
+        UPDATE: (workspaceId: string) => `/workspaces/${workspaceId}`,
+        INVITE: (workspaceId: string) => `/workspaces/${workspaceId}/members`,
+        UPDATE_MEMBER: (workspaceId: string, memberUserId: string) =>
+            `/workspaces/${workspaceId}/members/${memberUserId}`,
+        REMOVE_MEMBER: (workspaceId: string, memberUserId: string) =>
+            `/workspaces/${workspaceId}/members/${memberUserId}`,
+    },
 } as const

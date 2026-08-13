@@ -16,7 +16,9 @@ import {
     FiCalendar,
     FiBarChart2,
     FiSettings,
+    FiUsers,
 } from 'react-icons/fi'
+import WorkspaceSwitcher from '../workspaces/WorkspaceSwitcher'
 import { useUser } from '../../hooks/useUser'
 import toast from 'react-hot-toast'
 import axiosInstance from '../../utils/axiosInstance'
@@ -53,6 +55,7 @@ const navItems: NavItem[] = [
     { to: '/savings-goals', label: 'Savings Goals', icon: <FiFlag size={18} /> },
     { to: '/recurring', label: 'Recurring', icon: <FiCalendar size={18} /> },
     { to: '/reports', label: 'Reports', icon: <FiBarChart2 size={18} /> },
+    { to: '/workspaces', label: 'Workspaces', icon: <FiUsers size={18} /> },
     { to: '/saver', label: 'Saver', icon: <FiDollarSign size={18} /> },
     { to: '/pushover', label: 'Pushover', icon: <FiRepeat size={18} /> },
 ]
@@ -201,6 +204,8 @@ const DashboardLayout: React.FC = () => {
                 </p>
                 <p className="text-xs text-text-quiet mt-1">Stop guessing. Start knowing.</p>
             </div>
+
+            <WorkspaceSwitcher />
 
             <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1">
                 {navItems.map((item) => (

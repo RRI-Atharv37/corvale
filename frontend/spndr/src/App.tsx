@@ -16,7 +16,9 @@ import Budgets from './pages/Dashboard/Budgets'
 import SavingsGoals from './pages/Dashboard/SavingsGoals'
 import Recurring from './pages/Dashboard/Recurring'
 import Reports from './pages/Dashboard/Reports'
+import Workspaces from './pages/Dashboard/Workspaces'
 import UserProvider from './context/UserContext'
+import WorkspaceProvider from './context/WorkspaceContext'
 import ProtectedRoute from './routes/ProtectedRoute'
 import DashboardLayout from './components/layouts/DashboardLayout'
 import { useUser } from './hooks/useUser'
@@ -35,7 +37,9 @@ const AppRoutes = () => {
             <Route
                 element={
                     <ProtectedRoute>
-                        <DashboardLayout />
+                        <WorkspaceProvider>
+                            <DashboardLayout />
+                        </WorkspaceProvider>
                     </ProtectedRoute>
                 }
             >
@@ -51,6 +55,7 @@ const AppRoutes = () => {
                 <Route path="/savings-goals" element={<SavingsGoals />} />
                 <Route path="/recurring" element={<Recurring />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/workspaces" element={<Workspaces />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
