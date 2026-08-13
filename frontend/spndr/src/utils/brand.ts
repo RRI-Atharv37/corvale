@@ -66,21 +66,3 @@ export const STEPS = [
         description: 'Check your dashboard before you swipe — not after the damage is done.',
     },
 ] as const
-
-export const TESTIMONIALS = [
-    {
-        quote: 'I finally know why my checking account dies mid-month. Turns out "just DoorDash" was $340.',
-        name: 'Maya R.',
-        detail: 'Junior, UC San Diego',
-    },
-    {
-        quote: 'Rent week used to wreck me. Now I see exactly what\'s left before I say yes to plans.',
-        name: 'Jordan K.',
-        detail: 'First job, Austin',
-    },
-    {
-        quote: 'I stopped using a spreadsheet I\'d update once. spndr is the first thing I actually open.',
-        name: 'Alex T.',
-        detail: 'Grad student, Chicago',
-    },
-] as const
