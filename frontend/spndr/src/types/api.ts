@@ -399,6 +399,32 @@ export interface CategorizationRuleBulkApplyResult {
     skipped: number
 }
 
+export type TransactionTemplateType = 'income' | 'expense'
+
+export interface TransactionTemplate {
+    _id: string
+    userId: string
+    name: string
+    type: TransactionTemplateType
+    amount: number
+    accountId: string
+    categoryId: string
+    tags: string[]
+    description?: string
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface TransactionTemplateFormData {
+    name: string
+    type: TransactionTemplateType
+    amount: string
+    accountId: string
+    categoryId: string
+    tags: string[]
+    description: string
+}
+
 export type BudgetPeriodType = 'monthly' | 'custom'
 
 export interface BudgetProgress {

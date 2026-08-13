@@ -51,6 +51,10 @@ export const ERROR_MESSAGES = {
         TAG_NOT_FOUND: 'Tag not found',
         TAG_ALREADY_EXISTS: 'A tag with this name already exists',
     },
+    TRANSACTION_TEMPLATE: {
+        TEMPLATE_NOT_FOUND: 'Transaction template not found',
+        UNSUPPORTED_TYPE: 'Template type must be income or expense',
+    },
     CATEGORIZATION_RULE: {
         RULE_NOT_FOUND: 'Categorization rule not found',
         INVALID_MATCH_TYPE: 'Invalid categorization match type',

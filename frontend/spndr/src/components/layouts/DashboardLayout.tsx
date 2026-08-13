@@ -38,6 +38,7 @@ import type { ApiResponse, User } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import NotificationCenter from '../notifications/NotificationCenter'
+import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
 
 const DOCS_URL = 'http://localhost:5174'
 
@@ -304,8 +305,10 @@ const DashboardLayout: React.FC = () => {
                 </main>
             </div>
 
-            <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" size="sm">
+            <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" size="md">
                 <div className="space-y-6">
+                    <TransactionTemplatesSettings />
+
                     <div>
                         <p className="section-label mb-3">Preferences</p>
                         <CurrencySelect

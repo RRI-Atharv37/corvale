@@ -79,6 +79,14 @@ export const API_PATHS = {
         BULK_APPLY: '/categorization-rules/bulk-apply',
         TEST: '/categorization-rules/test',
     },
+    TRANSACTION_TEMPLATES: {
+        CREATE: '/transaction-templates',
+        GET_ALL: '/transaction-templates',
+        GET_BY_ID: (templateId: string) => `/transaction-templates/${templateId}`,
+        UPDATE: (templateId: string) => `/transaction-templates/${templateId}`,
+        DELETE: (templateId: string) => `/transaction-templates/${templateId}`,
+        APPLY: (templateId: string) => `/transaction-templates/${templateId}/apply`,
+    },
     TRANSACTIONS: {
         CREATE: '/transactions',
         TRANSFER: '/transactions/transfer',

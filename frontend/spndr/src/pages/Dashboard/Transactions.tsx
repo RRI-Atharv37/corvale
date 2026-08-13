@@ -39,6 +39,7 @@ import { formatCurrency, formatDisplayDate, toDateInputValue } from '../../utils
 import { attachReceiptToTransaction, uploadReceipt } from '../../utils/receiptApi'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
+import QuickAddDropdown from '../../components/transactions/QuickAddDropdown'
 import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 import {
     buildExportFilename,
@@ -698,6 +699,7 @@ const Transactions = () => {
                 actions={
                     canEdit ? (
                         <div className="flex items-center gap-2">
+                            <QuickAddDropdown onApplied={() => void refetch()} />
                             <button
                                 type="button"
                                 onClick={() => openCreate('income')}

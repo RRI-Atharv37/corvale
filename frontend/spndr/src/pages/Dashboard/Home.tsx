@@ -11,6 +11,7 @@ import { getApiErrorMessage } from '../../utils/apiError'
 import { Link } from 'react-router-dom'
 import { formatCurrency, toDateInputValue } from '../../utils/format'
 import StatCard from '../../components/ui/StatCard'
+import QuickAddDropdown from '../../components/transactions/QuickAddDropdown'
 
 const PERIOD_PRESETS: { value: DashboardPeriodPreset; label: string }[] = [
     { value: '1m', label: 'This month' },
@@ -69,6 +70,7 @@ const Home = () => {
             <PageHeader
                 title="Dashboard"
                 description={`Overview for ${user?.fullName ?? 'your account'}`}
+                actions={<QuickAddDropdown onApplied={() => void refetch()} />}
             />
 
             <div className="flex flex-wrap items-center gap-2 mb-6">
