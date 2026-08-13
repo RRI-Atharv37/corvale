@@ -1,0 +1,74 @@
+import axiosInstance from './axiosInstance'
+import { API_PATHS } from './apiPaths'
+import type {
+    ApiResponse,
+    ColumnMapping,
+    ImportCommitResponse,
+    ImportDuplicateAction,
+    ImportParseResponse,
+    ImportPreviewResponse,
+    ParsedImportRow,
+} from '../types/api'
+import { unwrapApiData } from './apiHelpers'
+
+export const IMPORT_ACCEPT = '.csv,.ofx,.qfx,text/csv,application/vnd.ms-excel'
+export const IMPORT_MAX_BYTES = 2 * 1024 * 1024
+
+export const validateImportFile = (file: File): string | null => {
+    const extension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''
+    const allowedExtensions = ['.csv', '.ofx', '.qfx']
+    if (!allowedExtensions.includes(extension)) {
+        return 'Import file must be a CSV or OFX file'
+    }
+    if (file.size > IMPORT_MAX_BYTES) {
+        return 'Import file exceeds the 2 MB size limit'
+    }
+    return null
+}
+
+export const parseImportFile = async (file: File): Promise<ImportParseResponse> => {
+    const validationError = validateImportFile(file)
+    if (validationError) {
+        throw new Error(validationError)
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await axiosInstance.post<ApiResponse<ImportParseResponse>>(
+        API_PATHS.IMPORTS.PARSE,
+        formData
+    )
+    return unwrapApiData(response)
+}
+
+export interface ImportPreviewPayload {
+    accountId: string
+    defaultCategoryId: string
+    workspaceId?: string | null
+    headers?: string[]
+    rows?: string[][]
+    mapping?: ColumnMapping
+    parsedRows?: ParsedImportRow[]
+    rowDecisions?: Record<number, ImportDuplicateAction>
+}
+
+export const previewImport = async (
+    payload: ImportPreviewPayload
+): Promise<ImportPreviewResponse> => {
+    const response = await axiosInstance.post<ApiResponse<ImportPreviewResponse>>(
+        API_PATHS.IMPORTS.PREVIEW,
+        payload
+    )
+    return unwrapApiData(response)
+}
+
+export const commitImport = async (
+    payload: ImportPreviewPayload
+): Promise<ImportCommitResponse> => {
+    const response = await axiosInstance.post<ApiResponse<ImportCommitResponse>>(
+        API_PATHS.IMPORTS.COMMIT,
+        payload
+    )
+    return unwrapApiData(response)
+}

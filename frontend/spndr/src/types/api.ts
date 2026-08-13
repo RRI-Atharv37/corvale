@@ -914,3 +914,85 @@ export interface SavedReportRunResult {
     config: SavedReportConfig
     result: CustomReportQueryResult
 }
+
+export type ImportFormat = 'generic' | 'chase' | 'spndr_export' | 'ofx'
+
+export interface ColumnMapping {
+    date?: string
+    description?: string
+    amount?: string
+    debit?: string
+    credit?: string
+    type?: string
+}
+
+export interface ParsedImportRow {
+    rowIndex: number
+    date: string
+    title: string
+    description?: string
+    amount: number
+    type: 'income' | 'expense'
+}
+
+export interface ImportParseResponse {
+    format: ImportFormat
+    fileName: string
+    totalRows: number
+    sampleRows: string[][] | ParsedImportRow[]
+    requiresMapping: boolean
+    headers?: string[]
+    rows?: string[][]
+    parsedRows?: ParsedImportRow[]
+    suggestedMapping?: ColumnMapping
+}
+
+export interface ImportPreviewItem {
+    rowIndex: number
+    date: string
+    title: string
+    description?: string
+    amount: number
+    type: 'income' | 'expense'
+    categoryId: string
+    categoryName?: string
+    tags?: string[]
+    appliedRuleId?: string
+    appliedRuleName?: string
+    error?: string
+    duplicateOf?: ImportDuplicateMatch
+    duplicateAction?: ImportDuplicateAction
+}
+
+export type ImportDuplicateAction = 'skip' | 'import' | 'merge'
+
+export interface ImportDuplicateMatch {
+    transactionId: string
+    title: string
+    date: string
+    amount: number
+    categoryName?: string
+}
+
+export interface ImportPreviewSummary {
+    total: number
+    valid: number
+    invalid: number
+    duplicates: number
+    incomeTotal: number
+    expenseTotal: number
+}
+
+export interface ImportPreviewResponse {
+    items: ImportPreviewItem[]
+    summary: ImportPreviewSummary
+}
+
+export interface ImportCommitResponse {
+    imported: number
+    merged: number
+    skipped: number
+    transactionIds: string[]
+    mergedTransactionIds: string[]
+    summary: ImportPreviewSummary
+}

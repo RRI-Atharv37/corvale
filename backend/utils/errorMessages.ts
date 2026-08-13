@@ -130,6 +130,19 @@ export const ERROR_MESSAGES = {
     NOTIFICATION: {
         NOTIFICATION_NOT_FOUND: 'Notification not found',
     },
+    IMPORT: {
+        FILE_REQUIRED: 'Import file is required',
+        EMPTY_FILE: 'Import file is empty',
+        MISSING_HEADERS: 'CSV file is missing a header row',
+        INVALID_FILE_TYPE: 'Import file must be a CSV or OFX file',
+        FILE_TOO_LARGE: 'Import file exceeds the 2 MB size limit',
+        TOO_MANY_ROWS: 'Import file exceeds the 2,000 row limit',
+        MAPPING_INCOMPLETE: 'Column mapping is incomplete',
+        DATE_COLUMN_REQUIRED: 'A date column mapping is required',
+        INVALID_OFX: 'No valid transactions found in OFX file',
+        NO_VALID_ROWS: 'No valid rows to import',
+        INVALID_MERGE_TARGET: 'Cannot merge a row that has no matching transaction',
+    },
     WORKSPACE: {
         WORKSPACE_NOT_FOUND: 'Workspace not found',
         NOT_A_MEMBER: 'Not authorized to access this workspace',

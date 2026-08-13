@@ -8,6 +8,7 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import Home from './pages/Dashboard/Home'
 import Transactions from './pages/Dashboard/Transactions'
+import ImportTransactions from './pages/Dashboard/ImportTransactions'
 import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
 import Accounts from './pages/Dashboard/Accounts'
@@ -47,6 +48,7 @@ const AppRoutes = () => {
             >
                 <Route path="/dashboard" element={<Home />} />
                 <Route path="/transactions" element={<Transactions />} />
+                <Route path="/transactions/import" element={<ImportTransactions />} />
                 <Route path="/income" element={<Navigate to="/transactions?type=income" replace />} />
                 <Route path="/expense" element={<Navigate to="/transactions?type=expense" replace />} />
                 <Route path="/saver" element={<Saver />} />

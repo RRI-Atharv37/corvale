@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoDownload, IoPencil, IoSearch, IoSwapHorizontal, IoTrash } from 'react-icons/io5'
-import { useSearchParams } from 'react-router-dom'
+import { IoAdd, IoDownload, IoPencil, IoSearch, IoSwapHorizontal, IoTrash, IoCloudUploadOutline } from 'react-icons/io5'
+import { Link, useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
@@ -709,6 +709,13 @@ const Transactions = () => {
                     canEdit ? (
                         <div className="flex items-center gap-2">
                             <QuickAddDropdown onApplied={() => void refetch()} />
+                            <Link
+                                to="/transactions/import"
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <IoCloudUploadOutline size={16} />
+                                Import
+                            </Link>
                             <button
                                 type="button"
                                 onClick={() => openCreate('income')}

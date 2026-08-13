@@ -188,4 +188,9 @@ export const API_PATHS = {
         REMOVE_MEMBER: (workspaceId: string, memberUserId: string) =>
             `/workspaces/${workspaceId}/members/${memberUserId}`,
     },
+    IMPORTS: {
+        PARSE: '/imports/parse',
+        PREVIEW: '/imports/preview',
+        COMMIT: '/imports/commit',
+    },
 } as const
