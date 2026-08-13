@@ -1,4 +1,6 @@
 import React, { ReactNode } from 'react'
+import BrandLogo from '../ui/BrandLogo'
+import LedgerPulse from '../ui/LedgerPulse'
 
 interface AuthLayoutProps {
     children: ReactNode
@@ -6,16 +8,15 @@ interface AuthLayoutProps {
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
     return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-8">
-            <div className="w-full max-w-md">
+        <div className="relative min-h-screen bg-page flex items-center justify-center px-4 py-8 overflow-hidden">
+            <div className="landing-glow pointer-events-none absolute inset-0" aria-hidden="true" />
+            <div className="relative w-full max-w-md">
                 <div className="mb-8 text-center">
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        <span className="text-cyan-400">spndr</span>
-                    </h1>
-                    <p className="text-xs text-slate-500 mt-1">Track. Save. Grow.</p>
+                    <BrandLogo showTagline size="md" linkTo="/" />
+                    <LedgerPulse className="max-w-[120px] mx-auto mt-4" />
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6 sm:p-8 shadow-xl shadow-black/20">
+                <div className="card-elevated p-6 sm:p-8">
                     {children}
                 </div>
             </div>

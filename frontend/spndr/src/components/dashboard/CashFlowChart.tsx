@@ -17,6 +17,7 @@ import {
     axisTick,
     CHART_COLORS,
     chartMargin,
+    chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
     yAxisTick,
@@ -35,8 +36,8 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, groupBy }) => {
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Cash flow</h3>
-            <p className="text-xs text-slate-500 mt-1">Income, spending, and net savings by period</p>
+            <h3 className="text-sm font-medium text-fg">Cash flow</h3>
+            <p className="text-xs text-fg-muted mt-1">Income, spending, and net savings by period</p>
             <div className="h-80 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={chartMargin}>
@@ -50,13 +51,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, groupBy }) => {
                             width={52}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...chartTooltipProps}
                             formatter={(value: number, name: string) => {
                                 const labels: Record<string, string> = {
                                     income: 'Income',

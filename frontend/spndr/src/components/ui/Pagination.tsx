@@ -12,8 +12,8 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange,
     if (totalPages <= 1) return null
 
     return (
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
-            <p className="text-xs text-slate-500">
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-border-subtle">
+            <p className="text-xs text-fg-muted">
                 Page {page} of {totalPages}
                 {totalItems !== undefined && ` · ${totalItems} total`}
             </p>
@@ -22,7 +22,7 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange,
                     type="button"
                     onClick={() => onPageChange(page - 1)}
                     disabled={page <= 1}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/30 hover:text-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/30 hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                     <IoChevronBack size={14} />
                     Prev
@@ -31,7 +31,7 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange,
                     type="button"
                     onClick={() => onPageChange(page + 1)}
                     disabled={page >= totalPages}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/30 hover:text-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/30 hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                     Next
                     <IoChevronForward size={14} />

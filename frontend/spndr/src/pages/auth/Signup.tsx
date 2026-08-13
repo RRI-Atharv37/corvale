@@ -64,8 +64,8 @@ const Signup = () => {
     return (
         <AuthLayout>
             <div>
-                <h3 className="text-xl font-semibold text-slate-100">Create an account</h3>
-                <p className="text-xs text-slate-400 mt-1 mb-6">Join spndr and start tracking your finances</p>
+                <h3 className="text-xl font-semibold text-fg">Create an account</h3>
+                <p className="text-xs text-fg-muted mt-1 mb-6">Join spndr and start tracking your finances</p>
 
                 <form onSubmit={handleSignup}>
                     <Input
@@ -95,15 +95,15 @@ const Signup = () => {
                         disabled={isSubmitting}
                     />
 
-                    {error && <p className="text-red-400 text-xs pb-2.5">{error}</p>}
+                    {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
 
                     <button type="submit" className="btn-primary" disabled={isSubmitting}>
                         {isSubmitting ? 'Creating account...' : 'Sign up'}
                     </button>
 
-                    <p className="text-[13px] text-slate-400 mt-3">
+                    <p className="text-[13px] text-fg-muted mt-3">
                         Already have an account?{' '}
-                        <Link className="font-medium text-cyan-400 hover:text-cyan-300" to="/login">
+                        <Link className="font-medium text-accent hover:text-accent" to="/login">
                             Sign in
                         </Link>
                     </p>

@@ -59,9 +59,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
     disabled,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">
+        <label className="text-[13px] text-fg-secondary">
             {label}
-            {required && <span className="text-rose-400 ml-0.5">*</span>}
+            {required && <span className="text-expense ml-0.5">*</span>}
         </label>
         <div className="input-box mb-0 mt-1">
             <select
@@ -69,10 +69,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 disabled={disabled}
-                className="w-full bg-transparent outline-none text-slate-200"
+                className="w-full bg-transparent outline-none text-fg"
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-slate-900">
+                    <option key={option.value} value={option.value} className="bg-surface">
                         {option.label}
                     </option>
                 ))}
@@ -228,7 +228,7 @@ const Accounts = () => {
                     <button
                         type="button"
                         onClick={openCreate}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
                     >
                         <IoAdd size={18} />
                         Add account
@@ -254,33 +254,33 @@ const Accounts = () => {
                             <div key={account._id} className="card flex items-center justify-between gap-4">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-sm font-medium text-slate-200 truncate">
+                                        <p className="text-sm font-medium text-fg truncate">
                                             {account.name}
                                         </p>
                                         {account.isDefault && (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-accent-subtle border border-accent/30 px-2 py-0.5 text-[11px] font-medium text-accent">
                                                 <IoStar size={12} />
                                                 Default
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-0.5">
+                                    <p className="text-xs text-fg-muted mt-0.5">
                                         {formatAccountType(account.type)} · {formatCurrencyLabel(account.currency)}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                     <div className="text-right">
-                                        <p className="text-sm font-semibold text-cyan-400">
+                                        <p className="text-sm font-semibold text-accent">
                                             {formatCurrency(account.currentBalance, account.currency)}
                                         </p>
-                                        <p className="text-[11px] text-slate-500">Current balance</p>
+                                        <p className="text-[11px] text-fg-muted">Current balance</p>
                                     </div>
                                     {!account.isDefault && (
                                         <button
                                             type="button"
                                             onClick={() => handleSetDefault(account)}
                                             disabled={settingDefaultId === account._id}
-                                            className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors disabled:opacity-50"
+                                            className="p-1.5 text-fg-muted hover:text-warning transition-colors disabled:opacity-50"
                                             aria-label="Set as default account"
                                             title="Set as default"
                                         >
@@ -290,7 +290,7 @@ const Accounts = () => {
                                     <button
                                         type="button"
                                         onClick={() => openEdit(account)}
-                                        className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                        className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                         aria-label="Edit account"
                                     >
                                         <IoPencil size={16} />
@@ -298,7 +298,7 @@ const Accounts = () => {
                                     <button
                                         type="button"
                                         onClick={() => setArchiveTarget(account)}
-                                        className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                                        className="p-1.5 text-fg-muted hover:text-expense transition-colors"
                                         aria-label="Archive account"
                                     >
                                         <IoTrash size={16} />
@@ -353,14 +353,14 @@ const Accounts = () => {
                             type="button"
                             onClick={closeCreate}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Creating...' : 'Create account'}
                         </button>
@@ -391,14 +391,14 @@ const Accounts = () => {
                             type="button"
                             onClick={closeEdit}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : 'Save changes'}
                         </button>

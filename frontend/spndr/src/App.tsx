@@ -21,11 +21,12 @@ import ProtectedRoute from './routes/ProtectedRoute'
 import DashboardLayout from './components/layouts/DashboardLayout'
 import { useUser } from './hooks/useUser'
 import LoadingState from './components/ui/LoadingState'
+import Landing from './pages/Landing'
 
 const AppRoutes = () => {
     return (
         <Routes>
-            <Route path="/" element={<RootRedirect />} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
             <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -67,15 +68,15 @@ const App = () => {
                     toastOptions={{
                         className: 'text-sm',
                         style: {
-                            background: '#1e293b',
-                            color: '#e2e8f0',
-                            border: '1px solid #334155',
+                            background: '#2e2a40',
+                            color: '#f8f6ff',
+                            border: '1px solid #3d3654',
                         },
                         success: {
-                            iconTheme: { primary: '#22d3ee', secondary: '#0f172a' },
+                            iconTheme: { primary: '#a855f7', secondary: '#14121c' },
                         },
                         error: {
-                            iconTheme: { primary: '#f87171', secondary: '#0f172a' },
+                            iconTheme: { primary: '#fb7185', secondary: '#14121c' },
                         },
                     }}
                 />
@@ -84,18 +85,22 @@ const App = () => {
     )
 }
 
-const RootRedirect = () => {
+const HomeRoute = () => {
     const { isAuthenticated, isInitializing } = useUser()
 
     if (isInitializing) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-page flex items-center justify-center">
                 <LoadingState message="Loading..." />
             </div>
         )
     }
 
-    return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
+    if (isAuthenticated) {
+        return <Navigate to="/dashboard" replace />
+    }
+
+    return <Landing />
 }
 
 interface GuestRouteProps {
@@ -107,7 +112,7 @@ const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
 
     if (isInitializing) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-page flex items-center justify-center">
                 <LoadingState message="Loading..." />
             </div>
         )

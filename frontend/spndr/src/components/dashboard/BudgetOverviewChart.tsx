@@ -33,12 +33,12 @@ const BudgetOverviewChart: React.FC<BudgetOverviewChartProps> = ({
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Budget overview</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="text-sm font-medium text-fg">Budget overview</h3>
+            <p className="text-xs text-fg-muted mt-1">
                 Active budgets for {periodStart} to {periodEnd}
             </p>
             {budgets.length === 0 ? (
-                <p className="text-sm text-slate-500 mt-6 text-center py-8">No active budgets this month.</p>
+                <p className="text-sm text-fg-muted mt-6 text-center py-8">No active budgets this month.</p>
             ) : (
                 <>
                     <div className="h-64 mt-4">
@@ -81,15 +81,15 @@ const BudgetOverviewChart: React.FC<BudgetOverviewChartProps> = ({
                         {budgets.map((budget) => (
                             <li key={budget.budgetId} className="py-2 flex items-center justify-between gap-3">
                                 <div className="min-w-0">
-                                    <p className="text-sm text-slate-200 truncate">
+                                    <p className="text-sm text-fg truncate">
                                         {budget.name ?? budget.categoryName ?? 'Overall budget'}
                                     </p>
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-xs text-fg-muted">
                                         {budget.percentUsed.toFixed(0)}% used
                                         {budget.isOverBudget ? ' · Over budget' : ''}
                                     </p>
                                 </div>
-                                <p className="text-sm text-slate-300 shrink-0">
+                                <p className="text-sm text-fg-secondary shrink-0">
                                     {formatCurrency(budget.spent)} / {formatCurrency(budget.budgetAmount)}
                                 </p>
                             </li>

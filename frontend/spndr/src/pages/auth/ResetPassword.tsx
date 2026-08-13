@@ -65,11 +65,11 @@ const ResetPassword = () => {
         return (
             <AuthLayout>
                 <div>
-                    <h3 className="text-xl font-semibold text-slate-100">Invalid reset link</h3>
-                    <p className="text-sm text-slate-400 mt-2 mb-4">
+                    <h3 className="text-xl font-semibold text-fg">Invalid reset link</h3>
+                    <p className="text-sm text-fg-muted mt-2 mb-4">
                         This password reset link is missing or invalid.
                     </p>
-                    <Link className="text-sm font-medium text-cyan-400 hover:text-cyan-300" to="/forgot-password">
+                    <Link className="text-sm font-medium text-accent hover:text-accent" to="/forgot-password">
                         Request a new link
                     </Link>
                 </div>
@@ -80,8 +80,8 @@ const ResetPassword = () => {
     return (
         <AuthLayout>
             <div>
-                <h3 className="text-xl font-semibold text-slate-100">Reset password</h3>
-                <p className="text-xs text-slate-400 mt-1 mb-6">Choose a new password for your account.</p>
+                <h3 className="text-xl font-semibold text-fg">Reset password</h3>
+                <p className="text-xs text-fg-muted mt-1 mb-6">Choose a new password for your account.</p>
 
                 <form onSubmit={handleSubmit}>
                     <Input
@@ -102,14 +102,14 @@ const ResetPassword = () => {
                         disabled={isSubmitting}
                     />
 
-                    {error && <p className="text-red-400 text-xs pb-2.5">{error}</p>}
+                    {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
 
                     <button type="submit" className="btn-primary" disabled={isSubmitting}>
                         {isSubmitting ? 'Resetting...' : 'Reset password'}
                     </button>
 
-                    <p className="text-[13px] text-slate-400 mt-3">
-                        <Link className="font-medium text-cyan-400 hover:text-cyan-300" to="/login">
+                    <p className="text-[13px] text-fg-muted mt-3">
+                        <Link className="font-medium text-accent hover:text-accent" to="/login">
                             Back to sign in
                         </Link>
                     </p>

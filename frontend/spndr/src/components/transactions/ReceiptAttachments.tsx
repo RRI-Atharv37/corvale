@@ -80,17 +80,17 @@ const ReceiptPreviewTile = ({
     }
 
     return (
-        <div className="relative rounded-lg border border-slate-700 bg-slate-900/50 p-2 w-[120px]">
+        <div className="relative rounded-lg border border-border bg-surface/50 p-2 w-[120px]">
             <button
                 type="button"
                 onClick={() => void openReceipt()}
                 className="block w-full text-left"
                 title={receipt.originalFilename}
             >
-                <div className="h-20 flex items-center justify-center rounded bg-slate-950/60 overflow-hidden">
+                <div className="h-20 flex items-center justify-center rounded bg-base/60 overflow-hidden">
                     {isImageReceipt(receipt.mimeType) ? (
                         loading ? (
-                            <IoImage className="text-slate-600" size={24} />
+                            <IoImage className="text-fg-quiet" size={24} />
                         ) : previewUrl ? (
                             <img
                                 src={previewUrl}
@@ -98,21 +98,21 @@ const ReceiptPreviewTile = ({
                                 className="h-full w-full object-cover"
                             />
                         ) : (
-                            <IoImage className="text-slate-600" size={24} />
+                            <IoImage className="text-fg-quiet" size={24} />
                         )
                     ) : isPdfReceipt(receipt.mimeType) ? (
-                        <IoDocument className="text-rose-400" size={28} />
+                        <IoDocument className="text-expense" size={28} />
                     ) : (
-                        <IoDocument className="text-slate-500" size={28} />
+                        <IoDocument className="text-fg-muted" size={28} />
                     )}
                 </div>
-                <p className="mt-1 text-[10px] text-slate-400 truncate">{receipt.originalFilename}</p>
+                <p className="mt-1 text-[10px] text-fg-muted truncate">{receipt.originalFilename}</p>
             </button>
             {!disabled && (onDetach || onDelete) && (
                 <button
                     type="button"
                     onClick={onDetach ?? onDelete}
-                    className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-400 hover:text-rose-400"
+                    className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-surface-hover border border-border text-fg-muted hover:text-expense"
                     aria-label="Remove receipt"
                 >
                     <IoClose size={12} />
@@ -204,7 +204,7 @@ const ReceiptAttachments = ({
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-                <p className="text-[13px] text-slate-300">Receipts</p>
+                <p className="text-[13px] text-fg-secondary">Receipts</p>
                 {!disabled && (
                     <>
                         <input
@@ -219,7 +219,7 @@ const ReceiptAttachments = ({
                             type="button"
                             onClick={() => inputRef.current?.click()}
                             disabled={uploading}
-                            className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+                            className="text-xs text-accent hover:text-accent disabled:opacity-50"
                         >
                             {uploading ? 'Uploading...' : '+ Add receipt'}
                         </button>
@@ -244,21 +244,21 @@ const ReceiptAttachments = ({
                     {pendingFiles.map((file, index) => (
                         <div
                             key={`${file.name}-${index}`}
-                            className="relative rounded-lg border border-dashed border-slate-600 bg-slate-900/30 p-2 w-[120px]"
+                            className="relative rounded-lg border border-dashed border-border bg-surface/30 p-2 w-[120px]"
                         >
-                            <div className="h-20 flex items-center justify-center rounded bg-slate-950/40">
+                            <div className="h-20 flex items-center justify-center rounded bg-base/40">
                                 {file.type.startsWith('image/') ? (
-                                    <IoImage className="text-cyan-500/70" size={24} />
+                                    <IoImage className="text-accent/70" size={24} />
                                 ) : (
-                                    <IoDocument className="text-rose-400/80" size={24} />
+                                    <IoDocument className="text-expense/80" size={24} />
                                 )}
                             </div>
-                            <p className="mt-1 text-[10px] text-slate-400 truncate">{file.name}</p>
+                            <p className="mt-1 text-[10px] text-fg-muted truncate">{file.name}</p>
                             {!disabled && (
                                 <button
                                     type="button"
                                     onClick={() => handleDeletePending(index)}
-                                    className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-400 hover:text-rose-400"
+                                    className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-surface-hover border border-border text-fg-muted hover:text-expense"
                                     aria-label="Remove pending receipt"
                                 >
                                     <IoClose size={12} />
@@ -270,7 +270,7 @@ const ReceiptAttachments = ({
             )}
 
             {!disabled && receipts.length === 0 && pendingFiles.length === 0 && (
-                <p className="text-xs text-slate-500">Attach JPEG, PNG, WebP, or PDF receipts (max 5 MB).</p>
+                <p className="text-xs text-fg-muted">Attach JPEG, PNG, WebP, or PDF receipts (max 5 MB).</p>
             )}
         </div>
     )

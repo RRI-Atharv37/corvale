@@ -15,6 +15,7 @@ import {
     axisTick,
     CHART_COLORS,
     chartMargin,
+    chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
     yAxisTick,
@@ -39,24 +40,22 @@ const ThisMonthChart: React.FC<ThisMonthChartProps> = ({ data, groupBy, periodSt
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">This month</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="text-sm font-medium text-fg">This month</h3>
+            <p className="text-xs text-fg-muted mt-1">
                 Daily activity from {periodStart} to {periodEnd}
             </p>
             <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-2">
-                    <p className="text-[10px] text-slate-500">Income</p>
-                    <p className="text-sm font-medium text-cyan-300">{formatCurrency(totalIncome)}</p>
+                <div className="stat-pill stat-pill--income">
+                    <p className="stat-pill__label">Income</p>
+                    <p className="stat-pill__value">{formatCurrency(totalIncome)}</p>
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-2">
-                    <p className="text-[10px] text-slate-500">Expenses</p>
-                    <p className="text-sm font-medium text-rose-300">{formatCurrency(totalExpense)}</p>
+                <div className="stat-pill stat-pill--expense">
+                    <p className="stat-pill__label">Expenses</p>
+                    <p className="stat-pill__value">{formatCurrency(totalExpense)}</p>
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-2">
-                    <p className="text-[10px] text-slate-500">Net</p>
-                    <p className={`text-sm font-medium ${net >= 0 ? 'text-violet-300' : 'text-rose-300'}`}>
-                        {formatCurrency(net)}
-                    </p>
+                <div className={`stat-pill ${net >= 0 ? 'stat-pill--net-positive' : 'stat-pill--net-negative'}`}>
+                    <p className="stat-pill__label">Net</p>
+                    <p className="stat-pill__value">{formatCurrency(net)}</p>
                 </div>
             </div>
             <div className="h-56 mt-4">
@@ -82,13 +81,7 @@ const ThisMonthChart: React.FC<ThisMonthChartProps> = ({ data, groupBy, periodSt
                             width={52}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...chartTooltipProps}
                             formatter={(value: number, name: string) => [
                                 formatCurrency(value),
                                 name === 'income' ? 'Income' : 'Expenses',

@@ -186,8 +186,8 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
     return (
         <div className="card space-y-4">
             <div>
-                <h3 className="text-sm font-medium text-slate-200">Custom reports</h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <h3 className="text-sm font-medium text-fg">Custom reports</h3>
+                <p className="text-xs text-fg-muted mt-1">
                     Build visual reports by split, chart type, and date range - save configs to reuse
                 </p>
             </div>
@@ -235,7 +235,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                     type="button"
                     onClick={runQuery}
                     disabled={loading}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-accent-subtle text-accent border border-accent/30 hover:bg-accent-subtle disabled:opacity-50"
                 >
                     <IoPlay size={16} />
                     {loading ? 'Running...' : 'Run report'}
@@ -245,13 +245,13 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                     value={reportName}
                     onChange={(event) => setReportName(event.target.value)}
                     placeholder="Report name to save"
-                    className="flex-1 min-w-[180px] rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/50"
+                    className="flex-1 min-w-[180px] rounded-lg border border-border bg-surface/80 px-3 py-2 text-sm text-fg outline-none focus:border-accent/40"
                 />
                 <button
                     type="button"
                     onClick={saveReport}
                     disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-300 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-border text-fg-secondary hover:border-accent/40 hover:text-accent disabled:opacity-50"
                 >
                     <IoBookmark size={16} />
                     {saving ? 'Saving...' : 'Save report'}
@@ -260,16 +260,16 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
 
             {savedReports.length > 0 && (
                 <div>
-                    <p className="text-xs text-slate-400 mb-2">Saved reports</p>
-                    <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+                    <p className="text-xs text-fg-muted mb-2">Saved reports</p>
+                    <ul className="divide-y divide-slate-800 rounded-lg border border-border-subtle">
                         {savedReports.map((report) => (
                             <li
                                 key={report._id}
                                 className="flex items-center justify-between gap-3 px-3 py-2.5"
                             >
                                 <div className="min-w-0">
-                                    <p className="text-sm text-slate-200 truncate">{report.name}</p>
-                                    <p className="text-[10px] text-slate-500 capitalize">
+                                    <p className="text-sm text-fg truncate">{report.name}</p>
+                                    <p className="text-[10px] text-fg-muted capitalize">
                                         {report.config.chartType} · {report.config.splitBy} ·{' '}
                                         {report.config.dataType}
                                     </p>
@@ -278,7 +278,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => runSavedReport(report._id)}
-                                        className="p-1.5 rounded text-cyan-400 hover:bg-cyan-500/10"
+                                        className="p-1.5 rounded text-accent hover:bg-accent-subtle"
                                         title="Run"
                                     >
                                         <IoPlay size={14} />
@@ -286,7 +286,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => deleteSavedReport(report._id)}
-                                        className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10"
+                                        className="p-1.5 rounded text-expense hover:bg-expense/10"
                                         title="Delete"
                                     >
                                         <IoTrash size={14} />
@@ -300,7 +300,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
 
             {result && (
                 <div className="pt-2">
-                    <p className="text-xs text-slate-500 mb-3">
+                    <p className="text-xs text-fg-muted mb-3">
                         {result.periodStart} to {result.periodEnd} · {result.rows.length} rows
                     </p>
                     {chartType === 'table' ? (
@@ -377,10 +377,10 @@ const ReportTable: React.FC<{
     rows: CustomReportQueryResult['rows']
     dataType: CustomReportDataType
 }> = ({ rows, dataType }) => (
-    <div className="overflow-x-auto rounded-lg border border-slate-800">
+    <div className="overflow-x-auto rounded-lg border border-border-subtle">
         <table className="w-full text-sm">
             <thead>
-                <tr className="border-b border-slate-800 text-left text-xs text-slate-400">
+                <tr className="border-b border-border-subtle text-left text-xs text-fg-muted">
                     <th className="px-3 py-2">Label</th>
                     {(dataType === 'income' || dataType === 'both') && <th className="px-3 py-2">Income</th>}
                     {(dataType === 'expense' || dataType === 'both') && <th className="px-3 py-2">Expense</th>}
@@ -389,15 +389,15 @@ const ReportTable: React.FC<{
             </thead>
             <tbody>
                 {rows.map((row) => (
-                    <tr key={row.label} className="border-b border-slate-800/60">
-                        <td className="px-3 py-2 text-slate-200">{row.label}</td>
+                    <tr key={row.label} className="border-b border-border-subtle/60">
+                        <td className="px-3 py-2 text-fg">{row.label}</td>
                         {(dataType === 'income' || dataType === 'both') && (
-                            <td className="px-3 py-2 text-cyan-300">{formatCurrency(row.income)}</td>
+                            <td className="px-3 py-2 text-accent">{formatCurrency(row.income)}</td>
                         )}
                         {(dataType === 'expense' || dataType === 'both') && (
-                            <td className="px-3 py-2 text-rose-300">{formatCurrency(row.expense)}</td>
+                            <td className="px-3 py-2 text-expense">{formatCurrency(row.expense)}</td>
                         )}
-                        <td className="px-3 py-2 text-slate-300">{formatCurrency(row.total)}</td>
+                        <td className="px-3 py-2 text-fg-secondary">{formatCurrency(row.total)}</td>
                     </tr>
                 ))}
             </tbody>
@@ -415,12 +415,12 @@ interface SelectFieldProps {
 
 const SelectField: React.FC<SelectFieldProps> = ({ label, value, onChange, options, disabled }) => (
     <label className="block">
-        <span className="text-xs text-slate-400">{label}</span>
+        <span className="text-xs text-fg-muted">{label}</span>
         <select
             value={value}
             onChange={(event) => onChange(event.target.value)}
             disabled={disabled}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/50 disabled:opacity-50"
+            className="mt-1 w-full rounded-lg border border-border bg-surface/80 px-3 py-2 text-sm text-fg outline-none focus:border-accent/40 disabled:opacity-50"
         >
             {options.map((option) => (
                 <option key={option.value} value={option.value}>

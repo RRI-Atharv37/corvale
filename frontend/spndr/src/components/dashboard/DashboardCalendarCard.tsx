@@ -74,12 +74,12 @@ const DashboardCalendarCard: React.FC<DashboardCalendarCardProps> = ({ rules, dr
         <div className="card space-y-4">
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <h3 className="text-sm font-medium text-slate-200">Calendar</h3>
-                    <p className="text-xs text-slate-500 mt-1">Recurring bills and upcoming drafts</p>
+                    <h3 className="text-sm font-medium text-fg">Calendar</h3>
+                    <p className="text-xs text-fg-muted mt-1">Recurring bills and upcoming drafts</p>
                 </div>
                 <Link
                     to="/recurring"
-                    className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors shrink-0"
+                    className="text-xs text-accent hover:text-accent transition-colors shrink-0"
                 >
                     View all
                 </Link>
@@ -89,15 +89,15 @@ const DashboardCalendarCard: React.FC<DashboardCalendarCardProps> = ({ rules, dr
                 <button
                     type="button"
                     onClick={() => shiftMonth(-1)}
-                    className="px-2 py-1 text-xs rounded border border-slate-700 text-slate-400 hover:text-slate-200"
+                    className="px-2 py-1 text-xs rounded border border-border text-fg-muted hover:text-fg"
                 >
                     Prev
                 </button>
-                <p className="text-xs font-medium text-slate-300">{monthLabel}</p>
+                <p className="text-xs font-medium text-fg-secondary">{monthLabel}</p>
                 <button
                     type="button"
                     onClick={() => shiftMonth(1)}
-                    className="px-2 py-1 text-xs rounded border border-slate-700 text-slate-400 hover:text-slate-200"
+                    className="px-2 py-1 text-xs rounded border border-border text-fg-muted hover:text-fg"
                 >
                     Next
                 </button>
@@ -105,7 +105,7 @@ const DashboardCalendarCard: React.FC<DashboardCalendarCardProps> = ({ rules, dr
 
             <div className="grid grid-cols-7 gap-1 text-center">
                 {WEEKDAY_LABELS.map((label) => (
-                    <div key={label} className="text-[10px] text-slate-500 py-1">
+                    <div key={label} className="text-[10px] text-fg-muted py-1">
                         {label}
                     </div>
                 ))}
@@ -118,16 +118,16 @@ const DashboardCalendarCard: React.FC<DashboardCalendarCardProps> = ({ rules, dr
                             className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] ${
                                 cell.inMonth
                                     ? isToday
-                                      ? 'bg-cyan-500/15 border border-cyan-500/30 text-cyan-200'
+                                      ? 'bg-accent-subtle border border-accent/30 text-accent'
                                       : count > 0
-                                        ? 'bg-violet-500/10 text-slate-300'
-                                        : 'text-slate-500'
-                                    : 'text-slate-700'
+                                        ? 'bg-accent-subtle/50 text-fg-secondary'
+                                        : 'text-fg-muted'
+                                    : 'text-text-quiet'
                             }`}
                         >
                             {cell.inMonth && <span>{cell.day}</span>}
                             {count > 0 && cell.inMonth && (
-                                <span className="w-1 h-1 rounded-full bg-violet-400 mt-0.5" />
+                                <span className="w-1 h-1 rounded-full bg-accent mt-0.5" />
                             )}
                         </div>
                     )
@@ -135,16 +135,16 @@ const DashboardCalendarCard: React.FC<DashboardCalendarCardProps> = ({ rules, dr
             </div>
 
             {upcoming.length > 0 ? (
-                <ul className="divide-y divide-slate-800">
+                <ul className="divide-y divide-border-subtle">
                     {upcoming.map((item, index) => (
                         <li key={`${item.date}-${item.title}-${index}`} className="py-2 flex justify-between gap-2">
                             <div className="min-w-0">
-                                <p className="text-xs text-slate-200 truncate">{item.title}</p>
-                                <p className="text-[10px] text-slate-500">{formatDisplayDate(item.date)}</p>
+                                <p className="text-xs text-fg truncate">{item.title}</p>
+                                <p className="text-[10px] text-fg-muted">{formatDisplayDate(item.date)}</p>
                             </div>
                             <p
                                 className={`text-xs shrink-0 ${
-                                    item.type === 'income' ? 'text-cyan-300' : 'text-rose-300'
+                                    item.type === 'income' ? 'text-income' : 'text-expense'
                                 }`}
                             >
                                 {formatCurrency(item.amount)}
@@ -153,7 +153,7 @@ const DashboardCalendarCard: React.FC<DashboardCalendarCardProps> = ({ rules, dr
                     ))}
                 </ul>
             ) : (
-                <p className="text-xs text-slate-500 text-center py-2">No upcoming recurring items.</p>
+                <p className="text-xs text-fg-muted text-center py-2">No upcoming recurring items.</p>
             )}
         </div>
     )

@@ -16,13 +16,13 @@ const Input: React.FC<InputProps> = ({ value, onChange, placeholder, label, type
 
     return (
         <div>
-            <label className="text-[13px] text-slate-300">{label}</label>
+            <label className="text-[13px] text-fg-secondary">{label}</label>
 
             <div className="input-box">
                 <input
                     type={type === 'password' ? (showPassword ? 'text' : 'password') : type}
                     placeholder={placeholder}
-                    className="w-full bg-transparent outline-none placeholder:text-slate-500"
+                    className="w-full bg-transparent outline-none placeholder:text-fg-muted"
                     value={value}
                     onChange={onChange}
                     disabled={disabled}
@@ -33,13 +33,13 @@ const Input: React.FC<InputProps> = ({ value, onChange, placeholder, label, type
                         {showPassword ? (
                             <FaRegEye
                                 size={20}
-                                className="text-cyan-400 cursor-pointer shrink-0"
+                                className="text-accent cursor-pointer shrink-0"
                                 onClick={toggleShowPassword}
                             />
                         ) : (
                             <FaRegEyeSlash
                                 size={20}
-                                className="text-slate-500 cursor-pointer shrink-0"
+                                className="text-fg-muted cursor-pointer shrink-0"
                                 onClick={toggleShowPassword}
                             />
                         )}

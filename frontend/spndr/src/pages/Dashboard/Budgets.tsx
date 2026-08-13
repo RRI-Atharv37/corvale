@@ -93,9 +93,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
     disabled,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">
+        <label className="text-[13px] text-fg-secondary">
             {label}
-            {required && <span className="text-rose-400 ml-0.5">*</span>}
+            {required && <span className="text-expense ml-0.5">*</span>}
         </label>
         <div className="input-box mb-0 mt-1">
             <select
@@ -103,10 +103,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 disabled={disabled}
-                className="w-full bg-transparent outline-none text-slate-200"
+                className="w-full bg-transparent outline-none text-fg"
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-slate-900">
+                    <option key={option.value} value={option.value} className="bg-surface">
                         {option.label}
                     </option>
                 ))}
@@ -429,13 +429,13 @@ const Budgets = () => {
                     checked={form.rollover}
                     onChange={(e) => setForm((f) => ({ ...f, rollover: e.target.checked }))}
                     disabled={submitting}
-                    className="rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-500/40"
+                    className="rounded border-border bg-surface text-accent focus:ring-accent/30"
                 />
-                <span className="text-sm text-slate-300">Rollover unused amount to next period</span>
+                <span className="text-sm text-fg-secondary">Rollover unused amount to next period</span>
             </label>
 
             <div>
-                <p className="text-[13px] text-slate-300 mb-2">Accounts</p>
+                <p className="text-[13px] text-fg-secondary mb-2">Accounts</p>
                 {accounts && (
                     <AccountMultiSelect
                         accounts={accounts}
@@ -463,7 +463,7 @@ const Budgets = () => {
                     <button
                         type="button"
                         onClick={openCreate}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
                     >
                         <IoAdd size={18} />
                         Create budget
@@ -477,8 +477,8 @@ const Budgets = () => {
                     onClick={() => setView('active')}
                     className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         view === 'active'
-                            ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                            : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                            ? 'bg-accent-subtle text-accent border border-accent/30'
+                            : 'text-fg-muted border border-border-subtle hover:border-border'
                     }`}
                 >
                     Active
@@ -488,8 +488,8 @@ const Budgets = () => {
                     onClick={() => setView('history')}
                     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         view === 'history'
-                            ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                            : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                            ? 'bg-accent-subtle text-accent border border-accent/30'
+                            : 'text-fg-muted border border-border-subtle hover:border-border'
                     }`}
                 >
                     <IoTime size={16} />
@@ -531,29 +531,29 @@ const Budgets = () => {
                                     key={budget._id}
                                     className={`card space-y-4 ${
                                         progress?.isOverBudget
-                                            ? 'border-rose-500/30 bg-rose-500/5'
+                                            ? 'border-negative/30 bg-negative/5'
                                             : ''
                                     }`}
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <p className="text-sm font-medium text-slate-200">
+                                                <p className="text-sm font-medium text-fg">
                                                     {budget.name ||
                                                         `${categoryMeta.name} budget`}
                                                 </p>
                                                 {budget.isArchived && (
-                                                    <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400">
+                                                    <span className="rounded-full bg-surface-hover border border-border px-2 py-0.5 text-[11px] text-fg-muted">
                                                         Archived
                                                     </span>
                                                 )}
                                                 {progress?.isOverBudget && (
-                                                    <span className="rounded-full bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-[11px] font-medium text-rose-300">
+                                                    <span className="rounded-full bg-expense/10 border border-negative/20 px-2 py-0.5 text-[11px] font-medium text-expense">
                                                         Over budget
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-1">
+                                            <p className="text-xs text-fg-muted mt-1">
                                                 {formatBudgetPeriod(
                                                     budget.periodStart,
                                                     budget.periodEnd,
@@ -564,7 +564,7 @@ const Budgets = () => {
                                             </p>
                                             <div className="flex items-center gap-2 mt-2">
                                                 <span
-                                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-700"
+                                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border"
                                                     style={{
                                                         backgroundColor: `${categoryMeta.color ?? '#6B7280'}20`,
                                                     }}
@@ -575,7 +575,7 @@ const Budgets = () => {
                                                         size={14}
                                                     />
                                                 </span>
-                                                <span className="text-xs text-slate-400">
+                                                <span className="text-xs text-fg-muted">
                                                     {categoryMeta.name}
                                                 </span>
                                             </div>
@@ -585,7 +585,7 @@ const Budgets = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => openEdit(budget)}
-                                                    className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                                    className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                     aria-label="Edit budget"
                                                 >
                                                     <IoPencil size={16} />
@@ -593,7 +593,7 @@ const Budgets = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => setArchiveTarget(budget)}
-                                                    className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                                                    className="p-1.5 text-fg-muted hover:text-expense transition-colors"
                                                     aria-label="Archive budget"
                                                 >
                                                     <IoTrash size={16} />
@@ -612,7 +612,7 @@ const Budgets = () => {
                                             currency={budget.currency}
                                         />
                                     ) : (
-                                        <p className="text-xs text-slate-500">Progress unavailable</p>
+                                        <p className="text-xs text-fg-muted">Progress unavailable</p>
                                     )}
                                 </div>
                             )
@@ -631,14 +631,14 @@ const Budgets = () => {
                             type="button"
                             onClick={closeCreate}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Creating...' : 'Create budget'}
                         </button>
@@ -654,14 +654,14 @@ const Budgets = () => {
                             type="button"
                             onClick={closeEdit}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : 'Save changes'}
                         </button>

@@ -51,19 +51,19 @@ const ForgotPassword = () => {
     return (
         <AuthLayout>
             <div>
-                <h3 className="text-xl font-semibold text-slate-100">Forgot password</h3>
-                <p className="text-xs text-slate-400 mt-1 mb-6">
+                <h3 className="text-xl font-semibold text-fg">Forgot password</h3>
+                <p className="text-xs text-fg-muted mt-1 mb-6">
                     Enter your email and we&apos;ll send a reset link if an account exists.
                 </p>
 
                 {submitted ? (
                     <div className="space-y-4">
-                        <p className="text-sm text-slate-300">
+                        <p className="text-sm text-fg-secondary">
                             If an account exists for that email, a password reset link has been sent. Check your
                             inbox or server logs in development.
                         </p>
                         <Link
-                            className="inline-block text-sm font-medium text-cyan-400 hover:text-cyan-300"
+                            className="inline-block text-sm font-medium text-accent hover:text-accent"
                             to="/login"
                         >
                             Back to sign in
@@ -80,15 +80,15 @@ const ForgotPassword = () => {
                             disabled={isSubmitting}
                         />
 
-                        {error && <p className="text-red-400 text-xs pb-2.5">{error}</p>}
+                        {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
 
                         <button type="submit" className="btn-primary" disabled={isSubmitting}>
                             {isSubmitting ? 'Sending...' : 'Send reset link'}
                         </button>
 
-                        <p className="text-[13px] text-slate-400 mt-3">
+                        <p className="text-[13px] text-fg-muted mt-3">
                             Remember your password?{' '}
-                            <Link className="font-medium text-cyan-400 hover:text-cyan-300" to="/login">
+                            <Link className="font-medium text-accent hover:text-accent" to="/login">
                                 Sign in
                             </Link>
                         </p>

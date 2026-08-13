@@ -77,7 +77,7 @@ const Pushover = () => {
                         type="button"
                         onClick={() => setConfirmOpen(true)}
                         disabled={!data || data.saverBalance <= 0}
-                        className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-500/90 text-white hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="btn-accent px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         Roll over now
                     </button>
@@ -85,7 +85,7 @@ const Pushover = () => {
             />
 
             {data && data.saverBalance <= 0 && (
-                <p className="text-xs text-slate-500 mb-4 -mt-4">
+                <p className="text-xs text-fg-muted mb-4 -mt-4">
                     Add funds to your saver before rolling over. Rollover uses your verified saver balance only.
                 </p>
             )}
@@ -105,14 +105,14 @@ const Pushover = () => {
                         {pageData.history.map((item) => (
                             <div key={item._id} className="card flex items-center justify-between gap-4">
                                 <div>
-                                    <p className="text-sm font-medium text-slate-200">
+                                    <p className="text-sm font-medium text-fg">
                                         {new Date(item.pushoverDate).toLocaleDateString('en-US', {
                                             month: 'long',
                                             year: 'numeric',
                                         })}{' '}
                                         rollover
                                     </p>
-                                    <p className="text-xs text-slate-500 mt-0.5">
+                                    <p className="text-xs text-fg-muted mt-0.5">
                                         {formatDisplayDateTime(item.pushoverDate)}
                                     </p>
                                 </div>

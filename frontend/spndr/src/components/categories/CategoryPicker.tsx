@@ -76,8 +76,8 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
     if (isLoading) {
         return (
             <div>
-                <label className="text-[13px] text-slate-300">{label}</label>
-                <p className="text-xs text-slate-500 mt-2">Loading categories...</p>
+                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <p className="text-xs text-fg-muted mt-2">Loading categories...</p>
             </div>
         )
     }
@@ -85,8 +85,8 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
     if (loadError) {
         return (
             <div>
-                <label className="text-[13px] text-slate-300">{label}</label>
-                <p className="text-xs text-rose-400 mt-2">{loadError}</p>
+                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <p className="text-xs text-expense mt-2">{loadError}</p>
             </div>
         )
     }
@@ -95,9 +95,9 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
 
     return (
         <div>
-            <label className="text-[13px] text-slate-300">
+            <label className="text-[13px] text-fg-secondary">
                 {label}
-                {required && <span className="text-rose-400 ml-0.5">*</span>}
+                {required && <span className="text-expense ml-0.5">*</span>}
             </label>
             <div className="input-box mb-0 mt-1">
                 <select
@@ -105,18 +105,18 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
                     disabled={disabled}
-                    className="w-full bg-transparent outline-none text-slate-200"
+                    className="w-full bg-transparent outline-none text-fg"
                 >
-                    <option value="" className="bg-slate-900">
+                    <option value="" className="bg-surface">
                         Select a category
                     </option>
                     {groups.map((group) => (
-                        <optgroup key={group.master._id} label={group.master.name} className="bg-slate-900">
-                            <option value={group.master._id} className="bg-slate-900">
+                        <optgroup key={group.master._id} label={group.master.name} className="bg-surface">
+                            <option value={group.master._id} className="bg-surface">
                                 {group.master.name} (master)
                             </option>
                             {group.subs.map((sub) => (
-                                <option key={sub._id} value={sub._id} className="bg-slate-900">
+                                <option key={sub._id} value={sub._id} className="bg-surface">
                                     {sub.name}
                                 </option>
                             ))}
@@ -134,7 +134,7 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
                         return (
                             <>
                                 <span
-                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-700"
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border"
                                     style={{ backgroundColor: `${selected.color ?? '#6B7280'}20` }}
                                 >
                                     <CategoryIcon
@@ -143,7 +143,7 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
                                         size={14}
                                     />
                                 </span>
-                                <span className="text-xs text-slate-400">{selected.name}</span>
+                                <span className="text-xs text-fg-muted">{selected.name}</span>
                             </>
                         )
                     })()}
