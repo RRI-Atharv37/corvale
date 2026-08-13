@@ -24,29 +24,48 @@ import {
 } from '../utils/reportUtils'
 import { parseExportFormat, sendCustomReportExport, type ExportFormat } from '../utils/exportUtils'
 import { getUserId, handleResponses } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    parseOptionalWorkspaceId,
+} from '../utils/workspaceUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
 }
 
+const resolveListWorkspaceId = async (req: AuthRequest): Promise<string | null> => {
+    const userId = getUserId(req)
+    const workspaceId =
+        parseOptionalWorkspaceId(req.query.workspaceId ?? req.body?.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    return workspaceId
+}
+
 export const getReportAverages = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
-    const averages = await computePeriodAverages(userId, period, timezone)
+    const averages = await computePeriodAverages(userId, period, timezone, workspaceId)
     handleResponses(res, 200, averages)
 })
 
 export const getLargestExpenses = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
     const limit = Number(req.query.limit ?? 10)
     const expenses = await computeLargestExpenses(
         userId,
         period.periodStart,
         period.periodEnd,
-        Number.isNaN(limit) ? 10 : limit
+        Number.isNaN(limit) ? 10 : limit,
+        workspaceId
     )
     handleResponses(res, 200, {
         periodStart: period.startDate,
@@ -58,8 +77,9 @@ export const getLargestExpenses = asyncHandler(async (req: AuthRequest, res: Res
 export const getSpendingTrends = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
-    const trends = await computeSpendingTrends(userId, period, timezone)
+    const trends = await computeSpendingTrends(userId, period, timezone, workspaceId)
     handleResponses(res, 200, {
         periodStart: period.startDate,
         periodEnd: period.endDate,
@@ -70,8 +90,9 @@ export const getSpendingTrends = asyncHandler(async (req: AuthRequest, res: Resp
 export const getIncomeVsExpense = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
-    const comparison = await computeIncomeVsExpense(userId, period)
+    const comparison = await computeIncomeVsExpense(userId, period, workspaceId)
     handleResponses(res, 200, {
         periodStart: period.startDate,
         periodEnd: period.endDate,
@@ -82,37 +103,42 @@ export const getIncomeVsExpense = asyncHandler(async (req: AuthRequest, res: Res
 export const getSavingsRate = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
-    const savingsRate = await computeSavingsRate(userId, period)
+    const savingsRate = await computeSavingsRate(userId, period, workspaceId)
     handleResponses(res, 200, savingsRate)
 })
 
 export const getRecurringTotals = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
-    const totals = await computeRecurringTotals(userId, period)
+    const totals = await computeRecurringTotals(userId, period, workspaceId)
     handleResponses(res, 200, totals)
 })
 
 export const getBudgetAnalysis = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
-    const analysis = await computeBudgetAnalysis(userId, period, timezone)
+    const analysis = await computeBudgetAnalysis(userId, period, timezone, workspaceId)
     handleResponses(res, 200, analysis)
 })
 
 export const getSpendingAnalysis = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
     const limit = Number(req.query.limit ?? 10)
     const analysis = await computeSpendingAnalysis(
         userId,
         period,
         timezone,
-        Number.isNaN(limit) ? 10 : limit
+        Number.isNaN(limit) ? 10 : limit,
+        workspaceId
     )
     handleResponses(res, 200, analysis)
 })
@@ -120,14 +146,16 @@ export const getSpendingAnalysis = asyncHandler(async (req: AuthRequest, res: Re
 export const getCrossoverPoint = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod(req.query, timezone)
-    const crossover = await computeCrossoverPoint(userId, period, timezone)
+    const crossover = await computeCrossoverPoint(userId, period, timezone, workspaceId)
     handleResponses(res, 200, crossover)
 })
 
 export const queryCustomReport = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod({ ...req.query, ...req.body }, timezone)
     const splitBy = parseCustomReportSplitBy(req.body.splitBy ?? req.query.splitBy)
     const chartType = parseCustomReportChartType(req.body.chartType ?? req.query.chartType)
@@ -140,6 +168,7 @@ export const queryCustomReport = asyncHandler(async (req: AuthRequest, res: Resp
         dataType,
         groupBy,
         timezone,
+        workspaceId,
     })
 
     handleResponses(res, 200, result)
@@ -148,6 +177,7 @@ export const queryCustomReport = asyncHandler(async (req: AuthRequest, res: Resp
 export const generateReport = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const period = resolveReportPeriod({ ...req.query, ...req.body }, timezone)
     const metrics = parseReportMetrics(req.body.metrics ?? req.query.metrics)
     const limit = Number(req.body.limit ?? req.query.limit ?? 10)
@@ -157,7 +187,8 @@ export const generateReport = asyncHandler(async (req: AuthRequest, res: Respons
         period,
         metrics,
         timezone,
-        Number.isNaN(limit) ? 10 : limit
+        Number.isNaN(limit) ? 10 : limit,
+        workspaceId
     )
 
     const formatParam =

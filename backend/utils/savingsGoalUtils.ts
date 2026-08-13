@@ -13,6 +13,7 @@ import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from './moneyUtils'
 import { endOfDayInTimezone, startOfDayInTimezone } from './timezoneUtils'
+import { assertAccountMatchesWorkspace, assertWorkspaceMembership } from './workspaceUtils'
 
 export interface SavingsGoalProgress {
     currentAmount: number
@@ -121,12 +122,25 @@ export const parseOptionalTargetDate = (
 
 export const validateAccountForGoal = async (
     accountId: string,
-    userId: string
+    userId: string,
+    workspaceId?: string | null
 ): Promise<Types.ObjectId> => {
-    const account = await Account.findOne({ _id: accountId, userId, isArchived: false })
-    if (!account) {
+    const account = await Account.findById(accountId)
+    if (!account || account.isArchived) {
         throw new CustomError(ERROR_MESSAGES.SAVINGS_GOAL.INVALID_ACCOUNT_ID, 400)
     }
+
+    if (account.workspaceId) {
+        await assertWorkspaceMembership(account.workspaceId.toString(), userId, 'editor')
+        assertAccountMatchesWorkspace(account.workspaceId, workspaceId)
+        return account._id
+    }
+
+    if (account.userId.toString() !== userId) {
+        throw new CustomError(ERROR_MESSAGES.SAVINGS_GOAL.INVALID_ACCOUNT_ID, 400)
+    }
+
+    assertAccountMatchesWorkspace(account.workspaceId, workspaceId)
     return account._id
 }
 

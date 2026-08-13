@@ -17,9 +17,14 @@ import { DEFAULT_TIMEZONE } from '../utils/timezoneUtils'
 import {
     getUserId,
     handleResponses,
-    validateOwnership,
     validateRequiredFields,
 } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    buildScopedListFilter,
+    parseOptionalWorkspaceId,
+    validateResourceAccess,
+} from '../utils/workspaceUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
@@ -72,7 +77,15 @@ const configToPeriodQuery = (config: ISavedReportConfig): Record<string, unknown
 
 export const listSavedReports = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const reports = await SavedReport.find({ userId }).sort({ updatedAt: -1 })
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    const reports = await SavedReport.find(buildScopedListFilter(userId, workspaceId)).sort({
+        updatedAt: -1,
+    })
     handleResponses(res, 200, reports)
 })
 
@@ -85,8 +98,13 @@ export const createSavedReport = asyncHandler(async (req: AuthRequest, res: Resp
         throw new CustomError('Report name is required', 400)
     }
 
+    const workspaceId = parseOptionalWorkspaceId(req.body.workspaceId) ?? null
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'editor')
+    }
+
     const config = parseSavedReportConfig(req.body)
-    const report = await SavedReport.create({ userId, name, config })
+    const report = await SavedReport.create({ userId, workspaceId, name, config })
     handleResponses(res, 201, report)
 })
 
@@ -96,11 +114,12 @@ export const updateSavedReport = asyncHandler(async (req: AuthRequest, res: Resp
 
     validateRequiredFields({ reportId }, ['reportId'])
 
-    const report = await validateOwnership(
+    const report = await validateResourceAccess(
         SavedReport,
         reportId,
         userId,
-        'Saved report not found'
+        'Saved report not found',
+        'editor'
     )
 
     if (typeof req.body.name === 'string' && req.body.name.trim()) {
@@ -121,11 +140,12 @@ export const deleteSavedReport = asyncHandler(async (req: AuthRequest, res: Resp
 
     validateRequiredFields({ reportId }, ['reportId'])
 
-    const report = await validateOwnership(
+    const report = await validateResourceAccess(
         SavedReport,
         reportId,
         userId,
-        'Saved report not found'
+        'Saved report not found',
+        'editor'
     )
     await report.deleteOne()
     handleResponses(res, 200, { message: 'Saved report deleted' })
@@ -138,11 +158,12 @@ export const runSavedReport = asyncHandler(async (req: AuthRequest, res: Respons
 
     validateRequiredFields({ reportId }, ['reportId'])
 
-    const report = await validateOwnership(
+    const report = await validateResourceAccess(
         SavedReport,
         reportId,
         userId,
-        'Saved report not found'
+        'Saved report not found',
+        'viewer'
     )
 
     const period = resolveReportPeriod(configToPeriodQuery(report.config), timezone)
@@ -152,6 +173,7 @@ export const runSavedReport = asyncHandler(async (req: AuthRequest, res: Respons
         dataType: report.config.dataType,
         groupBy: report.config.groupBy ?? 'month',
         timezone,
+        workspaceId: report.workspaceId?.toString() ?? null,
     })
 
     handleResponses(res, 200, {

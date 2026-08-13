@@ -17,6 +17,7 @@ import {
     validateAccountForTransaction,
     validateCategoryForTransaction,
 } from './transactionUtils'
+import { assertAccountMatchesWorkspace, buildScopedListFilter } from './workspaceUtils'
 
 export interface SerializedRecurringRule {
     _id: Types.ObjectId
@@ -152,7 +153,7 @@ export const serializeRecurringRules = (rules: IRecurringRule[]): SerializedRecu
 
 const hasDraftForDueDate = async (
     userId: string,
-    ruleId: Types.ObjectId,
+    rule: IRecurringRule,
     dueDate: Date
 ): Promise<boolean> => {
     const dayStart = new Date(dueDate)
@@ -160,8 +161,8 @@ const hasDraftForDueDate = async (
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
 
     const existing = await Transaction.findOne({
-        userId: new Types.ObjectId(userId),
-        recurringPaymentId: ruleId,
+        ...buildScopedListFilter(userId, rule.workspaceId?.toString() ?? null),
+        recurringPaymentId: rule._id,
         status: 'draft',
         date: { $gte: dayStart, $lt: dayEnd },
     })
@@ -191,7 +192,7 @@ export const generateDraftsForRule = async (
     while (rule.nextDueDate <= endOfToday && iterations < MAX_CATCHUP_DRAFTS) {
         const dueDate = new Date(rule.nextDueDate)
 
-        const duplicate = await hasDraftForDueDate(userId, rule._id, dueDate)
+        const duplicate = await hasDraftForDueDate(userId, rule, dueDate)
         if (!duplicate) {
             const draft = await Transaction.create({
                 userId,
@@ -230,10 +231,11 @@ export const generateDraftsForRule = async (
 
 export const generateDraftsForUser = async (
     userId: string,
-    endOfToday: Date
+    endOfToday: Date,
+    workspaceId?: string | null
 ): Promise<SerializedTransaction[]> => {
     const rules = await RecurringRule.find({
-        userId: new Types.ObjectId(userId),
+        ...buildScopedListFilter(userId, workspaceId ?? null),
         isActive: true,
         isArchived: false,
         nextDueDate: { $lte: endOfToday },
@@ -281,9 +283,11 @@ export const dismissRecurringDraft = async (transaction: ITransaction): Promise<
 export const validateRuleReferences = async (
     userId: string,
     accountId: string,
-    categoryId: string
+    categoryId: string,
+    workspaceId?: string | null
 ): Promise<{ account: Awaited<ReturnType<typeof validateAccountForTransaction>> }> => {
     const account = await validateAccountForTransaction(accountId, userId)
+    assertAccountMatchesWorkspace(account.workspaceId, workspaceId)
     await validateCategoryForTransaction(categoryId, userId)
     return { account }
 }

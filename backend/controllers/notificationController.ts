@@ -11,6 +11,10 @@ import {
     syncBillDueNotifications,
 } from '../utils/notificationUtils'
 import { getUserId, handleResponses, validateOwnership } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    parseOptionalWorkspaceId,
+} from '../utils/workspaceUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
@@ -24,7 +28,12 @@ export const getNotifications = asyncHandler(async (req: AuthRequest, res: Respo
         throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 401)
     }
 
-    await syncBillDueNotifications(userId, req.user, timezone)
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    await syncBillDueNotifications(userId, req.user, timezone, workspaceId)
 
     const notifications = await Notification.find({
         userId,
