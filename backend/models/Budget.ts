@@ -1,4 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
+
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
 
 export const BUDGET_PERIOD_TYPES = ['monthly', 'custom'] as const
@@ -50,6 +52,8 @@ const BudgetSchema = new Schema<IBudget>(
 BudgetSchema.index({ userId: 1, periodStart: -1 })
 BudgetSchema.index({ userId: 1, categoryId: 1, periodStart: -1 })
 BudgetSchema.index({ userId: 1, isArchived: 1, periodStart: -1 })
+
+applyRowLevelSecurity(BudgetSchema, { supportsWorkspace: true })
 
 const Budget: Model<IBudget> = mongoose.model<IBudget>('Budget', BudgetSchema)
 export default Budget

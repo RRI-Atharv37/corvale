@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from 'react'
-import dayjs from 'dayjs'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
@@ -10,7 +9,7 @@ import { useAsyncData } from '../../hooks/useAsyncData'
 import type { ApiResponse, SaverDetails, SaverResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatDisplayDate } from '../../utils/format'
 
 const Saver = () => {
     const [addMode, setAddMode] = useState<'percentage' | 'custom'>('percentage')
@@ -115,7 +114,7 @@ const Saver = () => {
                                 </p>
                                 {balances.saverDate && (
                                     <p className="text-xs text-slate-500 mt-2">
-                                        Last updated {dayjs(balances.saverDate).format('MMM D, YYYY')}
+                                        Last updated {formatDisplayDate(balances.saverDate)}
                                     </p>
                                 )}
                             </div>

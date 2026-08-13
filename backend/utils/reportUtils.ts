@@ -947,15 +947,21 @@ export const executeCustomReportQuery = async (
     }
 }
 
-export const customReportToCsv = (report: CustomReportResult): string => {
-    const rows: string[][] = [['Section', 'Key', 'Value']]
+export interface FlatReportRow {
+    section: string
+    key: string
+    value: string
+}
 
-    rows.push(['Meta', 'Period Type', report.periodType])
-    rows.push(['Meta', 'Period Start', report.periodStart])
-    rows.push(['Meta', 'Period End', report.periodEnd])
+export const flattenCustomReport = (report: CustomReportResult): FlatReportRow[] => {
+    const rows: FlatReportRow[] = []
+
+    rows.push({ section: 'Meta', key: 'Period Type', value: report.periodType })
+    rows.push({ section: 'Meta', key: 'Period Start', value: report.periodStart })
+    rows.push({ section: 'Meta', key: 'Period End', value: report.periodEnd })
 
     const pushRow = (section: string, key: string, value: string | number) => {
-        rows.push([section, key, String(value)])
+        rows.push({ section, key, value: String(value) })
     }
 
     if (report.metrics.summary) {
@@ -1024,5 +1030,10 @@ export const customReportToCsv = (report: CustomReportResult): string => {
         })
     }
 
+    return rows
+}
+
+export const customReportToCsv = (report: CustomReportResult): string => {
+    const rows = [['Section', 'Key', 'Value'], ...flattenCustomReport(report).map((row) => [row.section, row.key, row.value])]
     return buildCsvString(rows)
 }

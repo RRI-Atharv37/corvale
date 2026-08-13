@@ -1,6 +1,14 @@
 import mongoose, {Document, Model, Schema, Types } from 'mongoose'
 import bcrypt from 'bcryptjs'
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES, SupportedCurrency } from '../utils/currencyUtils'
+import {
+    DEFAULT_DATE_FORMAT,
+    DEFAULT_PAGE_SIZE,
+    DATE_FORMATS,
+    DateFormat,
+    MAX_PAGE_SIZE,
+    MIN_PAGE_SIZE,
+} from '../utils/userPreferencesUtils'
 
 export interface NotificationPreferences {
     billRemindersEnabled: boolean
@@ -14,6 +22,8 @@ export interface IUser extends Document {
     password: string
     timezone: string
     preferredCurrency: SupportedCurrency
+    dateFormat: DateFormat
+    pageSize: number
     notificationPreferences: NotificationPreferences
     tokenVersion: number
     passwordResetTokenHash?: string
@@ -32,6 +42,18 @@ const userSchema = new Schema<IUser>({
         default: DEFAULT_CURRENCY,
         uppercase: true,
         trim: true,
+    },
+    dateFormat: {
+        type: String,
+        enum: DATE_FORMATS,
+        default: DEFAULT_DATE_FORMAT,
+        trim: true,
+    },
+    pageSize: {
+        type: Number,
+        default: DEFAULT_PAGE_SIZE,
+        min: MIN_PAGE_SIZE,
+        max: MAX_PAGE_SIZE,
     },
     notificationPreferences: {
         billRemindersEnabled: { type: Boolean, default: true },

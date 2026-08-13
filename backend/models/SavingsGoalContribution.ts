@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export const CONTRIBUTION_TYPES = ['manual', 'automatic'] as const
 export type ContributionType = (typeof CONTRIBUTION_TYPES)[number]
 
@@ -29,6 +31,8 @@ const SavingsGoalContributionSchema = new Schema<ISavingsGoalContribution>(
 
 SavingsGoalContributionSchema.index({ goalId: 1, contributedAt: -1 })
 SavingsGoalContributionSchema.index({ userId: 1, goalId: 1, contributedAt: -1 })
+
+applyRowLevelSecurity(SavingsGoalContributionSchema)
 
 const SavingsGoalContribution: Model<ISavingsGoalContribution> =
     mongoose.model<ISavingsGoalContribution>('SavingsGoalContribution', SavingsGoalContributionSchema)

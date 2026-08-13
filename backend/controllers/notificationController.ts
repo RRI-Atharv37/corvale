@@ -33,7 +33,7 @@ export const getNotifications = asyncHandler(async (req: AuthRequest, res: Respo
         .sort({ createdAt: -1 })
         .limit(50)
 
-    const serialized = await attachBudgetContextToNotifications(notifications)
+    const serialized = await attachBudgetContextToNotifications(notifications, userId)
     const unreadCount = notifications.filter((entry) => !entry.readAt).length
 
     handleResponses(res, 200, {

@@ -17,7 +17,14 @@ import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import CustomReportBuilder from '../../components/reports/CustomReportBuilder'
 import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS, BASE_URL } from '../../utils/apiPaths'
+import { API_PATHS } from '../../utils/apiPaths'
+import {
+    buildExportFilename,
+    downloadExportBlob,
+    ensureExportBlob,
+    EXPORT_FORMAT_OPTIONS,
+    type ExportFormat,
+} from '../../utils/downloadExport'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import type {
     ApiResponse,
@@ -158,6 +165,7 @@ const Reports = () => {
     const [startDate, setStartDate] = useState(sixMonthsAgo)
     const [endDate, setEndDate] = useState(today)
     const [selectedMetrics, setSelectedMetrics] = useState<ReportMetricKey[]>(DEFAULT_METRICS)
+    const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
     const [exporting, setExporting] = useState(false)
     const [savedReportsKey, setSavedReportsKey] = useState(0)
 
@@ -309,7 +317,7 @@ const Reports = () => {
         )
     }
 
-    const handleExportCsv = async () => {
+    const handleExport = async () => {
         if (selectedMetrics.length === 0) {
             toast.error('Select at least one metric to export')
             return
@@ -321,22 +329,15 @@ const Reports = () => {
                 API_PATHS.REPORTS.GENERATE,
                 {
                     metrics: selectedMetrics,
-                    format: 'csv',
+                    format: exportFormat,
                     ...periodParams,
                 },
                 { responseType: 'blob' }
             )
 
-            const blob =
-                blobData instanceof Blob
-                    ? blobData
-                    : new Blob([blobData as unknown as BlobPart], { type: 'text/csv' })
-            const url = window.URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = `spndr-report-${periodDates.startDate}-${periodDates.endDate}.csv`
-            link.click()
-            window.URL.revokeObjectURL(url)
+            const blob = ensureExportBlob(blobData, exportFormat)
+            const baseName = `spndr-report-${periodDates.startDate}-${periodDates.endDate}`
+            downloadExportBlob(blob, buildExportFilename(baseName, exportFormat))
             toast.success('Report downloaded')
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to export report'))
@@ -603,7 +604,7 @@ const Reports = () => {
                         <div className="card">
                             <h3 className="text-sm font-medium text-slate-200">Custom report export</h3>
                             <p className="text-xs text-slate-500 mt-1">
-                                Choose metrics and download a CSV for {periodDescription}
+                                Choose metrics and download a report for {periodDescription}
                             </p>
 
                             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -623,18 +624,34 @@ const Reports = () => {
                                 ))}
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={handleExportCsv}
-                                disabled={exporting || selectedMetrics.length === 0}
-                                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <IoDownload size={16} />
-                                {exporting ? 'Exporting...' : 'Download CSV report'}
-                            </button>
-                            <p className="text-xs text-slate-600 mt-2">
-                                JSON generation available via {BASE_URL}{API_PATHS.REPORTS.GENERATE}
-                            </p>
+                            <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
+                                <div>
+                                    <label className="text-[13px] text-slate-300">Format</label>
+                                    <div className="input-box mb-0 mt-1">
+                                        <select
+                                            value={exportFormat}
+                                            onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                                            className="w-full bg-transparent outline-none text-slate-200 min-w-[120px]"
+                                        >
+                                            {EXPORT_FORMAT_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value} className="bg-slate-900">
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleExport}
+                                    disabled={exporting || selectedMetrics.length === 0}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[42px]"
+                                >
+                                    <IoDownload size={16} />
+                                    {exporting ? 'Exporting...' : 'Download report'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

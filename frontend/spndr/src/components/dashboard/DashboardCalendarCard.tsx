@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { RecurringRule, Transaction } from '../../types/api'
-import { formatCurrency, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
+import { formatCurrency, formatDisplayDate, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
 import {
     buildCalendarGrid,
     projectRuleOccurrencesInMonth,
@@ -140,7 +140,7 @@ const DashboardCalendarCard: React.FC<DashboardCalendarCardProps> = ({ rules, dr
                         <li key={`${item.date}-${item.title}-${index}`} className="py-2 flex justify-between gap-2">
                             <div className="min-w-0">
                                 <p className="text-xs text-slate-200 truncate">{item.title}</p>
-                                <p className="text-[10px] text-slate-500">{item.date}</p>
+                                <p className="text-[10px] text-slate-500">{formatDisplayDate(item.date)}</p>
                             </div>
                             <p
                                 className={`text-xs shrink-0 ${

@@ -186,9 +186,12 @@ export const computeRequiredMonthlyContribution = (
 
 export const computeAverageMonthlyContribution = async (
     goalId: Types.ObjectId,
+    userId: string,
     now: Date = new Date()
 ): Promise<number | null> => {
-    const contributions = await SavingsGoalContribution.find({ goalId }).sort({ contributedAt: 1 })
+    const contributions = await SavingsGoalContribution.find({ goalId, userId }).sort({
+        contributedAt: 1,
+    })
     if (contributions.length === 0) {
         return null
     }
@@ -214,7 +217,11 @@ export const computeProjectedCompletionDate = async (
     if (goal.autoContribution.enabled && goal.autoContribution.amount > 0) {
         monthlyMinor = goal.autoContribution.amount
     } else {
-        const avgMajor = await computeAverageMonthlyContribution(goal._id, now)
+        const avgMajor = await computeAverageMonthlyContribution(
+            goal._id,
+            goal.userId.toString(),
+            now
+        )
         if (avgMajor !== null) {
             monthlyMinor = Math.round(avgMajor * 100)
         }

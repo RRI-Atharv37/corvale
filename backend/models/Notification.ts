@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export const NOTIFICATION_TYPES = ['budget_over_limit', 'bill_due', 'savings_milestone'] as const
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
 
@@ -41,6 +43,8 @@ const NotificationSchema = new Schema<INotification>(
 NotificationSchema.index({ userId: 1, dedupeKey: 1 }, { unique: true })
 NotificationSchema.index({ userId: 1, dismissedAt: 1, createdAt: -1 })
 NotificationSchema.index({ userId: 1, readAt: 1 })
+
+applyRowLevelSecurity(NotificationSchema)
 
 const Notification: Model<INotification> = mongoose.model<INotification>(
     'Notification',

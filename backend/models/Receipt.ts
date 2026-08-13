@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export interface IReceipt extends Document {
     _id: Types.ObjectId
     userId: Types.ObjectId
@@ -23,6 +25,8 @@ const ReceiptSchema = new Schema<IReceipt>(
 )
 
 ReceiptSchema.index({ userId: 1, createdAt: -1 })
+
+applyRowLevelSecurity(ReceiptSchema)
 
 const Receipt: Model<IReceipt> = mongoose.model<IReceipt>('Receipt', ReceiptSchema)
 export default Receipt

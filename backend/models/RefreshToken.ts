@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export interface IRefreshToken extends Document {
     _id: Types.ObjectId
     userId: Types.ObjectId
@@ -20,6 +22,8 @@ const refreshTokenSchema = new Schema<IRefreshToken>(
 
 refreshTokenSchema.index({ userId: 1, revokedAt: 1 })
 refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
+applyRowLevelSecurity(refreshTokenSchema)
 
 const RefreshToken: Model<IRefreshToken> = mongoose.model<IRefreshToken>(
     'RefreshToken',

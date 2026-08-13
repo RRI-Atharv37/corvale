@@ -1,4 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
+
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
 import { TRANSACTION_TYPES, TransactionType } from './Transaction'
 
@@ -66,6 +68,8 @@ const RecurringRuleSchema = new Schema<IRecurringRule>(
 
 RecurringRuleSchema.index({ userId: 1, nextDueDate: 1 })
 RecurringRuleSchema.index({ userId: 1, isArchived: 1, isActive: 1 })
+
+applyRowLevelSecurity(RecurringRuleSchema, { supportsWorkspace: true })
 
 const RecurringRule: Model<IRecurringRule> = mongoose.model<IRecurringRule>(
     'RecurringRule',

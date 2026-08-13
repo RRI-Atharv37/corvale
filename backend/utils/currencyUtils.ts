@@ -1,3 +1,9 @@
+import { Types } from 'mongoose'
+import Account from '../models/Account'
+import Budget from '../models/Budget'
+import RecurringRule from '../models/RecurringRule'
+import SavingsGoal from '../models/SavingsGoal'
+import Transaction from '../models/Transaction'
 import { CustomError } from './customError'
 
 export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'KRW', 'INR'] as const
@@ -46,4 +52,21 @@ export const parseOptionalSupportedCurrency = (
         return fallback
     }
     return parseSupportedCurrency(value)
+}
+
+/** Updates stored currency on all user-owned financial records (no conversion). */
+export const syncUserCurrencyData = async (
+    userId: Types.ObjectId,
+    currency: SupportedCurrency
+): Promise<void> => {
+    const filter = { userId }
+    const update = { $set: { currency } }
+
+    await Promise.all([
+        Account.updateMany(filter, update),
+        Transaction.updateMany(filter, update),
+        Budget.updateMany(filter, update),
+        SavingsGoal.updateMany(filter, update),
+        RecurringRule.updateMany(filter, update),
+    ])
 }

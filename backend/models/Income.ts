@@ -1,5 +1,7 @@
 import mongoose, {Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export interface IIncome extends Document {
     _id: Types.ObjectId
     userId: Types.ObjectId
@@ -24,6 +26,8 @@ const IncomeSchema = new Schema<IIncome>({
 }, { timestamps: true })
 
 IncomeSchema.index({ userId: 1, date: -1 })
+
+applyRowLevelSecurity(IncomeSchema)
 
 const Income: Model<IIncome> = mongoose.model<IIncome>('Income', IncomeSchema)
 export default Income

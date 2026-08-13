@@ -5,6 +5,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
 import BudgetProgressBar from '../../components/budgets/BudgetProgressBar'
@@ -12,6 +13,8 @@ import AccountMultiSelect from '../../components/budgets/AccountMultiSelect'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
+import { useUser } from '../../hooks/useUser'
 import type {
     Account,
     ApiResponse,
@@ -27,7 +30,6 @@ import { formatBudgetPeriod, getCurrentMonthYear, toDateInputValue } from '../..
 import { CategoryIcon } from '../../utils/categoryIcons'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
 import CurrencySelect from '../../components/inputs/CurrencySelect'
-import { useUser } from '../../hooks/useUser'
 
 type BudgetView = 'active' | 'history'
 
@@ -150,6 +152,7 @@ const budgetToForm = (budget: Budget): BudgetFormData => {
 const Budgets = () => {
     const { user } = useUser()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
+    const pageSize = usePageSize()
     const [view, setView] = useState<BudgetView>('active')
     const [createOpen, setCreateOpen] = useState(false)
     const [editOpen, setEditOpen] = useState(false)
@@ -509,8 +512,10 @@ const Budgets = () => {
                 onRetry={refetch}
             >
                 {(items) => (
+                    <PaginatedCardList items={items} pageSize={pageSize}>
+                        {(paginatedItems) => (
                     <div className="space-y-4">
-                        {items.map((budget) => {
+                        {paginatedItems.map((budget) => {
                             const categoryMeta = resolveCategoryLabel(
                                 budget.categoryId,
                                 categories
@@ -613,6 +618,8 @@ const Budgets = () => {
                             )
                         })}
                     </div>
+                        )}
+                    </PaginatedCardList>
                 )}
             </AsyncContent>
 

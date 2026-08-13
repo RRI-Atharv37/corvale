@@ -9,6 +9,8 @@ import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from './moneyUtils'
 import { isMasterCategory, ensureMasterCategoriesSeeded } from './categorySeed'
 import { roundMoney } from './balanceUtils'
+import { assertWorkspaceMembership, validateResourceAccess } from './workspaceUtils'
+import { WorkspaceRole } from '../models/Workspace'
 import { serializeReceipt, SerializedReceipt } from './receiptUtils'
 import {
     getUserId,
@@ -94,18 +96,26 @@ export const parseClientAmount = (value: unknown): number => {
 
 export const validateAccountForTransaction = async (
     accountId: string,
-    userId: string
+    userId: string,
+    minRole: WorkspaceRole = 'editor'
 ): Promise<IAccount> => {
     const account = await Account.findById(accountId)
     if (!account) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.ACCOUNT_NOT_FOUND, 404)
     }
-    if (account.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
     if (account.isArchived) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.ACCOUNT_ARCHIVED, 400)
     }
+
+    if (account.workspaceId) {
+        await assertWorkspaceMembership(account.workspaceId.toString(), userId, minRole)
+        return account
+    }
+
+    if (account.userId.toString() !== userId) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
+    }
+
     return account
 }
 
@@ -433,11 +443,12 @@ export const deleteTransactionForUser = async (
     }
 
     if (isTransferLeg(transaction) && transaction.transferPairId) {
-        const pair = await validateOwnership(
+        const pair = await validateResourceAccess(
             Transaction,
             transaction.transferPairId.toString(),
             userId,
-            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+            'editor'
         )
 
         const outbound = transaction.createdAt <= pair.createdAt ? transaction : pair
@@ -467,7 +478,10 @@ export const deleteTransactionForUser = async (
     await reverseTransactionOnAccount(account, transaction.type, transaction.amount)
 
     if (splitChildren.length > 0) {
-        await Transaction.deleteMany({ _id: { $in: splitChildren.map((child) => child._id) } })
+        await Transaction.deleteMany({
+            _id: { $in: splitChildren.map((child) => child._id) },
+            userId: new Types.ObjectId(userId),
+        })
     }
 
     await Transaction.deleteOne({ _id: transaction._id })

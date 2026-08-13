@@ -14,7 +14,6 @@ import {
     computeSavingsRate,
     computeSpendingAnalysis,
     computeSpendingTrends,
-    customReportToCsv,
     executeCustomReportQuery,
     generateCustomReport,
     parseCustomReportChartType,
@@ -23,6 +22,7 @@ import {
     parseReportMetrics,
     resolveReportPeriod,
 } from '../utils/reportUtils'
+import { parseExportFormat, sendCustomReportExport, type ExportFormat } from '../utils/exportUtils'
 import { getUserId, handleResponses } from '../utils/sharedUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
@@ -160,21 +160,21 @@ export const generateReport = asyncHandler(async (req: AuthRequest, res: Respons
         Number.isNaN(limit) ? 10 : limit
     )
 
-    const format =
+    const formatParam =
         typeof req.body.format === 'string'
             ? req.body.format
             : typeof req.query.format === 'string'
               ? req.query.format
-              : 'json'
+              : undefined
 
-    if (format === 'csv') {
-        const csv = customReportToCsv(report)
-        res.setHeader('Content-Type', 'text/csv')
-        res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="spndr-report-${period.startDate}-${period.endDate}.csv"`
+    if (formatParam !== undefined) {
+        const format = parseExportFormat(formatParam) as ExportFormat
+        sendCustomReportExport(
+            res,
+            format,
+            `spndr-report-${period.startDate}-${period.endDate}`,
+            report
         )
-        res.status(200).send(csv)
         return
     }
 

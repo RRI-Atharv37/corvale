@@ -706,6 +706,7 @@ describe('savingsGoalUtils', () => {
             name: 'Test projection',
             targetAmount: 100000,
             currentAmount: 25000,
+            currency: 'USD',
             autoContribution: {
                 enabled: true,
                 amount: 25000,

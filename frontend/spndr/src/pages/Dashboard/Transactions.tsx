@@ -1,7 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import dayjs from 'dayjs'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoPencil, IoSearch, IoSwapHorizontal, IoTrash } from 'react-icons/io5'
+import { IoAdd, IoDownload, IoPencil, IoSearch, IoSwapHorizontal, IoTrash } from 'react-icons/io5'
 import { useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
@@ -15,6 +14,7 @@ import ReceiptAttachments from '../../components/transactions/ReceiptAttachments
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
 import type {
     Account,
     ApiResponse,
@@ -32,10 +32,17 @@ import type {
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency, toDateInputValue } from '../../utils/format'
+import { formatCurrency, formatDisplayDate, toDateInputValue } from '../../utils/format'
 import { attachReceiptToTransaction, uploadReceipt } from '../../utils/receiptApi'
-
-const PAGE_LIMIT = 10
+import {
+    buildExportFilename,
+    downloadExportBlob,
+    ensureExportBlob,
+    EXPORT_FORMAT_OPTIONS,
+    TRANSACTION_EXPORT_TYPE_OPTIONS,
+    type ExportFormat,
+    type TransactionExportType,
+} from '../../utils/downloadExport'
 
 type TypeFilter = '' | 'income' | 'expense' | 'transfer'
 type SortField = 'date' | 'amount' | 'category'
@@ -89,6 +96,7 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
 
 const Transactions = () => {
     const [searchParams, setSearchParams] = useSearchParams()
+    const pageSize = usePageSize()
 
     const initialType = (searchParams.get('type') as TypeFilter) || ''
     const [page, setPage] = useState(1)
@@ -121,6 +129,11 @@ const Transactions = () => {
     const [bulkSubmitting, setBulkSubmitting] = useState(false)
     const [attachedReceipts, setAttachedReceipts] = useState<Receipt[]>([])
     const [pendingReceiptFiles, setPendingReceiptFiles] = useState<File[]>([])
+    const [exportType, setExportType] = useState<TransactionExportType>('both')
+    const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
+    const [exportStartDate, setExportStartDate] = useState('')
+    const [exportEndDate, setExportEndDate] = useState('')
+    const [exporting, setExporting] = useState(false)
 
     const fetchLookups = useCallback(async () => {
         const [accountsRes, categoriesRes] = await Promise.all([
@@ -178,6 +191,10 @@ const Transactions = () => {
         [lookups]
     )
 
+    useEffect(() => {
+        setPage(1)
+    }, [pageSize])
+
     const fetchTransactions = useCallback(async (): Promise<TransactionsPageData> => {
         try {
             const sharedParams: Record<string, string> = {
@@ -204,14 +221,14 @@ const Transactions = () => {
 
             const response = await axiosInstance.get<ApiResponse<PaginatedTransactions>>(
                 API_PATHS.TRANSACTIONS.GET_ALL,
-                { params: { page, limit: PAGE_LIMIT, ...sharedParams } }
+                { params: { page, limit: pageSize, ...sharedParams } }
             )
             const payload = unwrapApiData(response)
             return { items: payload.data, meta: payload.meta, mode: 'list' }
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load transactions'))
         }
-    }, [page, typeFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder])
+    }, [page, pageSize, typeFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder])
 
     const { data, loading, error, refetch } = useAsyncData(fetchTransactions, [fetchTransactions])
 
@@ -312,6 +329,41 @@ const Transactions = () => {
         setEndDate('')
         setDateFilterActive(false)
         setPage(1)
+    }
+
+    const handleExport = async () => {
+        if ((exportStartDate && !exportEndDate) || (!exportStartDate && exportEndDate)) {
+            toast.error('Both export start and end dates are required when filtering by date')
+            return
+        }
+
+        setExporting(true)
+        try {
+            const params: Record<string, string> = {
+                type: exportType,
+                format: exportFormat,
+            }
+
+            if (exportStartDate && exportEndDate) {
+                params.startDate = exportStartDate
+                params.endDate = exportEndDate
+            }
+
+            const blobData = await axiosInstance.get<Blob>(API_PATHS.TRANSACTIONS.DOWNLOAD, {
+                params,
+                responseType: 'blob',
+            })
+
+            const blob = ensureExportBlob(blobData, exportFormat)
+            const dateSuffix =
+                exportStartDate && exportEndDate ? `-${exportStartDate}-${exportEndDate}` : ''
+            downloadExportBlob(blob, buildExportFilename(`transactions${dateSuffix}`, exportFormat))
+            toast.success('Transactions exported')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to export transactions'))
+        } finally {
+            setExporting(false)
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -740,6 +792,74 @@ const Transactions = () => {
                         </button>
                     </div>
                 )}
+
+                <div className="border-t border-slate-800 pt-4 space-y-3">
+                    <div>
+                        <h3 className="text-sm font-medium text-slate-200">Export transactions</h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Download filtered transactions as CSV, JSON, or PDF
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row gap-3 lg:items-end">
+                        <div>
+                            <label className="text-[13px] text-slate-300">Include</label>
+                            <div className="input-box mb-0 mt-1">
+                                <select
+                                    value={exportType}
+                                    onChange={(e) => setExportType(e.target.value as TransactionExportType)}
+                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[160px]"
+                                >
+                                    {TRANSACTION_EXPORT_TYPE_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value} className="bg-slate-900">
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <FormField
+                            label="Export from"
+                            type="date"
+                            value={exportStartDate}
+                            onChange={setExportStartDate}
+                        />
+                        <FormField
+                            label="Export to"
+                            type="date"
+                            value={exportEndDate}
+                            onChange={setExportEndDate}
+                        />
+
+                        <div>
+                            <label className="text-[13px] text-slate-300">Format</label>
+                            <div className="input-box mb-0 mt-1">
+                                <select
+                                    value={exportFormat}
+                                    onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[100px]"
+                                >
+                                    {EXPORT_FORMAT_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value} className="bg-slate-900">
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleExport}
+                            disabled={exporting}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[42px]"
+                        >
+                            <IoDownload size={16} />
+                            {exporting ? 'Exporting...' : 'Download'}
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <AsyncContent
@@ -833,7 +953,7 @@ const Transactions = () => {
                                             </span>
                                         </div>
                                         <p className="text-xs text-slate-500 mt-0.5">
-                                            {dayjs(item.date).format('MMM D, YYYY')}
+                                            {formatDisplayDate(item.date)}
                                             {categoryNameById.get(item.categoryId)
                                                 ? ` · ${categoryNameById.get(item.categoryId)}`
                                                 : ''}

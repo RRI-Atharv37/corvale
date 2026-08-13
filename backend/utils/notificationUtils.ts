@@ -305,7 +305,8 @@ export const syncBillDueNotifications = async (
 }
 
 export const attachBudgetContextToNotifications = async (
-    notifications: INotification[]
+    notifications: INotification[],
+    userId: string
 ): Promise<SerializedNotification[]> => {
     const budgetIds = notifications
         .filter((n) => n.referenceType === 'budget' && n.referenceId)
@@ -313,7 +314,7 @@ export const attachBudgetContextToNotifications = async (
 
     const budgets =
         budgetIds.length > 0
-            ? await Budget.find({ _id: { $in: budgetIds } })
+            ? await Budget.find({ _id: { $in: budgetIds }, userId })
             : []
 
     const budgetMap = new Map(budgets.map((b) => [b._id.toString(), b]))

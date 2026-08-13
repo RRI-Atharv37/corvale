@@ -5,12 +5,16 @@ export interface ApiResponse<T> {
 
 export type SupportedCurrency = 'USD' | 'EUR' | 'KRW' | 'INR'
 
+export type DateFormat = 'dd/mm/yy' | 'yy/mm/dd' | 'mm/dd/yy'
+
 export interface User {
     _id: string
     fullName: string
     email: string
     timezone?: string
     preferredCurrency?: SupportedCurrency
+    dateFormat?: DateFormat
+    pageSize?: number
     notificationPreferences?: NotificationPreferences
 }
 

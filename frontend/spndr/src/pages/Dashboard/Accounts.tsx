@@ -5,10 +5,12 @@ import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
 import type { Account, AccountEditFormData, AccountFormData, AccountType, ApiResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
@@ -82,6 +84,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 const Accounts = () => {
     const { user } = useUser()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
+    const pageSize = usePageSize()
     const [createOpen, setCreateOpen] = useState(false)
     const [editOpen, setEditOpen] = useState(false)
     const [createForm, setCreateForm] = useState<AccountFormData>(emptyCreateForm)
@@ -244,8 +247,10 @@ const Accounts = () => {
                 onRetry={refetch}
             >
                 {(items) => (
+                    <PaginatedCardList items={items} pageSize={pageSize}>
+                        {(paginatedItems) => (
                     <div className="space-y-3">
-                        {items.map((account) => (
+                        {paginatedItems.map((account) => (
                             <div key={account._id} className="card flex items-center justify-between gap-4">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -302,6 +307,8 @@ const Accounts = () => {
                             </div>
                         ))}
                     </div>
+                        )}
+                    </PaginatedCardList>
                 )}
             </AsyncContent>
 

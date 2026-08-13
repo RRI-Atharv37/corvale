@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 import {
     CUSTOM_REPORT_CHART_TYPES,
     CUSTOM_REPORT_DATA_TYPES,
@@ -60,6 +62,8 @@ const SavedReportSchema = new Schema<ISavedReport>(
 )
 
 SavedReportSchema.index({ userId: 1, updatedAt: -1 })
+
+applyRowLevelSecurity(SavedReportSchema, { supportsWorkspace: true })
 
 const SavedReport: Model<ISavedReport> = mongoose.model<ISavedReport>(
     'SavedReport',

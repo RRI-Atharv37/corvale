@@ -10,9 +10,14 @@ import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils
 import {
     getUserId,
     handleResponses,
-    validateOwnership,
     validateRequiredFields,
 } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    buildScopedListFilter,
+    parseOptionalWorkspaceId,
+    validateResourceAccess,
+} from '../utils/workspaceUtils'
 
 const unsetPreviousDefault = async (userId: string, excludeAccountId?: string): Promise<void> => {
     const filter: Record<string, unknown> = { userId, isDefault: true, isArchived: false }
@@ -36,6 +41,11 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
     validateRequiredFields(req.body, ['name', 'type'])
 
     const { name, type, currency, openingBalance, isDefault } = req.body
+    const workspaceId = parseOptionalWorkspaceId(req.body.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'editor')
+    }
 
     if (!ACCOUNT_TYPES.includes(type)) {
         throw new CustomError(`Invalid account type. Must be one of: ${ACCOUNT_TYPES.join(', ')}`, 400)
@@ -46,8 +56,12 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
     }
 
     const parsedOpeningBalance = parseOpeningBalance(openingBalance)
-    const activeAccountCount = await Account.countDocuments({ userId, isArchived: false })
-    const shouldBeDefault = isDefault === true || activeAccountCount === 0
+    const activeAccountCount = await Account.countDocuments(
+        workspaceId
+            ? { workspaceId, isArchived: false }
+            : { userId, workspaceId: null, isArchived: false }
+    )
+    const shouldBeDefault = !workspaceId && (isDefault === true || activeAccountCount === 0)
 
     if (shouldBeDefault) {
         await unsetPreviousDefault(userId)
@@ -55,6 +69,7 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
 
     const account = await Account.create({
         userId,
+        workspaceId,
         name: name.trim(),
         type,
         currency: parseOptionalSupportedCurrency(currency),
@@ -69,8 +84,13 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
 export const getAccounts = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const includeArchived = req.query.includeArchived === 'true'
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
 
-    const filter: Record<string, unknown> = { userId }
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    const filter: Record<string, unknown> = buildScopedListFilter(userId, workspaceId)
     if (!includeArchived) {
         filter.isArchived = false
     }
@@ -86,11 +106,12 @@ export const getAccountById = asyncHandler(async (req: AuthRequest, res: Respons
 
     validateRequiredFields({ accountId }, ['accountId'])
 
-    const account = await validateOwnership(
+    const account = await validateResourceAccess(
         Account,
         accountId,
         userId,
-        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND
+        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
+        'viewer'
     )
 
     handleResponses(res, 200, account)
@@ -107,11 +128,12 @@ export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response
         throw new CustomError('Balance fields are server-derived and cannot be updated directly', 400)
     }
 
-    const account = await validateOwnership(
+    const account = await validateResourceAccess(
         Account,
         accountId,
         userId,
-        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND
+        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
+        'editor'
     )
 
     if (account.isArchived) {
@@ -156,11 +178,12 @@ export const archiveAccount = asyncHandler(async (req: AuthRequest, res: Respons
 
     validateRequiredFields({ accountId }, ['accountId'])
 
-    const account = await validateOwnership(
+    const account = await validateResourceAccess(
         Account,
         accountId,
         userId,
-        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND
+        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
+        'editor'
     )
 
     if (account.isArchived) {

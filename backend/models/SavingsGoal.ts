@@ -1,4 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
+
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
 
 export const SAVINGS_GOAL_STATUSES = ['active', 'paused', 'completed', 'archived'] as const
@@ -78,6 +80,8 @@ const SavingsGoalSchema = new Schema<ISavingsGoal>(
 
 SavingsGoalSchema.index({ userId: 1, status: 1, createdAt: -1 })
 SavingsGoalSchema.index({ userId: 1, targetDate: 1 })
+
+applyRowLevelSecurity(SavingsGoalSchema, { supportsWorkspace: true })
 
 const SavingsGoal: Model<ISavingsGoal> = mongoose.model<ISavingsGoal>(
     'SavingsGoal',

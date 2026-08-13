@@ -24,6 +24,13 @@ import { API_PATHS } from '../../utils/apiPaths'
 import CurrencySelect from '../inputs/CurrencySelect'
 import Modal from '../ui/Modal'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
+import {
+    DATE_FORMAT_OPTIONS,
+    DEFAULT_DATE_FORMAT,
+    DEFAULT_PAGE_SIZE,
+    PAGE_SIZE_OPTIONS,
+    type DateFormat,
+} from '../../utils/userPreferences'
 import type { ApiResponse, User } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
@@ -65,6 +72,7 @@ const DashboardLayout: React.FC = () => {
     const [settingsOpen, setSettingsOpen] = useState(false)
     const [savingCurrency, setSavingCurrency] = useState(false)
     const [savingNotifications, setSavingNotifications] = useState(false)
+    const [savingDisplay, setSavingDisplay] = useState(false)
 
     const handlePreferredCurrencyChange = async (value: string) => {
         if (!user) return
@@ -75,7 +83,7 @@ const DashboardLayout: React.FC = () => {
                 preferredCurrency: value,
             })
             updateUser(unwrapApiData(response))
-            toast.success('Default currency updated')
+            toast.success('Default currency updated across all records')
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to update currency'))
         } finally {
@@ -120,6 +128,40 @@ const DashboardLayout: React.FC = () => {
             toast.error(getApiErrorMessage(error, 'Failed to update notification preferences'))
         } finally {
             setSavingNotifications(false)
+        }
+    }
+
+    const handleDateFormatChange = async (value: DateFormat) => {
+        if (!user) return
+
+        setSavingDisplay(true)
+        try {
+            const response = await axiosInstance.patch<ApiResponse<User>>(API_PATHS.AUTH.UPDATE_USER, {
+                dateFormat: value,
+            })
+            updateUser(unwrapApiData(response))
+            toast.success('Date format updated')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update date format'))
+        } finally {
+            setSavingDisplay(false)
+        }
+    }
+
+    const handlePageSizeChange = async (value: number) => {
+        if (!user) return
+
+        setSavingDisplay(true)
+        try {
+            const response = await axiosInstance.patch<ApiResponse<User>>(API_PATHS.AUTH.UPDATE_USER, {
+                pageSize: value,
+            })
+            updateUser(unwrapApiData(response))
+            toast.success('Cards per page updated')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update cards per page'))
+        } finally {
+            setSavingDisplay(false)
         }
     }
 
@@ -265,6 +307,40 @@ const DashboardLayout: React.FC = () => {
                             onChange={(value) => void handlePreferredCurrencyChange(value)}
                             disabled={savingCurrency}
                         />
+                        <label className="block text-sm text-slate-300 mt-4">
+                            Date format
+                            <select
+                                value={user?.dateFormat ?? DEFAULT_DATE_FORMAT}
+                                onChange={(event) =>
+                                    void handleDateFormatChange(event.target.value as DateFormat)
+                                }
+                                disabled={savingDisplay}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/40 focus:outline-none"
+                            >
+                                {DATE_FORMAT_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <label className="block text-sm text-slate-300 mt-4">
+                            Cards per page
+                            <select
+                                value={user?.pageSize ?? DEFAULT_PAGE_SIZE}
+                                onChange={(event) =>
+                                    void handlePageSizeChange(Number(event.target.value))
+                                }
+                                disabled={savingDisplay}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/40 focus:outline-none"
+                            >
+                                {PAGE_SIZE_OPTIONS.map((option) => (
+                                    <option key={option} value={option}>
+                                        {option} cards
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
                         <div className="mt-4 space-y-3">
                             <label className="flex items-center justify-between gap-3 text-sm text-slate-300">
                                 <span>Bill due reminders</span>

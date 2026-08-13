@@ -20,6 +20,7 @@ export const ERROR_MESSAGES = {
     },
     GENERAL: {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
+        UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',
@@ -112,5 +113,17 @@ export const ERROR_MESSAGES = {
     },
     NOTIFICATION: {
         NOTIFICATION_NOT_FOUND: 'Notification not found',
+    },
+    WORKSPACE: {
+        WORKSPACE_NOT_FOUND: 'Workspace not found',
+        NOT_A_MEMBER: 'Not authorized to access this workspace',
+        MEMBER_NOT_FOUND: 'Workspace member not found',
+        MEMBER_ALREADY_EXISTS: 'User is already a member of this workspace',
+        USER_NOT_FOUND: 'No user found with that email',
+        INVALID_WORKSPACE_ID: 'Invalid workspace id',
+        ACCOUNT_WORKSPACE_MISMATCH: 'Account must belong to the same workspace',
+        CANNOT_CHANGE_OWNER_ROLE: 'Owner role cannot be changed',
+        CANNOT_REMOVE_OWNER: 'Workspace owner cannot be removed',
+        OWNER_CANNOT_LEAVE: 'Workspace owner cannot leave; transfer ownership first',
     },
 }

@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from 'react'
-import dayjs from 'dayjs'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
@@ -16,7 +15,7 @@ import type {
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatDisplayDateTime } from '../../utils/format'
 
 interface PushoverPageData {
     history: PushoverSnapshot[]
@@ -107,10 +106,14 @@ const Pushover = () => {
                             <div key={item._id} className="card flex items-center justify-between gap-4">
                                 <div>
                                     <p className="text-sm font-medium text-slate-200">
-                                        {dayjs(item.pushoverDate).format('MMMM YYYY')} rollover
+                                        {new Date(item.pushoverDate).toLocaleDateString('en-US', {
+                                            month: 'long',
+                                            year: 'numeric',
+                                        })}{' '}
+                                        rollover
                                     </p>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        {dayjs(item.pushoverDate).format('MMM D, YYYY h:mm A')}
+                                        {formatDisplayDateTime(item.pushoverDate)}
                                     </p>
                                 </div>
                                 <p className="text-sm font-semibold text-violet-400">

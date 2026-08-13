@@ -15,12 +15,14 @@ import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import SavingsGoalProgressBar from '../../components/savingsGoals/SavingsGoalProgressBar'
 import CurrencySelect from '../../components/inputs/CurrencySelect'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
 import { useUser } from '../../hooks/useUser'
 import type {
     Account,
@@ -127,6 +129,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 const SavingsGoals = () => {
     const { user } = useUser()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
+    const pageSize = usePageSize()
 
     const [view, setView] = useState<GoalView>('active')
     const [createOpen, setCreateOpen] = useState(false)
@@ -615,8 +618,10 @@ const SavingsGoals = () => {
                 onRetry={refetch}
             >
                 {(items) => (
+                    <PaginatedCardList items={items} pageSize={pageSize}>
+                        {(paginatedItems) => (
                     <div className="space-y-4">
-                        {items.map((goal) => {
+                        {paginatedItems.map((goal) => {
                             const progress = goal.progress
                             const canContribute =
                                 goal.status === 'active' && !progress?.isComplete
@@ -789,6 +794,8 @@ const SavingsGoals = () => {
                             )
                         })}
                     </div>
+                        )}
+                    </PaginatedCardList>
                 )}
             </AsyncContent>
 

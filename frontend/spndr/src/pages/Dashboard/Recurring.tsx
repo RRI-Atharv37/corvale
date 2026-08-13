@@ -17,6 +17,7 @@ import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
 import AccountPicker from '../../components/accounts/AccountPicker'
@@ -25,6 +26,7 @@ import RecurringCalendar from '../../components/recurring/RecurringCalendar'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
 import { useUser } from '../../hooks/useUser'
 import type {
     Account,
@@ -38,7 +40,7 @@ import type {
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
+import { formatCurrency, formatDisplayDate, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
 import { CategoryIcon } from '../../utils/categoryIcons'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
 import { formatIntervalLabel, INTERVAL_OPTIONS } from '../../utils/recurringUtils'
@@ -134,6 +136,7 @@ const resolveCategoryLabel = (
 const Recurring = () => {
     const { user } = useUser()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
+    const pageSize = usePageSize()
 
     const [view, setView] = useState<RecurringView>('rules')
     const [ruleListView, setRuleListView] = useState<RuleListView>('active')
@@ -666,8 +669,10 @@ const Recurring = () => {
                         onRetry={refetch}
                     >
                         {(items) => (
+                            <PaginatedCardList items={items} pageSize={pageSize}>
+                                {(paginatedItems) => (
                             <div className="space-y-4">
-                                {items.map((rule) => {
+                                {paginatedItems.map((rule) => {
                                     const categoryMeta = resolveCategoryLabel(
                                         rule.categoryId,
                                         categories
@@ -707,7 +712,7 @@ const Recurring = () => {
                                                             rule.customIntervalDays
                                                         )}{' '}
                                                         · Next due{' '}
-                                                        {toDateInputValue(rule.nextDueDate)} ·{' '}
+                                                        {formatDisplayDate(rule.nextDueDate)} ·{' '}
                                                         {resolveAccountName(rule.accountId)}
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-2">
@@ -772,6 +777,8 @@ const Recurring = () => {
                                     )
                                 })}
                             </div>
+                                )}
+                            </PaginatedCardList>
                         )}
                     </AsyncContent>
                 </>
@@ -789,8 +796,10 @@ const Recurring = () => {
                     onRetry={() => void generateAndRefreshDrafts()}
                 >
                     {(items) => (
+                        <PaginatedCardList items={items} pageSize={pageSize}>
+                            {(paginatedItems) => (
                         <div className="space-y-4">
-                            {items.map((draft) => {
+                            {paginatedItems.map((draft) => {
                                 const isActing = draftActionId === draft._id
                                 return (
                                     <div
@@ -816,7 +825,7 @@ const Recurring = () => {
                                                 </span>
                                             </div>
                                             <p className="text-xs text-slate-500 mt-1">
-                                                Due {toDateInputValue(draft.date)} ·{' '}
+                                                Due {formatDisplayDate(draft.date)} ·{' '}
                                                 {resolveRuleTitle(draft.recurringPaymentId)} ·{' '}
                                                 {formatCurrency(draft.amount, draft.currency)}
                                             </p>
@@ -845,6 +854,8 @@ const Recurring = () => {
                                 )
                             })}
                         </div>
+                            )}
+                        </PaginatedCardList>
                     )}
                 </AsyncContent>
             )}
@@ -941,7 +952,7 @@ const Recurring = () => {
                 title="Confirm draft"
                 message={
                     selectedDraft
-                        ? `Post "${selectedDraft.title}" for ${formatCurrency(selectedDraft.amount, selectedDraft.currency)} on ${toDateInputValue(selectedDraft.date)}?`
+                        ? `Post "${selectedDraft.title}" for ${formatCurrency(selectedDraft.amount, selectedDraft.currency)} on ${formatDisplayDate(selectedDraft.date)}?`
                         : ''
                 }
                 confirmLabel="Confirm & post"

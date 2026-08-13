@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export const TRANSACTION_TYPES = ['income', 'expense', 'transfer'] as const
 export type TransactionType = (typeof TRANSACTION_TYPES)[number]
 
@@ -66,6 +68,8 @@ TransactionSchema.index({ userId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, type: 1, date: -1 })
 TransactionSchema.index({ userId: 1, categoryId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, accountId: 1, date: -1 })
+
+applyRowLevelSecurity(TransactionSchema, { supportsWorkspace: true })
 
 const Transaction: Model<ITransaction> = mongoose.model<ITransaction>(
     'Transaction',
