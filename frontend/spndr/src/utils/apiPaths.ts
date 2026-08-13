@@ -193,4 +193,9 @@ export const API_PATHS = {
         PREVIEW: '/imports/preview',
         COMMIT: '/imports/commit',
     },
+    BACKUP: {
+        EXPORT: '/backup/export',
+        PREVIEW: '/backup/preview',
+        RESTORE: '/backup/restore',
+    },
 } as const

@@ -21,6 +21,7 @@ import reportRoutes from './routes/reportRoutes'
 import notificationRoutes from './routes/notificationRoutes'
 import workspaceRoutes from './routes/workspaceRoutes'
 import importRoutes from './routes/importRoutes'
+import backupRoutes from './routes/backupRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -58,6 +59,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/notifications', notificationRoutes)
     app.use('/api/v1/workspaces', workspaceRoutes)
     app.use('/api/v1/imports', importRoutes)
+    app.use('/api/v1/backup', backupRoutes)
     app.use(errorHandler)
 
     return app

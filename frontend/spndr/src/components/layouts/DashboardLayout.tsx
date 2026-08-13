@@ -39,6 +39,7 @@ import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import NotificationCenter from '../notifications/NotificationCenter'
 import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
+import BackupRestoreSettings from '../settings/BackupRestoreSettings'
 
 const DOCS_URL = 'http://localhost:5174'
 
@@ -307,6 +308,7 @@ const DashboardLayout: React.FC = () => {
 
             <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" size="md">
                 <div className="space-y-6">
+                    <BackupRestoreSettings />
                     <TransactionTemplatesSettings />
 
                     <div>

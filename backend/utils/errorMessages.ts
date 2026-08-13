@@ -143,6 +143,14 @@ export const ERROR_MESSAGES = {
         NO_VALID_ROWS: 'No valid rows to import',
         INVALID_MERGE_TARGET: 'Cannot merge a row that has no matching transaction',
     },
+    BACKUP: {
+        INVALID_FORMAT: 'Backup file is not a valid spndr backup',
+        UNSUPPORTED_VERSION: 'Unsupported backup version',
+        INVALID_FILE_TYPE: 'Backup file must be a JSON or ZIP export',
+        FILE_TOO_LARGE: 'Backup file exceeds the 10 MB size limit',
+        FILE_REQUIRED: 'Backup file is required',
+        BROKEN_REFERENCE: 'Backup contains a broken reference and cannot be restored',
+    },
     WORKSPACE: {
         WORKSPACE_NOT_FOUND: 'Workspace not found',
         NOT_A_MEMBER: 'Not authorized to access this workspace',

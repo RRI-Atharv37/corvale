@@ -996,3 +996,33 @@ export interface ImportCommitResponse {
     mergedTransactionIds: string[]
     summary: ImportPreviewSummary
 }
+
+export interface BackupEntityCounts {
+    accounts: number
+    categories: number
+    tags: number
+    budgets: number
+    savingsGoals: number
+    savingsGoalContributions: number
+    recurringRules: number
+    categorizationRules: number
+    transactionTemplates: number
+    transactions: number
+    receipts: number
+}
+
+export interface BackupRestorePreview {
+    valid: boolean
+    version: number
+    exportedAt: string | null
+    sourceScope: { workspaceId: string | null }
+    targetScope: { workspaceId: string | null }
+    counts: BackupEntityCounts
+    warnings: string[]
+    errors: string[]
+}
+
+export interface BackupRestoreResult {
+    created: BackupEntityCounts
+    idMapping: Record<string, string>
+}
