@@ -51,6 +51,14 @@ export const ERROR_MESSAGES = {
         TAG_NOT_FOUND: 'Tag not found',
         TAG_ALREADY_EXISTS: 'A tag with this name already exists',
     },
+    CATEGORIZATION_RULE: {
+        RULE_NOT_FOUND: 'Categorization rule not found',
+        INVALID_MATCH_TYPE: 'Invalid categorization match type',
+        MATCH_VALUE_REQUIRED: 'Match value is required for description rules',
+        AMOUNT_RANGE_REQUIRED: 'At least one of amountMin or amountMax is required',
+        INVALID_AMOUNT_RANGE: 'amountMin cannot be greater than amountMax',
+        ACCOUNT_REQUIRED: 'Account is required for account match rules',
+    },
     CATEGORY: {
         CATEGORY_NOT_FOUND: 'Category not found',
         MASTER_NOT_FOUND: 'Master category not found',

@@ -12,6 +12,7 @@ import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
 import Accounts from './pages/Dashboard/Accounts'
 import Categories from './pages/Dashboard/Categories'
+import CategorizationRules from './pages/Dashboard/CategorizationRules'
 import Tags from './pages/Dashboard/Tags'
 import Budgets from './pages/Dashboard/Budgets'
 import SavingsGoals from './pages/Dashboard/SavingsGoals'
@@ -52,6 +53,7 @@ const AppRoutes = () => {
                 <Route path="/pushover" element={<Pushover />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/categories" element={<Categories />} />
+                <Route path="/categories/rules" element={<CategorizationRules />} />
                 <Route path="/tags" element={<Tags />} />
                 <Route path="/budgets" element={<Budgets />} />
                 <Route path="/savings-goals" element={<SavingsGoals />} />

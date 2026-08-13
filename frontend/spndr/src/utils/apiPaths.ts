@@ -70,6 +70,15 @@ export const API_PATHS = {
         DELETE: (tagId: string) => `/tags/${tagId}`,
         DEDUPE: '/tags/dedupe',
     },
+    CATEGORIZATION_RULES: {
+        CREATE: '/categorization-rules',
+        GET_ALL: '/categorization-rules',
+        GET_BY_ID: (ruleId: string) => `/categorization-rules/${ruleId}`,
+        UPDATE: (ruleId: string) => `/categorization-rules/${ruleId}`,
+        DELETE: (ruleId: string) => `/categorization-rules/${ruleId}`,
+        BULK_APPLY: '/categorization-rules/bulk-apply',
+        TEST: '/categorization-rules/test',
+    },
     TRANSACTIONS: {
         CREATE: '/transactions',
         TRANSFER: '/transactions/transfer',

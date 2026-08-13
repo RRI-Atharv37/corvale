@@ -8,6 +8,10 @@ import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { DEFAULT_TIMEZONE, resolveDateRange } from '../utils/timezoneUtils'
 import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
 import {
+    applyCategorizationRules,
+    mergeTags,
+} from '../utils/categorizationRuleUtils'
+import {
     adjustAccountForTransactionChange,
     applyTransactionToAccount,
     applyTransferToAccounts,
@@ -206,11 +210,30 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         await validateCategoryForTransaction(resolvedCategoryId, userId)
     }
 
+    let finalCategoryId = resolvedCategoryId
+    let finalTags = tags
+
+    if (!hasSplits && type !== 'transfer') {
+        const ruleResult = await applyCategorizationRules(userId, {
+            title: title.trim(),
+            description: description?.trim(),
+            amount: amountMinor,
+            accountId,
+            type,
+        })
+
+        if (ruleResult) {
+            await validateCategoryForTransaction(ruleResult.categoryId.toString(), userId)
+            finalCategoryId = ruleResult.categoryId.toString()
+            finalTags = mergeTags(tags, ruleResult.tags)
+        }
+    }
+
     const transaction = await Transaction.create({
         userId,
         workspaceId: resolvedWorkspaceId,
         accountId,
-        categoryId: resolvedCategoryId,
+        categoryId: finalCategoryId,
         type,
         status: status ?? 'posted',
         amount: amountMinor,
@@ -220,7 +243,7 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         date: new Date(date),
         source: source?.trim(),
         paymentMethod: paymentMethod?.trim(),
-        tags,
+        tags: finalTags,
     })
 
     await applyTransactionToAccount(account, type, amountMinor)

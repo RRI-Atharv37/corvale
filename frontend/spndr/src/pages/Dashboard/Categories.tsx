@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
     IoAdd,
     IoChevronDown,
     IoChevronUp,
+    IoFlashOutline,
     IoPencil,
     IoStar,
     IoStarOutline,
@@ -349,14 +351,23 @@ const Categories = () => {
                 title="Categories"
                 description="Organize spending with master categories and custom sub-categories"
                 actions={
-                    <button
-                        type="button"
-                        onClick={() => openCreate()}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
-                    >
-                        <IoAdd size={18} />
-                        Add category
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                        <Link
+                            to="/categories/rules"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-secondary transition-colors"
+                        >
+                            <IoFlashOutline size={18} />
+                            Auto-rules
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => openCreate()}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                        >
+                            <IoAdd size={18} />
+                            Add category
+                        </button>
+                    </div>
                 }
             />
 
