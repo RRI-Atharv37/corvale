@@ -4,6 +4,7 @@ import Account, { AccountType, IAccount } from '../models/Account'
 import Category, { ICategory } from '../models/Category'
 import Receipt from '../models/Receipt'
 import Transaction, { ITransaction, TransactionType } from '../models/Transaction'
+import User from '../models/User'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from './moneyUtils'
@@ -48,6 +49,7 @@ export interface SerializedTransactionWithSplits extends SerializedTransaction {
 export interface SerializedTransaction {
     _id: Types.ObjectId
     userId: Types.ObjectId
+    userFullName?: string
     workspaceId?: Types.ObjectId | null
     accountId: Types.ObjectId
     categoryId: Types.ObjectId
@@ -84,6 +86,23 @@ export const serializeTransaction = (transaction: ITransaction): SerializedTrans
 
 export const serializeTransactions = (transactions: ITransaction[]): SerializedTransaction[] => {
     return transactions.map(serializeTransaction)
+}
+
+export const attachUserFullNamesToTransactions = async (
+    transactions: SerializedTransaction[]
+): Promise<SerializedTransaction[]> => {
+    if (transactions.length === 0) {
+        return transactions
+    }
+
+    const userIds = [...new Set(transactions.map((transaction) => transaction.userId.toString()))]
+    const users = await User.find({ _id: { $in: userIds } }).select('fullName')
+    const nameById = new Map(users.map((user) => [user._id.toString(), user.fullName]))
+
+    return transactions.map((transaction) => ({
+        ...transaction,
+        userFullName: nameById.get(transaction.userId.toString()),
+    }))
 }
 
 export const parseClientAmount = (value: unknown): number => {

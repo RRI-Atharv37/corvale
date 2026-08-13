@@ -141,5 +141,9 @@ export const ERROR_MESSAGES = {
         CANNOT_CHANGE_OWNER_ROLE: 'Owner role cannot be changed',
         CANNOT_REMOVE_OWNER: 'Workspace owner cannot be removed',
         OWNER_CANNOT_LEAVE: 'Workspace owner cannot leave; transfer ownership first',
+        INVITE_NOT_FOUND: 'Workspace invitation not found',
+        INVITE_NOT_PENDING: 'This invitation is no longer pending',
+        INVITE_ALREADY_PENDING: 'An invitation is already pending for this user',
+        CANNOT_INVITE_SELF: 'You cannot invite yourself to a workspace',
     },
 }

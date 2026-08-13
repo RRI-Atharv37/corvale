@@ -23,7 +23,11 @@ export interface NotificationPreferences {
     billReminderDaysBefore: number
 }
 
-export type NotificationType = 'budget_over_limit' | 'bill_due' | 'savings_milestone'
+export type NotificationType =
+    | 'budget_over_limit'
+    | 'bill_due'
+    | 'savings_milestone'
+    | 'workspace_invite'
 
 export interface NotificationItem {
     _id: string
@@ -77,6 +81,20 @@ export interface WorkspaceInviteFormData {
     role: WorkspaceInviteRole
 }
 
+export interface WorkspaceInvite {
+    _id: string
+    workspaceId: string
+    workspaceName: string
+    inviterUserId: string
+    inviterName?: string
+    inviterEmail?: string
+    inviteeUserId: string
+    inviteeEmail?: string
+    role: WorkspaceInviteRole
+    status: 'pending' | 'accepted' | 'declined'
+    createdAt: string
+}
+
 export interface PaginationMeta {
     totalIncomes?: number
     totalExpenses?: number
@@ -100,6 +118,7 @@ export interface Receipt {
 export interface Transaction {
     _id: string
     userId: string
+    userFullName?: string
     workspaceId?: string | null
     accountId: string
     categoryId: string

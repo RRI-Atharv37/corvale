@@ -30,7 +30,10 @@ import {
     serializeTransaction,
     serializeTransactionPlain,
     serializeTransactions,
+    attachUserFullNamesToTransactions,
     serializeTransactionWithSplits,
+    SerializedTransaction,
+    SerializedTransactionWithSplits,
     SplitInput,
     Transaction,
     validateAccountForTransaction,
@@ -112,6 +115,29 @@ const resolveListWorkspaceId = async (req: AuthRequest): Promise<string | null> 
     }
 
     return workspaceId
+}
+
+const enrichTransactionsForWorkspace = async <T extends SerializedTransaction>(
+    workspaceId: string | null,
+    transactions: T[]
+): Promise<T[]> => {
+    if (!workspaceId) {
+        return transactions
+    }
+
+    return attachUserFullNamesToTransactions(transactions) as Promise<T[]>
+}
+
+const enrichTransactionForWorkspace = async <T extends SerializedTransaction>(
+    workspaceId: string | null | undefined,
+    transaction: T
+): Promise<T> => {
+    if (!workspaceId) {
+        return transaction
+    }
+
+    const [enriched] = await attachUserFullNamesToTransactions([transaction])
+    return enriched as T
 }
 
 const createSplitChildren = async (
@@ -392,7 +418,10 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
             Transaction.countDocuments(filter),
         ])
 
-        const data = results.map((doc) => serializeTransactionPlain(doc))
+        const data = await enrichTransactionsForWorkspace(
+            workspaceId,
+            results.map((doc) => serializeTransactionPlain(doc))
+        )
 
         handleResponses(res, 200, {
             data,
@@ -416,7 +445,7 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
     ])
 
     handleResponses(res, 200, {
-        data: serializeTransactions(transactions),
+        data: await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions)),
         meta: {
             totalTransactions,
             pageNumber,
@@ -440,7 +469,10 @@ export const getTransactionById = asyncHandler(async (req: AuthRequest, res: Res
         'viewer'
     )
 
-    const payload = await serializeTransactionWithSplits(transaction, userId)
+    const payload: SerializedTransactionWithSplits = await serializeTransactionWithSplits(
+        transaction,
+        userId
+    )
 
     if (isTransferLeg(transaction) && transaction.transferPairId) {
         const pair = await validateResourceAccess(
@@ -453,7 +485,21 @@ export const getTransactionById = asyncHandler(async (req: AuthRequest, res: Res
         payload.transferPair = serializeTransaction(pair)
     }
 
-    handleResponses(res, 200, payload)
+    const workspaceId = transaction.workspaceId?.toString() ?? null
+    const enriched = await enrichTransactionForWorkspace(workspaceId, payload)
+
+    if (enriched.transferPair) {
+        enriched.transferPair = await enrichTransactionForWorkspace(
+            workspaceId,
+            enriched.transferPair
+        )
+    }
+
+    if (enriched.splits?.length) {
+        enriched.splits = await enrichTransactionsForWorkspace(workspaceId, enriched.splits)
+    }
+
+    handleResponses(res, 200, enriched)
 })
 
 export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -610,7 +656,10 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
             { $sort: sort },
         ])
 
-        const data = results.map((doc) => serializeTransactionPlain(doc))
+        const data = await enrichTransactionsForWorkspace(
+            workspaceId,
+            results.map((doc) => serializeTransactionPlain(doc))
+        )
 
         handleResponses(res, 200, data)
         return
@@ -619,7 +668,11 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
     const sort = buildTransactionSort(sortBy as string | undefined, sortOrder as string | undefined)
     const transactions = await Transaction.find(filter).sort(sort)
 
-    handleResponses(res, 200, serializeTransactions(transactions))
+    handleResponses(
+        res,
+        200,
+        await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    )
 })
 
 export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -660,7 +713,10 @@ export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Res
             { $sort: sort },
         ])
 
-        const data = results.map((doc) => serializeTransactionPlain(doc))
+        const data = await enrichTransactionsForWorkspace(
+            workspaceId,
+            results.map((doc) => serializeTransactionPlain(doc))
+        )
 
         handleResponses(res, 200, data)
         return
@@ -669,7 +725,11 @@ export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Res
     const sort = buildTransactionSort(sortBy as string | undefined, sortOrder as string | undefined)
     const transactions = await Transaction.find(filter).sort(sort)
 
-    handleResponses(res, 200, serializeTransactions(transactions))
+    handleResponses(
+        res,
+        200,
+        await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    )
 })
 
 export const downloadTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {

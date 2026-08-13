@@ -2,10 +2,20 @@ import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
 import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 
-export const NOTIFICATION_TYPES = ['budget_over_limit', 'bill_due', 'savings_milestone'] as const
+export const NOTIFICATION_TYPES = [
+    'budget_over_limit',
+    'bill_due',
+    'savings_milestone',
+    'workspace_invite',
+] as const
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
 
-export const NOTIFICATION_REFERENCE_TYPES = ['budget', 'recurring_rule', 'savings_goal'] as const
+export const NOTIFICATION_REFERENCE_TYPES = [
+    'budget',
+    'recurring_rule',
+    'savings_goal',
+    'workspace',
+] as const
 export type NotificationReferenceType = (typeof NOTIFICATION_REFERENCE_TYPES)[number]
 
 export interface INotification extends Document {

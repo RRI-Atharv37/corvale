@@ -17,6 +17,8 @@ const notificationLink = (type: string, referenceId?: string): string | null => 
             return '/recurring'
         case 'savings_milestone':
             return '/savings-goals'
+        case 'workspace_invite':
+            return '/workspaces?tab=invitations'
         default:
             return null
     }
@@ -156,8 +158,8 @@ const NotificationCenter: React.FC = () => {
                             <p className="px-4 py-6 text-sm text-expense">{error}</p>
                         ) : notifications.length === 0 ? (
                             <p className="px-4 py-8 text-center text-sm text-fg-muted">
-                                No notifications yet. Budget alerts, bill reminders, and savings
-                                milestones will show up here.
+                                No notifications yet. Budget alerts, bill reminders, savings
+                                milestones, and workspace invitations will show up here.
                             </p>
                         ) : (
                             <ul className="divide-y divide-slate-800">

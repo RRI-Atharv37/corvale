@@ -3,6 +3,7 @@ import { API_PATHS } from './apiPaths'
 import type {
     ApiResponse,
     Workspace,
+    WorkspaceInvite,
     WorkspaceInviteFormData,
     WorkspaceInviteRole,
 } from '../types/api'
@@ -38,12 +39,39 @@ export const updateWorkspace = async (workspaceId: string, name: string): Promis
 export const inviteWorkspaceMember = async (
     workspaceId: string,
     payload: WorkspaceInviteFormData
-): Promise<Workspace> => {
-    const response = await axiosInstance.post<ApiResponse<Workspace>>(
+): Promise<WorkspaceInvite> => {
+    const response = await axiosInstance.post<ApiResponse<WorkspaceInvite>>(
         API_PATHS.WORKSPACES.INVITE(workspaceId),
         payload
     )
     return unwrapApiData(response)
+}
+
+export const fetchReceivedInvites = async (): Promise<WorkspaceInvite[]> => {
+    const response = await axiosInstance.get<ApiResponse<WorkspaceInvite[]>>(
+        API_PATHS.WORKSPACES.RECEIVED_INVITES
+    )
+    return unwrapApiData(response)
+}
+
+export const fetchWorkspacePendingInvites = async (
+    workspaceId: string
+): Promise<WorkspaceInvite[]> => {
+    const response = await axiosInstance.get<ApiResponse<WorkspaceInvite[]>>(
+        API_PATHS.WORKSPACES.PENDING_INVITES(workspaceId)
+    )
+    return unwrapApiData(response)
+}
+
+export const acceptWorkspaceInvite = async (inviteId: string): Promise<Workspace> => {
+    const response = await axiosInstance.post<ApiResponse<Workspace>>(
+        API_PATHS.WORKSPACES.ACCEPT_INVITE(inviteId)
+    )
+    return unwrapApiData(response)
+}
+
+export const declineWorkspaceInvite = async (inviteId: string): Promise<void> => {
+    await axiosInstance.post(API_PATHS.WORKSPACES.DECLINE_INVITE(inviteId))
 }
 
 export const updateWorkspaceMemberRole = async (

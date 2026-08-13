@@ -179,6 +179,10 @@ export const API_PATHS = {
         GET_BY_ID: (workspaceId: string) => `/workspaces/${workspaceId}`,
         UPDATE: (workspaceId: string) => `/workspaces/${workspaceId}`,
         INVITE: (workspaceId: string) => `/workspaces/${workspaceId}/members`,
+        PENDING_INVITES: (workspaceId: string) => `/workspaces/${workspaceId}/invites`,
+        RECEIVED_INVITES: '/workspaces/invites/received',
+        ACCEPT_INVITE: (inviteId: string) => `/workspaces/invites/${inviteId}/accept`,
+        DECLINE_INVITE: (inviteId: string) => `/workspaces/invites/${inviteId}/decline`,
         UPDATE_MEMBER: (workspaceId: string, memberUserId: string) =>
             `/workspaces/${workspaceId}/members/${memberUserId}`,
         REMOVE_MEMBER: (workspaceId: string, memberUserId: string) =>

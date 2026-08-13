@@ -18,12 +18,22 @@ async function inviteMember(
     ownerToken: string,
     workspaceId: string,
     email: string,
-    role: 'editor' | 'viewer' = 'editor'
+    role: 'editor' | 'viewer' = 'editor',
+    inviteeToken?: string
 ) {
-    return request(app)
+    const inviteRes = await request(app)
         .post(`/api/v1/workspaces/${workspaceId}/members`)
         .set(authHeader(ownerToken))
         .send({ email, role })
+
+    if (inviteeToken) {
+        expect(inviteRes.status).toBe(201)
+        await request(app)
+            .post(`/api/v1/workspaces/invites/${inviteRes.body.data._id}/accept`)
+            .set(authHeader(inviteeToken))
+    }
+
+    return inviteRes
 }
 
 async function getFoodMasterId(token: string): Promise<string> {
@@ -100,7 +110,7 @@ async function seedWorkspaceWithEditor() {
     const workspaceRes = await createWorkspace(owner.token, 'Scope Test')
     const workspaceId = workspaceRes.body.data._id
 
-    await inviteMember(owner.token, workspaceId, editor.email, 'editor')
+    await inviteMember(owner.token, workspaceId, editor.email, 'editor', editor.token)
 
     return { owner, editor, workspaceId }
 }
@@ -146,7 +156,7 @@ describe('Workspace scoping - savings goals', () => {
 
         const workspaceRes = await createWorkspace(owner.token)
         const workspaceId = workspaceRes.body.data._id
-        await inviteMember(owner.token, workspaceId, viewer.email, 'viewer')
+        await inviteMember(owner.token, workspaceId, viewer.email, 'viewer', viewer.token)
 
         const editorCreate = await request(app)
             .post('/api/v1/savings-goals')
@@ -267,7 +277,7 @@ describe('Workspace scoping - recurring rules', () => {
         const accountRes = await createWorkspaceAccount(owner.token, workspaceId)
         const categoryId = await getFoodMasterId(owner.token)
 
-        await inviteMember(owner.token, workspaceId, viewer.email, 'viewer')
+        await inviteMember(owner.token, workspaceId, viewer.email, 'viewer', viewer.token)
 
         const res = await request(app)
             .post('/api/v1/recurring-rules')
@@ -710,5 +720,77 @@ describe('Workspace scoping - notification triggers', () => {
             .set(authHeader(outsider.token))
 
         expect(res.status).toBe(403)
+    })
+})
+
+describe('Workspace scoping - transaction member attribution', () => {
+    it('includes userFullName on workspace transactions but not personal ones', async () => {
+        const { owner, editor, workspaceId } = await seedWorkspaceWithEditor()
+        const workspaceAccount = await createWorkspaceAccount(owner.token, workspaceId)
+        const personalAccount = await createPersonalAccount(owner.token)
+        const foodCategoryId = await getFoodMasterId(owner.token)
+
+        await createWorkspaceExpense(
+            owner.token,
+            workspaceId,
+            workspaceAccount.body.data._id,
+            foodCategoryId,
+            120,
+            'Owner groceries'
+        )
+
+        await request(app)
+            .post('/api/v1/transactions')
+            .set(authHeader(editor.token))
+            .send({
+                type: 'expense',
+                title: 'Editor lunch',
+                amount: 45,
+                date: '2026-01-16T12:00:00.000Z',
+                accountId: workspaceAccount.body.data._id,
+                categoryId: foodCategoryId,
+                workspaceId,
+            })
+
+        await request(app)
+            .post('/api/v1/transactions')
+            .set(authHeader(owner.token))
+            .send({
+                type: 'expense',
+                title: 'Personal coffee',
+                amount: 8,
+                date: '2026-01-16T12:00:00.000Z',
+                accountId: personalAccount.body.data._id,
+                categoryId: foodCategoryId,
+            })
+
+        const workspaceList = await request(app)
+            .get('/api/v1/transactions')
+            .query({ workspaceId, limit: 20 })
+            .set(authHeader(editor.token))
+
+        expect(workspaceList.status).toBe(200)
+        expect(workspaceList.body.data.data).toHaveLength(2)
+
+        const ownerTx = workspaceList.body.data.data.find(
+            (tx: { title: string }) => tx.title === 'Owner groceries'
+        )
+        const editorTx = workspaceList.body.data.data.find(
+            (tx: { title: string }) => tx.title === 'Editor lunch'
+        )
+
+        expect(ownerTx.userFullName).toBe('Test User')
+        expect(editorTx.userFullName).toBe('Scope Editor')
+
+        const personalList = await request(app)
+            .get('/api/v1/transactions')
+            .query({ limit: 20 })
+            .set(authHeader(owner.token))
+
+        const personalTx = personalList.body.data.data.find(
+            (tx: { title: string }) => tx.title === 'Personal coffee'
+        )
+
+        expect(personalTx.userFullName).toBeUndefined()
     })
 })

@@ -10,6 +10,36 @@ async function createWorkspace(token: string, name = 'Shared Finances') {
         .send({ name })
 }
 
+async function sendWorkspaceInvite(
+    ownerToken: string,
+    workspaceId: string,
+    email: string,
+    role: 'editor' | 'viewer' = 'editor'
+) {
+    return request(app)
+        .post(`/api/v1/workspaces/${workspaceId}/members`)
+        .set(authHeader(ownerToken))
+        .send({ email, role })
+}
+
+async function acceptWorkspaceInvite(inviteeToken: string, inviteId: string) {
+    return request(app)
+        .post(`/api/v1/workspaces/invites/${inviteId}/accept`)
+        .set(authHeader(inviteeToken))
+}
+
+async function inviteAndAcceptMember(
+    ownerToken: string,
+    inviteeToken: string,
+    workspaceId: string,
+    email: string,
+    role: 'editor' | 'viewer' = 'editor'
+) {
+    const inviteRes = await sendWorkspaceInvite(ownerToken, workspaceId, email, role)
+    expect(inviteRes.status).toBe(201)
+    return acceptWorkspaceInvite(inviteeToken, inviteRes.body.data._id)
+}
+
 async function getFoodMasterId(token: string): Promise<string> {
     const res = await request(app).get('/api/v1/categories').set(authHeader(token))
     const food = res.body.data.masters.find((m: { name: string }) => m.name === 'Food')
@@ -52,10 +82,13 @@ describe('Workspaces - CRUD and membership', () => {
 
         await createWorkspace(token, 'Mine')
         const shared = await createWorkspace(other.token, 'Theirs')
-        await request(app)
-            .post(`/api/v1/workspaces/${shared.body.data._id}/members`)
-            .set(authHeader(other.token))
-            .send({ email: 'ws-list@example.com', role: 'viewer' })
+        await inviteAndAcceptMember(
+            other.token,
+            token,
+            shared.body.data._id,
+            'ws-list@example.com',
+            'viewer'
+        )
 
         const res = await request(app).get('/api/v1/workspaces').set(authHeader(token))
 
@@ -87,13 +120,20 @@ describe('Workspaces - CRUD and membership', () => {
         const created = await createWorkspace(owner.token)
         const workspaceId = created.body.data._id
 
-        const inviteRes = await request(app)
-            .post(`/api/v1/workspaces/${workspaceId}/members`)
-            .set(authHeader(owner.token))
-            .send({ email: editor.email, role: 'editor' })
+        const inviteRes = await sendWorkspaceInvite(
+            owner.token,
+            workspaceId,
+            editor.email,
+            'editor'
+        )
 
         expect(inviteRes.status).toBe(201)
-        expect(inviteRes.body.data.members).toHaveLength(2)
+        expect(inviteRes.body.data.status).toBe('pending')
+        expect(inviteRes.body.data.inviteeUserId).toBe(editor.userId)
+
+        const acceptRes = await acceptWorkspaceInvite(editor.token, inviteRes.body.data._id)
+        expect(acceptRes.status).toBe(200)
+        expect(acceptRes.body.data.members).toHaveLength(2)
 
         const removeRes = await request(app)
             .delete(`/api/v1/workspaces/${workspaceId}/members/${editor.userId}`)
@@ -101,6 +141,71 @@ describe('Workspaces - CRUD and membership', () => {
 
         expect(removeRes.status).toBe(200)
         expect(removeRes.body.data.members).toHaveLength(1)
+    })
+
+    it('rejects invite for unregistered email', async () => {
+        const owner = await seedUserDirectly({ email: 'ws-unregistered@example.com' })
+        const created = await createWorkspace(owner.token)
+
+        const res = await sendWorkspaceInvite(
+            owner.token,
+            created.body.data._id,
+            'nobody@example.com',
+            'viewer'
+        )
+
+        expect(res.status).toBe(404)
+    })
+
+    it('creates a notification and supports accept/decline flow', async () => {
+        const owner = await seedUserDirectly({ email: 'ws-notify-owner@example.com' })
+        const invitee = await seedUserDirectly({
+            fullName: 'Invitee User',
+            email: 'ws-notify-invitee@example.com',
+            password: 'InviteePassword123!',
+        })
+
+        const created = await createWorkspace(owner.token, 'Notify Team')
+        const workspaceId = created.body.data._id
+
+        const inviteRes = await sendWorkspaceInvite(
+            owner.token,
+            workspaceId,
+            invitee.email,
+            'viewer'
+        )
+        expect(inviteRes.status).toBe(201)
+
+        const notifications = await request(app)
+            .get('/api/v1/notifications')
+            .set(authHeader(invitee.token))
+
+        expect(notifications.status).toBe(200)
+        expect(
+            notifications.body.data.notifications.some(
+                (entry: { type: string }) => entry.type === 'workspace_invite'
+            )
+        ).toBe(true)
+
+        const received = await request(app)
+            .get('/api/v1/workspaces/invites/received')
+            .set(authHeader(invitee.token))
+
+        expect(received.status).toBe(200)
+        expect(received.body.data).toHaveLength(1)
+        expect(received.body.data[0].workspaceName).toBe('Notify Team')
+
+        const declineRes = await request(app)
+            .post(`/api/v1/workspaces/invites/${inviteRes.body.data._id}/decline`)
+            .set(authHeader(invitee.token))
+
+        expect(declineRes.status).toBe(200)
+
+        const listAfterDecline = await request(app)
+            .get('/api/v1/workspaces')
+            .set(authHeader(invitee.token))
+
+        expect(listAfterDecline.body.data).toHaveLength(0)
     })
 
     it('allows invited members to leave but not the owner', async () => {
@@ -114,10 +219,13 @@ describe('Workspaces - CRUD and membership', () => {
         const created = await createWorkspace(owner.token)
         const workspaceId = created.body.data._id
 
-        await request(app)
-            .post(`/api/v1/workspaces/${workspaceId}/members`)
-            .set(authHeader(owner.token))
-            .send({ email: viewer.email, role: 'viewer' })
+        await inviteAndAcceptMember(
+            owner.token,
+            viewer.token,
+            workspaceId,
+            viewer.email,
+            'viewer'
+        )
 
         const ownerLeave = await request(app)
             .delete(`/api/v1/workspaces/${workspaceId}/members/${owner.userId}`)
@@ -144,10 +252,13 @@ describe('Workspaces - CRUD and membership', () => {
         const created = await createWorkspace(owner.token)
         const workspaceId = created.body.data._id
 
-        await request(app)
-            .post(`/api/v1/workspaces/${workspaceId}/members`)
-            .set(authHeader(owner.token))
-            .send({ email: member.email, role: 'viewer' })
+        await inviteAndAcceptMember(
+            owner.token,
+            member.token,
+            workspaceId,
+            member.email,
+            'viewer'
+        )
 
         const promote = await request(app)
             .patch(`/api/v1/workspaces/${workspaceId}/members/${member.userId}`)
@@ -182,10 +293,13 @@ describe('Workspaces - shared resources and RBAC', () => {
         const created = await createWorkspace(owner.token, 'Team Budget')
         const workspaceId = created.body.data._id
 
-        await request(app)
-            .post(`/api/v1/workspaces/${workspaceId}/members`)
-            .set(authHeader(owner.token))
-            .send({ email: editor.email, role: 'editor' })
+        await inviteAndAcceptMember(
+            owner.token,
+            editor.token,
+            workspaceId,
+            editor.email,
+            'editor'
+        )
 
         const accountRes = await createWorkspaceAccount(owner.token, workspaceId)
         expect(accountRes.status).toBe(201)
@@ -275,10 +389,13 @@ describe('Workspaces - shared resources and RBAC', () => {
         const created = await createWorkspace(owner.token)
         const workspaceId = created.body.data._id
 
-        await request(app)
-            .post(`/api/v1/workspaces/${workspaceId}/members`)
-            .set(authHeader(owner.token))
-            .send({ email: viewer.email, role: 'viewer' })
+        await inviteAndAcceptMember(
+            owner.token,
+            viewer.token,
+            workspaceId,
+            viewer.email,
+            'viewer'
+        )
 
         const accountAttempt = await createWorkspaceAccount(viewer.token, workspaceId, 'Blocked')
         expect(accountAttempt.status).toBe(403)

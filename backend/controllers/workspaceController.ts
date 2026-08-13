@@ -2,10 +2,18 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import Workspace, { WORKSPACE_ROLES, WorkspaceRole } from '../models/Workspace'
+import WorkspaceInvite from '../models/WorkspaceInvite'
 import User from '../models/User'
 import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
+import {
+    createWorkspaceInviteNotification,
+    dismissWorkspaceInviteNotification,
+    loadPendingInviteForUser,
+    serializeWorkspaceInvite,
+    serializeWorkspaceInvites,
+} from '../utils/workspaceInviteUtils'
 import {
     assertWorkspaceMembership,
     findWorkspaceMember,
@@ -124,15 +132,112 @@ export const inviteWorkspaceMember = asyncHandler(async (req: AuthRequest, res: 
         throw new CustomError(ERROR_MESSAGES.WORKSPACE.USER_NOT_FOUND, 404)
     }
 
+    if (invitee._id.toString() === userId) {
+        throw new CustomError(ERROR_MESSAGES.WORKSPACE.CANNOT_INVITE_SELF, 400)
+    }
+
     if (findWorkspaceMember(workspace, invitee._id.toString())) {
         throw new CustomError(ERROR_MESSAGES.WORKSPACE.MEMBER_ALREADY_EXISTS, 400)
     }
 
-    workspace.members.push({ userId: invitee._id, role })
-    const updated = await workspace.save()
-    const serialized = await serializeWorkspaceWithUsers(updated)
+    const existingInvite = await WorkspaceInvite.findOne({
+        workspaceId,
+        inviteeUserId: invitee._id,
+        status: 'pending',
+    })
+    if (existingInvite) {
+        throw new CustomError(ERROR_MESSAGES.WORKSPACE.INVITE_ALREADY_PENDING, 400)
+    }
 
+    const inviter = await User.findById(userId).select('fullName')
+
+    const invite = await WorkspaceInvite.create({
+        workspaceId,
+        inviteeUserId: invitee._id,
+        inviterUserId: userId,
+        role,
+        status: 'pending',
+    })
+
+    await createWorkspaceInviteNotification(
+        invite,
+        workspace.name,
+        inviter?.fullName?.trim() || 'Someone'
+    )
+
+    const serialized = await serializeWorkspaceInvite(invite)
     handleResponses(res, 201, serialized)
+})
+
+export const getReceivedWorkspaceInvites = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+
+    const invites = await WorkspaceInvite.find({
+        inviteeUserId: userId,
+        status: 'pending',
+    }).sort({ createdAt: -1 })
+
+    const serialized = await serializeWorkspaceInvites(invites)
+    handleResponses(res, 200, serialized)
+})
+
+export const getWorkspacePendingInvites = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const { workspaceId } = req.params
+
+    validateRequiredFields({ workspaceId }, ['workspaceId'])
+
+    await assertWorkspaceMembership(workspaceId, userId, 'owner')
+
+    const invites = await WorkspaceInvite.find({
+        workspaceId,
+        status: 'pending',
+    }).sort({ createdAt: -1 })
+
+    const serialized = await serializeWorkspaceInvites(invites)
+    handleResponses(res, 200, serialized)
+})
+
+export const acceptWorkspaceInvite = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const { inviteId } = req.params
+
+    validateRequiredFields({ inviteId }, ['inviteId'])
+
+    const invite = await loadPendingInviteForUser(inviteId, userId)
+    const workspace = await loadWorkspace(invite.workspaceId.toString())
+
+    if (findWorkspaceMember(workspace, userId)) {
+        invite.status = 'accepted'
+        await invite.save()
+        await dismissWorkspaceInviteNotification(userId, inviteId)
+        throw new CustomError(ERROR_MESSAGES.WORKSPACE.MEMBER_ALREADY_EXISTS, 400)
+    }
+
+    workspace.members.push({ userId: invite.inviteeUserId, role: invite.role })
+    await workspace.save()
+
+    invite.status = 'accepted'
+    await invite.save()
+    await dismissWorkspaceInviteNotification(userId, inviteId)
+
+    const serialized = await serializeWorkspaceWithUsers(workspace)
+    handleResponses(res, 200, serialized)
+})
+
+export const declineWorkspaceInvite = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const { inviteId } = req.params
+
+    validateRequiredFields({ inviteId }, ['inviteId'])
+
+    const invite = await loadPendingInviteForUser(inviteId, userId)
+
+    invite.status = 'declined'
+    await invite.save()
+    await dismissWorkspaceInviteNotification(userId, inviteId)
+
+    handleResponses(res, 200, { message: 'Invitation declined' })
 })
 
 export const updateWorkspaceMemberRole = asyncHandler(async (req: AuthRequest, res: Response) => {

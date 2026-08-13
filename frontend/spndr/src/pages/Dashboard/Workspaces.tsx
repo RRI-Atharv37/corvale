@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoPeople, IoTrash } from 'react-icons/io5'
-import { FiLogOut } from 'react-icons/fi'
+import { IoAdd, IoMail, IoPeople, IoTrash } from 'react-icons/io5'
+import { FiCheck, FiLogOut, FiX } from 'react-icons/fi'
+import { useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import EmptyState from '../../components/ui/EmptyState'
@@ -11,14 +12,26 @@ import FormField from '../../components/forms/FormField'
 import RoleBadge from '../../components/workspaces/RoleBadge'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useUser } from '../../hooks/useUser'
-import type { Workspace, WorkspaceInviteFormData, WorkspaceInviteRole } from '../../types/api'
+import type {
+    Workspace,
+    WorkspaceInvite,
+    WorkspaceInviteFormData,
+    WorkspaceInviteRole,
+} from '../../types/api'
 import {
+    acceptWorkspaceInvite,
     createWorkspace,
+    declineWorkspaceInvite,
+    fetchReceivedInvites,
+    fetchWorkspacePendingInvites,
     inviteWorkspaceMember,
     removeWorkspaceMember,
     updateWorkspaceMemberRole,
 } from '../../utils/workspaceApi'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { formatRelativeTime } from '../../utils/format'
+
+type WorkspacesTab = 'workspaces' | 'invitations'
 
 const emptyCreateForm = (): { name: string } => ({ name: '' })
 
@@ -77,8 +90,21 @@ const getMemberRole = (workspace: Workspace, userId: string) =>
 
 const Workspaces = () => {
     const { user } = useUser()
+    const [searchParams, setSearchParams] = useSearchParams()
     const { workspaces, loading, error, refetchWorkspaces, setActiveWorkspace, activeWorkspaceId } =
         useWorkspace()
+
+    const activeTab: WorkspacesTab =
+        searchParams.get('tab') === 'invitations' ? 'invitations' : 'workspaces'
+
+    const setActiveTab = (tab: WorkspacesTab) => {
+        if (tab === 'workspaces') {
+            searchParams.delete('tab')
+        } else {
+            searchParams.set('tab', tab)
+        }
+        setSearchParams(searchParams, { replace: true })
+    }
 
     const [createOpen, setCreateOpen] = useState(false)
     const [createForm, setCreateForm] = useState(emptyCreateForm)
@@ -88,15 +114,51 @@ const Workspaces = () => {
     const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
     const [inviteForm, setInviteForm] = useState(emptyInviteForm)
     const [inviting, setInviting] = useState(false)
+    const [pendingInvites, setPendingInvites] = useState<WorkspaceInvite[]>([])
     const [memberActionId, setMemberActionId] = useState<string | null>(null)
     const [leaveTarget, setLeaveTarget] = useState<Workspace | null>(null)
     const [leaving, setLeaving] = useState(false)
-    const [removeTarget, setRemoveTarget] = useState<{ workspace: Workspace; memberUserId: string; name: string } | null>(null)
+    const [removeTarget, setRemoveTarget] = useState<{
+        workspace: Workspace
+        memberUserId: string
+        name: string
+    } | null>(null)
     const [removing, setRemoving] = useState(false)
+
+    const [receivedInvites, setReceivedInvites] = useState<WorkspaceInvite[]>([])
+    const [invitesLoading, setInvitesLoading] = useState(false)
+    const [invitesError, setInvitesError] = useState<string | null>(null)
+    const [inviteActionId, setInviteActionId] = useState<string | null>(null)
 
     const refreshList = useCallback(async () => {
         await refetchWorkspaces()
     }, [refetchWorkspaces])
+
+    const loadReceivedInvites = useCallback(async () => {
+        setInvitesLoading(true)
+        setInvitesError(null)
+        try {
+            const invites = await fetchReceivedInvites()
+            setReceivedInvites(invites)
+        } catch (err) {
+            setInvitesError(getApiErrorMessage(err, 'Failed to load invitations'))
+        } finally {
+            setInvitesLoading(false)
+        }
+    }, [])
+
+    const loadPendingInvites = useCallback(async (workspaceId: string) => {
+        try {
+            const invites = await fetchWorkspacePendingInvites(workspaceId)
+            setPendingInvites(invites)
+        } catch {
+            setPendingInvites([])
+        }
+    }, [])
+
+    useEffect(() => {
+        void loadReceivedInvites()
+    }, [loadReceivedInvites])
 
     useEffect(() => {
         if (!selectedWorkspace) return
@@ -110,20 +172,19 @@ const Workspaces = () => {
         setSelectedWorkspace(workspace)
         setInviteForm(emptyInviteForm())
         setMembersOpen(true)
+        void loadPendingInvites(workspace._id)
     }
 
     const closeMembers = () => {
         setMembersOpen(false)
         setSelectedWorkspace(null)
         setInviteForm(emptyInviteForm())
+        setPendingInvites([])
     }
 
-    const syncSelectedWorkspace = useCallback(
-        (updated: Workspace) => {
-            setSelectedWorkspace(updated)
-        },
-        []
-    )
+    const syncSelectedWorkspace = useCallback((updated: Workspace) => {
+        setSelectedWorkspace(updated)
+    }, [])
 
     const selectedRole = useMemo(() => {
         if (!selectedWorkspace || !user) return null
@@ -163,18 +224,44 @@ const Workspaces = () => {
 
         setInviting(true)
         try {
-            const updated = await inviteWorkspaceMember(selectedWorkspace._id, {
+            await inviteWorkspaceMember(selectedWorkspace._id, {
                 email: inviteForm.email.trim(),
                 role: inviteForm.role,
             })
-            syncSelectedWorkspace(updated)
             setInviteForm(emptyInviteForm())
-            toast.success('Member invited')
-            await refreshList()
+            toast.success('Invitation sent')
+            await loadPendingInvites(selectedWorkspace._id)
         } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Failed to invite member'))
+            toast.error(getApiErrorMessage(err, 'Failed to send invitation'))
         } finally {
             setInviting(false)
+        }
+    }
+
+    const handleAcceptInvite = async (invite: WorkspaceInvite) => {
+        setInviteActionId(invite._id)
+        try {
+            await acceptWorkspaceInvite(invite._id)
+            toast.success(`Joined ${invite.workspaceName}`)
+            setReceivedInvites((current) => current.filter((entry) => entry._id !== invite._id))
+            await refreshList()
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, 'Failed to accept invitation'))
+        } finally {
+            setInviteActionId(null)
+        }
+    }
+
+    const handleDeclineInvite = async (invite: WorkspaceInvite) => {
+        setInviteActionId(invite._id)
+        try {
+            await declineWorkspaceInvite(invite._id)
+            toast.success('Invitation declined')
+            setReceivedInvites((current) => current.filter((entry) => entry._id !== invite._id))
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, 'Failed to decline invitation'))
+        } finally {
+            setInviteActionId(null)
         }
     }
 
@@ -247,87 +334,183 @@ const Workspaces = () => {
         setCreateOpen(true)
     }
 
+    const tabButtonClass = (tab: WorkspacesTab) =>
+        [
+            'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+            activeTab === tab
+                ? 'bg-accent-subtle text-accent border border-accent/30'
+                : 'text-fg-secondary border border-transparent hover:border-border-subtle',
+        ].join(' ')
+
     return (
         <div>
             <PageHeader
                 title="Workspaces"
                 description="Create shared spaces and invite others to manage finances together"
                 actions={
-                    <button
-                        type="button"
-                        onClick={openCreateModal}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
-                    >
-                        <IoAdd size={18} />
-                        New workspace
-                    </button>
+                    activeTab === 'workspaces' ? (
+                        <button
+                            type="button"
+                            onClick={openCreateModal}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                        >
+                            <IoAdd size={18} />
+                            New workspace
+                        </button>
+                    ) : undefined
                 }
             />
 
-            <AsyncContent
-                loading={loading}
-                error={error}
-                data={workspaces}
-                isEmpty={(items) => items.length === 0}
-                loadingMessage="Loading workspaces..."
-                emptyTitle="No workspaces yet"
-                emptyDescription="Create a workspace to share accounts, transactions, and budgets with others."
-                onRetry={refreshList}
-            >
-                {(items) => (
-                    <div className="space-y-3">
-                        {items.map((workspace) => {
-                            const myRole = user ? getMemberRole(workspace, user._id) : null
-                            const isActive = activeWorkspaceId === workspace._id
+            <div className="flex items-center gap-2 mb-6">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('workspaces')}
+                    className={tabButtonClass('workspaces')}
+                >
+                    My workspaces
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('invitations')}
+                    className={tabButtonClass('invitations')}
+                >
+                    Invitations
+                    {receivedInvites.length > 0 && activeTab !== 'invitations' && (
+                        <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold text-on-accent">
+                            {receivedInvites.length}
+                        </span>
+                    )}
+                </button>
+            </div>
 
-                            return (
-                                <div
-                                    key={workspace._id}
-                                    className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="text-sm font-medium text-fg truncate">
-                                                {workspace.name}
+            {activeTab === 'workspaces' ? (
+                <AsyncContent
+                    loading={loading}
+                    error={error}
+                    data={workspaces}
+                    isEmpty={(items) => items.length === 0}
+                    loadingMessage="Loading workspaces..."
+                    emptyTitle="No workspaces yet"
+                    emptyDescription="Create a workspace to share accounts, transactions, and budgets with others."
+                    onRetry={refreshList}
+                >
+                    {(items) => (
+                        <div className="space-y-3">
+                            {items.map((workspace) => {
+                                const myRole = user ? getMemberRole(workspace, user._id) : null
+                                const isActive = activeWorkspaceId === workspace._id
+
+                                return (
+                                    <div
+                                        key={workspace._id}
+                                        className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="text-sm font-medium text-fg truncate">
+                                                    {workspace.name}
+                                                </p>
+                                                {myRole && <RoleBadge role={myRole} />}
+                                                {isActive && (
+                                                    <span className="inline-flex items-center rounded-full border border-accent/30 bg-accent-subtle px-2 py-0.5 text-[11px] font-medium text-accent">
+                                                        Active
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-fg-muted mt-0.5">
+                                                {workspace.members.length} member
+                                                {workspace.members.length === 1 ? '' : 's'}
                                             </p>
-                                            {myRole && <RoleBadge role={myRole} />}
-                                            {isActive && (
-                                                <span className="inline-flex items-center rounded-full border border-accent/30 bg-accent-subtle px-2 py-0.5 text-[11px] font-medium text-accent">
-                                                    Active
-                                                </span>
-                                            )}
                                         </div>
-                                        <p className="text-xs text-fg-muted mt-0.5">
-                                            {workspace.members.length} member
-                                            {workspace.members.length === 1 ? '' : 's'}
-                                        </p>
-                                    </div>
 
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {!isActive && (
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {!isActive && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveWorkspace(workspace._id)}
+                                                    className="px-3 py-1.5 text-sm rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors"
+                                                >
+                                                    Switch to
+                                                </button>
+                                            )}
                                             <button
                                                 type="button"
-                                                onClick={() => setActiveWorkspace(workspace._id)}
-                                                className="px-3 py-1.5 text-sm rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors"
+                                                onClick={() => openMembers(workspace)}
+                                                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
                                             >
-                                                Switch to
+                                                <IoPeople size={16} />
+                                                Members
                                             </button>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => openMembers(workspace)}
-                                            className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
-                                        >
-                                            <IoPeople size={16} />
-                                            Members
-                                        </button>
+                                        </div>
                                     </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                )}
-            </AsyncContent>
+                                )
+                            })}
+                        </div>
+                    )}
+                </AsyncContent>
+            ) : (
+                <AsyncContent
+                    loading={invitesLoading}
+                    error={invitesError}
+                    data={receivedInvites}
+                    isEmpty={(items) => items.length === 0}
+                    loadingMessage="Loading invitations..."
+                    emptyTitle="No pending invitations"
+                    emptyDescription="When someone invites you to a workspace, you'll see it here."
+                    onRetry={() => void loadReceivedInvites()}
+                >
+                    {(items) => (
+                        <div className="space-y-3">
+                            {items.map((invite) => {
+                                const isBusy = inviteActionId === invite._id
+                                const inviterLabel =
+                                    invite.inviterName?.trim() || invite.inviterEmail || 'Someone'
+
+                                return (
+                                    <div
+                                        key={invite._id}
+                                        className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="text-sm font-medium text-fg">
+                                                    {invite.workspaceName}
+                                                </p>
+                                                <RoleBadge role={invite.role} />
+                                            </div>
+                                            <p className="text-xs text-fg-muted mt-1">
+                                                {inviterLabel} invited you ·{' '}
+                                                {formatRelativeTime(invite.createdAt)}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                type="button"
+                                                disabled={isBusy}
+                                                onClick={() => void handleDeclineInvite(invite)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-border text-fg-secondary hover:border-expense/40 hover:text-expense transition-colors disabled:opacity-50"
+                                            >
+                                                <FiX size={14} />
+                                                Decline
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={isBusy}
+                                                onClick={() => void handleAcceptInvite(invite)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg btn-accent disabled:opacity-50"
+                                            >
+                                                <FiCheck size={14} />
+                                                {isBusy ? 'Joining...' : 'Accept'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </AsyncContent>
+            )}
 
             <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create workspace">
                 <form onSubmit={(e) => void handleCreate(e)} className="space-y-4">
@@ -370,6 +553,10 @@ const Workspaces = () => {
                         {selectedRole === 'owner' && (
                             <form onSubmit={(e) => void handleInvite(e)} className="space-y-3">
                                 <p className="section-label">Invite member</p>
+                                <p className="text-xs text-fg-muted">
+                                    The person must already have a spndr account. They will receive
+                                    a notification and can accept or decline.
+                                </p>
                                 <FormField
                                     label="Email"
                                     type="email"
@@ -399,9 +586,36 @@ const Workspaces = () => {
                                     disabled={inviting}
                                     className="w-full px-4 py-2 text-sm font-medium rounded-lg btn-accent disabled:opacity-50"
                                 >
-                                    {inviting ? 'Inviting...' : 'Send invite'}
+                                    {inviting ? 'Sending...' : 'Send invite'}
                                 </button>
                             </form>
+                        )}
+
+                        {selectedRole === 'owner' && pendingInvites.length > 0 && (
+                            <div>
+                                <p className="section-label mb-3">Pending invitations</p>
+                                <div className="space-y-2">
+                                    {pendingInvites.map((invite) => (
+                                        <div
+                                            key={invite._id}
+                                            className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface/40 px-3 py-2.5"
+                                        >
+                                            <div className="min-w-0 flex items-center gap-2">
+                                                <IoMail size={14} className="text-fg-muted shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm text-fg truncate">
+                                                        {invite.inviteeEmail ?? 'Unknown user'}
+                                                    </p>
+                                                    <p className="text-xs text-fg-muted">
+                                                        Sent {formatRelativeTime(invite.createdAt)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <RoleBadge role={invite.role} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         )}
 
                         <div>
@@ -445,7 +659,9 @@ const Workspaces = () => {
                                                     {canManage ? (
                                                         <select
                                                             value={member.role}
-                                                            disabled={memberActionId === member.userId}
+                                                            disabled={
+                                                                memberActionId === member.userId
+                                                            }
                                                             onChange={(e) =>
                                                                 void handleRoleChange(
                                                                     member.userId,

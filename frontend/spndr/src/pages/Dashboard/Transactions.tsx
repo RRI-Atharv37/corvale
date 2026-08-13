@@ -101,6 +101,12 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
     { value: 'category', label: 'Category' },
 ]
 
+const transactionUserLabel = (type: TransactionType, name: string): string => {
+    if (type === 'income') return `Received by ${name}`
+    if (type === 'expense') return `Paid by ${name}`
+    return `By ${name}`
+}
+
 const Transactions = () => {
     const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const [searchParams, setSearchParams] = useSearchParams()
@@ -143,6 +149,7 @@ const Transactions = () => {
     const [exportStartDate, setExportStartDate] = useState('')
     const [exportEndDate, setExportEndDate] = useState('')
     const [exporting, setExporting] = useState(false)
+    const [advancedOpen, setAdvancedOpen] = useState(false)
 
     const fetchLookups = useCallback(async () => {
         const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
@@ -673,7 +680,9 @@ const Transactions = () => {
         )
     }, [data, selectedIds])
 
-    const hasActiveFilters = Boolean(searchQuery || dateFilterActive)
+    const hasActiveFilters = Boolean(searchQuery || dateFilterActive || tagFilter.length > 0)
+    const hasAdvancedFilters = Boolean(dateFilterActive || tagFilter.length > 0)
+    const hasNonDefaultSort = sortBy !== 'date' || sortOrder !== 'desc'
 
     const amountColor = (type: TransactionType): string => {
         if (type === 'income') return 'text-accent'
@@ -750,8 +759,8 @@ const Transactions = () => {
                     ))}
                 </div>
 
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1 relative">
+                <form onSubmit={handleSearch} className="flex items-center gap-2">
+                    <div className="relative flex-1 min-w-0">
                         <IoSearch
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted"
                             size={16}
@@ -766,12 +775,57 @@ const Transactions = () => {
                     </div>
                     <button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors"
+                        className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors"
                     >
                         Search
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdvancedOpen((open) => !open)}
+                        aria-expanded={advancedOpen}
+                        className={[
+                            'shrink-0 px-4 py-2 text-sm font-medium rounded-lg border transition-colors',
+                            advancedOpen || hasAdvancedFilters || hasNonDefaultSort
+                                ? 'border-accent/40 bg-accent-subtle text-accent'
+                                : 'border-border text-fg-secondary hover:border-accent/40',
+                        ].join(' ')}
+                    >
+                        Advanced features
+                    </button>
                 </form>
 
+                {searchQuery && !advancedOpen && (
+                    <div className="flex items-center justify-between text-xs text-fg-muted">
+                        <span>Showing search results for &quot;{searchQuery}&quot;</span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSearchInput('')
+                                setSearchQuery('')
+                                setPage(1)
+                            }}
+                            className="text-accent hover:text-accent"
+                        >
+                            Clear search
+                        </button>
+                    </div>
+                )}
+
+                {hasAdvancedFilters && !advancedOpen && (
+                    <div className="flex items-center justify-between text-xs text-fg-muted">
+                        <span>Advanced filters are active</span>
+                        <button
+                            type="button"
+                            onClick={() => setAdvancedOpen(true)}
+                            className="text-accent hover:text-accent"
+                        >
+                            Show filters
+                        </button>
+                    </div>
+                )}
+
+                {advancedOpen && (
+                    <div className="space-y-4 pt-4 border-t border-border-subtle">
                 {(lookups?.tags.length ?? 0) > 0 && (
                     <div>
                         <label className="text-[13px] text-fg-secondary">Filter by tags</label>
@@ -943,6 +997,8 @@ const Transactions = () => {
                         </button>
                     </div>
                 </div>
+                    </div>
+                )}
             </div>
 
             <AsyncContent
@@ -1044,6 +1100,9 @@ const Transactions = () => {
                                                 : ''}
                                             {accountNameById.get(item.accountId)
                                                 ? ` · ${accountNameById.get(item.accountId)}`
+                                                : ''}
+                                            {!isPersonal && item.userFullName
+                                                ? ` · ${transactionUserLabel(item.type, item.userFullName)}`
                                                 : ''}
                                         </p>
                                         {item.tags && item.tags.length > 0 && (
