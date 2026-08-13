@@ -14,14 +14,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
     if (isInitializing) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-base flex items-center justify-center">
                 <LoadingState message="Restoring session..." />
             </div>
         )
     }
 
     if (!token || !isAuthenticated) {
-        return <Navigate to="/login" replace state={{ from: location.pathname }} />
+        return <Navigate to="/" replace state={{ from: location.pathname }} />
     }
 
     return <>{children}</>

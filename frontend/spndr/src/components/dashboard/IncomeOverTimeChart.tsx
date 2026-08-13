@@ -15,6 +15,7 @@ import {
     axisTick,
     CHART_COLORS,
     chartMargin,
+    chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
     yAxisTick,
@@ -33,8 +34,8 @@ const IncomeOverTimeChart: React.FC<IncomeOverTimeChartProps> = ({ data, groupBy
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Income over time</h3>
-            <p className="text-xs text-slate-500 mt-1">Posted income by period</p>
+            <h3 className="text-sm font-medium text-fg">Income over time</h3>
+            <p className="text-xs text-fg-muted mt-1">Posted income by period</p>
             <div className="h-72 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={chartMargin}>
@@ -48,13 +49,7 @@ const IncomeOverTimeChart: React.FC<IncomeOverTimeChartProps> = ({ data, groupBy
                             width={52}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...chartTooltipProps}
                             formatter={(value: number) => [formatCurrency(value), 'Income']}
                             labelFormatter={(label) => String(label)}
                         />

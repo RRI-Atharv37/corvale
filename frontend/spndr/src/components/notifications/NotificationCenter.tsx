@@ -120,27 +120,27 @@ const NotificationCenter: React.FC = () => {
             <button
                 type="button"
                 onClick={toggleOpen}
-                className="relative flex items-center justify-center h-9 w-9 rounded-lg border border-slate-700 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 transition-colors"
+                className="relative flex items-center justify-center h-9 w-9 rounded-lg border border-border text-fg-muted hover:text-accent hover:border-accent/40 transition-colors"
                 aria-label="Notifications"
                 aria-expanded={open}
             >
                 <FiBell size={16} />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-slate-950">
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-on-accent">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
             {open && (
-                <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
-                    <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-                        <p className="text-sm font-semibold text-slate-100">Notifications</p>
+                <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-surface shadow-xl">
+                    <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+                        <p className="text-sm font-semibold text-fg">Notifications</p>
                         {unreadCount > 0 && (
                             <button
                                 type="button"
                                 onClick={() => void handleMarkAllRead()}
-                                className="text-xs font-medium text-cyan-400 hover:text-cyan-300"
+                                className="text-xs font-medium text-accent hover:text-accent"
                             >
                                 Mark all read
                             </button>
@@ -149,13 +149,13 @@ const NotificationCenter: React.FC = () => {
 
                     <div className="max-h-80 overflow-y-auto">
                         {loading && notifications.length === 0 ? (
-                            <p className="px-4 py-8 text-center text-sm text-slate-400">
+                            <p className="px-4 py-8 text-center text-sm text-fg-muted">
                                 Loading notifications...
                             </p>
                         ) : error ? (
-                            <p className="px-4 py-6 text-sm text-red-400">{error}</p>
+                            <p className="px-4 py-6 text-sm text-expense">{error}</p>
                         ) : notifications.length === 0 ? (
-                            <p className="px-4 py-8 text-center text-sm text-slate-400">
+                            <p className="px-4 py-8 text-center text-sm text-fg-muted">
                                 No notifications yet. Budget alerts, bill reminders, and savings
                                 milestones will show up here.
                             </p>
@@ -173,25 +173,25 @@ const NotificationCenter: React.FC = () => {
                                             key={notification._id}
                                             className={[
                                                 'px-4 py-3',
-                                                isUnread ? 'bg-cyan-500/5' : 'bg-transparent',
+                                                isUnread ? 'bg-accent-subtle' : 'bg-transparent',
                                             ].join(' ')}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-sm font-medium text-slate-100">
+                                                    <p className="text-sm font-medium text-fg">
                                                         {notification.title}
                                                     </p>
-                                                    <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+                                                    <p className="mt-1 text-xs text-fg-muted leading-relaxed">
                                                         {notification.message}
                                                     </p>
-                                                    <p className="mt-2 text-[11px] text-slate-500">
+                                                    <p className="mt-2 text-[11px] text-fg-muted">
                                                         {formatRelativeTime(notification.createdAt)}
                                                     </p>
                                                     {href && (
                                                         <Link
                                                             to={href}
                                                             onClick={() => setOpen(false)}
-                                                            className="mt-2 inline-block text-xs font-medium text-cyan-400 hover:text-cyan-300"
+                                                            className="mt-2 inline-block text-xs font-medium text-accent hover:text-accent"
                                                         >
                                                             View details
                                                         </Link>
@@ -204,7 +204,7 @@ const NotificationCenter: React.FC = () => {
                                                             onClick={() =>
                                                                 void handleMarkRead(notification._id)
                                                             }
-                                                            className="rounded p-1 text-slate-500 hover:text-cyan-300"
+                                                            className="rounded p-1 text-fg-muted hover:text-accent"
                                                             aria-label="Mark as read"
                                                             title="Mark as read"
                                                         >
@@ -216,7 +216,7 @@ const NotificationCenter: React.FC = () => {
                                                         onClick={() =>
                                                             void handleDismiss(notification._id)
                                                         }
-                                                        className="rounded p-1 text-slate-500 hover:text-red-300"
+                                                        className="rounded p-1 text-fg-muted hover:text-expense"
                                                         aria-label="Dismiss"
                                                         title="Dismiss"
                                                     >

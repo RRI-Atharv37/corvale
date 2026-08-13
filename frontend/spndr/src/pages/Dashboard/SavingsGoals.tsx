@@ -54,10 +54,10 @@ const STATUS_LABELS: Record<SavingsGoalStatus, string> = {
 }
 
 const STATUS_BADGE_CLASSES: Record<SavingsGoalStatus, string> = {
-    active: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300',
-    paused: 'bg-amber-500/10 border-amber-500/20 text-amber-300',
+    active: 'bg-accent-subtle border-accent/30 text-accent',
+    paused: 'bg-warning/10 border-warning/20 text-warning',
     completed: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300',
-    archived: 'bg-slate-800 border-slate-700 text-slate-400',
+    archived: 'bg-surface-hover border-border text-fg-muted',
 }
 
 const emptyForm = (preferredCurrency = DEFAULT_CURRENCY): SavingsGoalFormData => ({
@@ -104,9 +104,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
     disabled,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">
+        <label className="text-[13px] text-fg-secondary">
             {label}
-            {required && <span className="text-rose-400 ml-0.5">*</span>}
+            {required && <span className="text-expense ml-0.5">*</span>}
         </label>
         <div className="input-box mb-0 mt-1">
             <select
@@ -114,10 +114,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 disabled={disabled}
-                className="w-full bg-transparent outline-none text-slate-200"
+                className="w-full bg-transparent outline-none text-fg"
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-slate-900">
+                    <option key={option.value} value={option.value} className="bg-surface">
                         {option.label}
                     </option>
                 ))}
@@ -457,7 +457,7 @@ const SavingsGoals = () => {
                 disabled={submitting}
             />
 
-            <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+            <div className="rounded-lg border border-border-subtle bg-surface/40 p-4 space-y-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input
                         type="checkbox"
@@ -466,9 +466,9 @@ const SavingsGoals = () => {
                             setForm((f) => ({ ...f, autoContributionEnabled: e.target.checked }))
                         }
                         disabled={submitting}
-                        className="rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-500/40"
+                        className="rounded border-border bg-surface text-accent focus:ring-accent/30"
                     />
-                    <span className="text-sm text-slate-300">Enable automatic contributions</span>
+                    <span className="text-sm text-fg-secondary">Enable automatic contributions</span>
                 </label>
 
                 {form.autoContributionEnabled && (
@@ -527,31 +527,31 @@ const SavingsGoals = () => {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 {progress.requiredMonthlyContribution !== null && (
-                    <div className="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-2">
-                        <p className="text-[11px] text-slate-500 uppercase tracking-wide">
+                    <div className="rounded-lg border border-border-subtle bg-surface/30 px-3 py-2">
+                        <p className="text-[11px] text-fg-muted uppercase tracking-wide">
                             Required monthly
                         </p>
-                        <p className="text-sm font-medium text-slate-200 mt-0.5">
+                        <p className="text-sm font-medium text-fg mt-0.5">
                             {formatCurrency(progress.requiredMonthlyContribution, goal.currency)}
                         </p>
                     </div>
                 )}
                 {progress.projectedCompletionDate && (
-                    <div className="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-2">
-                        <p className="text-[11px] text-slate-500 uppercase tracking-wide">
+                    <div className="rounded-lg border border-border-subtle bg-surface/30 px-3 py-2">
+                        <p className="text-[11px] text-fg-muted uppercase tracking-wide">
                             Projected completion
                         </p>
-                        <p className="text-sm font-medium text-slate-200 mt-0.5">
+                        <p className="text-sm font-medium text-fg mt-0.5">
                             {formatGoalTargetDate(progress.projectedCompletionDate)}
                         </p>
                     </div>
                 )}
                 {progress.monthsRemaining !== null && goal.targetDate && (
-                    <div className="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-2">
-                        <p className="text-[11px] text-slate-500 uppercase tracking-wide">
+                    <div className="rounded-lg border border-border-subtle bg-surface/30 px-3 py-2">
+                        <p className="text-[11px] text-fg-muted uppercase tracking-wide">
                             Months remaining
                         </p>
-                        <p className="text-sm font-medium text-slate-200 mt-0.5">
+                        <p className="text-sm font-medium text-fg mt-0.5">
                             {progress.monthsRemaining}
                         </p>
                     </div>
@@ -569,7 +569,7 @@ const SavingsGoals = () => {
                     <button
                         type="button"
                         onClick={openCreate}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
                     >
                         <IoAdd size={18} />
                         Create goal
@@ -585,8 +585,8 @@ const SavingsGoals = () => {
                         onClick={() => setView(tab)}
                         className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
                             view === tab
-                                ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                                : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                                ? 'bg-accent-subtle text-accent border border-accent/30'
+                                : 'text-fg-muted border border-border-subtle hover:border-border'
                         }`}
                     >
                         {tab === 'archived' && <IoTime className="inline mr-1.5 -mt-0.5" size={14} />}
@@ -633,14 +633,14 @@ const SavingsGoals = () => {
                                         progress?.isComplete
                                             ? 'border-emerald-500/30 bg-emerald-500/5'
                                             : goal.status === 'paused'
-                                              ? 'border-amber-500/20 bg-amber-500/5'
+                                              ? 'border-warning/20 bg-warning/5'
                                               : ''
                                     }`}
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <p className="text-sm font-medium text-slate-200">
+                                                <p className="text-sm font-medium text-fg">
                                                     {goal.name}
                                                 </p>
                                                 <span
@@ -651,12 +651,12 @@ const SavingsGoals = () => {
                                                 {goal.autoContribution.enabled &&
                                                     goal.autoContribution.isDue &&
                                                     goal.status === 'active' && (
-                                                        <span className="rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-[11px] font-medium text-violet-300">
+                                                        <span className="rounded-full bg-accent-subtle border border-accent/20 px-2 py-0.5 text-[11px] font-medium text-accent">
                                                             Auto due
                                                         </span>
                                                     )}
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-1">
+                                            <p className="text-xs text-fg-muted mt-1">
                                                 Target {formatGoalTargetDate(goal.targetDate)} ·{' '}
                                                 {resolveAccountName(goal.accountId)}
                                                 {goal.autoContribution.enabled &&
@@ -670,7 +670,7 @@ const SavingsGoals = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => openContribute(goal)}
-                                                        className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                                        className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                         aria-label="Add contribution"
                                                         title="Add contribution"
                                                     >
@@ -684,7 +684,7 @@ const SavingsGoals = () => {
                                                             type="button"
                                                             onClick={() => void handleAutoContribute(goal)}
                                                             disabled={autoContributing}
-                                                            className="p-1.5 text-slate-400 hover:text-violet-400 transition-colors disabled:opacity-50"
+                                                            className="p-1.5 text-fg-muted hover:text-violet-400 transition-colors disabled:opacity-50"
                                                             aria-label="Process auto contribution"
                                                             title="Process auto contribution"
                                                         >
@@ -694,7 +694,7 @@ const SavingsGoals = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => void openHistory(goal)}
-                                                    className="p-1.5 text-slate-400 hover:text-slate-200 transition-colors"
+                                                    className="p-1.5 text-fg-muted hover:text-fg transition-colors"
                                                     aria-label="View contribution history"
                                                     title="Contribution history"
                                                 >
@@ -703,7 +703,7 @@ const SavingsGoals = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => openEdit(goal)}
-                                                    className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                                    className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                     aria-label="Edit goal"
                                                 >
                                                     <IoPencil size={16} />
@@ -715,7 +715,7 @@ const SavingsGoals = () => {
                                                             setActionGoal(goal)
                                                             setConfirmAction('pause')
                                                         }}
-                                                        className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors"
+                                                        className="p-1.5 text-fg-muted hover:text-warning transition-colors"
                                                         aria-label="Pause goal"
                                                         title="Pause"
                                                     >
@@ -727,7 +727,7 @@ const SavingsGoals = () => {
                                                         type="button"
                                                         onClick={() => void handleResume(goal)}
                                                         disabled={actionLoading}
-                                                        className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors disabled:opacity-50"
+                                                        className="p-1.5 text-fg-muted hover:text-accent transition-colors disabled:opacity-50"
                                                         aria-label="Resume goal"
                                                         title="Resume"
                                                     >
@@ -741,7 +741,7 @@ const SavingsGoals = () => {
                                                             setActionGoal(goal)
                                                             setConfirmAction('complete')
                                                         }}
-                                                        className="p-1.5 text-slate-400 hover:text-emerald-400 transition-colors"
+                                                        className="p-1.5 text-fg-muted hover:text-income transition-colors"
                                                         aria-label="Mark complete"
                                                         title="Mark complete"
                                                     >
@@ -754,7 +754,7 @@ const SavingsGoals = () => {
                                                         setActionGoal(goal)
                                                         setConfirmAction('archive')
                                                     }}
-                                                    className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                                                    className="p-1.5 text-fg-muted hover:text-expense transition-colors"
                                                     aria-label="Archive goal"
                                                 >
                                                     <IoTrash size={16} />
@@ -766,7 +766,7 @@ const SavingsGoals = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => void openHistory(goal)}
-                                                className="p-1.5 text-slate-400 hover:text-slate-200 transition-colors shrink-0"
+                                                className="p-1.5 text-fg-muted hover:text-fg transition-colors shrink-0"
                                                 aria-label="View contribution history"
                                                 title="Contribution history"
                                             >
@@ -788,7 +788,7 @@ const SavingsGoals = () => {
                                             {renderProgressMeta(goal)}
                                         </>
                                     ) : (
-                                        <p className="text-xs text-slate-500">Progress unavailable</p>
+                                        <p className="text-xs text-fg-muted">Progress unavailable</p>
                                     )}
                                 </div>
                             )
@@ -807,14 +807,14 @@ const SavingsGoals = () => {
                             type="button"
                             onClick={closeCreate}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Creating...' : 'Create goal'}
                         </button>
@@ -830,14 +830,14 @@ const SavingsGoals = () => {
                             type="button"
                             onClick={closeEdit}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : 'Save changes'}
                         </button>
@@ -848,8 +848,8 @@ const SavingsGoals = () => {
             <Modal open={contributeOpen} onClose={closeContribute} title="Add contribution">
                 <form onSubmit={handleContribute} className="space-y-4">
                     {actionGoal && (
-                        <p className="text-sm text-slate-400">
-                            Contributing to <span className="text-slate-200">{actionGoal.name}</span>
+                        <p className="text-sm text-fg-muted">
+                            Contributing to <span className="text-fg">{actionGoal.name}</span>
                         </p>
                     )}
                     <FormField
@@ -875,14 +875,14 @@ const SavingsGoals = () => {
                             type="button"
                             onClick={closeContribute}
                             disabled={contributing}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={contributing}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {contributing ? 'Saving...' : 'Add contribution'}
                         </button>
@@ -893,14 +893,14 @@ const SavingsGoals = () => {
             <Modal open={historyOpen} onClose={closeHistory} title="Contribution history">
                 <div className="space-y-4">
                     {actionGoal && (
-                        <p className="text-sm text-slate-400">
-                            Timeline for <span className="text-slate-200">{actionGoal.name}</span>
+                        <p className="text-sm text-fg-muted">
+                            Timeline for <span className="text-fg">{actionGoal.name}</span>
                         </p>
                     )}
                     {historyLoading ? (
-                        <p className="text-sm text-slate-500 py-4 text-center">Loading history...</p>
+                        <p className="text-sm text-fg-muted py-4 text-center">Loading history...</p>
                     ) : contributions.length === 0 ? (
-                        <p className="text-sm text-slate-500 py-4 text-center">
+                        <p className="text-sm text-fg-muted py-4 text-center">
                             No contributions recorded yet.
                         </p>
                     ) : (
@@ -908,16 +908,16 @@ const SavingsGoals = () => {
                             {contributions.map((entry) => (
                                 <li
                                     key={entry._id}
-                                    className="flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2.5"
+                                    className="flex items-start justify-between gap-3 rounded-lg border border-border-subtle bg-surface/40 px-3 py-2.5"
                                 >
                                     <div className="min-w-0">
-                                        <p className="text-sm font-medium text-slate-200">
+                                        <p className="text-sm font-medium text-fg">
                                             {formatCurrency(
                                                 entry.amount,
                                                 actionGoal?.currency ?? DEFAULT_CURRENCY
                                             )}
                                         </p>
-                                        <p className="text-xs text-slate-500 mt-0.5">
+                                        <p className="text-xs text-fg-muted mt-0.5">
                                             {formatContributionDate(entry.contributedAt)}
                                             {entry.type === 'automatic' && ' · Automatic'}
                                             {entry.note && ` · ${entry.note}`}
@@ -926,8 +926,8 @@ const SavingsGoals = () => {
                                     <span
                                         className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
                                             entry.type === 'automatic'
-                                                ? 'bg-violet-500/10 border-violet-500/20 text-violet-300'
-                                                : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300'
+                                                ? 'bg-accent-subtle border-accent/20 text-accent'
+                                                : 'bg-accent-subtle border-accent/30 text-accent'
                                         }`}
                                     >
                                         {entry.type === 'automatic' ? 'Auto' : 'Manual'}

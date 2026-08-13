@@ -44,7 +44,7 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
 
     if (accounts.length === 0) {
         return (
-            <p className="text-xs text-amber-400">
+            <p className="text-xs text-warning">
                 No accounts available. Create an account first to scope this budget.
             </p>
         )
@@ -58,13 +58,13 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
                     checked={allSelected}
                     onChange={toggleAll}
                     disabled={disabled}
-                    className="rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-500/40"
+                    className="rounded border-border bg-surface text-accent focus:ring-accent/30"
                 />
-                <span className="text-sm text-slate-300 group-hover:text-slate-200">
+                <span className="text-sm text-fg-secondary group-hover:text-fg">
                     All accounts
                 </span>
             </label>
-            <div className="ml-1 space-y-1.5 border-l border-slate-800 pl-3">
+            <div className="ml-1 space-y-1.5 border-l border-border-subtle pl-3">
                 {accounts.map((account) => (
                     <label
                         key={account._id}
@@ -76,19 +76,19 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
                                 checked={isAccountSelected(account._id)}
                                 onChange={() => toggleAccount(account._id)}
                                 disabled={disabled || allSelected}
-                                className="rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-500/40 disabled:opacity-50"
+                                className="rounded border-border bg-surface text-accent focus:ring-accent/30 disabled:opacity-50"
                             />
-                            <span className="text-sm text-slate-300 truncate group-hover:text-slate-200">
+                            <span className="text-sm text-fg-secondary truncate group-hover:text-fg">
                                 {account.name}
                             </span>
                         </span>
-                        <span className="text-[11px] text-slate-500 shrink-0">
+                        <span className="text-[11px] text-fg-muted shrink-0">
                             {formatCurrency(account.currentBalance, account.currency)}
                         </span>
                     </label>
                 ))}
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-fg-muted">
                 {allSelected
                     ? 'Expenses from all accounts count toward this budget.'
                     : selectedIds.length === 0

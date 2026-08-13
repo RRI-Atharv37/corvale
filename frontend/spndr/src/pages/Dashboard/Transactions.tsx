@@ -626,8 +626,8 @@ const Transactions = () => {
     const hasActiveFilters = Boolean(searchQuery || dateFilterActive)
 
     const amountColor = (type: TransactionType): string => {
-        if (type === 'income') return 'text-cyan-400'
-        if (type === 'expense') return 'text-rose-400'
+        if (type === 'income') return 'text-accent'
+        if (type === 'expense') return 'text-expense'
         return 'text-violet-400'
     }
 
@@ -647,7 +647,7 @@ const Transactions = () => {
                         <button
                             type="button"
                             onClick={() => openCreate('income')}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
                         >
                             <IoAdd size={16} />
                             Income
@@ -655,7 +655,7 @@ const Transactions = () => {
                         <button
                             type="button"
                             onClick={openTransfer}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
                         >
                             <IoSwapHorizontal size={16} />
                             Transfer
@@ -663,7 +663,7 @@ const Transactions = () => {
                         <button
                             type="button"
                             onClick={() => openCreate('expense')}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
                         >
                             <IoAdd size={18} />
                             Expense
@@ -682,8 +682,8 @@ const Transactions = () => {
                             className={[
                                 'px-3 py-1.5 text-sm rounded-lg border transition-colors',
                                 typeFilter === tab.value
-                                    ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
-                                    : 'border-slate-700 text-slate-400 hover:border-slate-600',
+                                    ? 'border-accent/40 bg-accent-subtle text-accent'
+                                    : 'border-border text-fg-muted hover:border-border',
                             ].join(' ')}
                         >
                             {tab.label}
@@ -694,7 +694,7 @@ const Transactions = () => {
                 <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1 relative">
                         <IoSearch
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted"
                             size={16}
                         />
                         <input
@@ -702,12 +702,12 @@ const Transactions = () => {
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             placeholder="Search by title, description, amount..."
-                            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700 text-slate-200 placeholder:text-slate-500 outline-none focus:border-cyan-500/40"
+                            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-surface/60 border border-border text-fg placeholder:text-fg-muted outline-none focus:border-accent/40"
                         />
                     </div>
                     <button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 transition-colors"
+                        className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors"
                     >
                         Search
                     </button>
@@ -729,13 +729,13 @@ const Transactions = () => {
                     <button
                         type="button"
                         onClick={handleApplyDateFilter}
-                        className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 transition-colors h-[42px]"
+                        className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors h-[42px]"
                     >
                         Apply dates
                     </button>
                     <div className="flex gap-3 lg:ml-auto">
                         <div>
-                            <label className="text-[13px] text-slate-300">Sort by</label>
+                            <label className="text-[13px] text-fg-secondary">Sort by</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={sortBy}
@@ -743,10 +743,10 @@ const Transactions = () => {
                                         setSortBy(e.target.value as SortField)
                                         setPage(1)
                                     }}
-                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[120px]"
+                                    className="w-full bg-transparent outline-none text-fg min-w-[120px]"
                                 >
                                     {SORT_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value} className="bg-slate-900">
+                                        <option key={opt.value} value={opt.value} className="bg-surface">
                                             {opt.label}
                                         </option>
                                     ))}
@@ -754,7 +754,7 @@ const Transactions = () => {
                             </div>
                         </div>
                         <div>
-                            <label className="text-[13px] text-slate-300">Order</label>
+                            <label className="text-[13px] text-fg-secondary">Order</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={sortOrder}
@@ -762,12 +762,12 @@ const Transactions = () => {
                                         setSortOrder(e.target.value as SortOrder)
                                         setPage(1)
                                     }}
-                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[100px]"
+                                    className="w-full bg-transparent outline-none text-fg min-w-[100px]"
                                 >
-                                    <option value="desc" className="bg-slate-900">
+                                    <option value="desc" className="bg-surface">
                                         Desc
                                     </option>
-                                    <option value="asc" className="bg-slate-900">
+                                    <option value="asc" className="bg-surface">
                                         Asc
                                     </option>
                                 </select>
@@ -777,7 +777,7 @@ const Transactions = () => {
                 </div>
 
                 {hasActiveFilters && (
-                    <div className="flex items-center justify-between text-xs text-slate-500">
+                    <div className="flex items-center justify-between text-xs text-fg-muted">
                         <span>
                             {searchQuery
                                 ? `Showing search results for "${searchQuery}"`
@@ -786,32 +786,32 @@ const Transactions = () => {
                         <button
                             type="button"
                             onClick={clearFilters}
-                            className="text-cyan-400 hover:text-cyan-300"
+                            className="text-accent hover:text-accent"
                         >
                             Clear filters
                         </button>
                     </div>
                 )}
 
-                <div className="border-t border-slate-800 pt-4 space-y-3">
+                <div className="border-t border-border-subtle pt-4 space-y-3">
                     <div>
-                        <h3 className="text-sm font-medium text-slate-200">Export transactions</h3>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <h3 className="text-sm font-medium text-fg">Export transactions</h3>
+                        <p className="text-xs text-fg-muted mt-1">
                             Download filtered transactions as CSV, JSON, or PDF
                         </p>
                     </div>
 
                     <div className="flex flex-col lg:flex-row gap-3 lg:items-end">
                         <div>
-                            <label className="text-[13px] text-slate-300">Include</label>
+                            <label className="text-[13px] text-fg-secondary">Include</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={exportType}
                                     onChange={(e) => setExportType(e.target.value as TransactionExportType)}
-                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[160px]"
+                                    className="w-full bg-transparent outline-none text-fg min-w-[160px]"
                                 >
                                     {TRANSACTION_EXPORT_TYPE_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value} className="bg-slate-900">
+                                        <option key={option.value} value={option.value} className="bg-surface">
                                             {option.label}
                                         </option>
                                     ))}
@@ -833,15 +833,15 @@ const Transactions = () => {
                         />
 
                         <div>
-                            <label className="text-[13px] text-slate-300">Format</label>
+                            <label className="text-[13px] text-fg-secondary">Format</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={exportFormat}
                                     onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
-                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[100px]"
+                                    className="w-full bg-transparent outline-none text-fg min-w-[100px]"
                                 >
                                     {EXPORT_FORMAT_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value} className="bg-slate-900">
+                                        <option key={option.value} value={option.value} className="bg-surface">
                                             {option.label}
                                         </option>
                                     ))}
@@ -853,7 +853,7 @@ const Transactions = () => {
                             type="button"
                             onClick={handleExport}
                             disabled={exporting}
-                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[42px]"
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[42px]"
                         >
                             <IoDownload size={16} />
                             {exporting ? 'Exporting...' : 'Download'}
@@ -876,7 +876,7 @@ const Transactions = () => {
                     <>
                         {selectedIds.length > 0 && (
                             <div className="card mb-3 flex flex-wrap items-center justify-between gap-3">
-                                <p className="text-sm text-slate-300">
+                                <p className="text-sm text-fg-secondary">
                                     {selectedIds.length} selected
                                 </p>
                                 <div className="flex flex-wrap gap-2">
@@ -884,7 +884,7 @@ const Transactions = () => {
                                         type="button"
                                         onClick={() => setBulkCategoryOpen(true)}
                                         disabled={selectedHasTransfer}
-                                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-border text-fg-secondary hover:border-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
                                         title={
                                             selectedHasTransfer
                                                 ? 'Transfers cannot be bulk recategorized'
@@ -896,14 +896,14 @@ const Transactions = () => {
                                     <button
                                         type="button"
                                         onClick={() => setBulkDeleteOpen(true)}
-                                        className="px-3 py-1.5 text-sm rounded-lg border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-negative/30 text-expense hover:bg-expense/10"
                                     >
                                         Delete selected
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setSelectedIds([])}
-                                        className="px-3 py-1.5 text-sm rounded-lg text-slate-400 hover:text-slate-300"
+                                        className="px-3 py-1.5 text-sm rounded-lg text-fg-muted hover:text-fg-secondary"
                                     >
                                         Clear
                                     </button>
@@ -912,12 +912,12 @@ const Transactions = () => {
                         )}
 
                         {result.items.length > 0 && (
-                            <label className="flex items-center gap-2 mb-2 text-xs text-slate-500 px-1">
+                            <label className="flex items-center gap-2 mb-2 text-xs text-fg-muted px-1">
                                 <input
                                     type="checkbox"
                                     checked={allVisibleSelected}
                                     onChange={toggleSelectAllVisible}
-                                    className="rounded border-slate-600 bg-slate-900"
+                                    className="rounded border-border bg-surface"
                                 />
                                 Select all on this page
                             </label>
@@ -931,28 +931,28 @@ const Transactions = () => {
                                             type="checkbox"
                                             checked={selectedIds.includes(item._id)}
                                             onChange={() => toggleSelected(item._id)}
-                                            className="rounded border-slate-600 bg-slate-900 shrink-0"
+                                            className="rounded border-border bg-surface shrink-0"
                                             aria-label={`Select ${item.title}`}
                                         />
                                         <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <p className="text-sm font-medium text-slate-200 truncate">
+                                            <p className="text-sm font-medium text-fg truncate">
                                                 {item.title}
                                             </p>
                                             <span
                                                 className={[
                                                     'text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border',
                                                     item.type === 'income'
-                                                        ? 'border-cyan-500/30 text-cyan-400'
+                                                        ? 'border-accent/30 text-accent'
                                                         : item.type === 'expense'
-                                                          ? 'border-rose-500/30 text-rose-400'
-                                                          : 'border-violet-500/30 text-violet-400',
+                                                          ? 'border-negative/30 text-expense'
+                                                          : 'border-accent/30 text-accent',
                                                 ].join(' ')}
                                             >
                                                 {item.type}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-slate-500 mt-0.5">
+                                        <p className="text-xs text-fg-muted mt-0.5">
                                             {formatDisplayDate(item.date)}
                                             {categoryNameById.get(item.categoryId)
                                                 ? ` · ${categoryNameById.get(item.categoryId)}`
@@ -972,7 +972,7 @@ const Transactions = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => openEdit(item)}
-                                                className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                 aria-label="Edit transaction"
                                             >
                                                 <IoPencil size={16} />
@@ -981,7 +981,7 @@ const Transactions = () => {
                                         <button
                                             type="button"
                                             onClick={() => setDeleteTarget(item)}
-                                            className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                                            className="p-1.5 text-fg-muted hover:text-expense transition-colors"
                                             aria-label="Delete transaction"
                                         >
                                             <IoTrash size={16} />
@@ -1017,7 +1017,7 @@ const Transactions = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {!editingId && (
                         <div>
-                            <label className="text-[13px] text-slate-300">Type</label>
+                            <label className="text-[13px] text-fg-secondary">Type</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={form.type}
@@ -1029,12 +1029,12 @@ const Transactions = () => {
                                         }))
                                     }
                                     disabled={submitting}
-                                    className="w-full bg-transparent outline-none text-slate-200"
+                                    className="w-full bg-transparent outline-none text-fg"
                                 >
-                                    <option value="income" className="bg-slate-900">
+                                    <option value="income" className="bg-surface">
                                         Income
                                     </option>
-                                    <option value="expense" className="bg-slate-900">
+                                    <option value="expense" className="bg-surface">
                                         Expense
                                     </option>
                                 </select>
@@ -1078,7 +1078,7 @@ const Transactions = () => {
                         disabled={submitting}
                     />
                     {form.type === 'expense' && !editingId && (
-                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                        <label className="flex items-center gap-2 text-sm text-fg-secondary">
                             <input
                                 type="checkbox"
                                 checked={form.splitEnabled}
@@ -1090,20 +1090,20 @@ const Transactions = () => {
                                     }))
                                 }
                                 disabled={submitting}
-                                className="rounded border-slate-600 bg-slate-900"
+                                className="rounded border-border bg-surface"
                             />
                             Split across categories
                         </label>
                     )}
                     {form.splitEnabled && form.type === 'expense' && !editingId ? (
-                        <div className="space-y-3 rounded-lg border border-slate-700 p-3">
+                        <div className="space-y-3 rounded-lg border border-border p-3">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm text-slate-300">Split lines</p>
+                                <p className="text-sm text-fg-secondary">Split lines</p>
                                 <button
                                     type="button"
                                     onClick={addSplitLine}
                                     disabled={submitting}
-                                    className="text-xs text-cyan-400 hover:text-cyan-300"
+                                    className="text-xs text-accent hover:text-accent"
                                 >
                                     + Add line
                                 </button>
@@ -1134,7 +1134,7 @@ const Transactions = () => {
                                             type="button"
                                             onClick={() => removeSplitLine(index)}
                                             disabled={submitting}
-                                            className="p-2 text-slate-500 hover:text-rose-400"
+                                            className="p-2 text-fg-muted hover:text-expense"
                                             aria-label="Remove split line"
                                         >
                                             <IoTrash size={14} />
@@ -1145,7 +1145,7 @@ const Transactions = () => {
                             <p
                                 className={[
                                     'text-xs',
-                                    Math.abs(splitDiff) < 0.001 ? 'text-slate-500' : 'text-amber-400',
+                                    Math.abs(splitDiff) < 0.001 ? 'text-fg-muted' : 'text-warning',
                                 ].join(' ')}
                             >
                                 Split total: {splitTotal.toFixed(2)}
@@ -1212,14 +1212,14 @@ const Transactions = () => {
                             type="button"
                             onClick={closeForm}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : editingId ? 'Update' : 'Add transaction'}
                         </button>
@@ -1288,14 +1288,14 @@ const Transactions = () => {
                             type="button"
                             onClick={closeTransfer}
                             disabled={transferSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={transferSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-violet-500 text-white hover:bg-violet-400 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 btn-accent disabled:opacity-50"
                         >
                             {transferSubmitting ? 'Transferring...' : 'Transfer'}
                         </button>
@@ -1335,7 +1335,7 @@ const Transactions = () => {
                 size="md"
             >
                 <form onSubmit={handleBulkCategoryChange} className="space-y-4">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-fg-muted">
                         Apply a new category to {selectedIds.length} selected transaction
                         {selectedIds.length === 1 ? '' : 's'}. Transfers are excluded.
                     </p>
@@ -1354,14 +1354,14 @@ const Transactions = () => {
                                 setBulkCategoryId('')
                             }}
                             disabled={bulkSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={bulkSubmitting || !bulkCategoryId}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {bulkSubmitting ? 'Updating...' : 'Update category'}
                         </button>

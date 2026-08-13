@@ -61,8 +61,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
     [
         'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
         isActive
-            ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60',
+            ? 'nav-active'
+            : 'text-text-muted hover:text-text-primary hover:bg-elevated-hover',
     ].join(' ')
 
 const DashboardLayout: React.FC = () => {
@@ -170,7 +170,7 @@ const DashboardLayout: React.FC = () => {
         closeMobile()
         await logout()
         toast.success('Logged out successfully')
-        navigate('/login', { replace: true })
+        navigate('/', { replace: true })
     }
 
     const handleLogoutAll = async () => {
@@ -183,7 +183,7 @@ const DashboardLayout: React.FC = () => {
         closeMobile()
         await logoutAllSessions()
         toast.success('All sessions revoked')
-        navigate('/login', { replace: true })
+        navigate('/', { replace: true })
     }
 
     const closeMobile = () => setMobileOpen(false)
@@ -195,11 +195,11 @@ const DashboardLayout: React.FC = () => {
 
     const sidebarContent = (
         <>
-            <div className="shrink-0 px-4 py-6 border-b border-slate-800">
-                <p className="text-lg font-semibold tracking-tight">
-                    <span className="text-cyan-400">spndr</span>
+            <div className="shrink-0 px-4 py-6 border-b border-border-subtle">
+                <p className="font-display text-lg font-bold tracking-tight">
+                    <span className="text-gradient-accent">spndr</span>
                 </p>
-                <p className="text-xs text-slate-500 mt-1">Personal finance</p>
+                <p className="text-xs text-text-quiet mt-1">Stop guessing. Start knowing.</p>
             </div>
 
             <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1">
@@ -217,16 +217,16 @@ const DashboardLayout: React.FC = () => {
             </nav>
 
             {user && (
-                <div className="shrink-0 border-t border-slate-800 px-3 py-3">
+                <div className="shrink-0 border-t border-border-subtle px-3 py-3">
                     <div className="flex items-center gap-2 rounded-lg px-2 py-2">
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-slate-200 truncate">{user.fullName}</p>
-                            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                            <p className="text-sm font-medium text-text-primary truncate">{user.fullName}</p>
+                            <p className="text-xs text-text-quiet truncate">{user.email}</p>
                         </div>
                         <button
                             type="button"
                             onClick={openSettings}
-                            className="flex shrink-0 items-center justify-center h-8 w-8 rounded-lg border border-slate-700 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-cyan-500/5 transition-colors"
+                            className="flex shrink-0 items-center justify-center h-8 w-8 rounded-lg border border-border-subtle text-text-muted hover:text-accent hover:border-accent/40 hover:bg-accent-subtle transition-colors"
                             aria-label="Open settings"
                             title="Settings"
                         >
@@ -239,9 +239,9 @@ const DashboardLayout: React.FC = () => {
     )
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+        <div className="min-h-screen bg-page text-text-primary flex">
             {/* Desktop sidebar */}
-            <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:h-screen border-r border-slate-800 bg-slate-900/50 backdrop-blur-sm">
+            <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:h-screen border-r border-border-subtle bg-elevated bg-gradient-to-b from-elevated to-bg-secondary">
                 {sidebarContent}
             </aside>
 
@@ -254,7 +254,7 @@ const DashboardLayout: React.FC = () => {
                         aria-label="Close navigation"
                         onClick={closeMobile}
                     />
-                    <aside className="relative z-50 flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900">
+                    <aside className="relative z-50 flex h-full w-64 flex-col border-r border-border-subtle bg-elevated bg-gradient-to-b from-elevated to-bg-secondary">
                         {sidebarContent}
                     </aside>
                 </div>
@@ -262,18 +262,18 @@ const DashboardLayout: React.FC = () => {
 
             {/* Main content */}
             <div className="flex-1 lg:pl-64 min-w-0">
-                <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-4 py-3 lg:px-8">
+                <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border-subtle glass px-4 py-3 lg:px-8">
                     <div className="flex items-center gap-3 min-w-0">
                         <button
                             type="button"
-                            className="lg:hidden flex shrink-0 items-center justify-center h-9 w-9 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40"
+                            className="lg:hidden flex shrink-0 items-center justify-center h-9 w-9 rounded-lg border border-border-subtle text-text-secondary hover:border-accent/40"
                             aria-label="Open navigation"
                             onClick={() => setMobileOpen(true)}
                         >
                             <FiMenu size={18} />
                         </button>
 
-                        <p className="text-sm text-slate-400 truncate">
+                        <p className="text-sm text-text-muted truncate">
                             Welcome{user ? `, ${user.fullName.split(' ')[0]}` : ''}
                         </p>
                     </div>
@@ -284,7 +284,7 @@ const DashboardLayout: React.FC = () => {
                             href={DOCS_URL}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 transition-colors"
+                            className="flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-muted hover:text-accent hover:border-accent/40 transition-colors"
                         >
                             <FiBookOpen size={16} />
                             <span className="hidden sm:inline">Docs</span>
@@ -300,14 +300,14 @@ const DashboardLayout: React.FC = () => {
             <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" size="sm">
                 <div className="space-y-6">
                     <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Preferences</p>
+                        <p className="section-label mb-3">Preferences</p>
                         <CurrencySelect
                             label="Default currency"
                             value={user?.preferredCurrency ?? DEFAULT_CURRENCY}
                             onChange={(value) => void handlePreferredCurrencyChange(value)}
                             disabled={savingCurrency}
                         />
-                        <label className="block text-sm text-slate-300 mt-4">
+                        <label className="block text-sm text-text-secondary mt-4">
                             Date format
                             <select
                                 value={user?.dateFormat ?? DEFAULT_DATE_FORMAT}
@@ -315,7 +315,7 @@ const DashboardLayout: React.FC = () => {
                                     void handleDateFormatChange(event.target.value as DateFormat)
                                 }
                                 disabled={savingDisplay}
-                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/40 focus:outline-none"
+                                className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"
                             >
                                 {DATE_FORMAT_OPTIONS.map((option) => (
                                     <option key={option.value} value={option.value}>
@@ -324,7 +324,7 @@ const DashboardLayout: React.FC = () => {
                                 ))}
                             </select>
                         </label>
-                        <label className="block text-sm text-slate-300 mt-4">
+                        <label className="block text-sm text-text-secondary mt-4">
                             Cards per page
                             <select
                                 value={user?.pageSize ?? DEFAULT_PAGE_SIZE}
@@ -332,7 +332,7 @@ const DashboardLayout: React.FC = () => {
                                     void handlePageSizeChange(Number(event.target.value))
                                 }
                                 disabled={savingDisplay}
-                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/40 focus:outline-none"
+                                className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"
                             >
                                 {PAGE_SIZE_OPTIONS.map((option) => (
                                     <option key={option} value={option}>
@@ -342,7 +342,7 @@ const DashboardLayout: React.FC = () => {
                             </select>
                         </label>
                         <div className="mt-4 space-y-3">
-                            <label className="flex items-center justify-between gap-3 text-sm text-slate-300">
+                            <label className="flex items-center justify-between gap-3 text-sm text-text-secondary">
                                 <span>Bill due reminders</span>
                                 <input
                                     type="checkbox"
@@ -351,10 +351,10 @@ const DashboardLayout: React.FC = () => {
                                         void handleBillRemindersToggle(event.target.checked)
                                     }
                                     disabled={savingNotifications}
-                                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/40"
+                                    className="h-4 w-4 rounded border-border bg-elevated text-accent focus:ring-accent/40"
                                 />
                             </label>
-                            <label className="block text-sm text-slate-300">
+                            <label className="block text-sm text-text-secondary">
                                 Remind me before bills are due
                                 <select
                                     value={user?.notificationPreferences?.billReminderDaysBefore ?? 3}
@@ -365,7 +365,7 @@ const DashboardLayout: React.FC = () => {
                                         savingNotifications ||
                                         !(user?.notificationPreferences?.billRemindersEnabled ?? true)
                                     }
-                                    className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/40 focus:outline-none"
+                                    className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"
                                 >
                                     <option value={0}>Same day</option>
                                     <option value={1}>1 day</option>
@@ -377,12 +377,12 @@ const DashboardLayout: React.FC = () => {
                     </div>
 
                     <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Account</p>
+                        <p className="section-label mb-3">Account</p>
                         <div className="space-y-2">
                             <button
                                 type="button"
                                 onClick={() => void handleLogoutAll()}
-                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-muted hover:text-warning hover:bg-warning/10 transition-colors"
                             >
                                 <FiLogOut size={18} />
                                 Logout all devices
@@ -390,7 +390,7 @@ const DashboardLayout: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => void handleLogout()}
-                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
                             >
                                 <FiLogOut size={18} />
                                 Logout
