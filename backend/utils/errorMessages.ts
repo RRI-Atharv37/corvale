@@ -47,6 +47,10 @@ export const ERROR_MESSAGES = {
         ACCOUNT_ALREADY_ARCHIVED: 'Account is already archived',
         CANNOT_UNSET_DEFAULT: 'Cannot unset default account; set another account as default instead',
     },
+    TAG: {
+        TAG_NOT_FOUND: 'Tag not found',
+        TAG_ALREADY_EXISTS: 'A tag with this name already exists',
+    },
     CATEGORY: {
         CATEGORY_NOT_FOUND: 'Category not found',
         MASTER_NOT_FOUND: 'Master category not found',

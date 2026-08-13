@@ -145,7 +145,7 @@ export interface TransactionFormData {
     description: string
     source: string
     paymentMethod: string
-    tags: string
+    tags: string[]
     splitEnabled: boolean
     splits: SplitLineFormData[]
 }
@@ -334,6 +334,20 @@ export interface CategoryEditFormData {
     color: string
 }
 
+export interface Tag {
+    _id: string
+    userId: string
+    name: string
+    color?: string
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface TagFormData {
+    name: string
+    color: string
+}
+
 export type BudgetPeriodType = 'monthly' | 'custom'
 
 export interface BudgetProgress {
@@ -498,7 +512,7 @@ export interface RecurringRuleFormData {
     nextDueDate: string
     description: string
     paymentMethod: string
-    tags: string
+    tags: string[]
     isActive: boolean
 }
 

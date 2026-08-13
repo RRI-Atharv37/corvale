@@ -51,6 +51,7 @@ import {
     parseOptionalWorkspaceId,
     validateResourceAccess,
 } from '../utils/workspaceUtils'
+import { buildTagFilter, parseTagsQuery } from '../utils/tagUtils'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 
@@ -69,7 +70,12 @@ const parsePagination = (page: unknown, limit: unknown) => {
     return { pageNumber, limitNumber }
 }
 
-const buildListFilter = (userId: string, type?: unknown, workspaceId?: string | null) => {
+const buildListFilter = (
+    userId: string,
+    type?: unknown,
+    workspaceId?: string | null,
+    tags?: unknown
+) => {
     const filter: Record<string, unknown> = {
         ...buildScopedListFilter(userId, workspaceId),
         ...LISTABLE_TRANSACTION_FILTER,
@@ -83,6 +89,11 @@ const buildListFilter = (userId: string, type?: unknown, workspaceId?: string | 
             )
         }
         filter.type = type
+    }
+
+    const tagNames = parseTagsQuery(tags)
+    if (tagNames) {
+        Object.assign(filter, buildTagFilter(tagNames))
     }
 
     return filter
@@ -333,10 +344,10 @@ export const createTransfer = asyncHandler(async (req: AuthRequest, res: Respons
 
 export const getTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { type, sortBy, sortOrder } = req.query
+    const { type, sortBy, sortOrder, tags } = req.query
     const { pageNumber, limitNumber } = parsePagination(req.query.page, req.query.limit)
     const workspaceId = await resolveListWorkspaceId(req)
-    const filter = buildListFilter(userId, type, workspaceId)
+    const filter = buildListFilter(userId, type, workspaceId, tags)
 
     if (sortBy === 'category') {
         const [results, totalCount] = await Promise.all([
@@ -538,7 +549,7 @@ export const deleteTransaction = asyncHandler(async (req: AuthRequest, res: Resp
 
 export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { startDate, endDate, type, sortBy, sortOrder } = req.query
+    const { startDate, endDate, type, sortBy, sortOrder, tags } = req.query
     const timezone = getUserTimezone(req)
 
     validateRequiredFields({ startDate, endDate }, ['startDate', 'endDate'])
@@ -556,7 +567,7 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
     const workspaceId = await resolveListWorkspaceId(req)
 
     const filter = {
-        ...buildListFilter(userId, type, workspaceId),
+        ...buildListFilter(userId, type, workspaceId, tags),
         date: { $gte: dateRange.start, $lte: dateRange.end },
     }
 
@@ -590,7 +601,7 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
 
 export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { keyword, type, sortBy, sortOrder } = req.query
+    const { keyword, type, sortBy, sortOrder, tags } = req.query
 
     validateRequiredFields({ keyword }, ['keyword'])
 
@@ -599,7 +610,7 @@ export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Res
     const workspaceId = await resolveListWorkspaceId(req)
 
     const filter: Record<string, unknown> = {
-        ...buildListFilter(userId, type, workspaceId),
+        ...buildListFilter(userId, type, workspaceId, tags),
         $or: [
             { title: { $regex: regex } },
             { description: { $regex: regex } },

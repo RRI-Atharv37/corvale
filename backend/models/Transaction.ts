@@ -68,6 +68,7 @@ TransactionSchema.index({ userId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, type: 1, date: -1 })
 TransactionSchema.index({ userId: 1, categoryId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, accountId: 1, date: -1 })
+TransactionSchema.index({ userId: 1, tags: 1 })
 
 applyRowLevelSecurity(TransactionSchema, { supportsWorkspace: true })
 

@@ -9,6 +9,8 @@ import Pagination from '../../components/ui/Pagination'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import FormField, { TextAreaField } from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
+import TagPicker from '../../components/tags/TagPicker'
+import TagChip from '../../components/tags/TagChip'
 import AccountPicker from '../../components/accounts/AccountPicker'
 import ReceiptAttachments from '../../components/transactions/ReceiptAttachments'
 import axiosInstance from '../../utils/axiosInstance'
@@ -24,6 +26,7 @@ import type {
     PaginatedTransactions,
     Receipt,
     SplitLineFormData,
+    Tag,
     Transaction,
     TransactionFormData,
     TransactionType,
@@ -70,7 +73,7 @@ const emptyForm = (type: 'income' | 'expense' = 'expense'): TransactionFormData 
     description: '',
     source: '',
     paymentMethod: '',
-    tags: '',
+    tags: [],
     splitEnabled: false,
     splits: [emptySplitLine(), emptySplitLine()],
 })
@@ -116,6 +119,7 @@ const Transactions = () => {
     const [dateFilterActive, setDateFilterActive] = useState(false)
     const [sortBy, setSortBy] = useState<SortField>('date')
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+    const [tagFilter, setTagFilter] = useState<string[]>([])
 
     const [formOpen, setFormOpen] = useState(false)
     const [transferOpen, setTransferOpen] = useState(false)
@@ -141,19 +145,21 @@ const Transactions = () => {
 
     const fetchLookups = useCallback(async () => {
         const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
-        const [accountsRes, categoriesRes] = await Promise.all([
+        const [accountsRes, categoriesRes, tagsRes] = await Promise.all([
             axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
                 params: workspaceParams,
             }),
             axiosInstance.get<ApiResponse<CategoriesResponse>>(API_PATHS.CATEGORIES.GET_ALL),
+            axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL),
         ])
         return {
             accounts: unwrapApiData(accountsRes),
             categories: unwrapApiData(categoriesRes),
+            tags: unwrapApiData(tagsRes),
         }
     }, [activeWorkspaceId])
 
-    const { data: lookups } = useAsyncData(fetchLookups, [fetchLookups])
+    const { data: lookups, refetch: refetchLookups } = useAsyncData(fetchLookups, [fetchLookups])
 
     const categoryNameById = useMemo(() => {
         const map = new Map<string, string>()
@@ -172,6 +178,17 @@ const Transactions = () => {
         if (!lookups) return map
         for (const account of lookups.accounts) {
             map.set(account._id, account.name)
+        }
+        return map
+    }, [lookups])
+
+    const tagColorByName = useMemo(() => {
+        const map = new Map<string, string>()
+        if (!lookups) return map
+        for (const tag of lookups.tags) {
+            const color = tag.color ?? '#6b7280'
+            map.set(tag.name, color)
+            map.set(tag.name.toLowerCase(), color)
         }
         return map
     }, [lookups])
@@ -201,7 +218,7 @@ const Transactions = () => {
     useEffect(() => {
         setPage(1)
         setSelectedIds([])
-    }, [pageSize, activeWorkspaceId])
+    }, [pageSize, activeWorkspaceId, tagFilter])
 
     const fetchTransactions = useCallback(async (): Promise<TransactionsPageData> => {
         try {
@@ -212,6 +229,7 @@ const Transactions = () => {
                 ...workspaceParams,
             }
             if (typeFilter) sharedParams.type = typeFilter
+            if (tagFilter.length > 0) sharedParams.tags = tagFilter.join(',')
 
             if (searchQuery.trim()) {
                 const response = await axiosInstance.get<ApiResponse<Transaction[]>>(
@@ -249,6 +267,7 @@ const Transactions = () => {
         sortBy,
         sortOrder,
         activeWorkspaceId,
+        tagFilter,
     ])
 
     const { data, loading, error, refetch } = useAsyncData(fetchTransactions, [fetchTransactions])
@@ -298,7 +317,7 @@ const Transactions = () => {
             description: item.description ?? '',
             source: item.source ?? '',
             paymentMethod: item.paymentMethod ?? '',
-            tags: item.tags?.join(', ') ?? '',
+            tags: item.tags ?? [],
             splitEnabled: false,
             splits: [emptySplitLine(), emptySplitLine()],
         })
@@ -349,6 +368,16 @@ const Transactions = () => {
         setStartDate('')
         setEndDate('')
         setDateFilterActive(false)
+        setTagFilter([])
+        setPage(1)
+    }
+
+    const toggleTagFilter = (tagName: string) => {
+        setTagFilter((current) =>
+            current.includes(tagName)
+                ? current.filter((tag) => tag !== tagName)
+                : [...current, tagName]
+        )
         setPage(1)
     }
 
@@ -440,11 +469,7 @@ const Transactions = () => {
             payload.source = form.source.trim() || undefined
         } else {
             payload.paymentMethod = form.paymentMethod.trim() || undefined
-            const tags = form.tags
-                .split(',')
-                .map((t) => t.trim())
-                .filter(Boolean)
-            if (tags.length > 0) payload.tags = tags
+            if (form.tags.length > 0) payload.tags = form.tags
         }
 
         setSubmitting(true)
@@ -745,6 +770,30 @@ const Transactions = () => {
                     </button>
                 </form>
 
+                {(lookups?.tags.length ?? 0) > 0 && (
+                    <div>
+                        <label className="text-[13px] text-fg-secondary">Filter by tags</label>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {lookups?.tags.map((tag) => {
+                                const active = tagFilter.includes(tag.name)
+                                return (
+                                    <button
+                                        key={tag._id}
+                                        type="button"
+                                        onClick={() => toggleTagFilter(tag.name)}
+                                        className={[
+                                            'rounded-full transition-opacity',
+                                            active ? 'ring-2 ring-accent/50 ring-offset-1 ring-offset-page' : 'opacity-70 hover:opacity-100',
+                                        ].join(' ')}
+                                    >
+                                        <TagChip name={tag.name} color={tag.color} />
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex flex-col lg:flex-row gap-3 lg:items-end">
                     <FormField
                         label="From"
@@ -995,6 +1044,20 @@ const Transactions = () => {
                                                 ? ` · ${accountNameById.get(item.accountId)}`
                                                 : ''}
                                         </p>
+                                        {item.tags && item.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {item.tags.map((tag) => (
+                                                    <TagChip
+                                                        key={`${item._id}-${tag}`}
+                                                        name={tag}
+                                                        color={
+                                                            tagColorByName.get(tag) ??
+                                                            tagColorByName.get(tag.toLowerCase())
+                                                        }
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
@@ -1217,11 +1280,11 @@ const Transactions = () => {
                                 placeholder="Card, cash, UPI, etc."
                                 disabled={submitting}
                             />
-                            <FormField
-                                label="Tags"
+                            <TagPicker
                                 value={form.tags}
-                                onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
-                                placeholder="Comma-separated tags"
+                                onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+                                tagsData={lookups?.tags}
+                                onTagsChange={refetchLookups}
                                 disabled={submitting}
                             />
                         </>

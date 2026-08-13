@@ -8,6 +8,7 @@ import saverRoutes from './routes/saverRoutes'
 import pushoverRoutes from './routes/pushoverRoutes'
 import accountRoutes from './routes/accountRoutes'
 import categoryRoutes from './routes/categoryRoutes'
+import tagRoutes from './routes/tagRoutes'
 import transactionRoutes from './routes/transactionRoutes'
 import receiptRoutes from './routes/receiptRoutes'
 import budgetRoutes from './routes/budgetRoutes'
@@ -41,6 +42,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/pushover', pushoverRoutes)
     app.use('/api/v1/accounts', accountRoutes)
     app.use('/api/v1/categories', categoryRoutes)
+    app.use('/api/v1/tags', tagRoutes)
     app.use('/api/v1/transactions', transactionRoutes)
     app.use('/api/v1/receipts', receiptRoutes)
     app.use('/api/v1/budgets', budgetRoutes)

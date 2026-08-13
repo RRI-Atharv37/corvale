@@ -62,6 +62,14 @@ export const API_PATHS = {
         DELETE: (categoryId: string) => `/categories/${categoryId}`,
         REORDER: '/categories/reorder',
     },
+    TAGS: {
+        CREATE: '/tags',
+        GET_ALL: '/tags',
+        GET_BY_ID: (tagId: string) => `/tags/${tagId}`,
+        UPDATE: (tagId: string) => `/tags/${tagId}`,
+        DELETE: (tagId: string) => `/tags/${tagId}`,
+        DEDUPE: '/tags/dedupe',
+    },
     TRANSACTIONS: {
         CREATE: '/transactions',
         TRANSFER: '/transactions/transfer',

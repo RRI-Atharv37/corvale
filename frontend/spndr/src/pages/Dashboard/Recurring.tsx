@@ -20,6 +20,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
+import TagPicker from '../../components/tags/TagPicker'
 import AccountPicker from '../../components/accounts/AccountPicker'
 import CurrencySelect from '../../components/inputs/CurrencySelect'
 import RecurringCalendar from '../../components/recurring/RecurringCalendar'
@@ -36,6 +37,7 @@ import type {
     RecurringRuleFormData,
     RecurringRuleType,
     RecurringInterval,
+    Tag,
     Transaction,
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
@@ -100,7 +102,7 @@ const emptyForm = (preferredCurrency = DEFAULT_CURRENCY): RecurringRuleFormData 
     nextDueDate: toDateInputValue(new Date()),
     description: '',
     paymentMethod: '',
-    tags: '',
+    tags: [],
     isActive: true,
 })
 
@@ -116,7 +118,7 @@ const ruleToForm = (rule: RecurringRule): RecurringRuleFormData => ({
     nextDueDate: toDateInputValue(rule.nextDueDate),
     description: rule.description ?? '',
     paymentMethod: rule.paymentMethod ?? '',
-    tags: rule.tags?.join(', ') ?? '',
+    tags: rule.tags ?? [],
     isActive: rule.isActive,
 })
 
@@ -185,9 +187,15 @@ const Recurring = () => {
         return unwrapApiData(response).filter((account) => !account.isArchived)
     }, [])
 
+    const fetchTags = useCallback(async (): Promise<Tag[]> => {
+        const response = await axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL)
+        return unwrapApiData(response)
+    }, [])
+
     const { data: rules, loading, error, refetch } = useAsyncData(fetchRules, [fetchRules])
     const { data: categories } = useAsyncData(fetchCategories, [fetchCategories])
     const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
+    const { data: tags, refetch: refetchTags } = useAsyncData(fetchTags, [fetchTags])
 
     const fetchDrafts = useCallback(async () => {
         setDraftsLoading(true)
@@ -302,10 +310,7 @@ const Recurring = () => {
             nextDueDate: formData.nextDueDate,
             description: formData.description.trim() || undefined,
             paymentMethod: formData.paymentMethod.trim() || undefined,
-            tags: formData.tags
-                .split(',')
-                .map((tag) => tag.trim())
-                .filter(Boolean),
+            tags: formData.tags,
             isActive: formData.isActive,
         }
 
@@ -532,10 +537,11 @@ const Recurring = () => {
                 disabled={submitting}
             />
 
-            <FormField
-                label="Tags (optional, comma-separated)"
+            <TagPicker
                 value={form.tags}
-                onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
+                onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+                tagsData={tags ?? undefined}
+                onTagsChange={refetchTags}
                 disabled={submitting}
             />
 
