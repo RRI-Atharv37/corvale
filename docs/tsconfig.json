@@ -10,5 +10,5 @@
         "noEmit": true,
         "types": ["node"]
     },
-    "include": [".vitepress/**/*.ts"]
+    "include": [".vitepress/**/*.ts", ".vitepress/**/*.mts"]
 }

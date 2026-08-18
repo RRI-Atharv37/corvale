@@ -36,6 +36,7 @@ On the Categories page, you can:
 - Set one sub-category as your default
 - Reorder sub-categories within a master group
 - Archive sub-categories you no longer use
+- Set up [auto-categorization rules](./categorization-rules.md) that assign a category automatically
 
 ## How categories connect to transactions
 
@@ -53,5 +54,6 @@ Only one active sub-category can be default at a time.
 
 - [Creating Categories](./creating-categories.md)
 - [Managing Categories](./managing-categories.md)
+- [Auto-Categorization Rules](./categorization-rules.md)
 - [Adding Transactions](../transactions/adding-transactions.md)
 - [Transactions Overview](../transactions/overview.md)

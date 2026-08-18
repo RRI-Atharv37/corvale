@@ -12,17 +12,20 @@ Below the summary cards on the dashboard, spndr displays quick-link cards. Each 
 |------|-------------|-------------|
 | **Transactions** | `/transactions` | View and manage income, expenses, and transfers |
 | **Budgets** | `/budgets` | Set limits and track spending progress |
+| **Reports** | `/reports` | Charts, custom reports, and saved reports |
 | **Savings Goals** | `/savings-goals` | Track progress toward your targets |
+| **Recurring** | `/recurring` | Manage recurring rules and drafts |
 | **Income** | `/transactions?type=income` | Filter the transaction list to income only |
 | **Accounts** | `/accounts` | View and manage your accounts |
 
-Click any card to navigate directly to that page.
+Click any card to navigate directly to that page. Home also has a **Quick add** dropdown for instantly applying a saved [template](../templates/overview.md).
 
 ## What is not linked from the dashboard
 
-The dashboard quick links do not include Categories, Saver, or Pushover. You reach those pages through the sidebar navigation:
+The dashboard quick links do not include Categories, Tags, Saver, or Pushover. You reach those pages through the sidebar navigation:
 
 - **Categories** - `/categories`
+- **Tags** - `/tags`
 - **Saver** - `/saver`
 - **Pushover** - `/pushover`
 
@@ -30,6 +33,8 @@ The dashboard quick links do not include Categories, Saver, or Pushover. You rea
 
 - [Dashboard Overview](./overview.md)
 - [Budgets Overview](../budgets/overview.md)
+- [Reports Overview](../reports/overview.md)
 - [Savings Goals Overview](../savings-goals/overview.md)
+- [Recurring Overview](../recurring/overview.md)
 - [Transactions Overview](../transactions/overview.md)
 - [Creating an Account](../accounts/creating-an-account.md)
