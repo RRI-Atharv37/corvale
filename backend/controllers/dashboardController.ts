@@ -11,24 +11,76 @@ import {
     computeNetWorthTrend,
     resolveDashboardQuery,
 } from '../utils/dashboardUtils'
+import { computeUserBalances } from '../utils/balanceUtils'
 import { getUserId, handleResponses } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    parseOptionalWorkspaceId,
+} from '../utils/workspaceUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
 }
 
+const resolveListWorkspaceId = async (req: AuthRequest): Promise<string | null> => {
+    const userId = getUserId(req)
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    return workspaceId
+}
+
 export const getDashboardSummary = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const { periodStart, periodEnd, startDate, endDate } = resolveDashboardQuery(req.query, timezone)
 
-    const summary = await computeDashboardSummary(userId, periodStart, periodEnd, startDate, endDate)
+    const summary = await computeDashboardSummary(
+        userId,
+        periodStart,
+        periodEnd,
+        startDate,
+        endDate,
+        workspaceId,
+        {
+            preferredCurrency: req.user!.preferredCurrency,
+            exchangeRates: req.user!.exchangeRates ?? {},
+        }
+    )
     handleResponses(res, 200, summary)
+})
+
+export const getDashboardOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const workspaceId = await resolveListWorkspaceId(req)
+    const preferredCurrency = req.user!.preferredCurrency
+    const exchangeRates = req.user!.exchangeRates ?? {}
+
+    const balances = await computeUserBalances(userId, workspaceId, {
+        preferredCurrency,
+        exchangeRates,
+    })
+
+    handleResponses(res, 200, {
+        netWorth: balances.netWorth,
+        netWorthInPreferredCurrency: balances.netWorth,
+        preferredCurrency,
+        totalAccountBalance: balances.totalAccountBalance,
+        liquidBalance: balances.liquidBalance,
+        spendableBalance: balances.spendableBalance,
+        accountCount: balances.accountCount,
+        balanceSource: balances.balanceSource,
+    })
 })
 
 export const getDashboardCashFlow = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const { periodStart, periodEnd, startDate, endDate, groupBy } = resolveDashboardQuery(
         req.query,
         timezone
@@ -41,7 +93,8 @@ export const getDashboardCashFlow = asyncHandler(async (req: AuthRequest, res: R
         startDate,
         endDate,
         groupBy,
-        timezone
+        timezone,
+        workspaceId
     )
 
     handleResponses(res, 200, {
@@ -55,10 +108,17 @@ export const getDashboardCashFlow = asyncHandler(async (req: AuthRequest, res: R
 export const getDashboardCategoryBreakdown = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const { periodStart, periodEnd } = resolveDashboardQuery(req.query, timezone)
 
     const type = req.query.type === 'income' ? 'income' : 'expense'
-    const breakdown = await computeCategoryBreakdown(userId, periodStart, periodEnd, type)
+    const breakdown = await computeCategoryBreakdown(
+        userId,
+        periodStart,
+        periodEnd,
+        type,
+        workspaceId
+    )
 
     handleResponses(res, 200, {
         type,
@@ -69,6 +129,7 @@ export const getDashboardCategoryBreakdown = asyncHandler(async (req: AuthReques
 export const getNetWorthTrend = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
     const { periodStart, periodEnd, startDate, endDate } = resolveDashboardQuery(req.query, timezone)
 
     const trend = await computeNetWorthTrend(
@@ -77,7 +138,8 @@ export const getNetWorthTrend = asyncHandler(async (req: AuthRequest, res: Respo
         periodEnd,
         startDate,
         endDate,
-        timezone
+        timezone,
+        workspaceId
     )
     handleResponses(res, 200, trend)
 })
@@ -85,6 +147,7 @@ export const getNetWorthTrend = asyncHandler(async (req: AuthRequest, res: Respo
 export const getBudgetOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
-    const overview = await computeBudgetOverview(userId, timezone)
+    const workspaceId = await resolveListWorkspaceId(req)
+    const overview = await computeBudgetOverview(userId, timezone, workspaceId)
     handleResponses(res, 200, overview)
 })

@@ -7,6 +7,8 @@ interface AccountMultiSelectProps {
     selectedIds: string[]
     onChange: (ids: string[]) => void
     disabled?: boolean
+    emptyMessage?: string
+    allSelectedMessage?: string
 }
 
 const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
@@ -14,6 +16,8 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
     selectedIds,
     onChange,
     disabled,
+    emptyMessage = 'No accounts available. Create an account first to scope this budget.',
+    allSelectedMessage = 'Expenses from all accounts count toward this budget.',
 }) => {
     const allSelected = accounts.length > 0 && selectedIds.length === 0
 
@@ -43,11 +47,7 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
         allSelected || selectedIds.includes(accountId)
 
     if (accounts.length === 0) {
-        return (
-            <p className="text-xs text-amber-400">
-                No accounts available. Create an account first to scope this budget.
-            </p>
-        )
+        return <p className="text-xs text-warning">{emptyMessage}</p>
     }
 
     return (
@@ -58,13 +58,13 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
                     checked={allSelected}
                     onChange={toggleAll}
                     disabled={disabled}
-                    className="rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-500/40"
+                    className="rounded border-border bg-surface text-accent focus:ring-accent/30"
                 />
-                <span className="text-sm text-slate-300 group-hover:text-slate-200">
+                <span className="text-sm text-fg-secondary group-hover:text-fg">
                     All accounts
                 </span>
             </label>
-            <div className="ml-1 space-y-1.5 border-l border-slate-800 pl-3">
+            <div className="ml-1 space-y-1.5 border-l border-border-subtle pl-3">
                 {accounts.map((account) => (
                     <label
                         key={account._id}
@@ -76,21 +76,21 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
                                 checked={isAccountSelected(account._id)}
                                 onChange={() => toggleAccount(account._id)}
                                 disabled={disabled || allSelected}
-                                className="rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-500/40 disabled:opacity-50"
+                                className="rounded border-border bg-surface text-accent focus:ring-accent/30 disabled:opacity-50"
                             />
-                            <span className="text-sm text-slate-300 truncate group-hover:text-slate-200">
+                            <span className="text-sm text-fg-secondary truncate group-hover:text-fg">
                                 {account.name}
                             </span>
                         </span>
-                        <span className="text-[11px] text-slate-500 shrink-0">
+                        <span className="text-[11px] text-fg-muted shrink-0">
                             {formatCurrency(account.currentBalance, account.currency)}
                         </span>
                     </label>
                 ))}
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-fg-muted">
                 {allSelected
-                    ? 'Expenses from all accounts count toward this budget.'
+                    ? allSelectedMessage
                     : selectedIds.length === 0
                       ? 'Select at least one account, or check "All accounts".'
                       : `${selectedIds.length} account${selectedIds.length === 1 ? '' : 's'} selected.`}

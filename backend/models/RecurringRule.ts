@@ -1,4 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
+
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
 import { TRANSACTION_TYPES, TransactionType } from './Transaction'
 
@@ -31,6 +33,7 @@ export interface IRecurringRule extends Document {
     tags?: string[]
     isActive: boolean
     isArchived: boolean
+    isCancelled: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -60,12 +63,15 @@ const RecurringRuleSchema = new Schema<IRecurringRule>(
         tags: [{ type: String, trim: true }],
         isActive: { type: Boolean, default: true },
         isArchived: { type: Boolean, default: false },
+        isCancelled: { type: Boolean, default: false },
     },
     { timestamps: true }
 )
 
 RecurringRuleSchema.index({ userId: 1, nextDueDate: 1 })
 RecurringRuleSchema.index({ userId: 1, isArchived: 1, isActive: 1 })
+
+applyRowLevelSecurity(RecurringRuleSchema, { supportsWorkspace: true })
 
 const RecurringRule: Model<IRecurringRule> = mongoose.model<IRecurringRule>(
     'RecurringRule',

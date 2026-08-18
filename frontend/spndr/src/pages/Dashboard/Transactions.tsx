@@ -1,8 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import dayjs from 'dayjs'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoPencil, IoSearch, IoSwapHorizontal, IoTrash } from 'react-icons/io5'
-import { useSearchParams } from 'react-router-dom'
+import { IoAdd, IoDownload, IoPencil, IoSearch, IoSwapHorizontal, IoTrash, IoCloudUploadOutline } from 'react-icons/io5'
+import { Link, useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
@@ -10,11 +9,14 @@ import Pagination from '../../components/ui/Pagination'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import FormField, { TextAreaField } from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
+import TagPicker from '../../components/tags/TagPicker'
+import TagChip from '../../components/tags/TagChip'
 import AccountPicker from '../../components/accounts/AccountPicker'
 import ReceiptAttachments from '../../components/transactions/ReceiptAttachments'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
 import type {
     Account,
     ApiResponse,
@@ -24,6 +26,7 @@ import type {
     PaginatedTransactions,
     Receipt,
     SplitLineFormData,
+    Tag,
     Transaction,
     TransactionFormData,
     TransactionType,
@@ -32,10 +35,21 @@ import type {
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency, toDateInputValue } from '../../utils/format'
+import { formatCurrency, formatDisplayDate, toDateInputValue } from '../../utils/format'
 import { attachReceiptToTransaction, uploadReceipt } from '../../utils/receiptApi'
-
-const PAGE_LIMIT = 10
+import { useWorkspace } from '../../hooks/useWorkspace'
+import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
+import QuickAddDropdown from '../../components/transactions/QuickAddDropdown'
+import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
+import {
+    buildExportFilename,
+    downloadExportBlob,
+    ensureExportBlob,
+    EXPORT_FORMAT_OPTIONS,
+    TRANSACTION_EXPORT_TYPE_OPTIONS,
+    type ExportFormat,
+    type TransactionExportType,
+} from '../../utils/downloadExport'
 
 type TypeFilter = '' | 'income' | 'expense' | 'transfer'
 type SortField = 'date' | 'amount' | 'category'
@@ -60,7 +74,7 @@ const emptyForm = (type: 'income' | 'expense' = 'expense'): TransactionFormData 
     description: '',
     source: '',
     paymentMethod: '',
-    tags: '',
+    tags: [],
     splitEnabled: false,
     splits: [emptySplitLine(), emptySplitLine()],
 })
@@ -87,8 +101,16 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
     { value: 'category', label: 'Category' },
 ]
 
+const transactionUserLabel = (type: TransactionType, name: string): string => {
+    if (type === 'income') return `Received by ${name}`
+    if (type === 'expense') return `Paid by ${name}`
+    return `By ${name}`
+}
+
 const Transactions = () => {
+    const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const [searchParams, setSearchParams] = useSearchParams()
+    const pageSize = usePageSize()
 
     const initialType = (searchParams.get('type') as TypeFilter) || ''
     const [page, setPage] = useState(1)
@@ -104,6 +126,7 @@ const Transactions = () => {
     const [dateFilterActive, setDateFilterActive] = useState(false)
     const [sortBy, setSortBy] = useState<SortField>('date')
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+    const [tagFilter, setTagFilter] = useState<string[]>([])
 
     const [formOpen, setFormOpen] = useState(false)
     const [transferOpen, setTransferOpen] = useState(false)
@@ -121,19 +144,30 @@ const Transactions = () => {
     const [bulkSubmitting, setBulkSubmitting] = useState(false)
     const [attachedReceipts, setAttachedReceipts] = useState<Receipt[]>([])
     const [pendingReceiptFiles, setPendingReceiptFiles] = useState<File[]>([])
+    const [exportType, setExportType] = useState<TransactionExportType>('both')
+    const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
+    const [exportStartDate, setExportStartDate] = useState('')
+    const [exportEndDate, setExportEndDate] = useState('')
+    const [exporting, setExporting] = useState(false)
+    const [advancedOpen, setAdvancedOpen] = useState(false)
 
     const fetchLookups = useCallback(async () => {
-        const [accountsRes, categoriesRes] = await Promise.all([
-            axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL),
+        const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
+        const [accountsRes, categoriesRes, tagsRes] = await Promise.all([
+            axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
+                params: workspaceParams,
+            }),
             axiosInstance.get<ApiResponse<CategoriesResponse>>(API_PATHS.CATEGORIES.GET_ALL),
+            axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL),
         ])
         return {
             accounts: unwrapApiData(accountsRes),
             categories: unwrapApiData(categoriesRes),
+            tags: unwrapApiData(tagsRes),
         }
-    }, [])
+    }, [activeWorkspaceId])
 
-    const { data: lookups } = useAsyncData(fetchLookups, [fetchLookups])
+    const { data: lookups, refetch: refetchLookups } = useAsyncData(fetchLookups, [fetchLookups])
 
     const categoryNameById = useMemo(() => {
         const map = new Map<string, string>()
@@ -152,6 +186,17 @@ const Transactions = () => {
         if (!lookups) return map
         for (const account of lookups.accounts) {
             map.set(account._id, account.name)
+        }
+        return map
+    }, [lookups])
+
+    const tagColorByName = useMemo(() => {
+        const map = new Map<string, string>()
+        if (!lookups) return map
+        for (const tag of lookups.tags) {
+            const color = tag.color ?? '#6b7280'
+            map.set(tag.name, color)
+            map.set(tag.name.toLowerCase(), color)
         }
         return map
     }, [lookups])
@@ -178,13 +223,21 @@ const Transactions = () => {
         [lookups]
     )
 
+    useEffect(() => {
+        setPage(1)
+        setSelectedIds([])
+    }, [pageSize, activeWorkspaceId, tagFilter])
+
     const fetchTransactions = useCallback(async (): Promise<TransactionsPageData> => {
         try {
+            const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
             const sharedParams: Record<string, string> = {
                 sortBy,
                 sortOrder,
+                ...workspaceParams,
             }
             if (typeFilter) sharedParams.type = typeFilter
+            if (tagFilter.length > 0) sharedParams.tags = tagFilter.join(',')
 
             if (searchQuery.trim()) {
                 const response = await axiosInstance.get<ApiResponse<Transaction[]>>(
@@ -204,14 +257,26 @@ const Transactions = () => {
 
             const response = await axiosInstance.get<ApiResponse<PaginatedTransactions>>(
                 API_PATHS.TRANSACTIONS.GET_ALL,
-                { params: { page, limit: PAGE_LIMIT, ...sharedParams } }
+                { params: { page, limit: pageSize, ...sharedParams } }
             )
             const payload = unwrapApiData(response)
             return { items: payload.data, meta: payload.meta, mode: 'list' }
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load transactions'))
         }
-    }, [page, typeFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder])
+    }, [
+        page,
+        pageSize,
+        typeFilter,
+        searchQuery,
+        dateFilterActive,
+        startDate,
+        endDate,
+        sortBy,
+        sortOrder,
+        activeWorkspaceId,
+        tagFilter,
+    ])
 
     const { data, loading, error, refetch } = useAsyncData(fetchTransactions, [fetchTransactions])
 
@@ -260,7 +325,7 @@ const Transactions = () => {
             description: item.description ?? '',
             source: item.source ?? '',
             paymentMethod: item.paymentMethod ?? '',
-            tags: item.tags?.join(', ') ?? '',
+            tags: item.tags ?? [],
             splitEnabled: false,
             splits: [emptySplitLine(), emptySplitLine()],
         })
@@ -311,7 +376,53 @@ const Transactions = () => {
         setStartDate('')
         setEndDate('')
         setDateFilterActive(false)
+        setTagFilter([])
         setPage(1)
+    }
+
+    const toggleTagFilter = (tagName: string) => {
+        setTagFilter((current) =>
+            current.includes(tagName)
+                ? current.filter((tag) => tag !== tagName)
+                : [...current, tagName]
+        )
+        setPage(1)
+    }
+
+    const handleExport = async () => {
+        if ((exportStartDate && !exportEndDate) || (!exportStartDate && exportEndDate)) {
+            toast.error('Both export start and end dates are required when filtering by date')
+            return
+        }
+
+        setExporting(true)
+        try {
+            const params: Record<string, string> = {
+                type: exportType,
+                format: exportFormat,
+                ...buildWorkspaceQueryParams(activeWorkspaceId),
+            }
+
+            if (exportStartDate && exportEndDate) {
+                params.startDate = exportStartDate
+                params.endDate = exportEndDate
+            }
+
+            const blobData = await axiosInstance.get<Blob>(API_PATHS.TRANSACTIONS.DOWNLOAD, {
+                params,
+                responseType: 'blob',
+            })
+
+            const blob = ensureExportBlob(blobData, exportFormat)
+            const dateSuffix =
+                exportStartDate && exportEndDate ? `-${exportStartDate}-${exportEndDate}` : ''
+            downloadExportBlob(blob, buildExportFilename(`transactions${dateSuffix}`, exportFormat))
+            toast.success('Transactions exported')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to export transactions'))
+        } finally {
+            setExporting(false)
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -350,6 +461,7 @@ const Transactions = () => {
             date: form.date,
             accountId: form.accountId,
             description: form.description.trim() || undefined,
+            ...buildWorkspaceBodyFields(activeWorkspaceId),
         }
 
         if (usingSplits) {
@@ -365,11 +477,7 @@ const Transactions = () => {
             payload.source = form.source.trim() || undefined
         } else {
             payload.paymentMethod = form.paymentMethod.trim() || undefined
-            const tags = form.tags
-                .split(',')
-                .map((t) => t.trim())
-                .filter(Boolean)
-            if (tags.length > 0) payload.tags = tags
+            if (form.tags.length > 0) payload.tags = form.tags
         }
 
         setSubmitting(true)
@@ -438,6 +546,7 @@ const Transactions = () => {
                     fromAccountId: transferForm.fromAccountId,
                     toAccountId: transferForm.toAccountId,
                     description: transferForm.description.trim() || undefined,
+                    ...buildWorkspaceBodyFields(activeWorkspaceId),
                 }
             )
             toast.success('Transfer completed')
@@ -571,11 +680,13 @@ const Transactions = () => {
         )
     }, [data, selectedIds])
 
-    const hasActiveFilters = Boolean(searchQuery || dateFilterActive)
+    const hasActiveFilters = Boolean(searchQuery || dateFilterActive || tagFilter.length > 0)
+    const hasAdvancedFilters = Boolean(dateFilterActive || tagFilter.length > 0)
+    const hasNonDefaultSort = sortBy !== 'date' || sortOrder !== 'desc'
 
     const amountColor = (type: TransactionType): string => {
-        if (type === 'income') return 'text-cyan-400'
-        if (type === 'expense') return 'text-rose-400'
+        if (type === 'income') return 'text-accent'
+        if (type === 'expense') return 'text-expense'
         return 'text-violet-400'
     }
 
@@ -589,36 +700,52 @@ const Transactions = () => {
         <div>
             <PageHeader
                 title="Transactions"
-                description="Unified income, expense, and transfer ledger"
+                description={
+                    isPersonal
+                        ? 'Unified income, expense, and transfer ledger'
+                        : `Shared ledger in ${activeWorkspace?.name ?? 'workspace'}`
+                }
                 actions={
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => openCreate('income')}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 transition-colors"
-                        >
-                            <IoAdd size={16} />
-                            Income
-                        </button>
-                        <button
-                            type="button"
-                            onClick={openTransfer}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 transition-colors"
-                        >
-                            <IoSwapHorizontal size={16} />
-                            Transfer
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => openCreate('expense')}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
-                        >
-                            <IoAdd size={18} />
-                            Expense
-                        </button>
-                    </div>
+                    canEdit ? (
+                        <div className="flex items-center gap-2">
+                            <QuickAddDropdown onApplied={() => void refetch()} />
+                            <Link
+                                to="/transactions/import"
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <IoCloudUploadOutline size={16} />
+                                Import
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => openCreate('income')}
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <IoAdd size={16} />
+                                Income
+                            </button>
+                            <button
+                                type="button"
+                                onClick={openTransfer}
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <IoSwapHorizontal size={16} />
+                                Transfer
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => openCreate('expense')}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                            >
+                                <IoAdd size={18} />
+                                Expense
+                            </button>
+                        </div>
+                    ) : undefined
                 }
             />
+
+            <WorkspaceReadOnlyBanner />
 
             <div className="card mb-4 space-y-4">
                 <div className="flex flex-wrap gap-2">
@@ -630,8 +757,8 @@ const Transactions = () => {
                             className={[
                                 'px-3 py-1.5 text-sm rounded-lg border transition-colors',
                                 typeFilter === tab.value
-                                    ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
-                                    : 'border-slate-700 text-slate-400 hover:border-slate-600',
+                                    ? 'border-accent/40 bg-accent-subtle text-accent'
+                                    : 'border-border text-fg-muted hover:border-border',
                             ].join(' ')}
                         >
                             {tab.label}
@@ -639,10 +766,10 @@ const Transactions = () => {
                     ))}
                 </div>
 
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1 relative">
+                <form onSubmit={handleSearch} className="flex items-center gap-2">
+                    <div className="relative flex-1 min-w-0">
                         <IoSearch
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted"
                             size={16}
                         />
                         <input
@@ -650,16 +777,85 @@ const Transactions = () => {
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             placeholder="Search by title, description, amount..."
-                            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700 text-slate-200 placeholder:text-slate-500 outline-none focus:border-cyan-500/40"
+                            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-surface/60 border border-border text-fg placeholder:text-fg-muted outline-none focus:border-accent/40"
                         />
                     </div>
                     <button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 transition-colors"
+                        className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors"
                     >
                         Search
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdvancedOpen((open) => !open)}
+                        aria-expanded={advancedOpen}
+                        className={[
+                            'shrink-0 px-4 py-2 text-sm font-medium rounded-lg border transition-colors',
+                            advancedOpen || hasAdvancedFilters || hasNonDefaultSort
+                                ? 'border-accent/40 bg-accent-subtle text-accent'
+                                : 'border-border text-fg-secondary hover:border-accent/40',
+                        ].join(' ')}
+                    >
+                        Advanced features
+                    </button>
                 </form>
+
+                {searchQuery && !advancedOpen && (
+                    <div className="flex items-center justify-between text-xs text-fg-muted">
+                        <span>Showing search results for &quot;{searchQuery}&quot;</span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSearchInput('')
+                                setSearchQuery('')
+                                setPage(1)
+                            }}
+                            className="text-accent hover:text-accent"
+                        >
+                            Clear search
+                        </button>
+                    </div>
+                )}
+
+                {hasAdvancedFilters && !advancedOpen && (
+                    <div className="flex items-center justify-between text-xs text-fg-muted">
+                        <span>Advanced filters are active</span>
+                        <button
+                            type="button"
+                            onClick={() => setAdvancedOpen(true)}
+                            className="text-accent hover:text-accent"
+                        >
+                            Show filters
+                        </button>
+                    </div>
+                )}
+
+                {advancedOpen && (
+                    <div className="space-y-4 pt-4 border-t border-border-subtle">
+                {(lookups?.tags.length ?? 0) > 0 && (
+                    <div>
+                        <label className="text-[13px] text-fg-secondary">Filter by tags</label>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {lookups?.tags.map((tag) => {
+                                const active = tagFilter.includes(tag.name)
+                                return (
+                                    <button
+                                        key={tag._id}
+                                        type="button"
+                                        onClick={() => toggleTagFilter(tag.name)}
+                                        className={[
+                                            'rounded-full transition-opacity',
+                                            active ? 'ring-2 ring-accent/50 ring-offset-1 ring-offset-page' : 'opacity-70 hover:opacity-100',
+                                        ].join(' ')}
+                                    >
+                                        <TagChip name={tag.name} color={tag.color} />
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex flex-col lg:flex-row gap-3 lg:items-end">
                     <FormField
@@ -677,13 +873,13 @@ const Transactions = () => {
                     <button
                         type="button"
                         onClick={handleApplyDateFilter}
-                        className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 transition-colors h-[42px]"
+                        className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors h-[42px]"
                     >
                         Apply dates
                     </button>
                     <div className="flex gap-3 lg:ml-auto">
                         <div>
-                            <label className="text-[13px] text-slate-300">Sort by</label>
+                            <label className="text-[13px] text-fg-secondary">Sort by</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={sortBy}
@@ -691,10 +887,10 @@ const Transactions = () => {
                                         setSortBy(e.target.value as SortField)
                                         setPage(1)
                                     }}
-                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[120px]"
+                                    className="w-full bg-transparent outline-none text-fg min-w-[120px]"
                                 >
                                     {SORT_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value} className="bg-slate-900">
+                                        <option key={opt.value} value={opt.value} className="bg-surface">
                                             {opt.label}
                                         </option>
                                     ))}
@@ -702,7 +898,7 @@ const Transactions = () => {
                             </div>
                         </div>
                         <div>
-                            <label className="text-[13px] text-slate-300">Order</label>
+                            <label className="text-[13px] text-fg-secondary">Order</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={sortOrder}
@@ -710,12 +906,12 @@ const Transactions = () => {
                                         setSortOrder(e.target.value as SortOrder)
                                         setPage(1)
                                     }}
-                                    className="w-full bg-transparent outline-none text-slate-200 min-w-[100px]"
+                                    className="w-full bg-transparent outline-none text-fg min-w-[100px]"
                                 >
-                                    <option value="desc" className="bg-slate-900">
+                                    <option value="desc" className="bg-surface">
                                         Desc
                                     </option>
-                                    <option value="asc" className="bg-slate-900">
+                                    <option value="asc" className="bg-surface">
                                         Asc
                                     </option>
                                 </select>
@@ -725,7 +921,7 @@ const Transactions = () => {
                 </div>
 
                 {hasActiveFilters && (
-                    <div className="flex items-center justify-between text-xs text-slate-500">
+                    <div className="flex items-center justify-between text-xs text-fg-muted">
                         <span>
                             {searchQuery
                                 ? `Showing search results for "${searchQuery}"`
@@ -734,10 +930,80 @@ const Transactions = () => {
                         <button
                             type="button"
                             onClick={clearFilters}
-                            className="text-cyan-400 hover:text-cyan-300"
+                            className="text-accent hover:text-accent"
                         >
                             Clear filters
                         </button>
+                    </div>
+                )}
+
+                <div className="border-t border-border-subtle pt-4 space-y-3">
+                    <div>
+                        <h3 className="text-sm font-medium text-fg">Export transactions</h3>
+                        <p className="text-xs text-fg-muted mt-1">
+                            Download filtered transactions as CSV, JSON, or PDF
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row gap-3 lg:items-end">
+                        <div>
+                            <label className="text-[13px] text-fg-secondary">Include</label>
+                            <div className="input-box mb-0 mt-1">
+                                <select
+                                    value={exportType}
+                                    onChange={(e) => setExportType(e.target.value as TransactionExportType)}
+                                    className="w-full bg-transparent outline-none text-fg min-w-[160px]"
+                                >
+                                    {TRANSACTION_EXPORT_TYPE_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value} className="bg-surface">
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <FormField
+                            label="Export from"
+                            type="date"
+                            value={exportStartDate}
+                            onChange={setExportStartDate}
+                        />
+                        <FormField
+                            label="Export to"
+                            type="date"
+                            value={exportEndDate}
+                            onChange={setExportEndDate}
+                        />
+
+                        <div>
+                            <label className="text-[13px] text-fg-secondary">Format</label>
+                            <div className="input-box mb-0 mt-1">
+                                <select
+                                    value={exportFormat}
+                                    onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                                    className="w-full bg-transparent outline-none text-fg min-w-[100px]"
+                                >
+                                    {EXPORT_FORMAT_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value} className="bg-surface">
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleExport}
+                            disabled={exporting}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-accent/30 text-accent hover:bg-accent-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[42px]"
+                        >
+                            <IoDownload size={16} />
+                            {exporting ? 'Exporting...' : 'Download'}
+                        </button>
+                    </div>
+                </div>
                     </div>
                 )}
             </div>
@@ -754,9 +1020,9 @@ const Transactions = () => {
             >
                 {(result) => (
                     <>
-                        {selectedIds.length > 0 && (
+                        {canEdit && selectedIds.length > 0 && (
                             <div className="card mb-3 flex flex-wrap items-center justify-between gap-3">
-                                <p className="text-sm text-slate-300">
+                                <p className="text-sm text-fg-secondary">
                                     {selectedIds.length} selected
                                 </p>
                                 <div className="flex flex-wrap gap-2">
@@ -764,7 +1030,7 @@ const Transactions = () => {
                                         type="button"
                                         onClick={() => setBulkCategoryOpen(true)}
                                         disabled={selectedHasTransfer}
-                                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-border text-fg-secondary hover:border-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
                                         title={
                                             selectedHasTransfer
                                                 ? 'Transfers cannot be bulk recategorized'
@@ -776,14 +1042,14 @@ const Transactions = () => {
                                     <button
                                         type="button"
                                         onClick={() => setBulkDeleteOpen(true)}
-                                        className="px-3 py-1.5 text-sm rounded-lg border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                                        className="px-3 py-1.5 text-sm rounded-lg border border-negative/30 text-expense hover:bg-expense/10"
                                     >
                                         Delete selected
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setSelectedIds([])}
-                                        className="px-3 py-1.5 text-sm rounded-lg text-slate-400 hover:text-slate-300"
+                                        className="px-3 py-1.5 text-sm rounded-lg text-fg-muted hover:text-fg-secondary"
                                     >
                                         Clear
                                     </button>
@@ -791,13 +1057,13 @@ const Transactions = () => {
                             </div>
                         )}
 
-                        {result.items.length > 0 && (
-                            <label className="flex items-center gap-2 mb-2 text-xs text-slate-500 px-1">
+                        {canEdit && result.items.length > 0 && (
+                            <label className="flex items-center gap-2 mb-2 text-xs text-fg-muted px-1">
                                 <input
                                     type="checkbox"
                                     checked={allVisibleSelected}
                                     onChange={toggleSelectAllVisible}
-                                    className="rounded border-slate-600 bg-slate-900"
+                                    className="rounded border-border bg-surface"
                                 />
                                 Select all on this page
                             </label>
@@ -807,40 +1073,59 @@ const Transactions = () => {
                             {result.items.map((item) => (
                                 <div key={item._id} className="card flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.includes(item._id)}
-                                            onChange={() => toggleSelected(item._id)}
-                                            className="rounded border-slate-600 bg-slate-900 shrink-0"
-                                            aria-label={`Select ${item.title}`}
-                                        />
+                                        {canEdit && (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(item._id)}
+                                                onChange={() => toggleSelected(item._id)}
+                                                className="rounded border-border bg-surface shrink-0"
+                                                aria-label={`Select ${item.title}`}
+                                            />
+                                        )}
                                         <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <p className="text-sm font-medium text-slate-200 truncate">
+                                            <p className="text-sm font-medium text-fg truncate">
                                                 {item.title}
                                             </p>
                                             <span
                                                 className={[
                                                     'text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border',
                                                     item.type === 'income'
-                                                        ? 'border-cyan-500/30 text-cyan-400'
+                                                        ? 'border-accent/30 text-accent'
                                                         : item.type === 'expense'
-                                                          ? 'border-rose-500/30 text-rose-400'
-                                                          : 'border-violet-500/30 text-violet-400',
+                                                          ? 'border-negative/30 text-expense'
+                                                          : 'border-accent/30 text-accent',
                                                 ].join(' ')}
                                             >
                                                 {item.type}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-slate-500 mt-0.5">
-                                            {dayjs(item.date).format('MMM D, YYYY')}
+                                        <p className="text-xs text-fg-muted mt-0.5">
+                                            {formatDisplayDate(item.date)}
                                             {categoryNameById.get(item.categoryId)
                                                 ? ` · ${categoryNameById.get(item.categoryId)}`
                                                 : ''}
                                             {accountNameById.get(item.accountId)
                                                 ? ` · ${accountNameById.get(item.accountId)}`
                                                 : ''}
+                                            {!isPersonal && item.userFullName
+                                                ? ` · ${transactionUserLabel(item.type, item.userFullName)}`
+                                                : ''}
                                         </p>
+                                        {item.tags && item.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {item.tags.map((tag) => (
+                                                    <TagChip
+                                                        key={`${item._id}-${tag}`}
+                                                        name={tag}
+                                                        color={
+                                                            tagColorByName.get(tag) ??
+                                                            tagColorByName.get(tag.toLowerCase())
+                                                        }
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
@@ -848,24 +1133,26 @@ const Transactions = () => {
                                             {amountPrefix(item.type)}
                                             {formatCurrency(item.amount, item.currency)}
                                         </p>
-                                        {item.type !== 'transfer' && (
+                                        {canEdit && item.type !== 'transfer' && (
                                             <button
                                                 type="button"
                                                 onClick={() => openEdit(item)}
-                                                className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                 aria-label="Edit transaction"
                                             >
                                                 <IoPencil size={16} />
                                             </button>
                                         )}
-                                        <button
-                                            type="button"
-                                            onClick={() => setDeleteTarget(item)}
-                                            className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
-                                            aria-label="Delete transaction"
-                                        >
-                                            <IoTrash size={16} />
-                                        </button>
+                                        {canEdit && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setDeleteTarget(item)}
+                                                className="p-1.5 text-fg-muted hover:text-expense transition-colors"
+                                                aria-label="Delete transaction"
+                                            >
+                                                <IoTrash size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -897,7 +1184,7 @@ const Transactions = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {!editingId && (
                         <div>
-                            <label className="text-[13px] text-slate-300">Type</label>
+                            <label className="text-[13px] text-fg-secondary">Type</label>
                             <div className="input-box mb-0 mt-1">
                                 <select
                                     value={form.type}
@@ -909,12 +1196,12 @@ const Transactions = () => {
                                         }))
                                     }
                                     disabled={submitting}
-                                    className="w-full bg-transparent outline-none text-slate-200"
+                                    className="w-full bg-transparent outline-none text-fg"
                                 >
-                                    <option value="income" className="bg-slate-900">
+                                    <option value="income" className="bg-surface">
                                         Income
                                     </option>
-                                    <option value="expense" className="bg-slate-900">
+                                    <option value="expense" className="bg-surface">
                                         Expense
                                     </option>
                                 </select>
@@ -958,7 +1245,7 @@ const Transactions = () => {
                         disabled={submitting}
                     />
                     {form.type === 'expense' && !editingId && (
-                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                        <label className="flex items-center gap-2 text-sm text-fg-secondary">
                             <input
                                 type="checkbox"
                                 checked={form.splitEnabled}
@@ -970,20 +1257,20 @@ const Transactions = () => {
                                     }))
                                 }
                                 disabled={submitting}
-                                className="rounded border-slate-600 bg-slate-900"
+                                className="rounded border-border bg-surface"
                             />
                             Split across categories
                         </label>
                     )}
                     {form.splitEnabled && form.type === 'expense' && !editingId ? (
-                        <div className="space-y-3 rounded-lg border border-slate-700 p-3">
+                        <div className="space-y-3 rounded-lg border border-border p-3">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm text-slate-300">Split lines</p>
+                                <p className="text-sm text-fg-secondary">Split lines</p>
                                 <button
                                     type="button"
                                     onClick={addSplitLine}
                                     disabled={submitting}
-                                    className="text-xs text-cyan-400 hover:text-cyan-300"
+                                    className="text-xs text-accent hover:text-accent"
                                 >
                                     + Add line
                                 </button>
@@ -1014,7 +1301,7 @@ const Transactions = () => {
                                             type="button"
                                             onClick={() => removeSplitLine(index)}
                                             disabled={submitting}
-                                            className="p-2 text-slate-500 hover:text-rose-400"
+                                            className="p-2 text-fg-muted hover:text-expense"
                                             aria-label="Remove split line"
                                         >
                                             <IoTrash size={14} />
@@ -1025,7 +1312,7 @@ const Transactions = () => {
                             <p
                                 className={[
                                     'text-xs',
-                                    Math.abs(splitDiff) < 0.001 ? 'text-slate-500' : 'text-amber-400',
+                                    Math.abs(splitDiff) < 0.001 ? 'text-fg-muted' : 'text-warning',
                                 ].join(' ')}
                             >
                                 Split total: {splitTotal.toFixed(2)}
@@ -1061,11 +1348,11 @@ const Transactions = () => {
                                 placeholder="Card, cash, UPI, etc."
                                 disabled={submitting}
                             />
-                            <FormField
-                                label="Tags"
+                            <TagPicker
                                 value={form.tags}
-                                onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
-                                placeholder="Comma-separated tags"
+                                onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+                                tagsData={lookups?.tags}
+                                onTagsChange={refetchLookups}
                                 disabled={submitting}
                             />
                         </>
@@ -1092,14 +1379,14 @@ const Transactions = () => {
                             type="button"
                             onClick={closeForm}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : editingId ? 'Update' : 'Add transaction'}
                         </button>
@@ -1168,14 +1455,14 @@ const Transactions = () => {
                             type="button"
                             onClick={closeTransfer}
                             disabled={transferSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={transferSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-violet-500 text-white hover:bg-violet-400 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 btn-accent disabled:opacity-50"
                         >
                             {transferSubmitting ? 'Transferring...' : 'Transfer'}
                         </button>
@@ -1215,7 +1502,7 @@ const Transactions = () => {
                 size="md"
             >
                 <form onSubmit={handleBulkCategoryChange} className="space-y-4">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-fg-muted">
                         Apply a new category to {selectedIds.length} selected transaction
                         {selectedIds.length === 1 ? '' : 's'}. Transfers are excluded.
                     </p>
@@ -1234,14 +1521,14 @@ const Transactions = () => {
                                 setBulkCategoryId('')
                             }}
                             disabled={bulkSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={bulkSubmitting || !bulkCategoryId}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {bulkSubmitting ? 'Updating...' : 'Update category'}
                         </button>

@@ -38,19 +38,19 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, size = 'm
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
             <div
-                className={`relative flex w-full max-h-[min(90vh,calc(100dvh-2rem))] flex-col ${sizeClasses[size]} overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl`}
+                className={`relative flex w-full max-h-[min(90vh,calc(100dvh-2rem))] flex-col ${sizeClasses[size]} overflow-hidden rounded-lg border border-border bg-surface-2 shadow-xl shadow-black/40`}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-title"
             >
-                <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-5 py-4">
-                    <h2 id="modal-title" className="text-base font-semibold text-slate-100">
+                <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-5 py-4">
+                    <h2 id="modal-title" className="font-display text-base font-semibold text-text-primary">
                         {title}
                     </h2>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-200 transition-colors"
+                        className="text-text-muted hover:text-text-primary transition-colors"
                         aria-label="Close"
                     >
                         <IoClose size={20} />

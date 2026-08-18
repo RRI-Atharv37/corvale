@@ -37,10 +37,16 @@ The dashboard header shows:
 - **Title:** Dashboard
 - **Description:** "Overview for [your full name]"
 
+## Beyond the dashboard
+
+For deeper charts and custom analysis, see the [Reports](../reports/overview.md) page. For alerts about budgets, bills, and goals, see [Notifications](../notifications/overview.md).
+
 ## Related pages
 
 - [Summary Cards](./summary-cards.md)
 - [Quick Links](./quick-links.md)
 - [Budgets Overview](../budgets/overview.md)
 - [Savings Goals Overview](../savings-goals/overview.md)
+- [Reports Overview](../reports/overview.md)
+- [Notifications Overview](../notifications/overview.md)
 - [How Balances Are Calculated](../balances/how-balances-are-calculated.md)

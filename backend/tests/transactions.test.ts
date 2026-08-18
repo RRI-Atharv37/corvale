@@ -371,6 +371,110 @@ describe('Transactions', () => {
         expect(res.text).toContain('100.00')
     })
 
+    it('exports transactions as JSON with type and date filters', async () => {
+        const { token } = await seedUserDirectly({ email: 'tx-export-json@example.com' })
+        const account = await createTestAccount(token)
+        const incomeCategoryId = await getIncomeMasterId(token)
+        const expenseCategoryId = await getFoodMasterId(token)
+
+        await createTestTransaction(token, {
+            type: 'income',
+            title: 'Salary',
+            amount: 200,
+            date: '2026-01-10T12:00:00.000Z',
+            accountId: account._id,
+            categoryId: incomeCategoryId,
+        })
+
+        await createTestTransaction(token, {
+            type: 'expense',
+            title: 'Groceries',
+            amount: 40,
+            date: '2026-01-15T12:00:00.000Z',
+            accountId: account._id,
+            categoryId: expenseCategoryId,
+        })
+
+        const res = await request(app)
+            .get('/api/v1/transactions/download')
+            .query({
+                format: 'json',
+                type: 'expense',
+                startDate: '2026-01-01',
+                endDate: '2026-01-31',
+            })
+            .set(authHeader(token))
+
+        expect(res.status).toBe(200)
+        expect(res.headers['content-type']).toMatch(/application\/json/)
+        const payload = JSON.parse(res.text)
+        expect(payload.count).toBe(1)
+        expect(payload.transactions[0].title).toBe('Groceries')
+        expect(payload.filters.type).toBe('expense')
+    })
+
+    it('exports income and expense transactions when type is both', async () => {
+        const { token } = await seedUserDirectly({ email: 'tx-export-both@example.com' })
+        const account = await createTestAccount(token)
+        const incomeCategoryId = await getIncomeMasterId(token)
+        const expenseCategoryId = await getFoodMasterId(token)
+
+        await createTestTransaction(token, {
+            type: 'income',
+            title: 'Salary',
+            amount: 200,
+            date: '2026-01-10T12:00:00.000Z',
+            accountId: account._id,
+            categoryId: incomeCategoryId,
+        })
+
+        await createTestTransaction(token, {
+            type: 'expense',
+            title: 'Groceries',
+            amount: 40,
+            date: '2026-01-15T12:00:00.000Z',
+            accountId: account._id,
+            categoryId: expenseCategoryId,
+        })
+
+        const res = await request(app)
+            .get('/api/v1/transactions/download')
+            .query({ format: 'json', type: 'both' })
+            .set(authHeader(token))
+
+        expect(res.status).toBe(200)
+        const payload = JSON.parse(res.text)
+        expect(payload.count).toBe(2)
+        expect(payload.transactions.map((item: { type: string }) => item.type).sort()).toEqual([
+            'expense',
+            'income',
+        ])
+    })
+
+    it('exports transactions as PDF', async () => {
+        const { token } = await seedUserDirectly({ email: 'tx-export-pdf@example.com' })
+        const account = await createTestAccount(token)
+        const categoryId = await getIncomeMasterId(token)
+
+        await createTestTransaction(token, {
+            type: 'income',
+            title: 'Bonus',
+            amount: 100,
+            date: '2026-01-20T12:00:00.000Z',
+            accountId: account._id,
+            categoryId,
+        })
+
+        const res = await request(app)
+            .get('/api/v1/transactions/download')
+            .query({ format: 'pdf' })
+            .set(authHeader(token))
+
+        expect(res.status).toBe(200)
+        expect(res.headers['content-type']).toMatch(/application\/pdf/)
+        expect(res.body.subarray(0, 4).toString()).toBe('%PDF')
+    })
+
     it('returns 403 when accessing another user transaction', async () => {
         const owner = await seedUserDirectly({ email: 'tx-owner@example.com' })
         const other = await seedUserDirectly({ email: 'tx-other@example.com' })

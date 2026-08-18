@@ -14,10 +14,18 @@ import {
 } from 'recharts'
 import { IoDownload } from 'react-icons/io5'
 import PageHeader from '../../components/ui/PageHeader'
+import StatCard from '../../components/ui/StatCard'
 import AsyncContent from '../../components/ui/AsyncContent'
 import CustomReportBuilder from '../../components/reports/CustomReportBuilder'
 import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS, BASE_URL } from '../../utils/apiPaths'
+import { API_PATHS } from '../../utils/apiPaths'
+import {
+    buildExportFilename,
+    downloadExportBlob,
+    ensureExportBlob,
+    EXPORT_FORMAT_OPTIONS,
+    type ExportFormat,
+} from '../../utils/downloadExport'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import type {
     ApiResponse,
@@ -158,6 +166,7 @@ const Reports = () => {
     const [startDate, setStartDate] = useState(sixMonthsAgo)
     const [endDate, setEndDate] = useState(today)
     const [selectedMetrics, setSelectedMetrics] = useState<ReportMetricKey[]>(DEFAULT_METRICS)
+    const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
     const [exporting, setExporting] = useState(false)
     const [savedReportsKey, setSavedReportsKey] = useState(0)
 
@@ -309,7 +318,7 @@ const Reports = () => {
         )
     }
 
-    const handleExportCsv = async () => {
+    const handleExport = async () => {
         if (selectedMetrics.length === 0) {
             toast.error('Select at least one metric to export')
             return
@@ -321,22 +330,15 @@ const Reports = () => {
                 API_PATHS.REPORTS.GENERATE,
                 {
                     metrics: selectedMetrics,
-                    format: 'csv',
+                    format: exportFormat,
                     ...periodParams,
                 },
                 { responseType: 'blob' }
             )
 
-            const blob =
-                blobData instanceof Blob
-                    ? blobData
-                    : new Blob([blobData as unknown as BlobPart], { type: 'text/csv' })
-            const url = window.URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = `spndr-report-${periodDates.startDate}-${periodDates.endDate}.csv`
-            link.click()
-            window.URL.revokeObjectURL(url)
+            const blob = ensureExportBlob(blobData, exportFormat)
+            const baseName = `spndr-report-${periodDates.startDate}-${periodDates.endDate}`
+            downloadExportBlob(blob, buildExportFilename(baseName, exportFormat))
             toast.success('Report downloaded')
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to export report'))
@@ -368,8 +370,8 @@ const Reports = () => {
                             onClick={() => setPeriodType(type)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors capitalize ${
                                 periodType === type
-                                    ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
-                                    : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                                    ? 'border-accent/40 bg-accent-subtle text-accent'
+                                    : 'border-border bg-surface/40 text-fg-muted hover:border-border hover:text-fg'
                             }`}
                         >
                             {type}
@@ -429,34 +431,34 @@ const Reports = () => {
             >
                 {(reports) => (
                     <div className="space-y-6">
-                        <p className="text-xs text-slate-500">
-                            Showing reports for <span className="text-slate-300">{periodDescription}</span>
+                        <p className="text-xs text-fg-muted">
+                            Showing reports for <span className="text-fg-secondary">{periodDescription}</span>
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <MetricCard
+                            <StatCard
                                 label="Savings rate"
                                 value={`${reports.savingsRate.savingsRate.toFixed(1)}%`}
                                 subtitle={`${formatCurrency(reports.savingsRate.netSavings)} saved`}
-                                accent="cyan"
+                                accent="income"
                             />
-                            <MetricCard
+                            <StatCard
                                 label={`Avg ${reports.averages.unit === 'day' ? 'daily' : 'monthly'} income`}
                                 value={formatCurrency(reports.averages.averageIncome)}
                                 subtitle={`Across ${reports.averages.unitCount} ${reports.averages.unit}s`}
-                                accent="cyan"
+                                accent="income"
                             />
-                            <MetricCard
+                            <StatCard
                                 label={`Avg ${reports.averages.unit === 'day' ? 'daily' : 'monthly'} spending`}
                                 value={formatCurrency(reports.averages.averageExpenses)}
                                 subtitle={`Total ${formatCurrency(reports.averages.totalExpenses)}`}
-                                accent="rose"
+                                accent="expense"
                             />
-                            <MetricCard
+                            <StatCard
                                 label="Recurring (monthly eq.)"
                                 value={formatCurrency(reports.recurringTotals.totalMonthlyEquivalent)}
                                 subtitle={`${reports.recurringTotals.activeExpenseRules.length} active rules`}
-                                accent="violet"
+                                accent="accent"
                             />
                         </div>
 
@@ -494,10 +496,10 @@ const Reports = () => {
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             <div className="card">
-                                <h3 className="text-sm font-medium text-slate-200">Largest expenses</h3>
-                                <p className="text-xs text-slate-500 mt-1">Top posted expenses in this period</p>
+                                <h3 className="text-sm font-medium text-fg">Largest expenses</h3>
+                                <p className="text-xs text-fg-muted mt-1">Top posted expenses in this period</p>
                                 {reports.largestExpenses.expenses.length === 0 ? (
-                                    <p className="text-sm text-slate-500 mt-6 text-center py-8">
+                                    <p className="text-sm text-fg-muted mt-6 text-center py-8">
                                         No expenses in this period.
                                     </p>
                                 ) : (
@@ -508,15 +510,15 @@ const Reports = () => {
                                                 className="py-3 flex items-start justify-between gap-3"
                                             >
                                                 <div className="min-w-0">
-                                                    <p className="text-sm text-slate-200 truncate">
+                                                    <p className="text-sm text-fg truncate">
                                                         {index + 1}. {expense.title}
                                                     </p>
-                                                    <p className="text-xs text-slate-500 mt-0.5">
+                                                    <p className="text-xs text-fg-muted mt-0.5">
                                                         {expense.categoryName} ·{' '}
                                                         {formatContributionDate(expense.date)}
                                                     </p>
                                                 </div>
-                                                <p className="text-sm font-medium text-rose-300 shrink-0">
+                                                <p className="text-sm font-medium text-expense shrink-0">
                                                     {formatCurrency(expense.amount, expense.currency)}
                                                 </p>
                                             </li>
@@ -526,20 +528,20 @@ const Reports = () => {
                             </div>
 
                             <div className="card">
-                                <h3 className="text-sm font-medium text-slate-200">Recurring expense totals</h3>
-                                <p className="text-xs text-slate-500 mt-1">
+                                <h3 className="text-sm font-medium text-fg">Recurring expense totals</h3>
+                                <p className="text-xs text-fg-muted mt-1">
                                     Active rules normalized to monthly · posted recurring in period
                                 </p>
                                 <div className="mt-4 grid grid-cols-2 gap-3">
-                                    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                                        <p className="text-xs text-slate-500">Monthly equivalent</p>
+                                    <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                                        <p className="text-xs text-fg-muted">Monthly equivalent</p>
                                         <p className="text-lg font-semibold text-violet-300 mt-1">
                                             {formatCurrency(reports.recurringTotals.totalMonthlyEquivalent)}
                                         </p>
                                     </div>
-                                    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                                        <p className="text-xs text-slate-500">Posted in period</p>
-                                        <p className="text-lg font-semibold text-rose-300 mt-1">
+                                    <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                                        <p className="text-xs text-fg-muted">Posted in period</p>
+                                        <p className="text-lg font-semibold text-expense mt-1">
                                             {formatCurrency(
                                                 reports.recurringTotals.postedRecurringExpensesInPeriod
                                             )}
@@ -554,12 +556,12 @@ const Reports = () => {
                                                 className="py-2.5 flex items-center justify-between gap-3"
                                             >
                                                 <div>
-                                                    <p className="text-sm text-slate-200">{rule.title}</p>
-                                                    <p className="text-xs text-slate-500 capitalize">
+                                                    <p className="text-sm text-fg">{rule.title}</p>
+                                                    <p className="text-xs text-fg-muted capitalize">
                                                         {rule.interval} · {formatCurrency(rule.amount)}/occurrence
                                                     </p>
                                                 </div>
-                                                <p className="text-sm text-slate-300">
+                                                <p className="text-sm text-fg-secondary">
                                                     {formatCurrency(rule.monthlyEquivalent)}/mo
                                                 </p>
                                             </li>
@@ -601,40 +603,56 @@ const Reports = () => {
                         />
 
                         <div className="card">
-                            <h3 className="text-sm font-medium text-slate-200">Custom report export</h3>
-                            <p className="text-xs text-slate-500 mt-1">
-                                Choose metrics and download a CSV for {periodDescription}
+                            <h3 className="text-sm font-medium text-fg">Custom report export</h3>
+                            <p className="text-xs text-fg-muted mt-1">
+                                Choose metrics and download a report for {periodDescription}
                             </p>
 
                             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                                 {METRIC_OPTIONS.map((option) => (
                                     <label
                                         key={option.key}
-                                        className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"
+                                        className="flex items-center gap-2 text-sm text-fg-secondary cursor-pointer"
                                     >
                                         <input
                                             type="checkbox"
                                             checked={selectedMetrics.includes(option.key)}
                                             onChange={() => toggleMetric(option.key)}
-                                            className="rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500/30"
+                                            className="rounded border-border bg-surface text-accent focus:ring-accent/30"
                                         />
                                         {option.label}
                                     </label>
                                 ))}
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={handleExportCsv}
-                                disabled={exporting || selectedMetrics.length === 0}
-                                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <IoDownload size={16} />
-                                {exporting ? 'Exporting...' : 'Download CSV report'}
-                            </button>
-                            <p className="text-xs text-slate-600 mt-2">
-                                JSON generation available via {BASE_URL}{API_PATHS.REPORTS.GENERATE}
-                            </p>
+                            <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
+                                <div>
+                                    <label className="text-[13px] text-fg-secondary">Format</label>
+                                    <div className="input-box mb-0 mt-1">
+                                        <select
+                                            value={exportFormat}
+                                            onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                                            className="w-full bg-transparent outline-none text-fg min-w-[120px]"
+                                        >
+                                            {EXPORT_FORMAT_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value} className="bg-surface">
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleExport}
+                                    disabled={exporting || selectedMetrics.length === 0}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-accent-subtle text-accent border border-accent/30 hover:bg-accent-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[42px]"
+                                >
+                                    <IoDownload size={16} />
+                                    {exporting ? 'Exporting...' : 'Download report'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -642,27 +660,6 @@ const Reports = () => {
         </div>
     )
 }
-
-interface MetricCardProps {
-    label: string
-    value: string
-    subtitle: string
-    accent: 'cyan' | 'rose' | 'violet'
-}
-
-const accentClasses: Record<MetricCardProps['accent'], string> = {
-    cyan: 'border-cyan-500/20 bg-cyan-500/5',
-    rose: 'border-rose-500/20 bg-rose-500/5',
-    violet: 'border-violet-500/20 bg-violet-500/5',
-}
-
-const MetricCard: React.FC<MetricCardProps> = ({ label, value, subtitle, accent }) => (
-    <div className={`card ${accentClasses[accent]}`}>
-        <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-semibold text-slate-100 mt-2">{value}</p>
-        <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
-    </div>
-)
 
 const IncomeVsExpenseChart: React.FC<{ data: IncomeVsExpenseResponse }> = ({ data }) => {
     const chartData = [
@@ -673,8 +670,8 @@ const IncomeVsExpenseChart: React.FC<{ data: IncomeVsExpenseResponse }> = ({ dat
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Income vs expense</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="text-sm font-medium text-fg">Income vs expense</h3>
+            <p className="text-xs text-fg-muted mt-1">
                 Ratio {data.expenseToIncomeRatio.toFixed(2)} ·{' '}
                 {Math.round(data.incomeShare * 100)}% income / {Math.round(data.expenseShare * 100)}% expenses
             </p>
@@ -710,8 +707,8 @@ const SpendingTrendsChart: React.FC<{ data: SpendingTrendsResponse['trends'] }> 
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Spending trends</h3>
-            <p className="text-xs text-slate-500 mt-1">Month-over-month spending with change indicators</p>
+            <h3 className="text-sm font-medium text-fg">Spending trends</h3>
+            <p className="text-xs text-fg-muted mt-1">Month-over-month spending with change indicators</p>
             <div className="h-72 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={chartMargin}>
@@ -760,11 +757,11 @@ interface SelectFieldProps {
 
 const SelectField: React.FC<SelectFieldProps> = ({ label, value, onChange, options }) => (
     <label className="block">
-        <span className="text-xs text-slate-400">{label}</span>
+        <span className="text-xs text-fg-muted">{label}</span>
         <select
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/50"
+            className="mt-1 w-full rounded-lg border border-border bg-surface/80 px-3 py-2 text-sm text-fg outline-none focus:border-accent/40"
         >
             {options.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -783,44 +780,44 @@ interface DateFieldProps {
 
 const DateField: React.FC<DateFieldProps> = ({ label, value, onChange }) => (
     <label className="block">
-        <span className="text-xs text-slate-400">{label}</span>
+        <span className="text-xs text-fg-muted">{label}</span>
         <input
             type="date"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/50"
+            className="mt-1 w-full rounded-lg border border-border bg-surface/80 px-3 py-2 text-sm text-fg outline-none focus:border-accent/40"
         />
     </label>
 )
 
 const BudgetAnalysisSection: React.FC<{ data: BudgetAnalysisReport }> = ({ data }) => (
     <div className="card">
-        <h3 className="text-sm font-medium text-slate-200">Budget analysis</h3>
-        <p className="text-xs text-slate-500 mt-1">
+        <h3 className="text-sm font-medium text-fg">Budget analysis</h3>
+        <p className="text-xs text-fg-muted mt-1">
             {data.budgets.length} budget{data.budgets.length === 1 ? '' : 's'} in period ·{' '}
             {data.overBudgetCount} over · {data.underBudgetCount} under
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                <p className="text-xs text-slate-500">Total budgeted</p>
+            <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                <p className="text-xs text-fg-muted">Total budgeted</p>
                 <p className="text-lg font-semibold text-violet-300 mt-1">{formatCurrency(data.totalBudgeted)}</p>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                <p className="text-xs text-slate-500">Total spent</p>
-                <p className="text-lg font-semibold text-rose-300 mt-1">{formatCurrency(data.totalSpent)}</p>
+            <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                <p className="text-xs text-fg-muted">Total spent</p>
+                <p className="text-lg font-semibold text-expense mt-1">{formatCurrency(data.totalSpent)}</p>
             </div>
         </div>
         {data.budgets.length === 0 ? (
-            <p className="text-sm text-slate-500 mt-6 text-center py-6">No budgets overlap this period.</p>
+            <p className="text-sm text-fg-muted mt-6 text-center py-6">No budgets overlap this period.</p>
         ) : (
             <ul className="mt-4 divide-y divide-slate-800">
                 {data.budgets.map((budget) => (
                     <li key={budget.budgetId} className="py-2.5 flex items-center justify-between gap-3">
                         <div>
-                            <p className="text-sm text-slate-200">{budget.name ?? budget.categoryName ?? 'Overall'}</p>
-                            <p className="text-xs text-slate-500">{budget.percentUsed.toFixed(0)}% used</p>
+                            <p className="text-sm text-fg">{budget.name ?? budget.categoryName ?? 'Overall'}</p>
+                            <p className="text-xs text-fg-muted">{budget.percentUsed.toFixed(0)}% used</p>
                         </div>
-                        <p className="text-sm text-slate-300">
+                        <p className="text-sm text-fg-secondary">
                             {formatCurrency(budget.spent)} / {formatCurrency(budget.budgetAmount)}
                         </p>
                     </li>
@@ -832,31 +829,31 @@ const BudgetAnalysisSection: React.FC<{ data: BudgetAnalysisReport }> = ({ data 
 
 const SpendingAnalysisSection: React.FC<{ data: SpendingAnalysisReport }> = ({ data }) => (
     <div className="card">
-        <h3 className="text-sm font-medium text-slate-200">Spending analysis</h3>
-        <p className="text-xs text-slate-500 mt-1">
+        <h3 className="text-sm font-medium text-fg">Spending analysis</h3>
+        <p className="text-xs text-fg-muted mt-1">
             {data.transactionCount} transactions · avg {formatCurrency(data.averagePerTransaction)} per transaction
         </p>
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                <p className="text-xs text-slate-500">Total spending</p>
-                <p className="text-lg font-semibold text-rose-300 mt-1">{formatCurrency(data.totalExpenses)}</p>
+            <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                <p className="text-xs text-fg-muted">Total spending</p>
+                <p className="text-lg font-semibold text-expense mt-1">{formatCurrency(data.totalExpenses)}</p>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                <p className="text-xs text-slate-500">Top category</p>
-                <p className="text-sm font-medium text-slate-200 mt-1">
+            <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                <p className="text-xs text-fg-muted">Top category</p>
+                <p className="text-sm font-medium text-fg mt-1">
                     {data.topCategories[0]?.categoryName ?? '-'}
                 </p>
                 {data.topCategories[0] && (
-                    <p className="text-xs text-slate-500">{formatCurrency(data.topCategories[0].amount)}</p>
+                    <p className="text-xs text-fg-muted">{formatCurrency(data.topCategories[0].amount)}</p>
                 )}
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                <p className="text-xs text-slate-500">Top payment type</p>
-                <p className="text-sm font-medium text-slate-200 mt-1">
+            <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                <p className="text-xs text-fg-muted">Top payment type</p>
+                <p className="text-sm font-medium text-fg mt-1">
                     {data.topPaymentMethods[0]?.paymentMethod ?? '-'}
                 </p>
                 {data.topPaymentMethods[0] && (
-                    <p className="text-xs text-slate-500">{formatCurrency(data.topPaymentMethods[0].amount)}</p>
+                    <p className="text-xs text-fg-muted">{formatCurrency(data.topPaymentMethods[0].amount)}</p>
                 )}
             </div>
         </div>
@@ -871,8 +868,8 @@ const CrossoverPointChart: React.FC<{ data: CrossoverPointReport }> = ({ data })
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Crossover point</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="text-sm font-medium text-fg">Crossover point</h3>
+            <p className="text-xs text-fg-muted mt-1">
                 {data.hasCrossover
                     ? `Cumulative income exceeded expenses in ${data.crossoverPeriod}`
                     : 'Income has not yet exceeded cumulative expenses in this period'}

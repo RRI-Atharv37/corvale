@@ -28,9 +28,14 @@ import { serializeTransactions } from '../utils/transactionUtils'
 import {
     getUserId,
     handleResponses,
-    validateOwnership,
     validateRequiredFields,
 } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    buildScopedListFilter,
+    parseOptionalWorkspaceId,
+    validateResourceAccess,
+} from '../utils/workspaceUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
@@ -39,6 +44,17 @@ const getUserTimezone = (req: AuthRequest): string => {
 const getEndOfToday = (timezone: string): Date => {
     const today = new Date().toISOString().slice(0, 10)
     return endOfDayInTimezone(today, timezone)
+}
+
+const resolveListWorkspaceId = async (req: AuthRequest): Promise<string | null> => {
+    const userId = getUserId(req)
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    return workspaceId
 }
 
 export const createRecurringRule = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -60,8 +76,18 @@ export const createRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
     const interval = parseInterval(req.body.interval)
     const customIntervalDays = parseCustomIntervalDays(interval, req.body.customIntervalDays)
     const nextDueDate = parseNextDueDate(req.body.nextDueDate, timezone)
+    const workspaceId = parseOptionalWorkspaceId(req.body.workspaceId) ?? null
 
-    const { account } = await validateRuleReferences(userId, req.body.accountId, req.body.categoryId)
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'editor')
+    }
+
+    const { account } = await validateRuleReferences(
+        userId,
+        req.body.accountId,
+        req.body.categoryId,
+        workspaceId
+    )
 
     const currency =
         req.body.currency !== undefined && req.body.currency !== null && req.body.currency !== ''
@@ -70,6 +96,7 @@ export const createRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
 
     const rule = await RecurringRule.create({
         userId,
+        workspaceId,
         title: String(req.body.title).trim(),
         type,
         amount,
@@ -92,8 +119,9 @@ export const createRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
 export const getRecurringRules = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const includeArchived = req.query.includeArchived === 'true'
+    const workspaceId = await resolveListWorkspaceId(req)
 
-    const filter: Record<string, unknown> = { userId: new Types.ObjectId(userId) }
+    const filter: Record<string, unknown> = buildScopedListFilter(userId, workspaceId)
     if (!includeArchived) {
         filter.isArchived = false
     }
@@ -114,11 +142,12 @@ export const getRecurringRuleById = asyncHandler(async (req: AuthRequest, res: R
 
     validateRequiredFields({ ruleId }, ['ruleId'])
 
-    const rule = await validateOwnership<IRecurringRule>(
+    const rule = await validateResourceAccess<IRecurringRule>(
         RecurringRule,
         ruleId,
         userId,
-        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND
+        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND,
+        'viewer'
     )
 
     handleResponses(res, 200, serializeRecurringRule(rule))
@@ -131,11 +160,12 @@ export const updateRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
 
     validateRequiredFields({ ruleId }, ['ruleId'])
 
-    const rule = await validateOwnership<IRecurringRule>(
+    const rule = await validateResourceAccess<IRecurringRule>(
         RecurringRule,
         ruleId,
         userId,
-        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND
+        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND,
+        'editor'
     )
 
     if (rule.isArchived) {
@@ -161,7 +191,12 @@ export const updateRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
     if (req.body.accountId !== undefined || req.body.categoryId !== undefined) {
         const accountId = req.body.accountId ?? rule.accountId.toString()
         const categoryId = req.body.categoryId ?? rule.categoryId.toString()
-        await validateRuleReferences(userId, accountId, categoryId)
+        await validateRuleReferences(
+            userId,
+            accountId,
+            categoryId,
+            rule.workspaceId?.toString() ?? null
+        )
         if (req.body.accountId !== undefined) {
             rule.accountId = new Types.ObjectId(accountId)
         }
@@ -203,6 +238,10 @@ export const updateRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
         rule.isActive = req.body.isActive === true
     }
 
+    if (req.body.isCancelled !== undefined) {
+        rule.isCancelled = req.body.isCancelled === true
+    }
+
     const updated = await rule.save()
     handleResponses(res, 200, serializeRecurringRule(updated))
 })
@@ -213,11 +252,12 @@ export const archiveRecurringRule = asyncHandler(async (req: AuthRequest, res: R
 
     validateRequiredFields({ ruleId }, ['ruleId'])
 
-    const rule = await validateOwnership<IRecurringRule>(
+    const rule = await validateResourceAccess<IRecurringRule>(
         RecurringRule,
         ruleId,
         userId,
-        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND
+        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND,
+        'editor'
     )
 
     if (rule.isArchived) {
@@ -235,8 +275,9 @@ export const generateRecurringDrafts = asyncHandler(async (req: AuthRequest, res
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
     const endOfToday = getEndOfToday(timezone)
+    const workspaceId = await resolveListWorkspaceId(req)
 
-    const drafts = await generateDraftsForUser(userId, endOfToday)
+    const drafts = await generateDraftsForUser(userId, endOfToday, workspaceId)
     handleResponses(res, 200, drafts)
 })
 
@@ -248,11 +289,12 @@ export const generateRecurringDraftsForRule = asyncHandler(async (req: AuthReque
 
     validateRequiredFields({ ruleId }, ['ruleId'])
 
-    const rule = await validateOwnership<IRecurringRule>(
+    const rule = await validateResourceAccess<IRecurringRule>(
         RecurringRule,
         ruleId,
         userId,
-        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND
+        ERROR_MESSAGES.RECURRING.RULE_NOT_FOUND,
+        'editor'
     )
 
     const drafts = await generateDraftsForRule(rule, userId, endOfToday)
@@ -261,9 +303,10 @@ export const generateRecurringDraftsForRule = asyncHandler(async (req: AuthReque
 
 export const getRecurringDrafts = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
+    const workspaceId = await resolveListWorkspaceId(req)
 
     const filter: Record<string, unknown> = {
-        userId: new Types.ObjectId(userId),
+        ...buildScopedListFilter(userId, workspaceId),
         status: 'draft',
         recurringPaymentId: { $ne: null },
         splitTransactionId: null,
@@ -283,11 +326,12 @@ export const confirmDraft = asyncHandler(async (req: AuthRequest, res: Response)
 
     validateRequiredFields({ transactionId }, ['transactionId'])
 
-    const transaction = await validateOwnership<ITransaction>(
+    const transaction = await validateResourceAccess<ITransaction>(
         Transaction,
         transactionId,
         userId,
-        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+        'editor'
     )
 
     const posted = await confirmRecurringDraft(transaction, userId)
@@ -300,11 +344,12 @@ export const dismissDraft = asyncHandler(async (req: AuthRequest, res: Response)
 
     validateRequiredFields({ transactionId }, ['transactionId'])
 
-    const transaction = await validateOwnership<ITransaction>(
+    const transaction = await validateResourceAccess<ITransaction>(
         Transaction,
         transactionId,
         userId,
-        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+        'editor'
     )
 
     await dismissRecurringDraft(transaction)

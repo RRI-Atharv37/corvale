@@ -16,6 +16,7 @@ import {
     axisTick,
     CHART_COLORS,
     chartMargin,
+    chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
     yAxisTick,
@@ -33,38 +34,46 @@ const NetWorthChart: React.FC<NetWorthChartProps> = ({ series, currentBalances, 
         label: formatPeriodLabel(point.period, 'month'),
     }))
 
-    const balanceItems = [
-        { label: 'Net worth', value: currentBalances.netWorth, color: CHART_COLORS.net },
-        { label: 'Spendable', value: currentBalances.spendable, color: CHART_COLORS.income },
-        { label: 'Saver', value: currentBalances.saver, color: '#34d399' },
+    const balanceItems: {
+        label: string
+        value: number
+        pill: 'income' | 'expense' | 'accent' | 'neutral' | 'warning'
+    }[] = [
+        { label: 'Net worth', value: currentBalances.netWorth, pill: 'accent' },
+        { label: 'Spendable', value: currentBalances.spendable, pill: 'income' },
+        { label: 'Saver', value: currentBalances.saver, pill: 'income' },
         ...(balanceSource === 'accounts'
             ? [
-                  { label: 'Liquid', value: currentBalances.liquid, color: '#60a5fa' },
-                  { label: 'Savings acct', value: currentBalances.savings, color: '#fbbf24' },
-                  { label: 'Credit', value: currentBalances.credit, color: CHART_COLORS.expense },
+                  { label: 'Liquid', value: currentBalances.liquid, pill: 'accent' as const },
+                  { label: 'Savings acct', value: currentBalances.savings, pill: 'warning' as const },
+                  { label: 'Credit', value: currentBalances.credit, pill: 'expense' as const },
               ]
             : []),
     ]
 
+    const pillClass = (pill: (typeof balanceItems)[number]['pill']) => {
+        const map = {
+            income: 'stat-pill--income',
+            expense: 'stat-pill--expense',
+            accent: 'stat-pill--accent',
+            neutral: 'stat-pill--neutral',
+            warning: 'stat-pill--warning',
+        } as const
+        return map[pill]
+    }
+
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Net worth trend</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="text-sm font-medium text-fg">Net worth trend</h3>
+            <p className="text-xs text-fg-muted mt-1">
                 Net worth over time with current balance breakdown
             </p>
 
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {balanceItems.map((item) => (
-                    <div
-                        key={item.label}
-                        className="rounded-lg border border-slate-800 bg-slate-900/50 p-3 min-w-0"
-                    >
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500 truncate">
-                            {item.label}
-                        </p>
-                        <p className="text-sm font-medium mt-1 truncate" style={{ color: item.color }}>
-                            {formatCurrency(item.value)}
-                        </p>
+                    <div key={item.label} className={`stat-pill ${pillClass(item.pill)}`}>
+                        <p className="stat-pill__label truncate">{item.label}</p>
+                        <p className="stat-pill__value">{formatCurrency(item.value)}</p>
                     </div>
                 ))}
             </div>
@@ -82,13 +91,7 @@ const NetWorthChart: React.FC<NetWorthChartProps> = ({ series, currentBalances, 
                             width={52}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...chartTooltipProps}
                             formatter={(value: number, name: string) => {
                                 const labels: Record<string, string> = {
                                     netWorth: 'Net worth',

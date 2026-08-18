@@ -26,7 +26,7 @@ Vite starts the frontend development server, typically at `http://localhost:5173
 
 ## Open spndr in your browser
 
-Navigate to `http://localhost:5173` in your browser. You land on the login page if you are not signed in, or the dashboard if you already have a valid session.
+Navigate to `http://localhost:5173` in your browser. You land on the landing page if you are not signed in, or the dashboard if you already have a valid session.
 
 ## Create your first account
 

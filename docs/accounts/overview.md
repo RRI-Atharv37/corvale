@@ -17,6 +17,8 @@ On the Accounts page, you can:
 - Edit account name and type
 - Set one account as your default
 - Archive accounts you no longer need
+- [Reconcile](./reconciling-an-account.md) an account against a bank statement
+- View [converted balances](./multi-currency-balances.md) if you hold accounts in more than one currency
 
 ## How accounts affect your dashboard
 
@@ -44,4 +46,6 @@ Archiving an account hides it from your account list and removes it from balance
 - [Creating an Account](./creating-an-account.md)
 - [Editing and Archiving Accounts](./editing-and-archiving-accounts.md)
 - [Default Accounts](./default-accounts.md)
+- [Reconciling an Account](./reconciling-an-account.md)
+- [Multi-Currency Balances](./multi-currency-balances.md)
 - [Transactions Overview](../transactions/overview.md)

@@ -1,21 +1,27 @@
 import React, { useCallback, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoPencil, IoStar, IoStarOutline, IoTrash } from 'react-icons/io5'
+import { IoAdd, IoInformationCircleOutline, IoPencil, IoStar, IoStarOutline, IoSwapVertical, IoTrash } from 'react-icons/io5'
+import ReconciliationModal from '../../components/accounts/ReconciliationModal'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
 import type { Account, AccountEditFormData, AccountFormData, AccountType, ApiResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
 import { DEFAULT_CURRENCY, formatCurrencyLabel } from '../../utils/currencies'
-import CurrencySelect from '../../components/inputs/CurrencySelect'
+import CurrencySelect from '../../components/Inputs/CurrencySelect'
 import { useUser } from '../../hooks/useUser'
+import { useWorkspace } from '../../hooks/useWorkspace'
+import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
+import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 
 const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
     { value: 'checking', label: 'Checking' },
@@ -29,11 +35,15 @@ const emptyCreateForm = (preferredCurrency = DEFAULT_CURRENCY): AccountFormData 
     type: 'checking',
     currency: preferredCurrency,
     openingBalance: '0',
+    interestRate: '',
+    minimumPayment: '',
 })
 
 const emptyEditForm = (): AccountEditFormData => ({
     name: '',
     type: 'checking',
+    interestRate: '',
+    minimumPayment: '',
 })
 
 const formatAccountType = (type: AccountType): string =>
@@ -57,9 +67,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
     disabled,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">
+        <label className="text-[13px] text-fg-secondary">
             {label}
-            {required && <span className="text-rose-400 ml-0.5">*</span>}
+            {required && <span className="text-expense ml-0.5">*</span>}
         </label>
         <div className="input-box mb-0 mt-1">
             <select
@@ -67,10 +77,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 disabled={disabled}
-                className="w-full bg-transparent outline-none text-slate-200"
+                className="w-full bg-transparent outline-none text-fg"
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-slate-900">
+                    <option key={option.value} value={option.value} className="bg-surface">
                         {option.label}
                     </option>
                 ))}
@@ -81,7 +91,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
 
 const Accounts = () => {
     const { user } = useUser()
+    const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
+    const pageSize = usePageSize()
     const [createOpen, setCreateOpen] = useState(false)
     const [editOpen, setEditOpen] = useState(false)
     const [createForm, setCreateForm] = useState<AccountFormData>(emptyCreateForm)
@@ -91,15 +103,18 @@ const Accounts = () => {
     const [archiveTarget, setArchiveTarget] = useState<Account | null>(null)
     const [archiving, setArchiving] = useState(false)
     const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
+    const [reconcilingAccount, setReconcilingAccount] = useState<Account | null>(null)
 
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
         try {
-            const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL)
+            const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
+                params: buildWorkspaceQueryParams(activeWorkspaceId),
+            })
             return unwrapApiData(response)
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load accounts'))
         }
-    }, [])
+    }, [activeWorkspaceId])
 
     const { data: accounts, loading, error, refetch } = useAsyncData(fetchAccounts, [fetchAccounts])
 
@@ -118,6 +133,8 @@ const Accounts = () => {
         setEditForm({
             name: account.name,
             type: account.type,
+            interestRate: account.interestRate !== undefined ? String(account.interestRate) : '',
+            minimumPayment: account.minimumPayment !== undefined ? String(account.minimumPayment) : '',
         })
         setEditOpen(true)
     }
@@ -142,6 +159,20 @@ const Accounts = () => {
             return
         }
 
+        const isCredit = createForm.type === 'credit'
+        const interestRate = isCredit && createForm.interestRate !== '' ? Number(createForm.interestRate) : undefined
+        const minimumPayment =
+            isCredit && createForm.minimumPayment !== '' ? Number(createForm.minimumPayment) : undefined
+
+        if (interestRate !== undefined && isNaN(interestRate)) {
+            toast.error('Interest rate must be a valid number')
+            return
+        }
+        if (minimumPayment !== undefined && isNaN(minimumPayment)) {
+            toast.error('Minimum payment must be a valid number')
+            return
+        }
+
         setSubmitting(true)
         try {
             await axiosInstance.post(API_PATHS.ACCOUNTS.CREATE, {
@@ -149,6 +180,9 @@ const Accounts = () => {
                 type: createForm.type,
                 currency: createForm.currency,
                 openingBalance,
+                interestRate,
+                minimumPayment,
+                ...buildWorkspaceBodyFields(activeWorkspaceId),
             })
             toast.success('Account created')
             closeCreate()
@@ -169,11 +203,27 @@ const Accounts = () => {
             return
         }
 
+        const isCredit = editForm.type === 'credit'
+        const interestRate = isCredit && editForm.interestRate !== '' ? Number(editForm.interestRate) : undefined
+        const minimumPayment =
+            isCredit && editForm.minimumPayment !== '' ? Number(editForm.minimumPayment) : undefined
+
+        if (interestRate !== undefined && isNaN(interestRate)) {
+            toast.error('Interest rate must be a valid number')
+            return
+        }
+        if (minimumPayment !== undefined && isNaN(minimumPayment)) {
+            toast.error('Minimum payment must be a valid number')
+            return
+        }
+
         setSubmitting(true)
         try {
             await axiosInstance.put(API_PATHS.ACCOUNTS.UPDATE(editingAccount._id), {
                 name: editForm.name.trim(),
                 type: editForm.type,
+                interestRate,
+                minimumPayment,
             })
             toast.success('Account updated')
             closeEdit()
@@ -220,18 +270,26 @@ const Accounts = () => {
         <div>
             <PageHeader
                 title="Accounts"
-                description="Manage your checking, savings, and cash accounts"
+                description={
+                    isPersonal
+                        ? 'Manage your checking, savings, and cash accounts'
+                        : `Shared accounts in ${activeWorkspace?.name ?? 'workspace'}`
+                }
                 actions={
-                    <button
-                        type="button"
-                        onClick={openCreate}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
-                    >
-                        <IoAdd size={18} />
-                        Add account
-                    </button>
+                    canEdit ? (
+                        <button
+                            type="button"
+                            onClick={openCreate}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                        >
+                            <IoAdd size={18} />
+                            Add account
+                        </button>
+                    ) : undefined
                 }
             />
+
+            <WorkspaceReadOnlyBanner />
 
             <AsyncContent
                 loading={loading}
@@ -244,64 +302,109 @@ const Accounts = () => {
                 onRetry={refetch}
             >
                 {(items) => (
+                    <>
+                        {(user?.exchangeRates && Object.keys(user.exchangeRates).length > 0) &&
+                            items.every((account) => account.currency === preferredCurrency) && (
+                                <div className="mb-4 flex items-start gap-2 rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2.5 text-xs text-text-muted">
+                                    <IoInformationCircleOutline size={16} className="mt-0.5 shrink-0" />
+                                    <p>
+                                        All of your accounts are already in {formatCurrencyLabel(preferredCurrency)}
+                                        , your default currency, so there&apos;s nothing to convert yet. Your saved
+                                        exchange rates will show up as a converted amount here once you add an
+                                        account in a different currency.
+                                    </p>
+                                </div>
+                            )}
+                    <PaginatedCardList items={items} pageSize={pageSize}>
+                        {(paginatedItems) => (
                     <div className="space-y-3">
-                        {items.map((account) => (
+                        {paginatedItems.map((account) => (
                             <div key={account._id} className="card flex items-center justify-between gap-4">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-sm font-medium text-slate-200 truncate">
+                                        <p className="text-sm font-medium text-fg truncate">
                                             {account.name}
                                         </p>
                                         {account.isDefault && (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-accent-subtle border border-accent/30 px-2 py-0.5 text-[11px] font-medium text-accent">
                                                 <IoStar size={12} />
                                                 Default
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-0.5">
+                                    <p className="text-xs text-fg-muted mt-0.5">
                                         {formatAccountType(account.type)} · {formatCurrencyLabel(account.currency)}
+                                        {account.type === 'credit' && account.interestRate !== undefined && (
+                                            <> · {account.interestRate}% APR</>
+                                        )}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                     <div className="text-right">
-                                        <p className="text-sm font-semibold text-cyan-400">
+                                        <p className="text-sm font-semibold text-accent">
                                             {formatCurrency(account.currentBalance, account.currency)}
                                         </p>
-                                        <p className="text-[11px] text-slate-500">Current balance</p>
+                                        <p className="text-[11px] text-fg-muted">Current balance</p>
+                                        {account.currency !== preferredCurrency &&
+                                            account.convertedBalance !== undefined &&
+                                            (account.hasExchangeRate ? (
+                                                <p className="text-[11px] text-fg-muted">
+                                                    ≈ {formatCurrency(account.convertedBalance, preferredCurrency)}
+                                                </p>
+                                            ) : (
+                                                <p className="text-[11px] text-warning">
+                                                    No {account.currency}→{preferredCurrency} rate set
+                                                </p>
+                                            ))}
                                     </div>
-                                    {!account.isDefault && (
+                                    {!account.isDefault && isPersonal && canEdit && (
                                         <button
                                             type="button"
                                             onClick={() => handleSetDefault(account)}
                                             disabled={settingDefaultId === account._id}
-                                            className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors disabled:opacity-50"
+                                            className="p-1.5 text-fg-muted hover:text-warning transition-colors disabled:opacity-50"
                                             aria-label="Set as default account"
                                             title="Set as default"
                                         >
                                             <IoStarOutline size={16} />
                                         </button>
                                     )}
-                                    <button
-                                        type="button"
-                                        onClick={() => openEdit(account)}
-                                        className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
-                                        aria-label="Edit account"
-                                    >
-                                        <IoPencil size={16} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setArchiveTarget(account)}
-                                        className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
-                                        aria-label="Archive account"
-                                    >
-                                        <IoTrash size={16} />
-                                    </button>
+                                    {canEdit && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => setReconcilingAccount(account)}
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors"
+                                                aria-label="Reconcile account"
+                                                title="Reconcile"
+                                            >
+                                                <IoSwapVertical size={16} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => openEdit(account)}
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors"
+                                                aria-label="Edit account"
+                                            >
+                                                <IoPencil size={16} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setArchiveTarget(account)}
+                                                className="p-1.5 text-fg-muted hover:text-expense transition-colors"
+                                                aria-label="Archive account"
+                                            >
+                                                <IoTrash size={16} />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
+                        )}
+                    </PaginatedCardList>
+                    </>
                 )}
             </AsyncContent>
 
@@ -325,6 +428,30 @@ const Accounts = () => {
                         required
                         disabled={submitting}
                     />
+                    {createForm.type === 'credit' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                                label="Interest rate (APR %)"
+                                type="number"
+                                value={createForm.interestRate}
+                                onChange={(v) => setCreateForm((f) => ({ ...f, interestRate: v }))}
+                                placeholder="24.99"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                            <FormField
+                                label="Minimum payment"
+                                type="number"
+                                value={createForm.minimumPayment}
+                                onChange={(v) => setCreateForm((f) => ({ ...f, minimumPayment: v }))}
+                                placeholder="35.00"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                    )}
                     <CurrencySelect
                         value={createForm.currency}
                         onChange={(v) => setCreateForm((f) => ({ ...f, currency: v }))}
@@ -346,14 +473,14 @@ const Accounts = () => {
                             type="button"
                             onClick={closeCreate}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Creating...' : 'Create account'}
                         </button>
@@ -379,19 +506,43 @@ const Accounts = () => {
                         required
                         disabled={submitting}
                     />
+                    {editForm.type === 'credit' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                                label="Interest rate (APR %)"
+                                type="number"
+                                value={editForm.interestRate}
+                                onChange={(v) => setEditForm((f) => ({ ...f, interestRate: v }))}
+                                placeholder="24.99"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                            <FormField
+                                label="Minimum payment"
+                                type="number"
+                                value={editForm.minimumPayment}
+                                onChange={(v) => setEditForm((f) => ({ ...f, minimumPayment: v }))}
+                                placeholder="35.00"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                    )}
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"
                             onClick={closeEdit}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : 'Save changes'}
                         </button>
@@ -408,6 +559,15 @@ const Accounts = () => {
                 confirmLabel="Archive"
                 loading={archiving}
             />
+
+            {reconcilingAccount && (
+                <ReconciliationModal
+                    account={reconcilingAccount}
+                    open={reconcilingAccount !== null}
+                    onClose={() => setReconcilingAccount(null)}
+                    onReconciled={refetch}
+                />
+            )}
         </div>
     )
 }

@@ -6,6 +6,8 @@ import type { Account, ApiResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
+import { useWorkspace } from '../../hooks/useWorkspace'
+import { buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 
 export interface AccountPickerProps {
     value: string
@@ -34,16 +36,19 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     disabled,
     accountsData,
 }) => {
+    const { activeWorkspaceId } = useWorkspace()
+
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
         try {
             const response = await axiosInstance.get<ApiResponse<Account[]>>(
-                API_PATHS.ACCOUNTS.GET_ALL
+                API_PATHS.ACCOUNTS.GET_ALL,
+                { params: buildWorkspaceQueryParams(activeWorkspaceId) }
             )
             return unwrapApiData(response)
         } catch (error) {
             throw new Error(getApiErrorMessage(error, 'Failed to load accounts'))
         }
-    }, [])
+    }, [activeWorkspaceId])
 
     const { data, loading, error } = useAsyncData(fetchAccounts, [fetchAccounts])
 
@@ -54,8 +59,8 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     if (isLoading) {
         return (
             <div>
-                <label className="text-[13px] text-slate-300">{label}</label>
-                <p className="text-xs text-slate-500 mt-2">Loading accounts...</p>
+                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <p className="text-xs text-fg-muted mt-2">Loading accounts...</p>
             </div>
         )
     }
@@ -63,8 +68,8 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     if (loadError) {
         return (
             <div>
-                <label className="text-[13px] text-slate-300">{label}</label>
-                <p className="text-xs text-rose-400 mt-2">{loadError}</p>
+                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <p className="text-xs text-expense mt-2">{loadError}</p>
             </div>
         )
     }
@@ -72,8 +77,8 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     if (!accounts || accounts.length === 0) {
         return (
             <div>
-                <label className="text-[13px] text-slate-300">{label}</label>
-                <p className="text-xs text-amber-400 mt-2">
+                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <p className="text-xs text-warning mt-2">
                     No accounts yet. Create one on the Accounts page first.
                 </p>
             </div>
@@ -84,9 +89,9 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
 
     return (
         <div>
-            <label className="text-[13px] text-slate-300">
+            <label className="text-[13px] text-fg-secondary">
                 {label}
-                {required && <span className="text-rose-400 ml-0.5">*</span>}
+                {required && <span className="text-expense ml-0.5">*</span>}
             </label>
             <div className="input-box mb-0 mt-1">
                 <select
@@ -94,13 +99,13 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
                     disabled={disabled}
-                    className="w-full bg-transparent outline-none text-slate-200"
+                    className="w-full bg-transparent outline-none text-fg"
                 >
-                    <option value="" className="bg-slate-900">
+                    <option value="" className="bg-surface">
                         Select an account
                     </option>
                     {accounts.map((account) => (
-                        <option key={account._id} value={account._id} className="bg-slate-900">
+                        <option key={account._id} value={account._id} className="bg-surface">
                             {account.name} ({formatAccountType(account.type)})
                             {account.isDefault ? ' · Default' : ''}
                         </option>
@@ -108,7 +113,7 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
                 </select>
             </div>
             {selected && (
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-fg-muted mt-2">
                     Balance: {formatCurrency(selected.currentBalance, selected.currency)}
                 </p>
             )}

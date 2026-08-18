@@ -1,4 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
+
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
 
 export const ACCOUNT_TYPES = ['checking', 'cash', 'credit', 'savings'] as const
@@ -15,6 +17,8 @@ export interface IAccount extends Document {
     currentBalance: number
     isDefault: boolean
     isArchived: boolean
+    interestRate?: number
+    minimumPayment?: number
 }
 
 const AccountSchema = new Schema<IAccount>(
@@ -35,6 +39,8 @@ const AccountSchema = new Schema<IAccount>(
         currentBalance: { type: Number, required: true, default: 0 },
         isDefault: { type: Boolean, default: false },
         isArchived: { type: Boolean, default: false },
+        interestRate: { type: Number, min: 0 },
+        minimumPayment: { type: Number, min: 0 },
     },
     { timestamps: true }
 )
@@ -44,6 +50,8 @@ AccountSchema.index(
     { userId: 1, isDefault: 1 },
     { unique: true, partialFilterExpression: { isDefault: true, isArchived: false } }
 )
+
+applyRowLevelSecurity(AccountSchema, { supportsWorkspace: true })
 
 const Account: Model<IAccount> = mongoose.model<IAccount>('Account', AccountSchema)
 export default Account

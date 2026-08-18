@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
     IoAdd,
     IoChevronDown,
     IoChevronUp,
+    IoFlashOutline,
     IoPencil,
     IoStar,
     IoStarOutline,
@@ -49,9 +51,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
     disabled,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">
+        <label className="text-[13px] text-fg-secondary">
             {label}
-            {required && <span className="text-rose-400 ml-0.5">*</span>}
+            {required && <span className="text-expense ml-0.5">*</span>}
         </label>
         <div className="input-box mb-0 mt-1">
             <select
@@ -59,10 +61,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 disabled={disabled}
-                className="w-full bg-transparent outline-none text-slate-200"
+                className="w-full bg-transparent outline-none text-fg"
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-slate-900">
+                    <option key={option.value} value={option.value} className="bg-surface">
                         {option.label}
                     </option>
                 ))}
@@ -282,7 +284,7 @@ const Categories = () => {
         disabled: boolean
     ) => (
         <div>
-            <label className="text-[13px] text-slate-300">Icon</label>
+            <label className="text-[13px] text-fg-secondary">Icon</label>
             <div className="mt-2 grid grid-cols-7 gap-2">
                 {CATEGORY_ICON_OPTIONS.map((option) => (
                     <button
@@ -293,8 +295,8 @@ const Categories = () => {
                         className={[
                             'flex h-9 w-9 items-center justify-center rounded-lg border transition-colors',
                             value === option.value
-                                ? 'border-cyan-400 bg-cyan-500/10 text-cyan-300'
-                                : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200',
+                                ? 'border-accent/40 bg-accent-subtle text-accent'
+                                : 'border-border text-fg-muted hover:border-border hover:text-fg',
                             disabled ? 'opacity-50 cursor-not-allowed' : '',
                         ].join(' ')}
                         aria-label={option.label}
@@ -313,7 +315,7 @@ const Categories = () => {
         disabled: boolean
     ) => (
         <div>
-            <label className="text-[13px] text-slate-300">Color</label>
+            <label className="text-[13px] text-fg-secondary">Color</label>
             <div className="mt-2 flex flex-wrap gap-2">
                 {DEFAULT_CATEGORY_COLORS.map((color) => (
                     <button
@@ -349,14 +351,23 @@ const Categories = () => {
                 title="Categories"
                 description="Organize spending with master categories and custom sub-categories"
                 actions={
-                    <button
-                        type="button"
-                        onClick={() => openCreate()}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
-                    >
-                        <IoAdd size={18} />
-                        Add category
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                        <Link
+                            to="/categories/rules"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-secondary transition-colors"
+                        >
+                            <IoFlashOutline size={18} />
+                            Auto-rules
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => openCreate()}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
+                        >
+                            <IoAdd size={18} />
+                            Add category
+                        </button>
+                    </div>
                 }
             />
 
@@ -377,7 +388,7 @@ const Categories = () => {
                                 <div className="flex items-center justify-between gap-4 mb-4">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <span
-                                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-700"
+                                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border"
                                             style={{
                                                 backgroundColor: `${group.master.color ?? '#6B7280'}15`,
                                             }}
@@ -389,10 +400,10 @@ const Categories = () => {
                                             />
                                         </span>
                                         <div className="min-w-0">
-                                            <h2 className="text-sm font-semibold text-slate-100">
+                                            <h2 className="text-sm font-semibold text-fg">
                                                 {group.master.name}
                                             </h2>
-                                            <p className="text-xs text-slate-500">
+                                            <p className="text-xs text-fg-muted">
                                                 {group.subs.length === 0
                                                     ? 'No sub-categories yet'
                                                     : `${group.subs.length} sub-categor${group.subs.length === 1 ? 'y' : 'ies'}`}
@@ -402,7 +413,7 @@ const Categories = () => {
                                     <button
                                         type="button"
                                         onClick={() => openCreate(group.master._id)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-300 transition-colors shrink-0"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 hover:text-accent transition-colors shrink-0"
                                     >
                                         <IoAdd size={14} />
                                         Add
@@ -410,15 +421,15 @@ const Categories = () => {
                                 </div>
 
                                 {group.subs.length > 0 && (
-                                    <div className="space-y-2 border-t border-slate-800 pt-4">
+                                    <div className="space-y-2 border-t border-border-subtle pt-4">
                                         {group.subs.map((sub, index) => (
                                             <div
                                                 key={sub._id}
-                                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2.5"
+                                                className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle/80 bg-surface/40 px-3 py-2.5"
                                             >
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                     <span
-                                                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-700"
+                                                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border"
                                                         style={{
                                                             backgroundColor: `${sub.color ?? group.master.color ?? '#6B7280'}15`,
                                                         }}
@@ -431,11 +442,11 @@ const Categories = () => {
                                                     </span>
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2 flex-wrap">
-                                                            <p className="text-sm font-medium text-slate-200 truncate">
+                                                            <p className="text-sm font-medium text-fg truncate">
                                                                 {sub.name}
                                                             </p>
                                                             {sub.isDefault && (
-                                                                <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
+                                                                <span className="inline-flex items-center gap-1 rounded-full bg-accent-subtle border border-accent/30 px-2 py-0.5 text-[11px] font-medium text-accent">
                                                                     <IoStar size={11} />
                                                                     Default
                                                                 </span>
@@ -450,7 +461,7 @@ const Categories = () => {
                                                         disabled={
                                                             index === 0 || reorderingId === sub._id
                                                         }
-                                                        className="p-1.5 text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-30"
+                                                        className="p-1.5 text-fg-muted hover:text-fg transition-colors disabled:opacity-30"
                                                         aria-label="Move up"
                                                     >
                                                         <IoChevronUp size={16} />
@@ -462,7 +473,7 @@ const Categories = () => {
                                                             index === group.subs.length - 1 ||
                                                             reorderingId === sub._id
                                                         }
-                                                        className="p-1.5 text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-30"
+                                                        className="p-1.5 text-fg-muted hover:text-fg transition-colors disabled:opacity-30"
                                                         aria-label="Move down"
                                                     >
                                                         <IoChevronDown size={16} />
@@ -472,7 +483,7 @@ const Categories = () => {
                                                             type="button"
                                                             onClick={() => handleSetDefault(sub)}
                                                             disabled={settingDefaultId === sub._id}
-                                                            className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors disabled:opacity-50"
+                                                            className="p-1.5 text-fg-muted hover:text-warning transition-colors disabled:opacity-50"
                                                             aria-label="Set as default category"
                                                             title="Set as default"
                                                         >
@@ -482,7 +493,7 @@ const Categories = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => openEdit(sub)}
-                                                        className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                                        className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                         aria-label="Edit category"
                                                     >
                                                         <IoPencil size={16} />
@@ -490,7 +501,7 @@ const Categories = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => setArchiveTarget(sub)}
-                                                        className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                                                        className="p-1.5 text-fg-muted hover:text-expense transition-colors"
                                                         aria-label="Archive category"
                                                     >
                                                         <IoTrash size={16} />
@@ -531,14 +542,14 @@ const Categories = () => {
                             type="button"
                             onClick={closeCreate}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Creating...' : 'Create category'}
                         </button>
@@ -563,14 +574,14 @@ const Categories = () => {
                             type="button"
                             onClick={closeEdit}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : 'Save changes'}
                         </button>

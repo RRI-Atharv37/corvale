@@ -26,9 +26,9 @@ const FormField: React.FC<FormFieldProps> = ({
     step,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">
+        <label className="text-[13px] text-fg-secondary">
             {label}
-            {required && <span className="text-rose-400 ml-0.5">*</span>}
+            {required && <span className="text-expense ml-0.5">*</span>}
         </label>
         <div className="input-box mb-0 mt-1">
             <input
@@ -41,7 +41,7 @@ const FormField: React.FC<FormFieldProps> = ({
                 min={min}
                 max={max}
                 step={step}
-                className="w-full bg-transparent outline-none placeholder:text-slate-500"
+                className="w-full bg-transparent outline-none placeholder:text-fg-muted"
             />
         </div>
     </div>
@@ -65,7 +65,7 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
     rows = 3,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">{label}</label>
+        <label className="text-[13px] text-fg-secondary">{label}</label>
         <div className="input-box mb-0 mt-1 items-start">
             <textarea
                 value={value}
@@ -73,7 +73,7 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
                 placeholder={placeholder}
                 disabled={disabled}
                 rows={rows}
-                className="w-full bg-transparent outline-none placeholder:text-slate-500 resize-none"
+                className="w-full bg-transparent outline-none placeholder:text-fg-muted resize-none"
             />
         </div>
     </div>

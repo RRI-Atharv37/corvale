@@ -25,9 +25,15 @@ import {
 import {
     getUserId,
     handleResponses,
-    validateOwnership,
     validateRequiredFields,
 } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    buildScopedListFilter,
+    parseOptionalWorkspaceId,
+    validateResourceAccess,
+} from '../utils/workspaceUtils'
+import { evaluateSavingsMilestoneNotifications } from '../utils/notificationUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
@@ -53,6 +59,8 @@ const recordContribution = async (
     type: 'manual' | 'automatic',
     note?: string
 ) => {
+    const previousAmountMinor = goal.currentAmount
+
     const contribution = await SavingsGoalContribution.create({
         userId,
         goalId: goal._id,
@@ -69,6 +77,8 @@ const recordContribution = async (
     markGoalCompletedIfTargetMet(goal)
     await goal.save()
 
+    await evaluateSavingsMilestoneNotifications(userId, goal, previousAmountMinor)
+
     return contribution
 }
 
@@ -82,15 +92,21 @@ export const createSavingsGoal = asyncHandler(async (req: AuthRequest, res: Resp
     const targetDate = parseOptionalTargetDate(req.body.targetDate, timezone)
     const currency = parseOptionalSupportedCurrency(req.body.currency)
     const accountObjectId = parseOptionalAccountId(req.body.accountId)
+    const workspaceId = parseOptionalWorkspaceId(req.body.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'editor')
+    }
 
     if (accountObjectId) {
-        await validateAccountForGoal(accountObjectId.toString(), userId)
+        await validateAccountForGoal(accountObjectId.toString(), userId, workspaceId)
     }
 
     const autoContribution = parseAutoContributionFromBody(req.body)
 
     const goal = await SavingsGoal.create({
         userId,
+        workspaceId,
         name: String(req.body.name).trim(),
         targetAmount,
         currency,
@@ -107,8 +123,13 @@ export const getSavingsGoals = asyncHandler(async (req: AuthRequest, res: Respon
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
     const includeArchived = req.query.includeArchived === 'true'
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
 
-    const filter: Record<string, unknown> = { userId }
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    const filter: Record<string, unknown> = buildScopedListFilter(userId, workspaceId)
     if (!includeArchived) {
         filter.status = { $ne: 'archived' }
     }
@@ -129,11 +150,12 @@ export const getSavingsGoalById = asyncHandler(async (req: AuthRequest, res: Res
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'viewer'
     )
 
     const serialized = await serializeSavingsGoal(goal, timezone)
@@ -147,11 +169,12 @@ export const updateSavingsGoal = asyncHandler(async (req: AuthRequest, res: Resp
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'editor'
     )
 
     if (goal.status === 'archived') {
@@ -187,7 +210,11 @@ export const updateSavingsGoal = asyncHandler(async (req: AuthRequest, res: Resp
     const accountObjectId = parseOptionalAccountId(req.body.accountId)
     if (accountObjectId !== undefined) {
         if (accountObjectId) {
-            await validateAccountForGoal(accountObjectId.toString(), userId)
+            await validateAccountForGoal(
+                accountObjectId.toString(),
+                userId,
+                goal.workspaceId?.toString() ?? null
+            )
         }
         goal.accountId = accountObjectId
     }
@@ -208,11 +235,12 @@ export const archiveSavingsGoal = asyncHandler(async (req: AuthRequest, res: Res
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'editor'
     )
 
     if (goal.status === 'archived') {
@@ -232,11 +260,12 @@ export const pauseSavingsGoal = asyncHandler(async (req: AuthRequest, res: Respo
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'editor'
     )
 
     if (goal.status === 'archived' || goal.status === 'completed') {
@@ -260,11 +289,12 @@ export const resumeSavingsGoal = asyncHandler(async (req: AuthRequest, res: Resp
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'editor'
     )
 
     if (goal.status !== 'paused') {
@@ -286,11 +316,12 @@ export const completeSavingsGoal = asyncHandler(async (req: AuthRequest, res: Re
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'editor'
     )
 
     if (goal.status === 'archived') {
@@ -315,11 +346,12 @@ export const getSavingsGoalProgress = asyncHandler(async (req: AuthRequest, res:
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'viewer'
     )
 
     const serialized = await serializeSavingsGoal(goal, timezone)
@@ -333,11 +365,12 @@ export const contributeToSavingsGoal = asyncHandler(async (req: AuthRequest, res
 
     validateRequiredFields({ goalId, ...req.body }, ['goalId', 'amount'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'editor'
     )
 
     assertGoalAcceptsContributions(goal)
@@ -365,11 +398,12 @@ export const processAutoContribution = asyncHandler(async (req: AuthRequest, res
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    const goal = await validateOwnership<ISavingsGoal>(
+    const goal = await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'editor'
     )
 
     assertGoalAcceptsContributions(goal)
@@ -406,11 +440,12 @@ export const getContributionHistory = asyncHandler(async (req: AuthRequest, res:
 
     validateRequiredFields({ goalId }, ['goalId'])
 
-    await validateOwnership<ISavingsGoal>(
+    await validateResourceAccess<ISavingsGoal>(
         SavingsGoal,
         goalId,
         userId,
-        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND
+        ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND,
+        'viewer'
     )
 
     const contributions = await SavingsGoalContribution.find({ goalId, userId }).sort({

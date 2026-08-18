@@ -1,5 +1,7 @@
 import mongoose, {Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export interface IExpense extends Document {
     userId: mongoose.Types.ObjectId
     title: string
@@ -27,6 +29,8 @@ const ExpenseSchema = new Schema<IExpense>({
 }, { timestamps: true })
 
 ExpenseSchema.index({ userId: 1, date: -1 })
+
+applyRowLevelSecurity(ExpenseSchema)
 
 const Expense: Model<IExpense> = mongoose.model<IExpense>('Expense', ExpenseSchema)
 export default Expense

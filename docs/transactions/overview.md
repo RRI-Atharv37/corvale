@@ -22,6 +22,9 @@ On the Transactions page, you can:
 - Split an expense across multiple categories
 - Attach receipt files to transactions
 - Select multiple transactions for bulk delete or bulk category change
+- Attach [tags](../tags/overview.md) for cross-cutting labels beyond category
+- [Import](../import/overview.md) transactions from a bank CSV/OFX file
+- Apply a [quick-add template](../templates/overview.md) for a transaction you log often
 
 ## How transactions connect to accounts and categories
 
@@ -62,3 +65,6 @@ Older versions of spndr used separate `/income` and `/expense` routes. Those URL
 - [Receipts and Bulk Actions](./receipts-and-bulk-actions.md)
 - [Categories Overview](../categories/overview.md)
 - [Accounts Overview](../accounts/overview.md)
+- [Tags Overview](../tags/overview.md)
+- [Recurring Overview](../recurring/overview.md)
+- [Import Overview](../import/overview.md)

@@ -8,6 +8,7 @@ import User from '../models/User'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { AuthRequest } from './authTypes'
+import { runWithRlsContext } from '../utils/rowLevelSecurity'
 
 export type { AuthRequest } from './authTypes'
 
@@ -37,7 +38,10 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
         }
 
         req.user = user
-        return next()
+
+        return runWithRlsContext({ userId: user._id.toString() }, () => {
+            next()
+        })
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
             return next(new CustomError(ERROR_MESSAGES.AUTH.TOKEN_EXPIRED, 401))

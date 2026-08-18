@@ -4,7 +4,7 @@ import Budget from '../models/Budget'
 import Account from '../models/Account'
 import Category from '../models/Category'
 import Transaction from '../models/Transaction'
-import { computeAccountTotals, computeUserBalances } from './balanceUtils'
+import { computeAccountTotals, computeUserBalances, CurrencyConversionOptions } from './balanceUtils'
 import {
     attachProgressToBudgets,
     resolveMonthlyPeriod,
@@ -13,7 +13,7 @@ import {
 import { CustomError } from './customError'
 import { fromMinorUnits } from './moneyUtils'
 import { DEFAULT_TIMEZONE, resolveDateRange } from './timezoneUtils'
-import { toObjectId } from './sharedUtils'
+import { buildScopedListFilter } from './workspaceUtils'
 
 export const DASHBOARD_GROUP_BY_VALUES = ['day', 'week', 'month'] as const
 export type DashboardGroupBy = (typeof DASHBOARD_GROUP_BY_VALUES)[number]
@@ -205,17 +205,18 @@ const countPostedTransactionsByType = async (
     userId: string,
     type: 'income' | 'expense',
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    workspaceId?: string | null
 ): Promise<number> => {
-    const objectId = toObjectId(userId)
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
 
     const splitParentIds = await Transaction.distinct('splitTransactionId', {
-        userId: objectId,
+        ...scope,
         splitTransactionId: { $ne: null },
     })
 
     return Transaction.countDocuments({
-        userId: objectId,
+        ...scope,
         type,
         status: 'posted',
         date: { $gte: periodStart, $lte: periodEnd },
@@ -278,12 +279,14 @@ export const sumPostedTransactionsByType = async (
     userId: string,
     type: 'income' | 'expense',
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    workspaceId?: string | null
 ): Promise<number> => {
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
     const result = await Transaction.aggregate([
         {
             $match: {
-                userId: toObjectId(userId),
+                ...scope,
                 type,
                 date: { $gte: periodStart, $lte: periodEnd },
                 ...POSTED_LEDGER_FILTER,
@@ -300,17 +303,19 @@ export const computeDashboardSummary = async (
     periodStart: Date,
     periodEnd: Date,
     startDate: string,
-    endDate: string
+    endDate: string,
+    workspaceId?: string | null,
+    conversion?: CurrencyConversionOptions
 ): Promise<DashboardSummary> => {
     const [balances, incomeMinor, expenseMinor] = await Promise.all([
-        computeUserBalances(userId),
-        sumPostedTransactionsByType(userId, 'income', periodStart, periodEnd),
-        sumPostedTransactionsByType(userId, 'expense', periodStart, periodEnd),
+        computeUserBalances(userId, workspaceId, conversion),
+        sumPostedTransactionsByType(userId, 'income', periodStart, periodEnd, workspaceId),
+        sumPostedTransactionsByType(userId, 'expense', periodStart, periodEnd, workspaceId),
     ])
 
     const [incomeTransactionCount, expenseTransactionCount] = await Promise.all([
-        countPostedTransactionsByType(userId, 'income', periodStart, periodEnd),
-        countPostedTransactionsByType(userId, 'expense', periodStart, periodEnd),
+        countPostedTransactionsByType(userId, 'income', periodStart, periodEnd, workspaceId),
+        countPostedTransactionsByType(userId, 'expense', periodStart, periodEnd, workspaceId),
     ])
 
     const totalIncome = fromMinorUnits(incomeMinor)
@@ -348,11 +353,21 @@ export const computeNetWorthTrend = async (
     periodEnd: Date,
     startDate: string,
     endDate: string,
-    timezone: string
+    timezone: string,
+    workspaceId?: string | null
 ): Promise<NetWorthTrendResponse> => {
     const [balances, cashFlow] = await Promise.all([
-        computeUserBalances(userId),
-        computeCashFlowSeries(userId, periodStart, periodEnd, startDate, endDate, 'month', timezone),
+        computeUserBalances(userId, workspaceId),
+        computeCashFlowSeries(
+            userId,
+            periodStart,
+            periodEnd,
+            startDate,
+            endDate,
+            'month',
+            timezone,
+            workspaceId
+        ),
     ])
 
     const cumulativeIncome: number[] = []
@@ -395,8 +410,11 @@ export const computeNetWorthTrend = async (
         }
     }
 
-    const accountTotals = await computeAccountTotals(userId)
-    const accounts = await Account.find({ userId, isArchived: false })
+    const accountTotals = await computeAccountTotals(userId, workspaceId)
+    const accounts = await Account.find({
+        ...buildScopedListFilter(userId, workspaceId ?? null),
+        isArchived: false,
+    })
 
     let savings = 0
     let credit = 0
@@ -428,7 +446,8 @@ export const computeNetWorthTrend = async (
 
 export const computeBudgetOverview = async (
     userId: string,
-    timezone: string
+    timezone: string,
+    workspaceId?: string | null
 ): Promise<BudgetOverviewResponse> => {
     const now = formatDateOnlyInTimezone(new Date(), timezone)
     const { year, month } = parseDateParts(now)
@@ -438,7 +457,7 @@ export const computeBudgetOverview = async (
     const endDate = `${year}-${padMonth(month)}-${String(endDay).padStart(2, '0')}`
 
     const budgets = await Budget.find({
-        userId: toObjectId(userId),
+        ...buildScopedListFilter(userId, workspaceId ?? null),
         isArchived: false,
         periodStart: { $lte: periodEnd },
         periodEnd: { $gte: periodStart },
@@ -479,19 +498,20 @@ const serializeBudgetOverview = (
 export const computePaymentMethodBreakdown = async (
     userId: string,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    workspaceId?: string | null
 ): Promise<PaymentMethodBreakdownItem[]> => {
-    const objectId = toObjectId(userId)
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
 
     const splitParentIds = await Transaction.distinct('splitTransactionId', {
-        userId: objectId,
+        ...scope,
         splitTransactionId: { $ne: null },
     })
 
     const rows = await Transaction.aggregate([
         {
             $match: {
-                userId: objectId,
+                ...scope,
                 type: 'expense',
                 status: 'posted',
                 date: { $gte: periodStart, $lte: periodEnd },
@@ -523,15 +543,16 @@ export const computeCashFlowSeries = async (
     startDate: string,
     endDate: string,
     groupBy: DashboardGroupBy,
-    timezone: string
+    timezone: string,
+    workspaceId?: string | null
 ): Promise<CashFlowPoint[]> => {
-    const objectId = toObjectId(userId)
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
     const dateFormat = getDateFormatForGroupBy(groupBy)
 
     const rows = await Transaction.aggregate([
         {
             $match: {
-                userId: objectId,
+                ...scope,
                 type: { $in: ['income', 'expense'] },
                 date: { $gte: periodStart, $lte: periodEnd },
                 ...POSTED_LEDGER_FILTER,
@@ -581,19 +602,20 @@ export const computeCategoryBreakdown = async (
     userId: string,
     periodStart: Date,
     periodEnd: Date,
-    type: 'expense' | 'income'
+    type: 'expense' | 'income',
+    workspaceId?: string | null
 ): Promise<CategoryBreakdownItem[]> => {
-    const objectId = toObjectId(userId)
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
 
     const splitParentIds = await Transaction.distinct('splitTransactionId', {
-        userId: objectId,
+        ...scope,
         splitTransactionId: { $ne: null },
     })
 
     const rows = await Transaction.aggregate([
         {
             $match: {
-                userId: objectId,
+                ...scope,
                 type,
                 status: 'posted',
                 date: { $gte: periodStart, $lte: periodEnd },
@@ -623,16 +645,49 @@ export const computeCategoryBreakdown = async (
     const categories = await Category.find({ _id: { $in: categoryIds } })
     const categoryMap = new Map(categories.map((category) => [category._id.toString(), category]))
 
-    return rows.map((row) => {
+    const missingMasterIds = [
+        ...new Set(
+            categories
+                .filter((category) => category.masterCategoryId && !categoryMap.has(category.masterCategoryId.toString()))
+                .map((category) => category.masterCategoryId!.toString())
+        ),
+    ]
+    if (missingMasterIds.length > 0) {
+        const masters = await Category.find({ _id: { $in: missingMasterIds } })
+        for (const master of masters) {
+            categoryMap.set(master._id.toString(), master)
+        }
+    }
+
+    const totalsByMaster = new Map<string, { amount: number; name: string; color?: string }>()
+
+    for (const row of rows) {
         const categoryId = (row._id as Types.ObjectId).toString()
         const category = categoryMap.get(categoryId)
-        return {
-            categoryId,
-            categoryName: category?.name ?? 'Unknown',
-            amount: fromMinorUnits(row.totalAmount as number),
-            color: category?.color,
+        const masterId = category?.masterCategoryId?.toString() ?? categoryId
+        const master = category?.masterCategoryId ? categoryMap.get(masterId) : category
+
+        const amount = fromMinorUnits(row.totalAmount as number)
+        const existing = totalsByMaster.get(masterId)
+        if (existing) {
+            existing.amount += amount
+        } else {
+            totalsByMaster.set(masterId, {
+                amount,
+                name: master?.name ?? 'Unknown',
+                color: master?.color,
+            })
         }
-    })
+    }
+
+    return [...totalsByMaster.entries()]
+        .map(([categoryId, { amount, name, color }]) => ({
+            categoryId,
+            categoryName: name,
+            amount: roundMoney(amount),
+            color,
+        }))
+        .sort((a, b) => b.amount - a.amount)
 }
 
 export const resolveDashboardQuery = (

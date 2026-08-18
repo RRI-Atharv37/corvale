@@ -4,11 +4,14 @@ import Account, { AccountType, IAccount } from '../models/Account'
 import Category, { ICategory } from '../models/Category'
 import Receipt from '../models/Receipt'
 import Transaction, { ITransaction, TransactionType } from '../models/Transaction'
+import User from '../models/User'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from './moneyUtils'
 import { isMasterCategory, ensureMasterCategoriesSeeded } from './categorySeed'
 import { roundMoney } from './balanceUtils'
+import { assertWorkspaceMembership, validateResourceAccess } from './workspaceUtils'
+import { WorkspaceRole } from '../models/Workspace'
 import { serializeReceipt, SerializedReceipt } from './receiptUtils'
 import {
     getUserId,
@@ -46,6 +49,7 @@ export interface SerializedTransactionWithSplits extends SerializedTransaction {
 export interface SerializedTransaction {
     _id: Types.ObjectId
     userId: Types.ObjectId
+    userFullName?: string
     workspaceId?: Types.ObjectId | null
     accountId: Types.ObjectId
     categoryId: Types.ObjectId
@@ -84,6 +88,23 @@ export const serializeTransactions = (transactions: ITransaction[]): SerializedT
     return transactions.map(serializeTransaction)
 }
 
+export const attachUserFullNamesToTransactions = async (
+    transactions: SerializedTransaction[]
+): Promise<SerializedTransaction[]> => {
+    if (transactions.length === 0) {
+        return transactions
+    }
+
+    const userIds = [...new Set(transactions.map((transaction) => transaction.userId.toString()))]
+    const users = await User.find({ _id: { $in: userIds } }).select('fullName')
+    const nameById = new Map(users.map((user) => [user._id.toString(), user.fullName]))
+
+    return transactions.map((transaction) => ({
+        ...transaction,
+        userFullName: nameById.get(transaction.userId.toString()),
+    }))
+}
+
 export const parseClientAmount = (value: unknown): number => {
     try {
         return parseAmountToMinorUnits(value)
@@ -94,18 +115,26 @@ export const parseClientAmount = (value: unknown): number => {
 
 export const validateAccountForTransaction = async (
     accountId: string,
-    userId: string
+    userId: string,
+    minRole: WorkspaceRole = 'editor'
 ): Promise<IAccount> => {
     const account = await Account.findById(accountId)
     if (!account) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.ACCOUNT_NOT_FOUND, 404)
     }
-    if (account.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
     if (account.isArchived) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.ACCOUNT_ARCHIVED, 400)
     }
+
+    if (account.workspaceId) {
+        await assertWorkspaceMembership(account.workspaceId.toString(), userId, minRole)
+        return account
+    }
+
+    if (account.userId.toString() !== userId) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
+    }
+
     return account
 }
 
@@ -132,7 +161,7 @@ export const validateCategoryForTransaction = async (
     return category
 }
 
-const getBalanceDeltaMajor = (
+export const getBalanceDeltaMajor = (
     type: TransactionType,
     amountMinor: number,
     accountType: AccountType
@@ -433,11 +462,12 @@ export const deleteTransactionForUser = async (
     }
 
     if (isTransferLeg(transaction) && transaction.transferPairId) {
-        const pair = await validateOwnership(
+        const pair = await validateResourceAccess(
             Transaction,
             transaction.transferPairId.toString(),
             userId,
-            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+            'editor'
         )
 
         const outbound = transaction.createdAt <= pair.createdAt ? transaction : pair
@@ -467,7 +497,10 @@ export const deleteTransactionForUser = async (
     await reverseTransactionOnAccount(account, transaction.type, transaction.amount)
 
     if (splitChildren.length > 0) {
-        await Transaction.deleteMany({ _id: { $in: splitChildren.map((child) => child._id) } })
+        await Transaction.deleteMany({
+            _id: { $in: splitChildren.map((child) => child._id) },
+            userId: new Types.ObjectId(userId),
+        })
     }
 
     await Transaction.deleteOne({ _id: transaction._id })

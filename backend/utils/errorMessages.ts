@@ -20,6 +20,7 @@ export const ERROR_MESSAGES = {
     },
     GENERAL: {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
+        UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',
@@ -45,6 +46,22 @@ export const ERROR_MESSAGES = {
         ACCOUNT_ARCHIVED: 'Cannot update an archived account',
         ACCOUNT_ALREADY_ARCHIVED: 'Account is already archived',
         CANNOT_UNSET_DEFAULT: 'Cannot unset default account; set another account as default instead',
+    },
+    TAG: {
+        TAG_NOT_FOUND: 'Tag not found',
+        TAG_ALREADY_EXISTS: 'A tag with this name already exists',
+    },
+    TRANSACTION_TEMPLATE: {
+        TEMPLATE_NOT_FOUND: 'Transaction template not found',
+        UNSUPPORTED_TYPE: 'Template type must be income or expense',
+    },
+    CATEGORIZATION_RULE: {
+        RULE_NOT_FOUND: 'Categorization rule not found',
+        INVALID_MATCH_TYPE: 'Invalid categorization match type',
+        MATCH_VALUE_REQUIRED: 'Match value is required for description rules',
+        AMOUNT_RANGE_REQUIRED: 'At least one of amountMin or amountMax is required',
+        INVALID_AMOUNT_RANGE: 'amountMin cannot be greater than amountMax',
+        ACCOUNT_REQUIRED: 'Account is required for account match rules',
     },
     CATEGORY: {
         CATEGORY_NOT_FOUND: 'Category not found',
@@ -109,5 +126,57 @@ export const ERROR_MESSAGES = {
         RULE_ALREADY_ARCHIVED: 'Recurring rule is already archived',
         NOT_A_DRAFT: 'Transaction is not a draft',
         NOT_RECURRING_DRAFT: 'Transaction is not a recurring draft',
+    },
+    NOTIFICATION: {
+        NOTIFICATION_NOT_FOUND: 'Notification not found',
+    },
+    IMPORT: {
+        FILE_REQUIRED: 'Import file is required',
+        EMPTY_FILE: 'Import file is empty',
+        MISSING_HEADERS: 'CSV file is missing a header row',
+        INVALID_FILE_TYPE: 'Import file must be a CSV or OFX file',
+        FILE_TOO_LARGE: 'Import file exceeds the 2 MB size limit',
+        TOO_MANY_ROWS: 'Import file exceeds the 2,000 row limit',
+        MAPPING_INCOMPLETE: 'Column mapping is incomplete',
+        DATE_COLUMN_REQUIRED: 'A date column mapping is required',
+        INVALID_OFX: 'No valid transactions found in OFX file',
+        NO_VALID_ROWS: 'No valid rows to import',
+        INVALID_MERGE_TARGET: 'Cannot merge a row that has no matching transaction',
+    },
+    BACKUP: {
+        INVALID_FORMAT: 'Backup file is not a valid spndr backup',
+        UNSUPPORTED_VERSION: 'Unsupported backup version',
+        INVALID_FILE_TYPE: 'Backup file must be a JSON or ZIP export',
+        FILE_TOO_LARGE: 'Backup file exceeds the 10 MB size limit',
+        FILE_REQUIRED: 'Backup file is required',
+        BROKEN_REFERENCE: 'Backup contains a broken reference and cannot be restored',
+    },
+    RECONCILIATION: {
+        INVALID_CLEARED_STATUS: 'Invalid clearedStatus',
+        SESSION_NOT_FOUND: 'Reconciliation session not found',
+    },
+    EXCHANGE_RATE: {
+        RATE_NOT_FOUND: 'Exchange rate not found',
+    },
+    ONBOARDING: {
+        NOT_STARTED: 'Onboarding has not been started',
+        INVALID_STEP: 'Invalid onboarding step',
+        INVALID_STEP_ORDER: 'Onboarding steps must be completed in order',
+    },
+    WORKSPACE: {
+        WORKSPACE_NOT_FOUND: 'Workspace not found',
+        NOT_A_MEMBER: 'Not authorized to access this workspace',
+        MEMBER_NOT_FOUND: 'Workspace member not found',
+        MEMBER_ALREADY_EXISTS: 'User is already a member of this workspace',
+        USER_NOT_FOUND: 'No user found with that email',
+        INVALID_WORKSPACE_ID: 'Invalid workspace id',
+        ACCOUNT_WORKSPACE_MISMATCH: 'Account must belong to the same workspace',
+        CANNOT_CHANGE_OWNER_ROLE: 'Owner role cannot be changed',
+        CANNOT_REMOVE_OWNER: 'Workspace owner cannot be removed',
+        OWNER_CANNOT_LEAVE: 'Workspace owner cannot leave; transfer ownership first',
+        INVITE_NOT_FOUND: 'Workspace invitation not found',
+        INVITE_NOT_PENDING: 'This invitation is no longer pending',
+        INVITE_ALREADY_PENDING: 'An invitation is already pending for this user',
+        CANNOT_INVITE_SELF: 'You cannot invite yourself to a workspace',
     },
 }

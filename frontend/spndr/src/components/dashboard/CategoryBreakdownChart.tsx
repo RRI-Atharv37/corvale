@@ -10,7 +10,7 @@ import {
 
 import type { CategoryBreakdownItem } from '../../types/api'
 import { formatCurrency } from '../../utils/format'
-import { CHART_CATEGORY_COLORS, CHART_COLORS } from './chartTheme'
+import { CHART_CATEGORY_COLORS, CHART_COLORS, chartTooltipProps } from './chartTheme'
 
 interface CategoryBreakdownChartProps {
     data: CategoryBreakdownItem[]
@@ -26,17 +26,17 @@ const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ data })
     if (chartData.length === 0) {
         return (
             <div className="card">
-                <h3 className="text-sm font-medium text-slate-200">Category breakdown</h3>
-                <p className="text-xs text-slate-500 mt-1">Spending by category for the selected period</p>
-                <p className="text-sm text-slate-500 mt-8 text-center py-12">No expense data in this period.</p>
+                <h3 className="text-sm font-medium text-fg">Category breakdown</h3>
+                <p className="text-xs text-fg-muted mt-1">Spending by category for the selected period</p>
+                <p className="text-sm text-fg-muted mt-8 text-center py-12">No expense data in this period.</p>
             </div>
         )
     }
 
     return (
         <div className="card">
-            <h3 className="text-sm font-medium text-slate-200">Category breakdown</h3>
-            <p className="text-xs text-slate-500 mt-1">Spending by category for the selected period</p>
+            <h3 className="text-sm font-medium text-fg">Category breakdown</h3>
+            <p className="text-xs text-fg-muted mt-1">Spending by category for the selected period</p>
             <div className="h-80 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -51,17 +51,11 @@ const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ data })
                             paddingAngle={2}
                         >
                             {chartData.map((entry) => (
-                                <Cell key={entry.name} fill={entry.color} stroke="#0f172a" strokeWidth={2} />
+                                <Cell key={entry.name} fill={entry.color} stroke="#14121c" strokeWidth={2} />
                             ))}
                         </Pie>
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: CHART_COLORS.tooltipBg,
-                                border: `1px solid ${CHART_COLORS.tooltipBorder}`,
-                                borderRadius: '0.5rem',
-                                color: '#e2e8f0',
-                                fontSize: '0.75rem',
-                            }}
+                            {...chartTooltipProps}
                             formatter={(value: number) => formatCurrency(value)}
                         />
                         <Legend

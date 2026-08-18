@@ -10,12 +10,12 @@ interface EmptyStateProps {
 const EmptyState: React.FC<EmptyStateProps> = ({ title, description, action }) => {
     return (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center max-w-md mx-auto">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 border border-slate-700/80">
-                <FiInbox className="text-slate-400" size={22} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-hover border border-border/80">
+                <FiInbox className="text-fg-muted" size={22} />
             </div>
             <div>
-                <h3 className="text-base font-medium text-slate-200">{title}</h3>
-                {description && <p className="mt-1 text-sm text-slate-400">{description}</p>}
+                <h3 className="text-base font-medium text-fg">{title}</h3>
+                {description && <p className="mt-1 text-sm text-fg-muted">{description}</p>}
             </div>
             {action}
         </div>

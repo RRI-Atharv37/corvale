@@ -21,9 +21,14 @@ import {
 import {
     getUserId,
     handleResponses,
-    validateOwnership,
     validateRequiredFields,
 } from '../utils/sharedUtils'
+import {
+    assertWorkspaceMembership,
+    buildScopedListFilter,
+    parseOptionalWorkspaceId,
+    validateResourceAccess,
+} from '../utils/workspaceUtils'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
@@ -86,8 +91,18 @@ export const createBudget = asyncHandler(async (req: AuthRequest, res: Response)
     const { periodStart, periodEnd, periodType } = resolvePeriodFromBody(req.body, timezone)
     const amountMinor = parseBudgetAmount(req.body.amount)
     const categoryId = parseOptionalCategoryId(req.body.categoryId)
+    const workspaceId = parseOptionalWorkspaceId(req.body.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'editor')
+    }
+
     const accountIdStrings = parseAccountIds(req.body.accountIds) ?? []
-    const validatedAccountIds = await validateAccountIdsForBudget(accountIdStrings, userId)
+    const validatedAccountIds = await validateAccountIdsForBudget(
+        accountIdStrings,
+        userId,
+        workspaceId
+    )
 
     if (categoryId) {
         await validateCategoryForBudget(categoryId.toString(), userId)
@@ -97,6 +112,7 @@ export const createBudget = asyncHandler(async (req: AuthRequest, res: Response)
 
     const budget = await Budget.create({
         userId,
+        workspaceId,
         name: typeof req.body.name === 'string' ? req.body.name.trim() || undefined : undefined,
         periodType,
         periodStart,
@@ -115,8 +131,13 @@ export const createBudget = asyncHandler(async (req: AuthRequest, res: Response)
 export const getBudgets = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const includeArchived = req.query.includeArchived === 'true'
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
 
-    const filter: Record<string, unknown> = { userId }
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    const filter: Record<string, unknown> = buildScopedListFilter(userId, workspaceId)
     if (!includeArchived) {
         filter.isArchived = false
     }
@@ -141,11 +162,12 @@ export const getBudgetById = asyncHandler(async (req: AuthRequest, res: Response
 
     validateRequiredFields({ budgetId }, ['budgetId'])
 
-    const budget = await validateOwnership<IBudget>(
+    const budget = await validateResourceAccess<IBudget>(
         Budget,
         budgetId,
         userId,
-        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND
+        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND,
+        'viewer'
     )
 
     const serialized = await attachProgressToBudget(budget)
@@ -159,11 +181,12 @@ export const updateBudget = asyncHandler(async (req: AuthRequest, res: Response)
 
     validateRequiredFields({ budgetId }, ['budgetId'])
 
-    const budget = await validateOwnership<IBudget>(
+    const budget = await validateResourceAccess<IBudget>(
         Budget,
         budgetId,
         userId,
-        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND
+        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND,
+        'editor'
     )
 
     if (budget.isArchived) {
@@ -218,7 +241,11 @@ export const updateBudget = asyncHandler(async (req: AuthRequest, res: Response)
 
     const accountIdStrings = parseAccountIds(req.body.accountIds)
     if (accountIdStrings !== undefined) {
-        budget.accountIds = await validateAccountIdsForBudget(accountIdStrings, userId)
+        budget.accountIds = await validateAccountIdsForBudget(
+            accountIdStrings,
+            userId,
+            budget.workspaceId?.toString() ?? null
+        )
     }
 
     const updatedBudget = await budget.save()
@@ -232,11 +259,12 @@ export const archiveBudget = asyncHandler(async (req: AuthRequest, res: Response
 
     validateRequiredFields({ budgetId }, ['budgetId'])
 
-    const budget = await validateOwnership<IBudget>(
+    const budget = await validateResourceAccess<IBudget>(
         Budget,
         budgetId,
         userId,
-        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND
+        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND,
+        'editor'
     )
 
     if (budget.isArchived) {
@@ -255,11 +283,12 @@ export const getBudgetProgress = asyncHandler(async (req: AuthRequest, res: Resp
 
     validateRequiredFields({ budgetId }, ['budgetId'])
 
-    const budget = await validateOwnership<IBudget>(
+    const budget = await validateResourceAccess<IBudget>(
         Budget,
         budgetId,
         userId,
-        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND
+        ERROR_MESSAGES.BUDGET.BUDGET_NOT_FOUND,
+        'viewer'
     )
 
     const serialized = await attachProgressToBudget(budget)

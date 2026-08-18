@@ -3,6 +3,7 @@ import express from 'express'
 import {
     getDashboardCashFlow,
     getDashboardCategoryBreakdown,
+    getDashboardOverview,
     getDashboardSummary,
     getNetWorthTrend,
     getBudgetOverview,
@@ -11,6 +12,7 @@ import { protect } from '../middleware/authMiddleware'
 
 const router = express.Router()
 
+router.get('/', protect, getDashboardOverview)
 router.get('/summary', protect, getDashboardSummary)
 router.get('/cash-flow', protect, getDashboardCashFlow)
 router.get('/category-breakdown', protect, getDashboardCategoryBreakdown)

@@ -21,7 +21,7 @@ import {
     DEFAULT_TIMEZONE,
     resolveDateRange,
 } from './timezoneUtils'
-import { toObjectId } from './sharedUtils'
+import { buildScopedListFilter } from './workspaceUtils'
 
 export const REPORT_PERIOD_TYPES = ['monthly', 'yearly', 'custom'] as const
 export type ReportPeriodType = (typeof REPORT_PERIOD_TYPES)[number]
@@ -270,11 +270,12 @@ export const resolveReportPeriod = (
 export const computePeriodAverages = async (
     userId: string,
     period: ReportPeriod,
-    timezone: string
+    timezone: string,
+    workspaceId?: string | null
 ): Promise<PeriodAverages> => {
     const [incomeMinor, expenseMinor] = await Promise.all([
-        sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd),
-        sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd),
+        sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd, workspaceId),
+        sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd, workspaceId),
     ])
 
     const totalIncome = fromMinorUnits(incomeMinor)
@@ -289,7 +290,8 @@ export const computePeriodAverages = async (
             period.startDate,
             period.endDate,
             'month',
-            timezone
+            timezone,
+            workspaceId
         )
 
         const monthCount = Math.max(monthlyBreakdown.length, 1)
@@ -334,18 +336,19 @@ export const computeLargestExpenses = async (
     userId: string,
     periodStart: Date,
     periodEnd: Date,
-    limit = 10
+    limit = 10,
+    workspaceId?: string | null
 ): Promise<LargestExpenseItem[]> => {
-    const objectId = toObjectId(userId)
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
     const cappedLimit = Math.min(Math.max(Math.floor(limit), 1), 50)
 
     const splitParentIds = await Transaction.distinct('splitTransactionId', {
-        userId: objectId,
+        ...scope,
         splitTransactionId: { $ne: null },
     })
 
     const transactions = await Transaction.find({
-        userId: objectId,
+        ...scope,
         type: 'expense',
         status: 'posted',
         date: { $gte: periodStart, $lte: periodEnd },
@@ -384,7 +387,8 @@ export const computeLargestExpenses = async (
 export const computeSpendingTrends = async (
     userId: string,
     period: ReportPeriod,
-    timezone: string
+    timezone: string,
+    workspaceId?: string | null
 ): Promise<SpendingTrendPoint[]> => {
     const series = await computeCashFlowSeries(
         userId,
@@ -393,7 +397,8 @@ export const computeSpendingTrends = async (
         period.startDate,
         period.endDate,
         'month',
-        timezone
+        timezone,
+        workspaceId
     )
 
     return series.map((point, index) => {
@@ -421,11 +426,12 @@ const resolveTrend = (changePercent: number | null): 'up' | 'down' | 'flat' => {
 
 export const computeIncomeVsExpense = async (
     userId: string,
-    period: ReportPeriod
+    period: ReportPeriod,
+    workspaceId?: string | null
 ): Promise<IncomeVsExpenseComparison> => {
     const [incomeMinor, expenseMinor] = await Promise.all([
-        sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd),
-        sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd),
+        sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd, workspaceId),
+        sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd, workspaceId),
     ])
 
     const totalIncome = fromMinorUnits(incomeMinor)
@@ -445,11 +451,12 @@ export const computeIncomeVsExpense = async (
 
 export const computeSavingsRate = async (
     userId: string,
-    period: ReportPeriod
+    period: ReportPeriod,
+    workspaceId?: string | null
 ): Promise<SavingsRateReport> => {
     const [incomeMinor, expenseMinor] = await Promise.all([
-        sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd),
-        sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd),
+        sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd, workspaceId),
+        sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd, workspaceId),
     ])
 
     const totalIncome = fromMinorUnits(incomeMinor)
@@ -494,13 +501,14 @@ const monthlyEquivalentForRule = (rule: IRecurringRule): number => {
 
 export const computeRecurringTotals = async (
     userId: string,
-    period: ReportPeriod
+    period: ReportPeriod,
+    workspaceId?: string | null
 ): Promise<RecurringTotalsReport> => {
-    const objectId = toObjectId(userId)
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
 
     const [rules, recurringExpenseAgg] = await Promise.all([
         RecurringRule.find({
-            userId: objectId,
+            ...scope,
             type: 'expense',
             isActive: true,
             isArchived: false,
@@ -508,7 +516,7 @@ export const computeRecurringTotals = async (
         Transaction.aggregate([
             {
                 $match: {
-                    userId: objectId,
+                    ...scope,
                     type: 'expense',
                     status: 'posted',
                     recurringPaymentId: { $ne: null },
@@ -574,7 +582,8 @@ export const generateCustomReport = async (
     period: ReportPeriod,
     metrics: ReportMetricKey[],
     timezone: string,
-    largestExpensesLimit = 10
+    largestExpensesLimit = 10,
+    workspaceId?: string | null
 ): Promise<CustomReportResult> => {
     const result: CustomReportResult = {
         periodStart: period.startDate,
@@ -591,57 +600,62 @@ export const generateCustomReport = async (
                     period.periodStart,
                     period.periodEnd,
                     period.startDate,
-                    period.endDate
+                    period.endDate,
+                    workspaceId
                 )
                 break
             case 'averages':
-                result.metrics.averages = await computePeriodAverages(userId, period, timezone)
+                result.metrics.averages = await computePeriodAverages(userId, period, timezone, workspaceId)
                 break
             case 'largestExpenses':
                 result.metrics.largestExpenses = await computeLargestExpenses(
                     userId,
                     period.periodStart,
                     period.periodEnd,
-                    largestExpensesLimit
+                    largestExpensesLimit,
+                    workspaceId
                 )
                 break
             case 'spendingTrends':
                 result.metrics.spendingTrends = await computeSpendingTrends(
                     userId,
                     period,
-                    timezone
+                    timezone,
+                    workspaceId
                 )
                 break
             case 'incomeVsExpense':
-                result.metrics.incomeVsExpense = await computeIncomeVsExpense(userId, period)
+                result.metrics.incomeVsExpense = await computeIncomeVsExpense(userId, period, workspaceId)
                 break
             case 'savingsRate':
-                result.metrics.savingsRate = await computeSavingsRate(userId, period)
+                result.metrics.savingsRate = await computeSavingsRate(userId, period, workspaceId)
                 break
             case 'recurringTotals':
-                result.metrics.recurringTotals = await computeRecurringTotals(userId, period)
+                result.metrics.recurringTotals = await computeRecurringTotals(userId, period, workspaceId)
                 break
             case 'categoryBreakdown':
                 result.metrics.categoryBreakdown = await computeCategoryBreakdown(
                     userId,
                     period.periodStart,
                     period.periodEnd,
-                    'expense'
+                    'expense',
+                    workspaceId
                 )
                 break
             case 'budgetAnalysis':
-                result.metrics.budgetAnalysis = await computeBudgetAnalysis(userId, period, timezone)
+                result.metrics.budgetAnalysis = await computeBudgetAnalysis(userId, period, timezone, workspaceId)
                 break
             case 'spendingAnalysis':
                 result.metrics.spendingAnalysis = await computeSpendingAnalysis(
                     userId,
                     period,
                     timezone,
-                    largestExpensesLimit
+                    largestExpensesLimit,
+                    workspaceId
                 )
                 break
             case 'crossoverPoint':
-                result.metrics.crossoverPoint = await computeCrossoverPoint(userId, period, timezone)
+                result.metrics.crossoverPoint = await computeCrossoverPoint(userId, period, timezone, workspaceId)
                 break
             default:
                 break
@@ -654,10 +668,11 @@ export const generateCustomReport = async (
 export const computeBudgetAnalysis = async (
     userId: string,
     period: ReportPeriod,
-    timezone: string
+    timezone: string,
+    workspaceId?: string | null
 ): Promise<BudgetAnalysisReport> => {
     const budgets = await Budget.find({
-        userId: toObjectId(userId),
+        ...buildScopedListFilter(userId, workspaceId ?? null),
         isArchived: false,
         periodStart: { $lte: period.periodEnd },
         periodEnd: { $gte: period.periodStart },
@@ -701,17 +716,18 @@ export const computeSpendingAnalysis = async (
     userId: string,
     period: ReportPeriod,
     timezone: string,
-    largestLimit = 10
+    largestLimit = 10,
+    workspaceId?: string | null
 ): Promise<SpendingAnalysisReport> => {
-    const objectId = toObjectId(userId)
+    const scope = buildScopedListFilter(userId, workspaceId ?? null)
 
     const splitParentIds = await Transaction.distinct('splitTransactionId', {
-        userId: objectId,
+        ...scope,
         splitTransactionId: { $ne: null },
     })
 
     const transactionCount = await Transaction.countDocuments({
-        userId: objectId,
+        ...scope,
         type: 'expense',
         status: 'posted',
         date: { $gte: period.periodStart, $lte: period.periodEnd },
@@ -725,15 +741,16 @@ export const computeSpendingAnalysis = async (
         userId,
         'expense',
         period.periodStart,
-        period.periodEnd
+        period.periodEnd,
+        workspaceId
     )
     const totalExpenses = fromMinorUnits(expenseMinor)
 
     const [topCategories, topPaymentMethods, largestExpenses, trends] = await Promise.all([
-        computeCategoryBreakdown(userId, period.periodStart, period.periodEnd, 'expense'),
-        computePaymentMethodBreakdown(userId, period.periodStart, period.periodEnd),
-        computeLargestExpenses(userId, period.periodStart, period.periodEnd, largestLimit),
-        computeSpendingTrends(userId, period, timezone),
+        computeCategoryBreakdown(userId, period.periodStart, period.periodEnd, 'expense', workspaceId),
+        computePaymentMethodBreakdown(userId, period.periodStart, period.periodEnd, workspaceId),
+        computeLargestExpenses(userId, period.periodStart, period.periodEnd, largestLimit, workspaceId),
+        computeSpendingTrends(userId, period, timezone, workspaceId),
     ])
 
     return {
@@ -753,7 +770,8 @@ export const computeSpendingAnalysis = async (
 export const computeCrossoverPoint = async (
     userId: string,
     period: ReportPeriod,
-    timezone: string
+    timezone: string,
+    workspaceId?: string | null
 ): Promise<CrossoverPointReport> => {
     const cashFlow = await computeCashFlowSeries(
         userId,
@@ -762,7 +780,8 @@ export const computeCrossoverPoint = async (
         period.startDate,
         period.endDate,
         'month',
-        timezone
+        timezone,
+        workspaceId
     )
 
     let cumulativeIncome = 0
@@ -860,15 +879,16 @@ export const executeCustomReportQuery = async (
         dataType: CustomReportDataType
         groupBy: DashboardGroupBy
         timezone: string
+        workspaceId?: string | null
     }
 ): Promise<CustomReportQueryResult> => {
-    const { splitBy, chartType, dataType, groupBy, timezone } = options
+    const { splitBy, chartType, dataType, groupBy, timezone, workspaceId } = options
     let rows: CustomReportQueryRow[] = []
 
     if (splitBy === 'total') {
         const [incomeMinor, expenseMinor] = await Promise.all([
-            sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd),
-            sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd),
+            sumPostedTransactionsByType(userId, 'income', period.periodStart, period.periodEnd, workspaceId),
+            sumPostedTransactionsByType(userId, 'expense', period.periodStart, period.periodEnd, workspaceId),
         ])
         const income = fromMinorUnits(incomeMinor)
         const expense = fromMinorUnits(expenseMinor)
@@ -881,7 +901,8 @@ export const executeCustomReportQuery = async (
             period.startDate,
             period.endDate,
             groupBy,
-            timezone
+            timezone,
+            workspaceId
         )
         rows = series.map((point) => ({
             label: point.period,
@@ -892,8 +913,8 @@ export const executeCustomReportQuery = async (
     } else if (splitBy === 'category') {
         if (dataType === 'both') {
             const [incomeBreakdown, expenseBreakdown] = await Promise.all([
-                computeCategoryBreakdown(userId, period.periodStart, period.periodEnd, 'income'),
-                computeCategoryBreakdown(userId, period.periodStart, period.periodEnd, 'expense'),
+                computeCategoryBreakdown(userId, period.periodStart, period.periodEnd, 'income', workspaceId),
+                computeCategoryBreakdown(userId, period.periodStart, period.periodEnd, 'expense', workspaceId),
             ])
             const labels = new Set([
                 ...incomeBreakdown.map((item) => item.categoryName),
@@ -913,7 +934,8 @@ export const executeCustomReportQuery = async (
                 userId,
                 period.periodStart,
                 period.periodEnd,
-                type
+                type,
+                workspaceId
             )
             rows = breakdown.map((item) => ({
                 label: item.categoryName,
@@ -926,7 +948,8 @@ export const executeCustomReportQuery = async (
         const paymentMethods = await computePaymentMethodBreakdown(
             userId,
             period.periodStart,
-            period.periodEnd
+            period.periodEnd,
+            workspaceId
         )
         rows = paymentMethods.map((item) => ({
             label: item.paymentMethod,
@@ -947,15 +970,21 @@ export const executeCustomReportQuery = async (
     }
 }
 
-export const customReportToCsv = (report: CustomReportResult): string => {
-    const rows: string[][] = [['Section', 'Key', 'Value']]
+export interface FlatReportRow {
+    section: string
+    key: string
+    value: string
+}
 
-    rows.push(['Meta', 'Period Type', report.periodType])
-    rows.push(['Meta', 'Period Start', report.periodStart])
-    rows.push(['Meta', 'Period End', report.periodEnd])
+export const flattenCustomReport = (report: CustomReportResult): FlatReportRow[] => {
+    const rows: FlatReportRow[] = []
+
+    rows.push({ section: 'Meta', key: 'Period Type', value: report.periodType })
+    rows.push({ section: 'Meta', key: 'Period Start', value: report.periodStart })
+    rows.push({ section: 'Meta', key: 'Period End', value: report.periodEnd })
 
     const pushRow = (section: string, key: string, value: string | number) => {
-        rows.push([section, key, String(value)])
+        rows.push({ section, key, value: String(value) })
     }
 
     if (report.metrics.summary) {
@@ -1024,5 +1053,10 @@ export const customReportToCsv = (report: CustomReportResult): string => {
         })
     }
 
+    return rows
+}
+
+export const customReportToCsv = (report: CustomReportResult): string => {
+    const rows = [['Section', 'Key', 'Value'], ...flattenCustomReport(report).map((row) => [row.section, row.key, row.value])]
     return buildCsvString(rows)
 }

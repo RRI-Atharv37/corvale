@@ -58,8 +58,8 @@ const Login = () => {
     return (
         <AuthLayout>
             <div>
-                <h3 className="text-xl font-semibold text-slate-100">Welcome back</h3>
-                <p className="text-xs text-slate-400 mt-1 mb-6">Sign in to your account</p>
+                <h3 className="text-xl font-semibold text-fg">Welcome back</h3>
+                <p className="text-xs text-fg-muted mt-1 mb-6">Sign in to your account</p>
 
                 <form onSubmit={handleLogin}>
                     <Input
@@ -80,11 +80,11 @@ const Login = () => {
                         disabled={isSubmitting}
                     />
 
-                    {error && <p className="text-red-400 text-xs pb-2.5">{error}</p>}
+                    {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
 
                     <div className="flex justify-end mb-3">
                         <Link
-                            className="text-xs font-medium text-cyan-400 hover:text-cyan-300"
+                            className="text-xs font-medium text-accent hover:text-accent"
                             to="/forgot-password"
                         >
                             Forgot password?
@@ -95,9 +95,9 @@ const Login = () => {
                         {isSubmitting ? 'Signing in...' : 'Sign in'}
                     </button>
 
-                    <p className="text-[13px] text-slate-400 mt-3">
+                    <p className="text-[13px] text-fg-muted mt-3">
                         Don&apos;t have an account?{' '}
-                        <Link className="font-medium text-cyan-400 hover:text-cyan-300" to="/signup">
+                        <Link className="font-medium text-accent hover:text-accent" to="/signup">
                             Sign up
                         </Link>
                     </p>

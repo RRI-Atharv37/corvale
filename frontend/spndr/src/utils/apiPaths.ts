@@ -53,6 +53,7 @@ export const API_PATHS = {
         GET_BY_ID: (accountId: string) => `/accounts/${accountId}`,
         UPDATE: (accountId: string) => `/accounts/${accountId}`,
         DELETE: (accountId: string) => `/accounts/${accountId}`,
+        RECONCILIATION_SESSIONS: (accountId: string) => `/accounts/${accountId}/reconciliation-sessions`,
     },
     CATEGORIES: {
         CREATE: '/categories',
@@ -61,6 +62,31 @@ export const API_PATHS = {
         UPDATE: (categoryId: string) => `/categories/${categoryId}`,
         DELETE: (categoryId: string) => `/categories/${categoryId}`,
         REORDER: '/categories/reorder',
+    },
+    TAGS: {
+        CREATE: '/tags',
+        GET_ALL: '/tags',
+        GET_BY_ID: (tagId: string) => `/tags/${tagId}`,
+        UPDATE: (tagId: string) => `/tags/${tagId}`,
+        DELETE: (tagId: string) => `/tags/${tagId}`,
+        DEDUPE: '/tags/dedupe',
+    },
+    CATEGORIZATION_RULES: {
+        CREATE: '/categorization-rules',
+        GET_ALL: '/categorization-rules',
+        GET_BY_ID: (ruleId: string) => `/categorization-rules/${ruleId}`,
+        UPDATE: (ruleId: string) => `/categorization-rules/${ruleId}`,
+        DELETE: (ruleId: string) => `/categorization-rules/${ruleId}`,
+        BULK_APPLY: '/categorization-rules/bulk-apply',
+        TEST: '/categorization-rules/test',
+    },
+    TRANSACTION_TEMPLATES: {
+        CREATE: '/transaction-templates',
+        GET_ALL: '/transaction-templates',
+        GET_BY_ID: (templateId: string) => `/transaction-templates/${templateId}`,
+        UPDATE: (templateId: string) => `/transaction-templates/${templateId}`,
+        DELETE: (templateId: string) => `/transaction-templates/${templateId}`,
+        APPLY: (templateId: string) => `/transaction-templates/${templateId}/apply`,
     },
     TRANSACTIONS: {
         CREATE: '/transactions',
@@ -78,6 +104,7 @@ export const API_PATHS = {
         SEARCH: '/transactions/search',
         DOWNLOAD: '/transactions/download',
         DUPLICATE: (transactionId: string) => `/transactions/duplicate/${transactionId}`,
+        UPDATE_CLEARED_STATUS: (transactionId: string) => `/transactions/${transactionId}/cleared-status`,
     },
     RECEIPTS: {
         UPLOAD: '/receipts',
@@ -141,5 +168,64 @@ export const API_PATHS = {
         GENERATE: '/dashboard/reports/generate',
         SAVED: '/dashboard/reports/saved',
         SAVED_RUN: (reportId: string) => `/dashboard/reports/saved/${reportId}/run`,
+    },
+    NOTIFICATIONS: {
+        GET_ALL: '/notifications',
+        MARK_READ: (notificationId: string) => `/notifications/${notificationId}/read`,
+        DISMISS: (notificationId: string) => `/notifications/${notificationId}/dismiss`,
+        MARK_ALL_READ: '/notifications/read-all',
+    },
+    WORKSPACES: {
+        CREATE: '/workspaces',
+        GET_ALL: '/workspaces',
+        GET_BY_ID: (workspaceId: string) => `/workspaces/${workspaceId}`,
+        UPDATE: (workspaceId: string) => `/workspaces/${workspaceId}`,
+        INVITE: (workspaceId: string) => `/workspaces/${workspaceId}/members`,
+        PENDING_INVITES: (workspaceId: string) => `/workspaces/${workspaceId}/invites`,
+        RECEIVED_INVITES: '/workspaces/invites/received',
+        ACCEPT_INVITE: (inviteId: string) => `/workspaces/invites/${inviteId}/accept`,
+        DECLINE_INVITE: (inviteId: string) => `/workspaces/invites/${inviteId}/decline`,
+        UPDATE_MEMBER: (workspaceId: string, memberUserId: string) =>
+            `/workspaces/${workspaceId}/members/${memberUserId}`,
+        REMOVE_MEMBER: (workspaceId: string, memberUserId: string) =>
+            `/workspaces/${workspaceId}/members/${memberUserId}`,
+    },
+    IMPORTS: {
+        PARSE: '/imports/parse',
+        PREVIEW: '/imports/preview',
+        COMMIT: '/imports/commit',
+    },
+    BACKUP: {
+        EXPORT: '/backup/export',
+        PREVIEW: '/backup/preview',
+        RESTORE: '/backup/restore',
+    },
+    FORECAST: {
+        GET: '/forecast',
+    },
+    CALENDAR: {
+        GET: '/calendar',
+    },
+    SUBSCRIPTIONS: {
+        GET_ALL: '/subscriptions',
+    },
+    DEBTS: {
+        PLAN: '/debts/plan',
+    },
+    RECONCILIATION: {
+        CREATE_SESSION: '/reconciliation-sessions',
+    },
+    EXCHANGE_RATES: {
+        GET_ALL: '/exchange-rates',
+        CREATE: '/exchange-rates',
+        UPDATE: (pair: string) => `/exchange-rates/${pair}`,
+        DELETE: (pair: string) => `/exchange-rates/${pair}`,
+    },
+    ONBOARDING: {
+        START: '/onboarding/start',
+        STATUS: '/onboarding/status',
+        STEP: (step: string) => `/onboarding/step/${step}`,
+        SKIP: '/onboarding/skip',
+        REPLAY: '/onboarding/replay',
     },
 } as const

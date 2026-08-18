@@ -17,14 +17,17 @@ import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
+import TagPicker from '../../components/tags/TagPicker'
 import AccountPicker from '../../components/accounts/AccountPicker'
 import CurrencySelect from '../../components/inputs/CurrencySelect'
 import RecurringCalendar from '../../components/recurring/RecurringCalendar'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { usePageSize } from '../../hooks/usePaginatedList'
 import { useUser } from '../../hooks/useUser'
 import type {
     Account,
@@ -34,11 +37,12 @@ import type {
     RecurringRuleFormData,
     RecurringRuleType,
     RecurringInterval,
+    Tag,
     Transaction,
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
+import { formatCurrency, formatDisplayDate, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
 import { CategoryIcon } from '../../utils/categoryIcons'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
 import { formatIntervalLabel, INTERVAL_OPTIONS } from '../../utils/recurringUtils'
@@ -64,9 +68,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
     disabled,
 }) => (
     <div>
-        <label className="text-[13px] text-slate-300">
+        <label className="text-[13px] text-fg-secondary">
             {label}
-            {required && <span className="text-rose-400 ml-0.5">*</span>}
+            {required && <span className="text-expense ml-0.5">*</span>}
         </label>
         <div className="input-box mb-0 mt-1">
             <select
@@ -74,10 +78,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 disabled={disabled}
-                className="w-full bg-transparent outline-none text-slate-200"
+                className="w-full bg-transparent outline-none text-fg"
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-slate-900">
+                    <option key={option.value} value={option.value} className="bg-surface">
                         {option.label}
                     </option>
                 ))}
@@ -98,7 +102,7 @@ const emptyForm = (preferredCurrency = DEFAULT_CURRENCY): RecurringRuleFormData 
     nextDueDate: toDateInputValue(new Date()),
     description: '',
     paymentMethod: '',
-    tags: '',
+    tags: [],
     isActive: true,
 })
 
@@ -114,7 +118,7 @@ const ruleToForm = (rule: RecurringRule): RecurringRuleFormData => ({
     nextDueDate: toDateInputValue(rule.nextDueDate),
     description: rule.description ?? '',
     paymentMethod: rule.paymentMethod ?? '',
-    tags: rule.tags?.join(', ') ?? '',
+    tags: rule.tags ?? [],
     isActive: rule.isActive,
 })
 
@@ -134,6 +138,7 @@ const resolveCategoryLabel = (
 const Recurring = () => {
     const { user } = useUser()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
+    const pageSize = usePageSize()
 
     const [view, setView] = useState<RecurringView>('rules')
     const [ruleListView, setRuleListView] = useState<RuleListView>('active')
@@ -182,9 +187,15 @@ const Recurring = () => {
         return unwrapApiData(response).filter((account) => !account.isArchived)
     }, [])
 
+    const fetchTags = useCallback(async (): Promise<Tag[]> => {
+        const response = await axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL)
+        return unwrapApiData(response)
+    }, [])
+
     const { data: rules, loading, error, refetch } = useAsyncData(fetchRules, [fetchRules])
     const { data: categories } = useAsyncData(fetchCategories, [fetchCategories])
     const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
+    const { data: tags, refetch: refetchTags } = useAsyncData(fetchTags, [fetchTags])
 
     const fetchDrafts = useCallback(async () => {
         setDraftsLoading(true)
@@ -299,10 +310,7 @@ const Recurring = () => {
             nextDueDate: formData.nextDueDate,
             description: formData.description.trim() || undefined,
             paymentMethod: formData.paymentMethod.trim() || undefined,
-            tags: formData.tags
-                .split(',')
-                .map((tag) => tag.trim())
-                .filter(Boolean),
+            tags: formData.tags,
             isActive: formData.isActive,
         }
 
@@ -529,10 +537,11 @@ const Recurring = () => {
                 disabled={submitting}
             />
 
-            <FormField
-                label="Tags (optional, comma-separated)"
+            <TagPicker
                 value={form.tags}
-                onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
+                onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+                tagsData={tags ?? undefined}
+                onTagsChange={refetchTags}
                 disabled={submitting}
             />
 
@@ -542,9 +551,9 @@ const Recurring = () => {
                     checked={form.isActive}
                     onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
                     disabled={submitting}
-                    className="rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-500/40"
+                    className="rounded border-border bg-surface text-accent focus:ring-accent/30"
                 />
-                <span className="text-sm text-slate-300">Active (generates drafts when due)</span>
+                <span className="text-sm text-fg-secondary">Active (generates drafts when due)</span>
             </label>
         </div>
     )
@@ -559,7 +568,7 @@ const Recurring = () => {
                         <button
                             type="button"
                             onClick={openCreate}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors"
                         >
                             <IoAdd size={18} />
                             Create rule
@@ -569,7 +578,7 @@ const Recurring = () => {
                             type="button"
                             onClick={() => void generateAndRefreshDrafts()}
                             disabled={generatingDrafts}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50"
                         >
                             <IoRefresh size={16} className={generatingDrafts ? 'animate-spin' : ''} />
                             {generatingDrafts ? 'Syncing...' : 'Sync drafts'}
@@ -584,8 +593,8 @@ const Recurring = () => {
                     onClick={() => setView('rules')}
                     className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         view === 'rules'
-                            ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                            : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                            ? 'bg-accent-subtle text-accent border border-accent/30'
+                            : 'text-fg-muted border border-border-subtle hover:border-border'
                     }`}
                 >
                     Rules
@@ -595,14 +604,14 @@ const Recurring = () => {
                     onClick={() => setView('drafts')}
                     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         view === 'drafts'
-                            ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                            : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                            ? 'bg-accent-subtle text-accent border border-accent/30'
+                            : 'text-fg-muted border border-border-subtle hover:border-border'
                     }`}
                 >
                     <IoMail size={16} />
                     Draft inbox
                     {drafts.length > 0 && (
-                        <span className="rounded-full bg-amber-500/20 text-amber-200 px-1.5 py-0.5 text-[11px]">
+                        <span className="rounded-full bg-warning/20 text-warning px-1.5 py-0.5 text-[11px]">
                             {drafts.length}
                         </span>
                     )}
@@ -612,8 +621,8 @@ const Recurring = () => {
                     onClick={() => setView('calendar')}
                     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         view === 'calendar'
-                            ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20'
-                            : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                            ? 'bg-accent-subtle text-accent border border-accent/30'
+                            : 'text-fg-muted border border-border-subtle hover:border-border'
                     }`}
                 >
                     <IoCalendar size={16} />
@@ -629,8 +638,8 @@ const Recurring = () => {
                             onClick={() => setRuleListView('active')}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                                 ruleListView === 'active'
-                                    ? 'bg-slate-800 text-slate-200 border border-slate-700'
-                                    : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                                    ? 'bg-surface-hover text-fg border border-border'
+                                    : 'text-fg-muted border border-border-subtle hover:border-border'
                             }`}
                         >
                             Active
@@ -640,8 +649,8 @@ const Recurring = () => {
                             onClick={() => setRuleListView('archived')}
                             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                                 ruleListView === 'archived'
-                                    ? 'bg-slate-800 text-slate-200 border border-slate-700'
-                                    : 'text-slate-400 border border-slate-800 hover:border-slate-700'
+                                    ? 'bg-surface-hover text-fg border border-border'
+                                    : 'text-fg-muted border border-border-subtle hover:border-border'
                             }`}
                         >
                             <IoTime size={16} />
@@ -666,8 +675,10 @@ const Recurring = () => {
                         onRetry={refetch}
                     >
                         {(items) => (
+                            <PaginatedCardList items={items} pageSize={pageSize}>
+                                {(paginatedItems) => (
                             <div className="space-y-4">
-                                {items.map((rule) => {
+                                {paginatedItems.map((rule) => {
                                     const categoryMeta = resolveCategoryLabel(
                                         rule.categoryId,
                                         categories
@@ -678,41 +689,41 @@ const Recurring = () => {
                                             <div className="flex items-start justify-between gap-4">
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                        <p className="text-sm font-medium text-slate-200">
+                                                        <p className="text-sm font-medium text-fg">
                                                             {rule.title}
                                                         </p>
                                                         <span
                                                             className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                                                                 rule.type === 'income'
                                                                     ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                                                                    : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                                                                    : 'bg-expense/10 border-negative/20 text-expense'
                                                             }`}
                                                         >
                                                             {rule.type}
                                                         </span>
                                                         {!rule.isActive && !rule.isArchived && (
-                                                            <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] text-amber-300">
+                                                            <span className="rounded-full bg-warning/10 border border-warning/20 px-2 py-0.5 text-[11px] text-warning">
                                                                 Paused
                                                             </span>
                                                         )}
                                                         {rule.isArchived && (
-                                                            <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400">
+                                                            <span className="rounded-full bg-surface-hover border border-border px-2 py-0.5 text-[11px] text-fg-muted">
                                                                 Archived
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-slate-500 mt-1">
+                                                    <p className="text-xs text-fg-muted mt-1">
                                                         {formatIntervalLabel(
                                                             rule.interval,
                                                             rule.customIntervalDays
                                                         )}{' '}
                                                         · Next due{' '}
-                                                        {toDateInputValue(rule.nextDueDate)} ·{' '}
+                                                        {formatDisplayDate(rule.nextDueDate)} ·{' '}
                                                         {resolveAccountName(rule.accountId)}
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-2">
                                                         <span
-                                                            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-700"
+                                                            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border"
                                                             style={{
                                                                 backgroundColor: `${categoryMeta.color ?? '#6B7280'}20`,
                                                             }}
@@ -723,10 +734,10 @@ const Recurring = () => {
                                                                 size={14}
                                                             />
                                                         </span>
-                                                        <span className="text-xs text-slate-400">
+                                                        <span className="text-xs text-fg-muted">
                                                             {categoryMeta.name}
                                                         </span>
-                                                        <span className="text-xs text-slate-500">
+                                                        <span className="text-xs text-fg-muted">
                                                             ·{' '}
                                                             {formatCurrency(rule.amount, rule.currency)}
                                                         </span>
@@ -737,7 +748,7 @@ const Recurring = () => {
                                                         <button
                                                             type="button"
                                                             onClick={() => void toggleRuleActive(rule)}
-                                                            className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors"
+                                                            className="p-1.5 text-fg-muted hover:text-warning transition-colors"
                                                             aria-label={
                                                                 rule.isActive ? 'Pause rule' : 'Resume rule'
                                                             }
@@ -752,7 +763,7 @@ const Recurring = () => {
                                                         <button
                                                             type="button"
                                                             onClick={() => openEdit(rule)}
-                                                            className="p-1.5 text-slate-400 hover:text-cyan-400 transition-colors"
+                                                            className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                             aria-label="Edit rule"
                                                         >
                                                             <IoPencil size={16} />
@@ -760,7 +771,7 @@ const Recurring = () => {
                                                         <button
                                                             type="button"
                                                             onClick={() => setArchiveTarget(rule)}
-                                                            className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                                                            className="p-1.5 text-fg-muted hover:text-expense transition-colors"
                                                             aria-label="Archive rule"
                                                         >
                                                             <IoTrash size={16} />
@@ -772,6 +783,8 @@ const Recurring = () => {
                                     )
                                 })}
                             </div>
+                                )}
+                            </PaginatedCardList>
                         )}
                     </AsyncContent>
                 </>
@@ -789,34 +802,36 @@ const Recurring = () => {
                     onRetry={() => void generateAndRefreshDrafts()}
                 >
                     {(items) => (
+                        <PaginatedCardList items={items} pageSize={pageSize}>
+                            {(paginatedItems) => (
                         <div className="space-y-4">
-                            {items.map((draft) => {
+                            {paginatedItems.map((draft) => {
                                 const isActing = draftActionId === draft._id
                                 return (
                                     <div
                                         key={draft._id}
-                                        className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-amber-500/20 bg-amber-500/5"
+                                        className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-warning/20 bg-warning/5"
                                     >
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <p className="text-sm font-medium text-slate-200">
+                                                <p className="text-sm font-medium text-fg">
                                                     {draft.title}
                                                 </p>
-                                                <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] text-amber-300">
+                                                <span className="rounded-full bg-warning/10 border border-warning/20 px-2 py-0.5 text-[11px] text-warning">
                                                     Draft
                                                 </span>
                                                 <span
                                                     className={`rounded-full border px-2 py-0.5 text-[11px] ${
                                                         draft.type === 'income'
                                                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                                                            : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                                                            : 'bg-expense/10 border-negative/20 text-expense'
                                                     }`}
                                                 >
                                                     {draft.type}
                                                 </span>
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-1">
-                                                Due {toDateInputValue(draft.date)} ·{' '}
+                                            <p className="text-xs text-fg-muted mt-1">
+                                                Due {formatDisplayDate(draft.date)} ·{' '}
                                                 {resolveRuleTitle(draft.recurringPaymentId)} ·{' '}
                                                 {formatCurrency(draft.amount, draft.currency)}
                                             </p>
@@ -835,7 +850,7 @@ const Recurring = () => {
                                                 type="button"
                                                 onClick={() => void handleDismissDraft(draft)}
                                                 disabled={isActing}
-                                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-400 hover:text-rose-300 hover:border-rose-500/30 transition-colors disabled:opacity-50"
+                                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-border text-fg-muted hover:text-expense hover:border-negative/30 transition-colors disabled:opacity-50"
                                             >
                                                 <IoCloseCircle size={16} />
                                                 Dismiss
@@ -845,6 +860,8 @@ const Recurring = () => {
                                 )
                             })}
                         </div>
+                            )}
+                        </PaginatedCardList>
                     )}
                 </AsyncContent>
             )}
@@ -884,14 +901,14 @@ const Recurring = () => {
                             type="button"
                             onClick={closeCreate}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Creating...' : 'Create rule'}
                         </button>
@@ -907,14 +924,14 @@ const Recurring = () => {
                             type="button"
                             onClick={closeEdit}
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition-colors disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {submitting ? 'Saving...' : 'Save changes'}
                         </button>
@@ -941,7 +958,7 @@ const Recurring = () => {
                 title="Confirm draft"
                 message={
                     selectedDraft
-                        ? `Post "${selectedDraft.title}" for ${formatCurrency(selectedDraft.amount, selectedDraft.currency)} on ${toDateInputValue(selectedDraft.date)}?`
+                        ? `Post "${selectedDraft.title}" for ${formatCurrency(selectedDraft.amount, selectedDraft.currency)} on ${formatDisplayDate(selectedDraft.date)}?`
                         : ''
                 }
                 confirmLabel="Confirm & post"

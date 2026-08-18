@@ -56,14 +56,31 @@ The `data` field shape varies by endpoint.
 | Prefix | Domain | Auth required |
 |--------|--------|---------------|
 | `/auth` | Authentication | Partial (see auth docs) |
+| `/onboarding` | First-run onboarding wizard | Yes |
 | `/transactions` | Unified transaction ledger | Yes |
 | `/categories` | Category management | Yes |
+| `/categorization-rules` | Auto-categorization rules | Yes |
+| `/tags` | Structured tags | Yes |
+| `/transaction-templates` | Quick-add templates | Yes |
+| `/recurring-rules` | Recurring transactions and drafts | Yes |
+| `/imports` | Bank CSV/OFX import | Yes |
+| `/backup` | JSON/ZIP backup export and restore | Yes |
 | `/receipts` | Receipt upload and download | Yes |
 | `/accounts` | Account management | Yes |
+| `/reconciliation-sessions` | Account reconciliation sessions | Yes |
+| `/exchange-rates` | Manual currency exchange rates | Yes |
 | `/budgets` | Budget CRUD and progress | Yes |
 | `/savings-goals` | Savings goal CRUD, contributions, lifecycle | Yes |
 | `/saver` | Saver deposits and withdrawals | Yes |
 | `/pushover` | Rollover and history | Yes |
+| `/dashboard` | Dashboard totals and time series | Yes |
+| `/dashboard/reports` | Analytics reports, custom queries, saved reports | Yes |
+| `/notifications` | In-app notifications | Yes |
+| `/workspaces` | Shared workspaces, members, invites | Yes |
+| `/forecast` | Cash flow forecast (no frontend yet) | Yes |
+| `/calendar` | Unified financial calendar (no frontend yet) | Yes |
+| `/subscriptions` | Subscription tracker (no frontend yet) | Yes |
+| `/debts` | Debt payoff planner (no frontend yet) | Yes |
 | `/income` | Legacy income CRUD (deprecated) | Yes |
 | `/expense` | Legacy expense CRUD (deprecated) | Yes |
 
@@ -110,12 +127,29 @@ Transaction amounts are stored as integer minor units (cents) in the database. A
 ## Related pages
 
 - [Authentication API](./authentication-api.md)
+- [Onboarding API](./onboarding-api.md)
 - [Transactions API](./transactions-api.md)
 - [Categories API](./categories-api.md)
+- [Categorization Rules API](./categorization-rules-api.md)
+- [Tags API](./tags-api.md)
+- [Transaction Templates API](./transaction-templates-api.md)
+- [Recurring Rules API](./recurring-api.md)
+- [Import API](./import-api.md)
+- [Backup and Restore API](./backup-restore-api.md)
 - [Receipts API](./receipts-api.md)
 - [Accounts API](./accounts-api.md)
+- [Reconciliation API](./reconciliation-api.md)
+- [Exchange Rates API](./exchange-rates-api.md)
 - [Budgets API](./budgets-api.md)
 - [Savings Goals API](./savings-goals-api.md)
 - [Data Migration](./data-migration.md)
 - [Saver API](./saver-api.md)
 - [Pushover API](./pushover-api.md)
+- [Dashboard API](./dashboard-api.md)
+- [Reports API](./reports-api.md)
+- [Notifications API](./notifications-api.md)
+- [Workspaces API](./workspaces-api.md)
+- [Forecast API](./forecast-api.md)
+- [Calendar API](./calendar-api.md)
+- [Subscriptions API](./subscriptions-api.md)
+- [Debt Payoff API](./debts-api.md)

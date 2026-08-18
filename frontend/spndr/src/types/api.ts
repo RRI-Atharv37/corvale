@@ -5,17 +5,97 @@ export interface ApiResponse<T> {
 
 export type SupportedCurrency = 'USD' | 'EUR' | 'KRW' | 'INR'
 
+export type DateFormat = 'dd/mm/yy' | 'yy/mm/dd' | 'mm/dd/yy'
+
 export interface User {
     _id: string
     fullName: string
     email: string
     timezone?: string
     preferredCurrency?: SupportedCurrency
+    dateFormat?: DateFormat
+    pageSize?: number
+    notificationPreferences?: NotificationPreferences
+    exchangeRates?: Record<string, number>
+}
+
+export type ExchangeRateMap = Record<string, number>
+
+export interface NotificationPreferences {
+    billRemindersEnabled: boolean
+    billReminderDaysBefore: number
+}
+
+export type NotificationType =
+    | 'budget_over_limit'
+    | 'bill_due'
+    | 'savings_milestone'
+    | 'workspace_invite'
+
+export interface NotificationItem {
+    _id: string
+    type: NotificationType
+    title: string
+    message: string
+    referenceType?: 'budget' | 'recurring_rule' | 'savings_goal'
+    referenceId?: string
+    readAt?: string | null
+    dismissedAt?: string | null
+    metadata?: Record<string, unknown>
+    createdAt: string
+}
+
+export interface NotificationListPayload {
+    notifications: NotificationItem[]
+    unreadCount: number
 }
 
 export interface AuthPayload {
     token: string
     user: User
+}
+
+export type WorkspaceRole = 'owner' | 'editor' | 'viewer'
+
+export type WorkspaceInviteRole = 'editor' | 'viewer'
+
+export interface WorkspaceMember {
+    userId: string
+    role: WorkspaceRole
+    fullName?: string
+    email?: string
+}
+
+export interface Workspace {
+    _id: string
+    name: string
+    ownerId: string
+    members: WorkspaceMember[]
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface WorkspaceFormData {
+    name: string
+}
+
+export interface WorkspaceInviteFormData {
+    email: string
+    role: WorkspaceInviteRole
+}
+
+export interface WorkspaceInvite {
+    _id: string
+    workspaceId: string
+    workspaceName: string
+    inviterUserId: string
+    inviterName?: string
+    inviterEmail?: string
+    inviteeUserId: string
+    inviteeEmail?: string
+    role: WorkspaceInviteRole
+    status: 'pending' | 'accepted' | 'declined'
+    createdAt: string
 }
 
 export interface PaginationMeta {
@@ -29,6 +109,7 @@ export interface PaginationMeta {
 
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type TransactionStatus = 'posted' | 'draft'
+export type ClearedStatus = 'pending' | 'cleared' | 'reconciled'
 
 export interface Receipt {
     _id: string
@@ -41,6 +122,7 @@ export interface Receipt {
 export interface Transaction {
     _id: string
     userId: string
+    userFullName?: string
     workspaceId?: string | null
     accountId: string
     categoryId: string
@@ -60,6 +142,22 @@ export interface Transaction {
     transferPair?: Transaction
     receipts?: Receipt[]
     recurringPaymentId?: string | null
+    clearedStatus: ClearedStatus
+    reconciledAt?: string | null
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface ReconciliationSession {
+    _id: string
+    userId: string
+    workspaceId?: string | null
+    accountId: string
+    statementEndDate: string
+    statementBalance: number
+    clearedBalance: number
+    pendingBalance: number
+    balanceDifferential: number
     createdAt?: string
     updatedAt?: string
 }
@@ -86,7 +184,7 @@ export interface TransactionFormData {
     description: string
     source: string
     paymentMethod: string
-    tags: string
+    tags: string[]
     splitEnabled: boolean
     splits: SplitLineFormData[]
 }
@@ -227,6 +325,11 @@ export interface Account {
     currentBalance: number
     isDefault: boolean
     isArchived: boolean
+    interestRate?: number
+    minimumPayment?: number
+    convertedBalance?: number
+    exchangeRateApplied?: number
+    hasExchangeRate?: boolean
     createdAt?: string
     updatedAt?: string
 }
@@ -236,11 +339,15 @@ export interface AccountFormData {
     type: AccountType
     currency: string
     openingBalance: string
+    interestRate: string
+    minimumPayment: string
 }
 
 export interface AccountEditFormData {
     name: string
     type: AccountType
+    interestRate: string
+    minimumPayment: string
 }
 
 export interface Category {
@@ -273,6 +380,97 @@ export interface CategoryEditFormData {
     name: string
     icon: string
     color: string
+}
+
+export interface Tag {
+    _id: string
+    userId: string
+    name: string
+    color?: string
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface TagFormData {
+    name: string
+    color: string
+}
+
+export type CategorizationMatchType =
+    | 'description_contains'
+    | 'description_equals'
+    | 'amount_range'
+    | 'account_id'
+
+export interface CategorizationRule {
+    _id: string
+    userId: string
+    name: string
+    matchType: CategorizationMatchType
+    matchValue?: string
+    amountMin?: number
+    amountMax?: number
+    accountId?: string
+    categoryId: string
+    tags: string[]
+    priority: number
+    isActive: boolean
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface CategorizationRuleFormData {
+    name: string
+    matchType: CategorizationMatchType
+    matchValue: string
+    amountMin: string
+    amountMax: string
+    accountId: string
+    categoryId: string
+    tags: string[]
+    priority: string
+    isActive: boolean
+}
+
+export interface CategorizationRuleTestResult {
+    matched: boolean
+    message?: string
+    ruleId?: string
+    ruleName?: string
+    categoryId?: string
+    tags?: string[]
+}
+
+export interface CategorizationRuleBulkApplyResult {
+    message: string
+    updated: number
+    skipped: number
+}
+
+export type TransactionTemplateType = 'income' | 'expense'
+
+export interface TransactionTemplate {
+    _id: string
+    userId: string
+    name: string
+    type: TransactionTemplateType
+    amount: number
+    accountId: string
+    categoryId: string
+    tags: string[]
+    description?: string
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface TransactionTemplateFormData {
+    name: string
+    type: TransactionTemplateType
+    amount: string
+    accountId: string
+    categoryId: string
+    tags: string[]
+    description: string
 }
 
 export type BudgetPeriodType = 'monthly' | 'custom'
@@ -423,8 +621,100 @@ export interface RecurringRule {
     tags?: string[]
     isActive: boolean
     isArchived: boolean
+    isCancelled: boolean
     createdAt?: string
     updatedAt?: string
+}
+
+// --- Phase 11: financial planning ---
+
+export type ForecastChangeType = 'recurring' | 'goal' | 'discretionary'
+
+export interface ForecastChange {
+    date: string
+    type: ForecastChangeType
+    amount: number
+    label: string
+    refId?: string
+}
+
+export interface ForecastWarning {
+    date: string
+    projectedBalance: number
+}
+
+export interface ForecastAccount {
+    accountId: string
+    accountName: string
+    currency: string
+    startingBalance: number
+    projectedEndingBalance: number
+    projectedChanges: ForecastChange[]
+    lowBalanceWarnings: ForecastWarning[]
+}
+
+export interface ForecastResponse {
+    days: number
+    startDate: string
+    endDate: string
+    accounts: ForecastAccount[]
+}
+
+export type CalendarEventType = 'recurring' | 'budget_end' | 'goal_deadline'
+
+export interface CalendarEvent {
+    id: string
+    type: CalendarEventType
+    date: string
+    title: string
+    amount?: number
+    refId: string
+    accountId?: string
+    categoryId?: string
+}
+
+export interface Subscription {
+    ruleId: string
+    title: string
+    amount: number
+    currency: string
+    interval: RecurringInterval
+    monthlyCost: number
+    annualCost: number
+    nextChargeDate: string
+    categoryId: string
+    accountId: string
+    isCancelled: boolean
+}
+
+export interface SubscriptionsResponse {
+    subscriptions: Subscription[]
+    totalMonthlyCost: number
+    totalAnnualCost: number
+}
+
+export type DebtPayoffStrategy = 'snowball' | 'avalanche'
+
+export interface DebtPayment {
+    accountId: string
+    interestPaid: number
+    principalPaid: number
+    paymentAmount: number
+    remainingBalance: number
+}
+
+export interface DebtPayoffMonth {
+    month: number
+    payments: DebtPayment[]
+}
+
+export interface DebtPayoffPlan {
+    strategy: DebtPayoffStrategy
+    extraPayment: number
+    order: string[]
+    totalMonths: number
+    totalInterestPaid: number
+    months: DebtPayoffMonth[]
 }
 
 export interface RecurringRuleFormData {
@@ -439,7 +729,7 @@ export interface RecurringRuleFormData {
     nextDueDate: string
     description: string
     paymentMethod: string
-    tags: string
+    tags: string[]
     isActive: boolean
 }
 
@@ -744,4 +1034,134 @@ export interface SavedReportRunResult {
     name: string
     config: SavedReportConfig
     result: CustomReportQueryResult
+}
+
+export type ImportFormat = 'generic' | 'chase' | 'spndr_export' | 'ofx'
+
+export interface ColumnMapping {
+    date?: string
+    description?: string
+    amount?: string
+    debit?: string
+    credit?: string
+    type?: string
+}
+
+export interface ParsedImportRow {
+    rowIndex: number
+    date: string
+    title: string
+    description?: string
+    amount: number
+    type: 'income' | 'expense'
+}
+
+export interface ImportParseResponse {
+    format: ImportFormat
+    fileName: string
+    totalRows: number
+    sampleRows: string[][] | ParsedImportRow[]
+    requiresMapping: boolean
+    headers?: string[]
+    rows?: string[][]
+    parsedRows?: ParsedImportRow[]
+    suggestedMapping?: ColumnMapping
+}
+
+export interface ImportPreviewItem {
+    rowIndex: number
+    date: string
+    title: string
+    description?: string
+    amount: number
+    type: 'income' | 'expense'
+    categoryId: string
+    categoryName?: string
+    tags?: string[]
+    appliedRuleId?: string
+    appliedRuleName?: string
+    error?: string
+    duplicateOf?: ImportDuplicateMatch
+    duplicateAction?: ImportDuplicateAction
+}
+
+export type ImportDuplicateAction = 'skip' | 'import' | 'merge'
+
+export interface ImportDuplicateMatch {
+    transactionId: string
+    title: string
+    date: string
+    amount: number
+    categoryName?: string
+}
+
+export interface ImportPreviewSummary {
+    total: number
+    valid: number
+    invalid: number
+    duplicates: number
+    incomeTotal: number
+    expenseTotal: number
+}
+
+export interface ImportPreviewResponse {
+    items: ImportPreviewItem[]
+    summary: ImportPreviewSummary
+}
+
+export interface ImportCommitResponse {
+    imported: number
+    merged: number
+    skipped: number
+    transactionIds: string[]
+    mergedTransactionIds: string[]
+    summary: ImportPreviewSummary
+}
+
+export interface BackupEntityCounts {
+    accounts: number
+    categories: number
+    tags: number
+    budgets: number
+    savingsGoals: number
+    savingsGoalContributions: number
+    recurringRules: number
+    categorizationRules: number
+    transactionTemplates: number
+    transactions: number
+    receipts: number
+}
+
+export interface BackupRestorePreview {
+    valid: boolean
+    version: number
+    exportedAt: string | null
+    sourceScope: { workspaceId: string | null }
+    targetScope: { workspaceId: string | null }
+    counts: BackupEntityCounts
+    warnings: string[]
+    errors: string[]
+}
+
+export interface BackupRestoreResult {
+    created: BackupEntityCounts
+    idMapping: Record<string, string>
+}
+
+export type OnboardingStep = 'account' | 'categories' | 'budget' | 'goal' | 'tour'
+
+export interface OnboardingStatus {
+    currentStep: OnboardingStep | null
+    onboardingCompleted: boolean
+    onboardingSkipped: boolean
+    progressPercentage: number
+    stepsCompleted: OnboardingStep[]
+    accountCreated?: boolean
+    accountId?: string
+    categoriesReviewed?: boolean
+    budgetCreated?: boolean
+    budgetId?: string
+    goalCreated?: boolean
+    goalId?: string
+    tourCompleted?: boolean
 }

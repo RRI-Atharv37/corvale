@@ -120,6 +120,70 @@ Your access token expires after a short interval (default **15 minutes**). spndr
 
 spndr revokes your refresh token, clears local storage, and redirects you to the login page. Use **Logout all devices** in Settings to invalidate every session. Your data remains in the database.
 
+## Recurring transactions
+
+### How do I set up a repeating bill or paycheck?
+
+Create a rule on the **Recurring** page (`/recurring`) with an amount, account, category, and interval. spndr doesn't post anything automatically - it generates a draft transaction for each due date, which you confirm or dismiss from your draft inbox. See [Recurring Overview](../recurring/overview.md).
+
+### Why didn't my recurring rule post a transaction?
+
+Recurring rules only generate **drafts**, not posted transactions. Click **Sync drafts** on the Recurring page, then confirm the draft to post it and update your account balance.
+
+## Tags, rules, and templates
+
+### What's the difference between a tag and a category?
+
+Every transaction needs exactly one category, used for budgeting and reports. Tags are optional and a transaction can have several - use them for cross-cutting labels like a trip or project. See [Tags Overview](../tags/overview.md).
+
+### Can spndr categorize transactions for me automatically?
+
+Yes. Create an auto-categorization rule on `/categories/rules` that matches on description, amount range, or account. Matching rules apply automatically the moment a transaction is created, and you can also run them against your existing transactions with **Apply to existing**. See [Auto-Categorization Rules](../categories/categorization-rules.md).
+
+### How do quick-add templates work?
+
+Create a template in Settings under **Quick-add templates**, then apply it from the **Quick add** dropdown on Home or Transactions to instantly create a posted transaction with the template's saved details. See [Templates Overview](../templates/overview.md).
+
+## Reports and notifications
+
+### What's the difference between Dashboard and Reports?
+
+**Dashboard** (Home) shows a handful of summary stat cards for a quick glance. **Reports** (`/reports`) has the full set of charts, a custom report builder, and saved reports for deeper analysis. See [Reports Overview](../reports/overview.md).
+
+### What triggers a notification?
+
+Four events: a budget going over its limit, a recurring bill due soon, a savings goal crossing a milestone, and a workspace invite. Click the bell icon in the header to view them. See [Notifications Overview](../notifications/overview.md).
+
+## Workspaces
+
+### Can I share my finances with someone else?
+
+Yes. Create a workspace on `/workspaces` and invite people by email as an editor or viewer. Switching to a workspace in the sidebar switcher scopes your accounts, transactions, budgets, and more to that shared space - it never mixes with your personal data. See [Workspaces Overview](../workspaces/overview.md).
+
+### What can a viewer do in a workspace?
+
+Viewers can see everything in the workspace but can't create, edit, or delete anything. spndr shows a banner reminding you when you're in a view-only workspace. See [Roles and Permissions](../workspaces/roles-and-permissions.md).
+
+## Reconciliation and multi-currency
+
+### How do I check my account against my bank statement?
+
+Click the reconcile icon on an account on the **Accounts** page, enter your statement's end date and balance, and mark transactions cleared as you check them against your statement. See [Reconciling an Account](../accounts/reconciling-an-account.md).
+
+### I have accounts in different currencies - can spndr show one total?
+
+Yes, if you set exchange rates in Settings. Once a rate exists for a currency pair, spndr shows a converted balance next to any account not already in your preferred currency. See [Multi-Currency Balances](../accounts/multi-currency-balances.md).
+
+## Import and backup
+
+### Can I import transactions from my bank?
+
+Yes. Click **Import** on the Transactions page and upload a CSV, OFX, or QFX file. spndr detects likely duplicates against your existing transactions and lets you skip, import, or merge each one. See [Import Overview](../import/overview.md).
+
+### How do I back up my data or move it to a new device?
+
+Open **Settings** and use **Backup & restore** to export a JSON or ZIP file, or upload one to restore. Restoring always creates new records rather than overwriting existing ones. See [Backup and Restore Overview](../backup-restore/overview.md).
+
 ## Technical
 
 ### What technologies does spndr use?

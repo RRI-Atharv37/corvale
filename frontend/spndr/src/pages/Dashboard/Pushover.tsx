@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from 'react'
-import dayjs from 'dayjs'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
@@ -16,7 +15,7 @@ import type {
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatDisplayDateTime } from '../../utils/format'
 
 interface PushoverPageData {
     history: PushoverSnapshot[]
@@ -78,7 +77,7 @@ const Pushover = () => {
                         type="button"
                         onClick={() => setConfirmOpen(true)}
                         disabled={!data || data.saverBalance <= 0}
-                        className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-500/90 text-white hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="btn-accent px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         Roll over now
                     </button>
@@ -86,7 +85,7 @@ const Pushover = () => {
             />
 
             {data && data.saverBalance <= 0 && (
-                <p className="text-xs text-slate-500 mb-4 -mt-4">
+                <p className="text-xs text-fg-muted mb-4 -mt-4">
                     Add funds to your saver before rolling over. Rollover uses your verified saver balance only.
                 </p>
             )}
@@ -106,11 +105,15 @@ const Pushover = () => {
                         {pageData.history.map((item) => (
                             <div key={item._id} className="card flex items-center justify-between gap-4">
                                 <div>
-                                    <p className="text-sm font-medium text-slate-200">
-                                        {dayjs(item.pushoverDate).format('MMMM YYYY')} rollover
+                                    <p className="text-sm font-medium text-fg">
+                                        {new Date(item.pushoverDate).toLocaleDateString('en-US', {
+                                            month: 'long',
+                                            year: 'numeric',
+                                        })}{' '}
+                                        rollover
                                     </p>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                        {dayjs(item.pushoverDate).format('MMM D, YYYY h:mm A')}
+                                    <p className="text-xs text-fg-muted mt-0.5">
+                                        {formatDisplayDateTime(item.pushoverDate)}
                                     </p>
                                 </div>
                                 <p className="text-sm font-semibold text-violet-400">

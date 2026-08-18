@@ -8,24 +8,34 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import Home from './pages/Dashboard/Home'
 import Transactions from './pages/Dashboard/Transactions'
+import ImportTransactions from './pages/Dashboard/ImportTransactions'
 import Saver from './pages/Dashboard/Saver'
 import Pushover from './pages/Dashboard/Pushover'
 import Accounts from './pages/Dashboard/Accounts'
 import Categories from './pages/Dashboard/Categories'
+import CategorizationRules from './pages/Dashboard/CategorizationRules'
+import Tags from './pages/Dashboard/Tags'
 import Budgets from './pages/Dashboard/Budgets'
 import SavingsGoals from './pages/Dashboard/SavingsGoals'
 import Recurring from './pages/Dashboard/Recurring'
 import Reports from './pages/Dashboard/Reports'
+import Workspaces from './pages/Dashboard/Workspaces'
+import Forecast from './pages/Dashboard/Forecast'
+import CalendarPage from './pages/Dashboard/CalendarPage'
+import Subscriptions from './pages/Dashboard/Subscriptions'
+import DebtPayoff from './pages/Dashboard/DebtPayoff'
 import UserProvider from './context/UserContext'
+import WorkspaceProvider from './context/WorkspaceContext'
 import ProtectedRoute from './routes/ProtectedRoute'
 import DashboardLayout from './components/layouts/DashboardLayout'
 import { useUser } from './hooks/useUser'
 import LoadingState from './components/ui/LoadingState'
+import Landing from './pages/Landing'
 
 const AppRoutes = () => {
     return (
         <Routes>
-            <Route path="/" element={<RootRedirect />} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
             <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -34,22 +44,32 @@ const AppRoutes = () => {
             <Route
                 element={
                     <ProtectedRoute>
-                        <DashboardLayout />
+                        <WorkspaceProvider>
+                            <DashboardLayout />
+                        </WorkspaceProvider>
                     </ProtectedRoute>
                 }
             >
                 <Route path="/dashboard" element={<Home />} />
                 <Route path="/transactions" element={<Transactions />} />
+                <Route path="/transactions/import" element={<ImportTransactions />} />
                 <Route path="/income" element={<Navigate to="/transactions?type=income" replace />} />
                 <Route path="/expense" element={<Navigate to="/transactions?type=expense" replace />} />
                 <Route path="/saver" element={<Saver />} />
                 <Route path="/pushover" element={<Pushover />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/categories" element={<Categories />} />
+                <Route path="/categories/rules" element={<CategorizationRules />} />
+                <Route path="/tags" element={<Tags />} />
                 <Route path="/budgets" element={<Budgets />} />
                 <Route path="/savings-goals" element={<SavingsGoals />} />
                 <Route path="/recurring" element={<Recurring />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/workspaces" element={<Workspaces />} />
+                <Route path="/forecast" element={<Forecast />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/subscriptions" element={<Subscriptions />} />
+                <Route path="/debts" element={<DebtPayoff />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -67,15 +87,15 @@ const App = () => {
                     toastOptions={{
                         className: 'text-sm',
                         style: {
-                            background: '#1e293b',
-                            color: '#e2e8f0',
-                            border: '1px solid #334155',
+                            background: '#2e2a40',
+                            color: '#f8f6ff',
+                            border: '1px solid #3d3654',
                         },
                         success: {
-                            iconTheme: { primary: '#22d3ee', secondary: '#0f172a' },
+                            iconTheme: { primary: '#a855f7', secondary: '#14121c' },
                         },
                         error: {
-                            iconTheme: { primary: '#f87171', secondary: '#0f172a' },
+                            iconTheme: { primary: '#fb7185', secondary: '#14121c' },
                         },
                     }}
                 />
@@ -84,18 +104,22 @@ const App = () => {
     )
 }
 
-const RootRedirect = () => {
+const HomeRoute = () => {
     const { isAuthenticated, isInitializing } = useUser()
 
     if (isInitializing) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-page flex items-center justify-center">
                 <LoadingState message="Loading..." />
             </div>
         )
     }
 
-    return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
+    if (isAuthenticated) {
+        return <Navigate to="/dashboard" replace />
+    }
+
+    return <Landing />
 }
 
 interface GuestRouteProps {
@@ -107,7 +131,7 @@ const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
 
     if (isInitializing) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-page flex items-center justify-center">
                 <LoadingState message="Loading..." />
             </div>
         )

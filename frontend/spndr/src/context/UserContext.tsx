@@ -4,6 +4,7 @@ import { API_PATHS } from '../utils/apiPaths'
 import type { ApiResponse, AuthPayload, User } from '../types/api'
 import { unwrapApiData } from '../utils/apiHelpers'
 import { getApiErrorMessage } from '../utils/apiError'
+import { resetPreferredCurrency, resetDateFormat, setDateFormat, setPreferredCurrency } from '../utils/format'
 
 interface UserContextType {
     user: User | null
@@ -22,14 +23,32 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     const [user, setUser] = useState<User | null>(null)
     const [isInitializing, setIsInitializing] = useState(true)
 
-    const clearUser = useCallback(() => {
-        setUser(null)
-        localStorage.removeItem('token')
+    const applyUser = useCallback((userData: User | null) => {
+        setUser(userData)
+        if (userData?.preferredCurrency) {
+            setPreferredCurrency(userData.preferredCurrency)
+        } else {
+            resetPreferredCurrency()
+        }
+
+        if (userData?.dateFormat) {
+            setDateFormat(userData.dateFormat)
+        } else {
+            resetDateFormat()
+        }
     }, [])
 
-    const updateUser = useCallback((userData: User) => {
-        setUser(userData)
-    }, [])
+    const clearUser = useCallback(() => {
+        applyUser(null)
+        localStorage.removeItem('token')
+    }, [applyUser])
+
+    const updateUser = useCallback(
+        (userData: User) => {
+            applyUser(userData)
+        },
+        [applyUser]
+    )
 
     const logout = useCallback(async () => {
         try {
@@ -60,14 +79,14 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         try {
             const response = await axiosInstance.get<ApiResponse<User>>(API_PATHS.AUTH.USER)
             const userData = unwrapApiData(response)
-            setUser(userData)
+            applyUser(userData)
         } catch (error) {
             clearUser()
             console.error('Session restore failed:', getApiErrorMessage(error))
         } finally {
             setIsInitializing(false)
         }
-    }, [clearUser])
+    }, [applyUser, clearUser])
 
     useEffect(() => {
         void restoreSession()

@@ -6,18 +6,20 @@ import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { DEFAULT_TIMEZONE, resolveDateRange } from '../utils/timezoneUtils'
+import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
+import {
+    applyCategorizationRules,
+    mergeTags,
+} from '../utils/categorizationRuleUtils'
 import {
     adjustAccountForTransactionChange,
     applyTransactionToAccount,
     applyTransferToAccounts,
     assertEditableTransaction,
-    buildCsvString,
     buildTransactionSort,
-    CSV_HEADERS,
     deleteTransactionForUser,
     duplicateTransactionFields,
     fetchSplitChildren,
-    formatTransactionCsvRow,
     getOtherMasterCategoryId,
     getUserId,
     handleResponses,
@@ -28,7 +30,10 @@ import {
     serializeTransaction,
     serializeTransactionPlain,
     serializeTransactions,
+    attachUserFullNamesToTransactions,
     serializeTransactionWithSplits,
+    SerializedTransaction,
+    SerializedTransactionWithSplits,
     SplitInput,
     Transaction,
     validateAccountForTransaction,
@@ -38,8 +43,22 @@ import {
     validateSplitInputs,
     buildSearchRegex,
 } from '../utils/transactionUtils'
+import {
+    buildTransactionExportRecord,
+    parseExportFormat,
+    parseTransactionExportType,
+    sendTransactionExport,
+} from '../utils/exportUtils'
 import { validateReceiptOwnership } from '../utils/receiptUtils'
-import { TRANSACTION_TYPES, ITransaction } from '../models/Transaction'
+import { TRANSACTION_TYPES, ITransaction, CLEARED_STATUSES } from '../models/Transaction'
+import {
+    assertAccountMatchesWorkspace,
+    assertWorkspaceMembership,
+    buildScopedListFilter,
+    parseOptionalWorkspaceId,
+    validateResourceAccess,
+} from '../utils/workspaceUtils'
+import { buildTagFilter, parseTagsQuery } from '../utils/tagUtils'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 
@@ -58,9 +77,16 @@ const parsePagination = (page: unknown, limit: unknown) => {
     return { pageNumber, limitNumber }
 }
 
-const buildListFilter = (userId: string, type?: unknown) => {
+const buildListFilter = (
+    userId: string,
+    type?: unknown,
+    workspaceId?: string | null,
+    tags?: unknown,
+    clearedStatus?: unknown,
+    accountId?: unknown
+) => {
     const filter: Record<string, unknown> = {
-        userId: new Types.ObjectId(userId),
+        ...buildScopedListFilter(userId, workspaceId),
         ...LISTABLE_TRANSACTION_FILTER,
     }
 
@@ -74,7 +100,60 @@ const buildListFilter = (userId: string, type?: unknown) => {
         filter.type = type
     }
 
+    if (clearedStatus !== undefined && clearedStatus !== '') {
+        if (!CLEARED_STATUSES.includes(clearedStatus as (typeof CLEARED_STATUSES)[number])) {
+            throw new CustomError(
+                `Invalid clearedStatus filter. Must be one of: ${CLEARED_STATUSES.join(', ')}`,
+                400
+            )
+        }
+        filter.clearedStatus = clearedStatus
+    }
+
+    if (accountId !== undefined && accountId !== '') {
+        filter.accountId = accountId
+    }
+
+    const tagNames = parseTagsQuery(tags)
+    if (tagNames) {
+        Object.assign(filter, buildTagFilter(tagNames))
+    }
+
     return filter
+}
+
+const resolveListWorkspaceId = async (req: AuthRequest): Promise<string | null> => {
+    const userId = getUserId(req)
+    const workspaceId = parseOptionalWorkspaceId(req.query.workspaceId) ?? null
+
+    if (workspaceId) {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    }
+
+    return workspaceId
+}
+
+const enrichTransactionsForWorkspace = async <T extends SerializedTransaction>(
+    workspaceId: string | null,
+    transactions: T[]
+): Promise<T[]> => {
+    if (!workspaceId) {
+        return transactions
+    }
+
+    return attachUserFullNamesToTransactions(transactions) as Promise<T[]>
+}
+
+const enrichTransactionForWorkspace = async <T extends SerializedTransaction>(
+    workspaceId: string | null | undefined,
+    transaction: T
+): Promise<T> => {
+    if (!workspaceId) {
+        return transaction
+    }
+
+    const [enriched] = await attachUserFullNamesToTransactions([transaction])
+    return enriched as T
 }
 
 const createSplitChildren = async (
@@ -148,7 +227,14 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     }
 
     const amountMinor = parseClientAmount(amount)
+    const resolvedWorkspaceId = parseOptionalWorkspaceId(workspaceId) ?? null
+
+    if (resolvedWorkspaceId) {
+        await assertWorkspaceMembership(resolvedWorkspaceId, userId, 'editor')
+    }
+
     const account = await validateAccountForTransaction(accountId, userId)
+    assertAccountMatchesWorkspace(account.workspaceId, resolvedWorkspaceId)
     const hasSplits = Array.isArray(splits) && splits.length > 0
 
     if (hasSplits) {
@@ -166,11 +252,30 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         await validateCategoryForTransaction(resolvedCategoryId, userId)
     }
 
+    let finalCategoryId = resolvedCategoryId
+    let finalTags = tags
+
+    if (!hasSplits && type !== 'transfer') {
+        const ruleResult = await applyCategorizationRules(userId, {
+            title: title.trim(),
+            description: description?.trim(),
+            amount: amountMinor,
+            accountId,
+            type,
+        })
+
+        if (ruleResult) {
+            await validateCategoryForTransaction(ruleResult.categoryId.toString(), userId)
+            finalCategoryId = ruleResult.categoryId.toString()
+            finalTags = mergeTags(tags, ruleResult.tags)
+        }
+    }
+
     const transaction = await Transaction.create({
         userId,
-        workspaceId: workspaceId ?? null,
+        workspaceId: resolvedWorkspaceId,
         accountId,
-        categoryId: resolvedCategoryId,
+        categoryId: finalCategoryId,
         type,
         status: status ?? 'posted',
         amount: amountMinor,
@@ -180,7 +285,7 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         date: new Date(date),
         source: source?.trim(),
         paymentMethod: paymentMethod?.trim(),
-        tags,
+        tags: finalTags,
     })
 
     await applyTransactionToAccount(account, type, amountMinor)
@@ -194,7 +299,7 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
             transaction.title,
             transaction.date,
             transaction.status,
-            workspaceId,
+            resolvedWorkspaceId,
             splits,
             amountMinor,
             paymentMethod,
@@ -204,6 +309,7 @@ export const createTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     }
 
     const payload = await serializeTransactionWithSplits(transaction, userId)
+    await evaluateBudgetOverLimitNotifications(userId, transaction)
     handleResponses(res, 201, payload)
 })
 
@@ -224,8 +330,16 @@ export const createTransfer = asyncHandler(async (req: AuthRequest, res: Respons
     }
 
     const amountMinor = parseClientAmount(amount)
+    const resolvedWorkspaceId = parseOptionalWorkspaceId(workspaceId) ?? null
+
+    if (resolvedWorkspaceId) {
+        await assertWorkspaceMembership(resolvedWorkspaceId, userId, 'editor')
+    }
+
     const fromAccount = await validateAccountForTransaction(fromAccountId, userId)
     const toAccount = await validateAccountForTransaction(toAccountId, userId)
+    assertAccountMatchesWorkspace(fromAccount.workspaceId, resolvedWorkspaceId)
+    assertAccountMatchesWorkspace(toAccount.workspaceId, resolvedWorkspaceId)
 
     if (fromAccount.currency !== toAccount.currency) {
         throw new CustomError('Transfer accounts must use the same currency', 400)
@@ -243,7 +357,7 @@ export const createTransfer = asyncHandler(async (req: AuthRequest, res: Respons
         try {
             outbound = await Transaction.create({
                 userId,
-                workspaceId: workspaceId ?? null,
+                workspaceId: resolvedWorkspaceId,
                 accountId: fromAccountId,
                 categoryId: transferCategoryId,
                 type: 'transfer',
@@ -257,7 +371,7 @@ export const createTransfer = asyncHandler(async (req: AuthRequest, res: Respons
 
             inbound = await Transaction.create({
                 userId,
-                workspaceId: workspaceId ?? null,
+                workspaceId: resolvedWorkspaceId,
                 accountId: toAccountId,
                 categoryId: transferCategoryId,
                 type: 'transfer',
@@ -295,9 +409,10 @@ export const createTransfer = asyncHandler(async (req: AuthRequest, res: Respons
 
 export const getTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { type, sortBy, sortOrder } = req.query
+    const { type, sortBy, sortOrder, tags, clearedStatus, accountId } = req.query
     const { pageNumber, limitNumber } = parsePagination(req.query.page, req.query.limit)
-    const filter = buildListFilter(userId, type)
+    const workspaceId = await resolveListWorkspaceId(req)
+    const filter = buildListFilter(userId, type, workspaceId, tags, clearedStatus, accountId)
 
     if (sortBy === 'category') {
         const [results, totalCount] = await Promise.all([
@@ -319,7 +434,10 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
             Transaction.countDocuments(filter),
         ])
 
-        const data = results.map((doc) => serializeTransactionPlain(doc))
+        const data = await enrichTransactionsForWorkspace(
+            workspaceId,
+            results.map((doc) => serializeTransactionPlain(doc))
+        )
 
         handleResponses(res, 200, {
             data,
@@ -343,7 +461,7 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
     ])
 
     handleResponses(res, 200, {
-        data: serializeTransactions(transactions),
+        data: await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions)),
         meta: {
             totalTransactions,
             pageNumber,
@@ -359,26 +477,45 @@ export const getTransactionById = asyncHandler(async (req: AuthRequest, res: Res
 
     validateRequiredFields({ transactionId }, ['transactionId'])
 
-    const transaction = await validateOwnership(
+    const transaction = await validateResourceAccess(
         Transaction,
         transactionId,
         userId,
-        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+        'viewer'
     )
 
-    const payload = await serializeTransactionWithSplits(transaction, userId)
+    const payload: SerializedTransactionWithSplits = await serializeTransactionWithSplits(
+        transaction,
+        userId
+    )
 
     if (isTransferLeg(transaction) && transaction.transferPairId) {
-        const pair = await Transaction.findOne({
-            _id: transaction.transferPairId,
+        const pair = await validateResourceAccess(
+            Transaction,
+            transaction.transferPairId.toString(),
             userId,
-        })
-        if (pair) {
-            payload.transferPair = serializeTransaction(pair)
-        }
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+            'viewer'
+        )
+        payload.transferPair = serializeTransaction(pair)
     }
 
-    handleResponses(res, 200, payload)
+    const workspaceId = transaction.workspaceId?.toString() ?? null
+    const enriched = await enrichTransactionForWorkspace(workspaceId, payload)
+
+    if (enriched.transferPair) {
+        enriched.transferPair = await enrichTransactionForWorkspace(
+            workspaceId,
+            enriched.transferPair
+        )
+    }
+
+    if (enriched.splits?.length) {
+        enriched.splits = await enrichTransactionsForWorkspace(workspaceId, enriched.splits)
+    }
+
+    handleResponses(res, 200, enriched)
 })
 
 export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -400,11 +537,12 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
 
     validateRequiredFields({ transactionId }, ['transactionId'])
 
-    const transaction = await validateOwnership(
+    const transaction = await validateResourceAccess(
         Transaction,
         transactionId,
         userId,
-        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+        'editor'
     )
 
     assertEditableTransaction(transaction)
@@ -466,6 +604,7 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     if (status !== undefined) transaction.status = status
 
     await transaction.save()
+    await evaluateBudgetOverLimitNotifications(userId, transaction)
     handleResponses(res, 200, serializeTransaction(transaction))
 })
 
@@ -475,11 +614,12 @@ export const deleteTransaction = asyncHandler(async (req: AuthRequest, res: Resp
 
     validateRequiredFields({ transactionId }, ['transactionId'])
 
-    const transaction = await validateOwnership(
+    const transaction = await validateResourceAccess(
         Transaction,
         transactionId,
         userId,
-        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+        'editor'
     )
 
     await deleteTransactionForUser(userId, transaction)
@@ -494,7 +634,7 @@ export const deleteTransaction = asyncHandler(async (req: AuthRequest, res: Resp
 
 export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { startDate, endDate, type, sortBy, sortOrder } = req.query
+    const { startDate, endDate, type, sortBy, sortOrder, tags, clearedStatus } = req.query
     const timezone = getUserTimezone(req)
 
     validateRequiredFields({ startDate, endDate }, ['startDate', 'endDate'])
@@ -509,8 +649,10 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
         )
     }
 
+    const workspaceId = await resolveListWorkspaceId(req)
+
     const filter = {
-        ...buildListFilter(userId, type),
+        ...buildListFilter(userId, type, workspaceId, tags, clearedStatus),
         date: { $gte: dateRange.start, $lte: dateRange.end },
     }
 
@@ -530,7 +672,10 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
             { $sort: sort },
         ])
 
-        const data = results.map((doc) => serializeTransactionPlain(doc))
+        const data = await enrichTransactionsForWorkspace(
+            workspaceId,
+            results.map((doc) => serializeTransactionPlain(doc))
+        )
 
         handleResponses(res, 200, data)
         return
@@ -539,20 +684,25 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
     const sort = buildTransactionSort(sortBy as string | undefined, sortOrder as string | undefined)
     const transactions = await Transaction.find(filter).sort(sort)
 
-    handleResponses(res, 200, serializeTransactions(transactions))
+    handleResponses(
+        res,
+        200,
+        await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    )
 })
 
 export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { keyword, type, sortBy, sortOrder } = req.query
+    const { keyword, type, sortBy, sortOrder, tags } = req.query
 
     validateRequiredFields({ keyword }, ['keyword'])
 
     const regex = buildSearchRegex(keyword as string)
     const numericKeyword = !isNaN(Number(keyword)) ? parseClientAmount(keyword) : null
+    const workspaceId = await resolveListWorkspaceId(req)
 
     const filter: Record<string, unknown> = {
-        ...buildListFilter(userId, type),
+        ...buildListFilter(userId, type, workspaceId, tags),
         $or: [
             { title: { $regex: regex } },
             { description: { $regex: regex } },
@@ -579,7 +729,10 @@ export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Res
             { $sort: sort },
         ])
 
-        const data = results.map((doc) => serializeTransactionPlain(doc))
+        const data = await enrichTransactionsForWorkspace(
+            workspaceId,
+            results.map((doc) => serializeTransactionPlain(doc))
+        )
 
         handleResponses(res, 200, data)
         return
@@ -588,37 +741,80 @@ export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Res
     const sort = buildTransactionSort(sortBy as string | undefined, sortOrder as string | undefined)
     const transactions = await Transaction.find(filter).sort(sort)
 
-    handleResponses(res, 200, serializeTransactions(transactions))
+    handleResponses(
+        res,
+        200,
+        await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    )
 })
 
 export const downloadTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { type } = req.query
-    const filter = buildListFilter(userId, type)
+    const { type, startDate, endDate, format: formatParam } = req.query
+    const timezone = getUserTimezone(req)
+    const workspaceId = await resolveListWorkspaceId(req)
+
+    const exportType = parseTransactionExportType(type)
+    let filter: Record<string, unknown>
+
+    if (exportType === 'both') {
+        filter = {
+            ...buildScopedListFilter(userId, workspaceId),
+            ...LISTABLE_TRANSACTION_FILTER,
+            type: { $in: ['income', 'expense'] },
+        }
+    } else if (exportType) {
+        filter = buildListFilter(userId, exportType, workspaceId)
+    } else {
+        filter = buildListFilter(userId, type, workspaceId)
+    }
+
+    if (startDate || endDate) {
+        validateRequiredFields({ startDate, endDate }, ['startDate', 'endDate'])
+
+        let dateRange: { start: Date; end: Date }
+        try {
+            dateRange = resolveDateRange(startDate as string, endDate as string, timezone)
+        } catch (error) {
+            throw new CustomError(
+                error instanceof Error ? error.message : 'Invalid date range',
+                400
+            )
+        }
+
+        filter.date = { $gte: dateRange.start, $lte: dateRange.end }
+    }
 
     const transactions = await Transaction.find(filter)
         .populate('categoryId', 'name')
         .sort({ date: -1 })
 
-    const rows = [
-        CSV_HEADERS,
-        ...transactions.map((transaction) => {
-            const serialized = serializeTransaction(transaction)
-            const categoryName =
-                typeof transaction.categoryId === 'object' &&
-                transaction.categoryId !== null &&
-                'name' in transaction.categoryId
-                    ? String((transaction.categoryId as { name: string }).name)
-                    : ''
-            return formatTransactionCsvRow(serialized, categoryName)
-        }),
-    ]
+    const records = transactions.map((transaction) => {
+        const serialized = serializeTransaction(transaction)
+        const categoryName =
+            typeof transaction.categoryId === 'object' &&
+            transaction.categoryId !== null &&
+            'name' in transaction.categoryId
+                ? String((transaction.categoryId as { name: string }).name)
+                : ''
+        return buildTransactionExportRecord(serialized, categoryName)
+    })
 
-    const csvString = buildCsvString(rows)
+    const format = parseExportFormat(typeof formatParam === 'string' ? formatParam : 'csv')
+    const typeLabel =
+        exportType ??
+        (typeof type === 'string' && type.trim() !== '' ? String(type).trim().toLowerCase() : 'all')
 
-    res.setHeader('Content-Type', 'text/csv')
-    res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv')
-    res.status(200).send(csvString)
+    sendTransactionExport(res, format, 'transactions', {
+        exportedAt: new Date().toISOString(),
+        filters: {
+            type: typeLabel,
+            startDate: typeof startDate === 'string' ? startDate : undefined,
+            endDate: typeof endDate === 'string' ? endDate : undefined,
+        },
+        count: records.length,
+        transactions: records,
+    })
 })
 
 export const duplicateTransaction = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -627,11 +823,12 @@ export const duplicateTransaction = asyncHandler(async (req: AuthRequest, res: R
 
     validateRequiredFields({ transactionId }, ['transactionId'])
 
-    const transaction = await validateOwnership(
+    const transaction = await validateResourceAccess(
         Transaction,
         transactionId,
         userId,
-        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+        'editor'
     )
 
     assertEditableTransaction(transaction)
@@ -660,11 +857,12 @@ export const attachReceiptToTransaction = asyncHandler(async (req: AuthRequest, 
     validateRequiredFields({ transactionId, receiptId }, ['transactionId', 'receiptId'])
 
     const [transaction, receipt] = await Promise.all([
-        validateOwnership(
+        validateResourceAccess(
             Transaction,
             transactionId,
             userId,
-            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+            'editor'
         ),
         validateReceiptOwnership(receiptId, userId),
     ])
@@ -692,11 +890,12 @@ export const detachReceiptFromTransaction = asyncHandler(
 
         validateRequiredFields({ transactionId, receiptId }, ['transactionId', 'receiptId'])
 
-        const transaction = await validateOwnership(
+        const transaction = await validateResourceAccess(
             Transaction,
             transactionId,
             userId,
-            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+            'editor'
         )
 
         if (isSplitChild(transaction)) {
@@ -752,9 +951,13 @@ export const bulkDeleteTransactions = asyncHandler(async (req: AuthRequest, res:
             throw new CustomError(ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND, 404)
         }
 
-        if (transaction.userId.toString() !== userId) {
-            throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-        }
+        await validateResourceAccess(
+            Transaction,
+            transactionId,
+            userId,
+            ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+            'editor'
+        )
 
         if (isTransferLeg(transaction) && transaction.transferPairId) {
             const pairKey = [transaction._id.toString(), transaction.transferPairId.toString()]
@@ -788,11 +991,12 @@ export const bulkUpdateTransactionCategory = asyncHandler(
 
         const transactions = await Promise.all(
             transactionIds.map((transactionId) =>
-                validateOwnership(
+                validateResourceAccess(
                     Transaction,
                     transactionId,
                     userId,
-                    ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND
+                    ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+                    'editor'
                 )
             )
         )
@@ -806,13 +1010,25 @@ export const bulkUpdateTransactionCategory = asyncHandler(
             }
         }
 
-        await Transaction.updateMany(
-            {
-                _id: { $in: transactions.map((transaction) => transaction._id) },
-                userId: new Types.ObjectId(userId),
-            },
-            { $set: { categoryId } }
+        const workspaceId = transactions[0]?.workspaceId ?? null
+        const hasMixedWorkspaceScope = transactions.some(
+            (transaction) => (transaction.workspaceId?.toString() ?? null) !== (workspaceId?.toString() ?? null)
         )
+        if (hasMixedWorkspaceScope) {
+            throw new CustomError(ERROR_MESSAGES.TRANSACTION.BULK_EMPTY, 400)
+        }
+
+        const updateFilter: Record<string, unknown> = {
+            _id: { $in: transactions.map((transaction) => transaction._id) },
+        }
+        if (workspaceId) {
+            updateFilter.workspaceId = workspaceId
+        } else {
+            updateFilter.userId = new Types.ObjectId(userId)
+            updateFilter.workspaceId = null
+        }
+
+        await Transaction.updateMany(updateFilter, { $set: { categoryId } })
 
         handleResponses(res, 200, {
             message: `${transactions.length} transaction${transactions.length === 1 ? '' : 's'} updated`,

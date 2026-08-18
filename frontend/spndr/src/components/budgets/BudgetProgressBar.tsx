@@ -23,12 +23,12 @@ const BudgetProgressBar: React.FC<BudgetProgressBarProps> = ({
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-                <span className={isOverBudget ? 'text-rose-400 font-medium' : 'text-slate-400'}>
+                <span className={isOverBudget ? 'text-expense font-medium' : 'text-fg-muted'}>
                     {formatCurrency(spent, currency)} spent
                 </span>
-                <span className="text-slate-500">
+                <span className="text-fg-muted">
                     {isOverBudget ? (
-                        <span className="text-rose-400 font-medium">
+                        <span className="text-expense font-medium">
                             Over by {formatCurrency(Math.abs(remaining), currency)}
                         </span>
                     ) : (
@@ -37,7 +37,7 @@ const BudgetProgressBar: React.FC<BudgetProgressBarProps> = ({
                 </span>
             </div>
             <div
-                className="h-2.5 w-full rounded-full bg-slate-800 overflow-hidden"
+                className="h-2.5 w-full rounded-full bg-surface-hover overflow-hidden"
                 role="progressbar"
                 aria-valuenow={percentUsed}
                 aria-valuemin={0}
@@ -47,20 +47,20 @@ const BudgetProgressBar: React.FC<BudgetProgressBarProps> = ({
                 <div
                     className={`h-full rounded-full transition-all duration-300 ${
                         isOverBudget
-                            ? 'bg-gradient-to-r from-rose-500 to-rose-400'
+                            ? 'bg-negative'
                             : percentUsed >= 80
-                              ? 'bg-gradient-to-r from-amber-500 to-amber-400'
-                              : 'bg-gradient-to-r from-cyan-500 to-cyan-400'
+                              ? 'bg-warning'
+                              : 'bg-accent'
                     }`}
                     style={{ width: `${fillPercent}%` }}
                 />
             </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <div className="flex items-center justify-between text-[11px] text-fg-muted">
                 <span>{percentUsed.toFixed(0)}% used</span>
                 <span>of {formatCurrency(budgetAmount, currency)}</span>
             </div>
             {isOverBudget && (
-                <p className="text-[11px] font-medium text-rose-400/90">Over budget</p>
+                <p className="text-[11px] font-medium text-expense/90">Over budget</p>
             )}
         </div>
     )

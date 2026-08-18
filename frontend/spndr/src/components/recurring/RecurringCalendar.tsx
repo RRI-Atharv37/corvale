@@ -73,15 +73,15 @@ const RecurringCalendar: React.FC<RecurringCalendarProps> = ({
                 <button
                     type="button"
                     onClick={onPrevMonth}
-                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-300 transition-colors"
+                    className="px-3 py-1.5 text-sm rounded-lg border border-border text-fg-secondary hover:border-accent/40 hover:text-accent transition-colors"
                 >
                     Previous
                 </button>
-                <p className="text-sm font-medium text-slate-200">{monthLabel}</p>
+                <p className="text-sm font-medium text-fg">{monthLabel}</p>
                 <button
                     type="button"
                     onClick={onNextMonth}
-                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500/40 hover:text-cyan-300 transition-colors"
+                    className="px-3 py-1.5 text-sm rounded-lg border border-border text-fg-secondary hover:border-accent/40 hover:text-accent transition-colors"
                 >
                     Next
                 </button>
@@ -91,7 +91,7 @@ const RecurringCalendar: React.FC<RecurringCalendarProps> = ({
                 {WEEKDAY_LABELS.map((label) => (
                     <div
                         key={label}
-                        className="text-center text-[11px] font-medium text-slate-500 py-1"
+                        className="text-center text-[11px] font-medium text-fg-muted py-1"
                     >
                         {label}
                     </div>
@@ -106,13 +106,13 @@ const RecurringCalendar: React.FC<RecurringCalendarProps> = ({
                             key={cell.date}
                             className={`min-h-[88px] rounded-lg border p-1.5 ${
                                 cell.inMonth
-                                    ? 'border-slate-800 bg-slate-900/30'
-                                    : 'border-transparent bg-slate-950/40 opacity-50'
-                            } ${isToday ? 'ring-1 ring-cyan-500/40' : ''}`}
+                                    ? 'border-border-subtle bg-surface/30'
+                                    : 'border-transparent bg-base/40 opacity-50'
+                            } ${isToday ? 'ring-1 ring-accent/40' : ''}`}
                         >
                             <p
                                 className={`text-[11px] font-medium mb-1 ${
-                                    isToday ? 'text-cyan-300' : 'text-slate-400'
+                                    isToday ? 'text-accent' : 'text-fg-muted'
                                 }`}
                             >
                                 {cell.day}
@@ -132,11 +132,11 @@ const RecurringCalendar: React.FC<RecurringCalendarProps> = ({
                                         }}
                                         className={`w-full text-left truncate rounded px-1 py-0.5 text-[10px] leading-tight ${
                                             event.isDraft
-                                                ? 'bg-amber-500/15 text-amber-200 border border-amber-500/20'
+                                                ? 'bg-warning/15 text-warning border border-warning/20'
                                                 : event.type === 'income'
-                                                  ? 'bg-emerald-500/10 text-emerald-200 border border-emerald-500/15'
-                                                  : 'bg-cyan-500/10 text-cyan-200 border border-cyan-500/15'
-                                        } ${event.isDraft && onSelectDraft ? 'hover:bg-amber-500/25 cursor-pointer' : 'cursor-default'}`}
+                                                  ? 'bg-positive/10 text-positive border border-positive/15'
+                                                  : 'bg-accent-subtle text-accent border border-accent/15'
+                                        } ${event.isDraft && onSelectDraft ? 'hover:bg-warning/25 cursor-pointer' : 'cursor-default'}`}
                                         title={`${event.title} · ${formatCurrency(event.amount, event.currency)}`}
                                     >
                                         {event.isDraft ? 'Draft: ' : ''}
@@ -144,7 +144,7 @@ const RecurringCalendar: React.FC<RecurringCalendarProps> = ({
                                     </button>
                                 ))}
                                 {events.length > 3 && (
-                                    <p className="text-[10px] text-slate-500 px-1">
+                                    <p className="text-[10px] text-fg-muted px-1">
                                         +{events.length - 3} more
                                     </p>
                                 )}
@@ -154,17 +154,17 @@ const RecurringCalendar: React.FC<RecurringCalendarProps> = ({
                 })}
             </div>
 
-            <div className="flex flex-wrap gap-4 text-xs text-slate-500 pt-1 border-t border-slate-800">
+            <div className="flex flex-wrap gap-4 text-xs text-fg-muted pt-1 border-t border-border-subtle">
                 <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded bg-amber-500/30 border border-amber-500/30" />
+                    <span className="h-2.5 w-2.5 rounded bg-warning/30 border border-warning/30" />
                     Pending draft
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded bg-cyan-500/20 border border-cyan-500/20" />
+                    <span className="h-2.5 w-2.5 rounded bg-accent-subtle border border-accent/30" />
                     Upcoming expense
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded bg-emerald-500/20 border border-emerald-500/20" />
+                    <span className="h-2.5 w-2.5 rounded bg-positive/20 border border-positive/20" />
                     Upcoming income
                 </span>
             </div>

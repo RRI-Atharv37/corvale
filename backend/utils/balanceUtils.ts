@@ -3,6 +3,8 @@ import Expense from '../models/Expense'
 import Saver from '../models/Saver'
 import Account, { AccountType } from '../models/Account'
 import { toObjectId } from './sharedUtils'
+import { buildScopedListFilter } from './workspaceUtils'
+import { convertAmount } from './exchangeRateUtils'
 
 export const roundMoney = (amount: number): number =>
     Math.round((amount + Number.EPSILON) * 100) / 100
@@ -28,20 +30,38 @@ export interface UserBalanceSummary {
     balanceSource: 'accounts' | 'legacy'
 }
 
+export interface CurrencyConversionOptions {
+    preferredCurrency: string
+    exchangeRates: Record<string, number>
+}
+
 /**
  * Pre-Phase-1c bridge: when active accounts exist, net worth and spendable
  * derive from account balances. Income/expense totals remain activity metrics only.
  * Full transaction-driven account updates arrive in Phase 1c.
  */
-export const computeAccountTotals = async (userId: string): Promise<AccountTotals> => {
-    const accounts = await Account.find({ userId, isArchived: false })
+export const computeAccountTotals = async (
+    userId: string,
+    workspaceId?: string | null,
+    conversion?: CurrencyConversionOptions
+): Promise<AccountTotals> => {
+    const accounts = await Account.find({
+        ...buildScopedListFilter(userId, workspaceId ?? null),
+        isArchived: false,
+    })
 
     let assetTotal = 0
     let creditTotal = 0
     let liquidBalance = 0
 
     for (const account of accounts) {
-        const balance = roundMoney(account.currentBalance)
+        const rawBalance = roundMoney(account.currentBalance)
+        const balance = conversion
+            ? roundMoney(
+                  convertAmount(rawBalance, account.currency, conversion.preferredCurrency, conversion.exchangeRates)
+                      .convertedAmount
+              )
+            : rawBalance
 
         if (account.type === 'credit') {
             creditTotal = roundMoney(creditTotal + balance)
@@ -61,10 +81,31 @@ export const computeAccountTotals = async (userId: string): Promise<AccountTotal
     }
 }
 
-export const computeUserBalances = async (userId: string): Promise<UserBalanceSummary> => {
+export const computeUserBalances = async (
+    userId: string,
+    workspaceId?: string | null,
+    conversion?: CurrencyConversionOptions
+): Promise<UserBalanceSummary> => {
+    const accountTotals = await computeAccountTotals(userId, workspaceId, conversion)
+
+    if (workspaceId) {
+        const netWorth = accountTotals.totalAccountBalance
+        return {
+            totalIncome: 0,
+            totalExpenses: 0,
+            saverBalance: 0,
+            spendableBalance: accountTotals.liquidBalance,
+            netWorth,
+            totalAccountBalance: accountTotals.totalAccountBalance,
+            liquidBalance: accountTotals.liquidBalance,
+            accountCount: accountTotals.accountCount,
+            balanceSource: 'accounts',
+        }
+    }
+
     const objectId = toObjectId(userId)
 
-    const [incomeAgg, expenseAgg, saver, accountTotals] = await Promise.all([
+    const [incomeAgg, expenseAgg, saver] = await Promise.all([
         Income.aggregate([
             { $match: { userId: objectId } },
             { $group: { _id: null, total: { $sum: '$amount' } } },
@@ -74,7 +115,6 @@ export const computeUserBalances = async (userId: string): Promise<UserBalanceSu
             { $group: { _id: null, total: { $sum: '$amount' } } },
         ]),
         Saver.findOne({ userId: objectId }),
-        computeAccountTotals(userId),
     ])
 
     const totalIncome = roundMoney(incomeAgg[0]?.total ?? 0)

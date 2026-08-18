@@ -495,6 +495,62 @@ describe('Reports - generate (JSON and CSV)', () => {
         expect(res.text).toContain('Largest Expenses,#1 Groceries,500')
     })
 
+    it('exports selected metrics as JSON file', async () => {
+        const { token } = await seedUserDirectly({ email: 'report-generate-json-file@example.com' })
+        await seedReportFixture(token)
+
+        const res = await request(app)
+            .post('/api/v1/dashboard/reports/generate')
+            .set(authHeader(token))
+            .send({
+                ...JAN_2026_MONTHLY,
+                metrics: ['summary', 'savingsRate'],
+                format: 'json',
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.headers['content-type']).toMatch(/application\/json/)
+        expect(res.headers['content-disposition']).toMatch(/attachment/)
+        const payload = JSON.parse(res.text)
+        expect(payload.metrics.summary.totalIncome).toBe(3000)
+        expect(payload.metrics.savingsRate.savingsRate).toBeCloseTo((2200 / 3000) * 100, 2)
+    })
+
+    it('exports selected metrics as PDF', async () => {
+        const { token } = await seedUserDirectly({ email: 'report-generate-pdf@example.com' })
+        await seedReportFixture(token)
+
+        const res = await request(app)
+            .post('/api/v1/dashboard/reports/generate')
+            .set(authHeader(token))
+            .send({
+                ...JAN_2026_MONTHLY,
+                metrics: ['summary'],
+                format: 'pdf',
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.headers['content-type']).toMatch(/application\/pdf/)
+        expect(res.headers['content-disposition']).toMatch(/attachment/)
+        expect(res.body.subarray(0, 4).toString()).toBe('%PDF')
+    })
+
+    it('rejects unsupported export formats', async () => {
+        const { token } = await seedUserDirectly({ email: 'report-generate-invalid-format@example.com' })
+        await seedReportFixture(token)
+
+        const res = await request(app)
+            .post('/api/v1/dashboard/reports/generate')
+            .set(authHeader(token))
+            .send({
+                ...JAN_2026_MONTHLY,
+                metrics: ['summary'],
+                format: 'doc',
+            })
+
+        expect(res.status).toBe(400)
+    })
+
     it('rejects generate requests without metrics', async () => {
         const { token } = await seedUserDirectly({ email: 'report-generate-invalid@example.com' })
 

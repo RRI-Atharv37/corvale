@@ -129,18 +129,27 @@ export const validateCategoryForBudget = async (
 
 export const validateAccountIdsForBudget = async (
     accountIds: string[],
-    userId: string
+    userId: string,
+    workspaceId?: string | null
 ): Promise<Types.ObjectId[]> => {
     if (accountIds.length === 0) {
         return []
     }
 
     const uniqueIds = [...new Set(accountIds)]
-    const accounts = await Account.find({
+    const filter: Record<string, unknown> = {
         _id: { $in: uniqueIds },
-        userId,
         isArchived: false,
-    })
+    }
+
+    if (workspaceId) {
+        filter.workspaceId = new Types.ObjectId(workspaceId)
+    } else {
+        filter.userId = new Types.ObjectId(userId)
+        filter.workspaceId = null
+    }
+
+    const accounts = await Account.find(filter)
 
     if (accounts.length !== uniqueIds.length) {
         throw new CustomError(ERROR_MESSAGES.BUDGET.INVALID_ACCOUNT_IDS, 400)
@@ -158,8 +167,12 @@ const buildAccountFilter = (accountIds: Types.ObjectId[]): Record<string, unknow
 
 /** Sum posted expense minor units that count toward a budget. Excludes drafts and transfers. */
 export const computeBudgetSpentMinor = async (budget: IBudget): Promise<number> => {
+    const scopeFilter = budget.workspaceId
+        ? { workspaceId: budget.workspaceId }
+        : { userId: budget.userId, workspaceId: null }
+
     const baseFilter: Record<string, unknown> = {
-        userId: budget.userId,
+        ...scopeFilter,
         type: 'expense',
         status: 'posted',
         date: { $gte: budget.periodStart, $lte: budget.periodEnd },
@@ -168,7 +181,7 @@ export const computeBudgetSpentMinor = async (budget: IBudget): Promise<number> 
 
     if (budget.categoryId) {
         const splitParentIds = await Transaction.distinct('splitTransactionId', {
-            userId: budget.userId,
+            ...scopeFilter,
             splitTransactionId: { $ne: null },
         })
 

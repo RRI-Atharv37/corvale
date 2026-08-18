@@ -23,8 +23,10 @@ import {
     logPasswordResetLink,
     resetPasswordWithToken,
 } from '../utils/passwordResetUtils'
-import { parseSupportedCurrency } from '../utils/currencyUtils'
+import { parseSupportedCurrency, syncUserCurrencyData } from '../utils/currencyUtils'
 import { isValidTimezone } from '../utils/timezoneUtils'
+import { parseNotificationPreferences } from '../utils/notificationUtils'
+import { parseDateFormat, parsePageSize } from '../utils/userPreferencesUtils'
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
@@ -32,6 +34,10 @@ const toPublicUser = (user: IUser) => ({
     email: user.email,
     timezone: user.timezone,
     preferredCurrency: user.preferredCurrency,
+    dateFormat: user.dateFormat,
+    pageSize: user.pageSize,
+    notificationPreferences: user.notificationPreferences,
+    exchangeRates: user.exchangeRates,
 })
 
 const issueAuthSession = async (user: IUser, res: Response) => {
@@ -162,10 +168,22 @@ export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: 
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
 
-    const { preferredCurrency, timezone } = req.body
+    const { preferredCurrency, dateFormat, pageSize, timezone, notificationPreferences } = req.body
+
+    let preferredCurrencyChanged = false
 
     if (preferredCurrency !== undefined) {
-        user.preferredCurrency = parseSupportedCurrency(preferredCurrency)
+        const nextCurrency = parseSupportedCurrency(preferredCurrency)
+        preferredCurrencyChanged = nextCurrency !== user.preferredCurrency
+        user.preferredCurrency = nextCurrency
+    }
+
+    if (dateFormat !== undefined) {
+        user.dateFormat = parseDateFormat(dateFormat)
+    }
+
+    if (pageSize !== undefined) {
+        user.pageSize = parsePageSize(pageSize)
     }
 
     if (timezone !== undefined) {
@@ -175,7 +193,28 @@ export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: 
         user.timezone = timezone.trim()
     }
 
+    if (notificationPreferences !== undefined) {
+        try {
+            const parsed = parseNotificationPreferences(notificationPreferences)
+            if (parsed) {
+                user.notificationPreferences = {
+                    ...user.notificationPreferences,
+                    ...parsed,
+                }
+            }
+        } catch (error) {
+            throw new CustomError(
+                error instanceof Error ? error.message : 'Invalid notification preferences',
+                400
+            )
+        }
+    }
+
     await user.save()
+
+    if (preferredCurrencyChanged) {
+        await syncUserCurrencyData(user._id, user.preferredCurrency)
+    }
 
     handleResponses(res, 200, toPublicUser(user))
 })
