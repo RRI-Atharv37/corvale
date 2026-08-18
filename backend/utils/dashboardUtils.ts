@@ -645,16 +645,49 @@ export const computeCategoryBreakdown = async (
     const categories = await Category.find({ _id: { $in: categoryIds } })
     const categoryMap = new Map(categories.map((category) => [category._id.toString(), category]))
 
-    return rows.map((row) => {
+    const missingMasterIds = [
+        ...new Set(
+            categories
+                .filter((category) => category.masterCategoryId && !categoryMap.has(category.masterCategoryId.toString()))
+                .map((category) => category.masterCategoryId!.toString())
+        ),
+    ]
+    if (missingMasterIds.length > 0) {
+        const masters = await Category.find({ _id: { $in: missingMasterIds } })
+        for (const master of masters) {
+            categoryMap.set(master._id.toString(), master)
+        }
+    }
+
+    const totalsByMaster = new Map<string, { amount: number; name: string; color?: string }>()
+
+    for (const row of rows) {
         const categoryId = (row._id as Types.ObjectId).toString()
         const category = categoryMap.get(categoryId)
-        return {
-            categoryId,
-            categoryName: category?.name ?? 'Unknown',
-            amount: fromMinorUnits(row.totalAmount as number),
-            color: category?.color,
+        const masterId = category?.masterCategoryId?.toString() ?? categoryId
+        const master = category?.masterCategoryId ? categoryMap.get(masterId) : category
+
+        const amount = fromMinorUnits(row.totalAmount as number)
+        const existing = totalsByMaster.get(masterId)
+        if (existing) {
+            existing.amount += amount
+        } else {
+            totalsByMaster.set(masterId, {
+                amount,
+                name: master?.name ?? 'Unknown',
+                color: master?.color,
+            })
         }
-    })
+    }
+
+    return [...totalsByMaster.entries()]
+        .map(([categoryId, { amount, name, color }]) => ({
+            categoryId,
+            categoryName: name,
+            amount: roundMoney(amount),
+            color,
+        }))
+        .sort((a, b) => b.amount - a.amount)
 }
 
 export const resolveDashboardQuery = (

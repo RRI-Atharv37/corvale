@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoPencil, IoStar, IoStarOutline, IoSwapVertical, IoTrash } from 'react-icons/io5'
+import { IoAdd, IoInformationCircleOutline, IoPencil, IoStar, IoStarOutline, IoSwapVertical, IoTrash } from 'react-icons/io5'
 import ReconciliationModal from '../../components/accounts/ReconciliationModal'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
@@ -302,6 +302,19 @@ const Accounts = () => {
                 onRetry={refetch}
             >
                 {(items) => (
+                    <>
+                        {(user?.exchangeRates && Object.keys(user.exchangeRates).length > 0) &&
+                            items.every((account) => account.currency === preferredCurrency) && (
+                                <div className="mb-4 flex items-start gap-2 rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2.5 text-xs text-text-muted">
+                                    <IoInformationCircleOutline size={16} className="mt-0.5 shrink-0" />
+                                    <p>
+                                        All of your accounts are already in {formatCurrencyLabel(preferredCurrency)}
+                                        , your default currency, so there&apos;s nothing to convert yet. Your saved
+                                        exchange rates will show up as a converted amount here once you add an
+                                        account in a different currency.
+                                    </p>
+                                </div>
+                            )}
                     <PaginatedCardList items={items} pageSize={pageSize}>
                         {(paginatedItems) => (
                     <div className="space-y-3">
@@ -333,11 +346,16 @@ const Accounts = () => {
                                         </p>
                                         <p className="text-[11px] text-fg-muted">Current balance</p>
                                         {account.currency !== preferredCurrency &&
-                                            account.convertedBalance !== undefined && (
+                                            account.convertedBalance !== undefined &&
+                                            (account.hasExchangeRate ? (
                                                 <p className="text-[11px] text-fg-muted">
                                                     ≈ {formatCurrency(account.convertedBalance, preferredCurrency)}
                                                 </p>
-                                            )}
+                                            ) : (
+                                                <p className="text-[11px] text-warning">
+                                                    No {account.currency}→{preferredCurrency} rate set
+                                                </p>
+                                            ))}
                                     </div>
                                     {!account.isDefault && isPersonal && canEdit && (
                                         <button
@@ -386,6 +404,7 @@ const Accounts = () => {
                     </div>
                         )}
                     </PaginatedCardList>
+                    </>
                 )}
             </AsyncContent>
 

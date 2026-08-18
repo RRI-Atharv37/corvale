@@ -3,6 +3,7 @@ import { DEFAULT_DATE_FORMAT, type DateFormat } from './userPreferences'
 
 export const PREFERRED_CURRENCY_CHANGED_EVENT = 'spndr:preferred-currency-changed'
 export const DATE_FORMAT_CHANGED_EVENT = 'spndr:date-format-changed'
+export const EXCHANGE_RATES_CHANGED_EVENT = 'spndr:exchange-rates-changed'
 
 let activePreferredCurrency: string = DEFAULT_CURRENCY
 let activeDateFormat: DateFormat = DEFAULT_DATE_FORMAT
@@ -30,6 +31,11 @@ export const resetDateFormat = (): void => {
 }
 
 export const getDateFormat = (): DateFormat => activeDateFormat
+
+/** Notifies data consumers (e.g. accounts, dashboard) that saved exchange rates changed, so converted balances refresh without a page reload. */
+export const notifyExchangeRatesChanged = (): void => {
+    window.dispatchEvent(new CustomEvent(EXCHANGE_RATES_CHANGED_EVENT))
+}
 
 const getUtcDateParts = (date: string | Date) => {
     const value = typeof date === 'string' ? new Date(date) : date
@@ -68,6 +74,22 @@ export const formatDisplayDateTime = (date: string | Date, format: DateFormat = 
 
 export const formatCurrency = (amount: number, currency: string = activePreferredCurrency): string =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
+
+const currencySymbolCache = new Map<string, string>()
+
+/** Short symbol (e.g. "$", "€", "₹") for a currency code, used in compact/abbreviated displays. */
+export const getCurrencySymbol = (currency: string = activePreferredCurrency): string => {
+    const cached = currencySymbolCache.get(currency)
+    if (cached) return cached
+
+    const symbol =
+        new Intl.NumberFormat('en-US', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' })
+            .formatToParts(0)
+            .find((part) => part.type === 'currency')?.value ?? currency
+
+    currencySymbolCache.set(currency, symbol)
+    return symbol
+}
 
 /** ISO yyyy-mm-dd for HTML date inputs - not affected by display preference. */
 export const toDateInputValue = (date: string | Date): string => {

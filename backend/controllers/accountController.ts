@@ -52,7 +52,7 @@ const withConvertedBalance = (
     preferredCurrency: string,
     exchangeRates: Record<string, number>
 ) => {
-    const { convertedAmount, rateApplied } = convertAmount(
+    const { convertedAmount, rateApplied, rateConfigured } = convertAmount(
         account.currentBalance,
         account.currency,
         preferredCurrency,
@@ -62,6 +62,7 @@ const withConvertedBalance = (
         ...account.toObject(),
         convertedBalance: roundMoney(convertedAmount),
         exchangeRateApplied: rateApplied,
+        hasExchangeRate: rateConfigured,
     }
 }
 

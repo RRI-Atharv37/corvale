@@ -12,6 +12,8 @@ import { Link } from 'react-router-dom'
 import { formatCurrency, toDateInputValue } from '../../utils/format'
 import StatCard from '../../components/ui/StatCard'
 import QuickAddDropdown from '../../components/transactions/QuickAddDropdown'
+import QuickTransactionModal from '../../components/dashboard/QuickTransactionModal'
+import { useWorkspace } from '../../hooks/useWorkspace'
 
 const PERIOD_PRESETS: { value: DashboardPeriodPreset; label: string }[] = [
     { value: '1m', label: 'This month' },
@@ -45,7 +47,9 @@ const resolvePeriodRange = (preset: DashboardPeriodPreset): { startDate: string;
 
 const Home = () => {
     const { user } = useUser()
+    const { canEdit } = useWorkspace()
     const [periodPreset, setPeriodPreset] = useState<DashboardPeriodPreset>('6m')
+    const [quickEntryType, setQuickEntryType] = useState<'income' | 'expense' | null>(null)
 
     const periodQuery = useMemo(() => resolvePeriodRange(periodPreset), [periodPreset])
 
@@ -133,12 +137,16 @@ const Home = () => {
                                     value={formatCurrency(summary.totalIncome)}
                                     accent="income"
                                     subtitle={periodLabel}
+                                    onAdd={canEdit ? () => setQuickEntryType('income') : undefined}
+                                    addLabel="Add income"
                                 />
                                 <StatCard
                                     label="Total Expenses"
                                     value={formatCurrency(summary.totalExpenses)}
                                     accent="expense"
                                     subtitle={periodLabel}
+                                    onAdd={canEdit ? () => setQuickEntryType('expense') : undefined}
+                                    addLabel="Add expense"
                                 />
                                 <StatCard
                                     label="Net Worth"
@@ -181,6 +189,15 @@ const Home = () => {
                 <QuickLink to="/transactions?type=income" title="Income" description="Filter to income entries" />
                 <QuickLink to="/accounts" title="Accounts" description="View and manage your accounts" />
             </div>
+
+            {quickEntryType && (
+                <QuickTransactionModal
+                    type={quickEntryType}
+                    open={quickEntryType !== null}
+                    onClose={() => setQuickEntryType(null)}
+                    onCreated={() => void refetch()}
+                />
+            )}
         </div>
     )
 }

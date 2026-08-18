@@ -329,6 +329,7 @@ export interface Account {
     minimumPayment?: number
     convertedBalance?: number
     exchangeRateApplied?: number
+    hasExchangeRate?: boolean
     createdAt?: string
     updatedAt?: string
 }

@@ -27,12 +27,16 @@ export const parsePositiveRate = (value: unknown): number => {
 export interface ConversionResult {
     convertedAmount: number
     rateApplied: number
+    /** False when no direct or inverse rate was configured and the 1:1 fallback was used. */
+    rateConfigured: boolean
 }
 
 /**
  * Converts an amount between currencies using the user's rate map (keyed 'FROM_TO').
  * Falls back to the inverse pair if present, then to a 1:1 rate when no rate is configured
- * so multi-currency totals never throw for a missing configuration.
+ * so multi-currency totals never throw for a missing configuration. Callers that display
+ * the conversion to the user should check `rateConfigured` before showing it, since the
+ * 1:1 fallback is not a real conversion.
  */
 export const convertAmount = (
     amount: number,
@@ -41,20 +45,20 @@ export const convertAmount = (
     rates: Record<string, number>
 ): ConversionResult => {
     if (fromCurrency === toCurrency) {
-        return { convertedAmount: amount, rateApplied: 1 }
+        return { convertedAmount: amount, rateApplied: 1, rateConfigured: true }
     }
 
     const directKey = `${fromCurrency}_${toCurrency}`
     if (typeof rates[directKey] === 'number') {
         const rate = rates[directKey]
-        return { convertedAmount: amount * rate, rateApplied: rate }
+        return { convertedAmount: amount * rate, rateApplied: rate, rateConfigured: true }
     }
 
     const reverseKey = `${toCurrency}_${fromCurrency}`
     if (typeof rates[reverseKey] === 'number' && rates[reverseKey] !== 0) {
         const rate = 1 / rates[reverseKey]
-        return { convertedAmount: amount * rate, rateApplied: rate }
+        return { convertedAmount: amount * rate, rateApplied: rate, rateConfigured: true }
     }
 
-    return { convertedAmount: amount, rateApplied: 1 }
+    return { convertedAmount: amount, rateApplied: 1, rateConfigured: false }
 }

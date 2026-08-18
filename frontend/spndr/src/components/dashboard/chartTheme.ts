@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { XAxisProps, YAxisProps } from 'recharts'
+import { getCurrencySymbol } from '../../utils/format'
 
 export const CHART_COLORS = {
     income: '#4ade80',
@@ -79,8 +80,9 @@ export const formatPeriodLabel = (period: string, groupBy: 'day' | 'week' | 'mon
 }
 
 export const formatChartCurrency = (value: number): string => {
+    const symbol = getCurrencySymbol()
     if (Math.abs(value) >= 1000) {
-        return `$${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
+        return `${symbol}${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
     }
-    return `$${value}`
+    return `${symbol}${value}`
 }

@@ -60,16 +60,16 @@ const navItems: NavItem[] = [
     { to: '/dashboard', label: 'Dashboard', icon: <FiHome size={18} /> },
     { to: '/transactions', label: 'Transactions', icon: <FiList size={18} /> },
     { to: '/accounts', label: 'Accounts', icon: <FiCreditCard size={18} /> },
-    { to: '/categories', label: 'Categories', icon: <FiGrid size={18} /> },
-    { to: '/tags', label: 'Tags', icon: <FiTag size={18} /> },
     { to: '/budgets', label: 'Budgets', icon: <FiPieChart size={18} /> },
-    { to: '/savings-goals', label: 'Savings Goals', icon: <FiFlag size={18} /> },
-    { to: '/recurring', label: 'Recurring', icon: <FiCalendar size={18} /> },
+    { to: '/categories', label: 'Categories', icon: <FiGrid size={18} /> },
     { to: '/reports', label: 'Reports', icon: <FiBarChart2 size={18} /> },
-    { to: '/forecast', label: 'Forecast', icon: <FiTrendingUp size={18} /> },
     { to: '/calendar', label: 'Calendar', icon: <FiClock size={18} /> },
+    { to: '/tags', label: 'Tags', icon: <FiTag size={18} /> },
+    { to: '/recurring', label: 'Recurring', icon: <FiCalendar size={18} /> },
     { to: '/subscriptions', label: 'Subscriptions', icon: <FiLayers size={18} /> },
     { to: '/debts', label: 'Debt Payoff', icon: <FiTrendingDown size={18} /> },
+    { to: '/savings-goals', label: 'Savings Goals', icon: <FiFlag size={18} /> },
+    { to: '/forecast', label: 'Forecast', icon: <FiTrendingUp size={18} /> },
     { to: '/workspaces', label: 'Workspaces', icon: <FiUsers size={18} /> },
     { to: '/saver', label: 'Saver', icon: <FiDollarSign size={18} /> },
     { to: '/pushover', label: 'Pushover', icon: <FiRepeat size={18} /> },
@@ -326,10 +326,6 @@ const DashboardLayout: React.FC = () => {
 
             <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" size="md">
                 <div className="space-y-6">
-                    <BackupRestoreSettings />
-                    <TransactionTemplatesSettings />
-                    <ExchangeRatesSettings />
-
                     <div>
                         <p className="section-label mb-3">Preferences</p>
                         <CurrencySelect
@@ -406,6 +402,10 @@ const DashboardLayout: React.FC = () => {
                             </label>
                         </div>
                     </div>
+
+                    <TransactionTemplatesSettings />
+                    <ExchangeRatesSettings />
+                    <BackupRestoreSettings />
 
                     <div>
                         <p className="section-label mb-3">Account</p>

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getApiErrorMessage } from '../utils/apiError'
-import { PREFERRED_CURRENCY_CHANGED_EVENT, DATE_FORMAT_CHANGED_EVENT } from '../utils/format'
+import {
+    PREFERRED_CURRENCY_CHANGED_EVENT,
+    DATE_FORMAT_CHANGED_EVENT,
+    EXCHANGE_RATES_CHANGED_EVENT,
+} from '../utils/format'
 
 interface AsyncState<T> {
     data: T | null
@@ -49,9 +53,11 @@ export const useAsyncData = <T>(
 
         window.addEventListener(PREFERRED_CURRENCY_CHANGED_EVENT, handlePreferencesChange)
         window.addEventListener(DATE_FORMAT_CHANGED_EVENT, handlePreferencesChange)
+        window.addEventListener(EXCHANGE_RATES_CHANGED_EVENT, handlePreferencesChange)
         return () => {
             window.removeEventListener(PREFERRED_CURRENCY_CHANGED_EVENT, handlePreferencesChange)
             window.removeEventListener(DATE_FORMAT_CHANGED_EVENT, handlePreferencesChange)
+            window.removeEventListener(EXCHANGE_RATES_CHANGED_EVENT, handlePreferencesChange)
         }
     }, [refetch])
 

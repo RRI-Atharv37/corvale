@@ -9,6 +9,8 @@ import type { ApiResponse, ExchangeRateMap } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { CURRENCY_OPTIONS, DEFAULT_CURRENCY } from '../../utils/currencies'
+import { notifyExchangeRatesChanged } from '../../utils/format'
+import { useUser } from '../../hooks/useUser'
 import CurrencySelect from '../Inputs/CurrencySelect'
 import FormField from '../forms/FormField'
 
@@ -18,6 +20,7 @@ const splitPair = (pair: string): { from: string; to: string } => {
 }
 
 const ExchangeRatesSettings: React.FC = () => {
+    const { restoreSession } = useUser()
     const [formOpen, setFormOpen] = useState(false)
     const [fromCurrency, setFromCurrency] = useState<string>(CURRENCY_OPTIONS[0]?.value ?? DEFAULT_CURRENCY)
     const [toCurrency, setToCurrency] = useState<string>(CURRENCY_OPTIONS[1]?.value ?? DEFAULT_CURRENCY)
@@ -86,6 +89,8 @@ const ExchangeRatesSettings: React.FC = () => {
             }
             closeForm()
             await refetch()
+            await restoreSession()
+            notifyExchangeRatesChanged()
         } catch (submitError) {
             toast.error(getApiErrorMessage(submitError, 'Failed to save exchange rate'))
         } finally {
@@ -99,6 +104,8 @@ const ExchangeRatesSettings: React.FC = () => {
             await axiosInstance.delete(API_PATHS.EXCHANGE_RATES.DELETE(pair))
             toast.success('Exchange rate removed')
             await refetch()
+            await restoreSession()
+            notifyExchangeRatesChanged()
         } catch (deleteError) {
             toast.error(getApiErrorMessage(deleteError, 'Failed to remove exchange rate'))
         } finally {
