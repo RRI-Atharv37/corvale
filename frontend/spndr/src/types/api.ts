@@ -106,6 +106,7 @@ export interface PaginationMeta {
 
 export type TransactionType = 'income' | 'expense' | 'transfer'
 export type TransactionStatus = 'posted' | 'draft'
+export type ClearedStatus = 'pending' | 'cleared' | 'reconciled'
 
 export interface Receipt {
     _id: string
@@ -138,6 +139,22 @@ export interface Transaction {
     transferPair?: Transaction
     receipts?: Receipt[]
     recurringPaymentId?: string | null
+    clearedStatus: ClearedStatus
+    reconciledAt?: string | null
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface ReconciliationSession {
+    _id: string
+    userId: string
+    workspaceId?: string | null
+    accountId: string
+    statementEndDate: string
+    statementBalance: number
+    clearedBalance: number
+    pendingBalance: number
+    balanceDifferential: number
     createdAt?: string
     updatedAt?: string
 }

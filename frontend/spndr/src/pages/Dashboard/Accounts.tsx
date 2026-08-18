@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoPencil, IoStar, IoStarOutline, IoTrash } from 'react-icons/io5'
+import { IoAdd, IoPencil, IoStar, IoStarOutline, IoSwapVertical, IoTrash } from 'react-icons/io5'
+import ReconciliationModal from '../../components/accounts/ReconciliationModal'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
@@ -102,6 +103,7 @@ const Accounts = () => {
     const [archiveTarget, setArchiveTarget] = useState<Account | null>(null)
     const [archiving, setArchiving] = useState(false)
     const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
+    const [reconcilingAccount, setReconcilingAccount] = useState<Account | null>(null)
 
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
         try {
@@ -347,6 +349,15 @@ const Accounts = () => {
                                         <>
                                             <button
                                                 type="button"
+                                                onClick={() => setReconcilingAccount(account)}
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors"
+                                                aria-label="Reconcile account"
+                                                title="Reconcile"
+                                            >
+                                                <IoSwapVertical size={16} />
+                                            </button>
+                                            <button
+                                                type="button"
                                                 onClick={() => openEdit(account)}
                                                 className="p-1.5 text-fg-muted hover:text-accent transition-colors"
                                                 aria-label="Edit account"
@@ -523,6 +534,15 @@ const Accounts = () => {
                 confirmLabel="Archive"
                 loading={archiving}
             />
+
+            {reconcilingAccount && (
+                <ReconciliationModal
+                    account={reconcilingAccount}
+                    open={reconcilingAccount !== null}
+                    onClose={() => setReconcilingAccount(null)}
+                    onReconciled={refetch}
+                />
+            )}
         </div>
     )
 }

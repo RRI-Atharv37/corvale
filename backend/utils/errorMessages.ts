@@ -151,6 +151,10 @@ export const ERROR_MESSAGES = {
         FILE_REQUIRED: 'Backup file is required',
         BROKEN_REFERENCE: 'Backup contains a broken reference and cannot be restored',
     },
+    RECONCILIATION: {
+        INVALID_CLEARED_STATUS: 'Invalid clearedStatus',
+        SESSION_NOT_FOUND: 'Reconciliation session not found',
+    },
     WORKSPACE: {
         WORKSPACE_NOT_FOUND: 'Workspace not found',
         NOT_A_MEMBER: 'Not authorized to access this workspace',

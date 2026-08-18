@@ -16,6 +16,7 @@ import {
     searchTransactions,
     updateTransaction,
 } from '../controllers/transactionController'
+import { updateClearedStatus } from '../controllers/reconciliationController'
 import { protect } from '../middleware/authMiddleware'
 
 const router = express.Router()
@@ -29,6 +30,7 @@ router.get('/filter', protect, filterTransactions)
 router.get('/search', protect, searchTransactions)
 router.get('/download', protect, downloadTransactions)
 router.post('/duplicate/:transactionId', protect, duplicateTransaction)
+router.patch('/:transactionId/cleared-status', protect, updateClearedStatus)
 router.post('/:transactionId/receipts', protect, attachReceiptToTransaction)
 router.delete('/:transactionId/receipts/:receiptId', protect, detachReceiptFromTransaction)
 router.get('/:transactionId', protect, getTransactionById)

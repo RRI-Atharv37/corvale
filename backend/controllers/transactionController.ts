@@ -50,7 +50,7 @@ import {
     sendTransactionExport,
 } from '../utils/exportUtils'
 import { validateReceiptOwnership } from '../utils/receiptUtils'
-import { TRANSACTION_TYPES, ITransaction } from '../models/Transaction'
+import { TRANSACTION_TYPES, ITransaction, CLEARED_STATUSES } from '../models/Transaction'
 import {
     assertAccountMatchesWorkspace,
     assertWorkspaceMembership,
@@ -81,7 +81,9 @@ const buildListFilter = (
     userId: string,
     type?: unknown,
     workspaceId?: string | null,
-    tags?: unknown
+    tags?: unknown,
+    clearedStatus?: unknown,
+    accountId?: unknown
 ) => {
     const filter: Record<string, unknown> = {
         ...buildScopedListFilter(userId, workspaceId),
@@ -96,6 +98,20 @@ const buildListFilter = (
             )
         }
         filter.type = type
+    }
+
+    if (clearedStatus !== undefined && clearedStatus !== '') {
+        if (!CLEARED_STATUSES.includes(clearedStatus as (typeof CLEARED_STATUSES)[number])) {
+            throw new CustomError(
+                `Invalid clearedStatus filter. Must be one of: ${CLEARED_STATUSES.join(', ')}`,
+                400
+            )
+        }
+        filter.clearedStatus = clearedStatus
+    }
+
+    if (accountId !== undefined && accountId !== '') {
+        filter.accountId = accountId
     }
 
     const tagNames = parseTagsQuery(tags)
@@ -393,10 +409,10 @@ export const createTransfer = asyncHandler(async (req: AuthRequest, res: Respons
 
 export const getTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { type, sortBy, sortOrder, tags } = req.query
+    const { type, sortBy, sortOrder, tags, clearedStatus, accountId } = req.query
     const { pageNumber, limitNumber } = parsePagination(req.query.page, req.query.limit)
     const workspaceId = await resolveListWorkspaceId(req)
-    const filter = buildListFilter(userId, type, workspaceId, tags)
+    const filter = buildListFilter(userId, type, workspaceId, tags, clearedStatus, accountId)
 
     if (sortBy === 'category') {
         const [results, totalCount] = await Promise.all([
@@ -618,7 +634,7 @@ export const deleteTransaction = asyncHandler(async (req: AuthRequest, res: Resp
 
 export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-    const { startDate, endDate, type, sortBy, sortOrder, tags } = req.query
+    const { startDate, endDate, type, sortBy, sortOrder, tags, clearedStatus } = req.query
     const timezone = getUserTimezone(req)
 
     validateRequiredFields({ startDate, endDate }, ['startDate', 'endDate'])
@@ -636,7 +652,7 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
     const workspaceId = await resolveListWorkspaceId(req)
 
     const filter = {
-        ...buildListFilter(userId, type, workspaceId, tags),
+        ...buildListFilter(userId, type, workspaceId, tags, clearedStatus),
         date: { $gte: dateRange.start, $lte: dateRange.end },
     }
 

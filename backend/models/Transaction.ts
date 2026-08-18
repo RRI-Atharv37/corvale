@@ -8,6 +8,9 @@ export type TransactionType = (typeof TRANSACTION_TYPES)[number]
 export const TRANSACTION_STATUSES = ['posted', 'draft'] as const
 export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number]
 
+export const CLEARED_STATUSES = ['pending', 'cleared', 'reconciled'] as const
+export type ClearedStatus = (typeof CLEARED_STATUSES)[number]
+
 export interface ITransaction extends Document {
     _id: Types.ObjectId
     userId: Types.ObjectId
@@ -28,6 +31,8 @@ export interface ITransaction extends Document {
     splitTransactionId?: Types.ObjectId | null
     recurringPaymentId?: Types.ObjectId | null
     receiptIds?: Types.ObjectId[]
+    clearedStatus: ClearedStatus
+    reconciledAt?: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -60,6 +65,8 @@ const TransactionSchema = new Schema<ITransaction>(
             default: null,
         },
         receiptIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' }],
+        clearedStatus: { type: String, enum: CLEARED_STATUSES, default: 'pending' },
+        reconciledAt: { type: Date, default: null },
     },
     { timestamps: true }
 )

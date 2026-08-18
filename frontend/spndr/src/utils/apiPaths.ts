@@ -53,6 +53,7 @@ export const API_PATHS = {
         GET_BY_ID: (accountId: string) => `/accounts/${accountId}`,
         UPDATE: (accountId: string) => `/accounts/${accountId}`,
         DELETE: (accountId: string) => `/accounts/${accountId}`,
+        RECONCILIATION_SESSIONS: (accountId: string) => `/accounts/${accountId}/reconciliation-sessions`,
     },
     CATEGORIES: {
         CREATE: '/categories',
@@ -103,6 +104,7 @@ export const API_PATHS = {
         SEARCH: '/transactions/search',
         DOWNLOAD: '/transactions/download',
         DUPLICATE: (transactionId: string) => `/transactions/duplicate/${transactionId}`,
+        UPDATE_CLEARED_STATUS: (transactionId: string) => `/transactions/${transactionId}/cleared-status`,
     },
     RECEIPTS: {
         UPLOAD: '/receipts',
@@ -209,5 +211,8 @@ export const API_PATHS = {
     },
     DEBTS: {
         PLAN: '/debts/plan',
+    },
+    RECONCILIATION: {
+        CREATE_SESSION: '/reconciliation-sessions',
     },
 } as const

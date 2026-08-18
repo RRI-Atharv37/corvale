@@ -161,7 +161,7 @@ export const validateCategoryForTransaction = async (
     return category
 }
 
-const getBalanceDeltaMajor = (
+export const getBalanceDeltaMajor = (
     type: TransactionType,
     amountMinor: number,
     accountType: AccountType
