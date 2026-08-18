@@ -1,12 +1,13 @@
 import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
-import Account, { ACCOUNT_TYPES } from '../models/Account'
+import Account, { ACCOUNT_TYPES, IAccount } from '../models/Account'
 import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { roundMoney } from '../utils/balanceUtils'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
+import { convertAmount } from '../utils/exchangeRateUtils'
 import {
     getUserId,
     handleResponses,
@@ -44,6 +45,24 @@ const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): numb
         throw new CustomError(`Invalid ${fieldName}; must be a non-negative number`, 400)
     }
     return roundMoney(parsed)
+}
+
+const withConvertedBalance = (
+    account: IAccount,
+    preferredCurrency: string,
+    exchangeRates: Record<string, number>
+) => {
+    const { convertedAmount, rateApplied } = convertAmount(
+        account.currentBalance,
+        account.currency,
+        preferredCurrency,
+        exchangeRates
+    )
+    return {
+        ...account.toObject(),
+        convertedBalance: roundMoney(convertedAmount),
+        exchangeRateApplied: rateApplied,
+    }
 }
 
 const assertCreditOnlyFields = (type: string, body: Record<string, unknown>): void => {
@@ -119,8 +138,14 @@ export const getAccounts = asyncHandler(async (req: AuthRequest, res: Response) 
     }
 
     const accounts = await Account.find(filter).sort({ isDefault: -1, name: 1 })
+    const preferredCurrency = req.user!.preferredCurrency
+    const exchangeRates = req.user!.exchangeRates ?? {}
 
-    handleResponses(res, 200, accounts)
+    handleResponses(
+        res,
+        200,
+        accounts.map((account) => withConvertedBalance(account, preferredCurrency, exchangeRates))
+    )
 })
 
 export const getAccountById = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -137,7 +162,11 @@ export const getAccountById = asyncHandler(async (req: AuthRequest, res: Respons
         'viewer'
     )
 
-    handleResponses(res, 200, account)
+    handleResponses(
+        res,
+        200,
+        withConvertedBalance(account, req.user!.preferredCurrency, req.user!.exchangeRates ?? {})
+    )
 })
 
 export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response) => {

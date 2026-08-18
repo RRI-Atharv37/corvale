@@ -16,7 +16,10 @@ export interface User {
     dateFormat?: DateFormat
     pageSize?: number
     notificationPreferences?: NotificationPreferences
+    exchangeRates?: Record<string, number>
 }
+
+export type ExchangeRateMap = Record<string, number>
 
 export interface NotificationPreferences {
     billRemindersEnabled: boolean
@@ -324,6 +327,8 @@ export interface Account {
     isArchived: boolean
     interestRate?: number
     minimumPayment?: number
+    convertedBalance?: number
+    exchangeRateApplied?: number
     createdAt?: string
     updatedAt?: string
 }

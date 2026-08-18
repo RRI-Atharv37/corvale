@@ -4,6 +4,7 @@ import Saver from '../models/Saver'
 import Account, { AccountType } from '../models/Account'
 import { toObjectId } from './sharedUtils'
 import { buildScopedListFilter } from './workspaceUtils'
+import { convertAmount } from './exchangeRateUtils'
 
 export const roundMoney = (amount: number): number =>
     Math.round((amount + Number.EPSILON) * 100) / 100
@@ -29,6 +30,11 @@ export interface UserBalanceSummary {
     balanceSource: 'accounts' | 'legacy'
 }
 
+export interface CurrencyConversionOptions {
+    preferredCurrency: string
+    exchangeRates: Record<string, number>
+}
+
 /**
  * Pre-Phase-1c bridge: when active accounts exist, net worth and spendable
  * derive from account balances. Income/expense totals remain activity metrics only.
@@ -36,7 +42,8 @@ export interface UserBalanceSummary {
  */
 export const computeAccountTotals = async (
     userId: string,
-    workspaceId?: string | null
+    workspaceId?: string | null,
+    conversion?: CurrencyConversionOptions
 ): Promise<AccountTotals> => {
     const accounts = await Account.find({
         ...buildScopedListFilter(userId, workspaceId ?? null),
@@ -48,7 +55,13 @@ export const computeAccountTotals = async (
     let liquidBalance = 0
 
     for (const account of accounts) {
-        const balance = roundMoney(account.currentBalance)
+        const rawBalance = roundMoney(account.currentBalance)
+        const balance = conversion
+            ? roundMoney(
+                  convertAmount(rawBalance, account.currency, conversion.preferredCurrency, conversion.exchangeRates)
+                      .convertedAmount
+              )
+            : rawBalance
 
         if (account.type === 'credit') {
             creditTotal = roundMoney(creditTotal + balance)
@@ -70,9 +83,10 @@ export const computeAccountTotals = async (
 
 export const computeUserBalances = async (
     userId: string,
-    workspaceId?: string | null
+    workspaceId?: string | null,
+    conversion?: CurrencyConversionOptions
 ): Promise<UserBalanceSummary> => {
-    const accountTotals = await computeAccountTotals(userId, workspaceId)
+    const accountTotals = await computeAccountTotals(userId, workspaceId, conversion)
 
     if (workspaceId) {
         const netWorth = accountTotals.totalAccountBalance

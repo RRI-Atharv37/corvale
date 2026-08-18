@@ -27,6 +27,7 @@ import calendarRoutes from './routes/calendarRoutes'
 import subscriptionRoutes from './routes/subscriptionRoutes'
 import debtRoutes from './routes/debtRoutes'
 import reconciliationRoutes from './routes/reconciliationRoutes'
+import exchangeRateRoutes from './routes/exchangeRateRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -70,6 +71,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/subscriptions', subscriptionRoutes)
     app.use('/api/v1/debts', debtRoutes)
     app.use('/api/v1/reconciliation-sessions', reconciliationRoutes)
+    app.use('/api/v1/exchange-rates', exchangeRateRoutes)
     app.use(errorHandler)
 
     return app

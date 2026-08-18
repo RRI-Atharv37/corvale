@@ -215,4 +215,10 @@ export const API_PATHS = {
     RECONCILIATION: {
         CREATE_SESSION: '/reconciliation-sessions',
     },
+    EXCHANGE_RATES: {
+        GET_ALL: '/exchange-rates',
+        CREATE: '/exchange-rates',
+        UPDATE: (pair: string) => `/exchange-rates/${pair}`,
+        DELETE: (pair: string) => `/exchange-rates/${pair}`,
+    },
 } as const

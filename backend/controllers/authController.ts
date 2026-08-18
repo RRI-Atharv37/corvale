@@ -37,6 +37,7 @@ const toPublicUser = (user: IUser) => ({
     dateFormat: user.dateFormat,
     pageSize: user.pageSize,
     notificationPreferences: user.notificationPreferences,
+    exchangeRates: user.exchangeRates,
 })
 
 const issueAuthSession = async (user: IUser, res: Response) => {

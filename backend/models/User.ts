@@ -25,6 +25,7 @@ export interface IUser extends Document {
     dateFormat: DateFormat
     pageSize: number
     notificationPreferences: NotificationPreferences
+    exchangeRates: Record<string, number>
     tokenVersion: number
     passwordResetTokenHash?: string
     passwordResetExpires?: Date
@@ -59,6 +60,7 @@ const userSchema = new Schema<IUser>({
         billRemindersEnabled: { type: Boolean, default: true },
         billReminderDaysBefore: { type: Number, default: 3, min: 0, max: 30 },
     },
+    exchangeRates: { type: Schema.Types.Mixed, default: {} },
     tokenVersion: { type: Number, default: 0 },
     passwordResetTokenHash: { type: String },
     passwordResetExpires: { type: Date },

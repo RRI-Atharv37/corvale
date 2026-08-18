@@ -4,7 +4,7 @@ import Budget from '../models/Budget'
 import Account from '../models/Account'
 import Category from '../models/Category'
 import Transaction from '../models/Transaction'
-import { computeAccountTotals, computeUserBalances } from './balanceUtils'
+import { computeAccountTotals, computeUserBalances, CurrencyConversionOptions } from './balanceUtils'
 import {
     attachProgressToBudgets,
     resolveMonthlyPeriod,
@@ -304,10 +304,11 @@ export const computeDashboardSummary = async (
     periodEnd: Date,
     startDate: string,
     endDate: string,
-    workspaceId?: string | null
+    workspaceId?: string | null,
+    conversion?: CurrencyConversionOptions
 ): Promise<DashboardSummary> => {
     const [balances, incomeMinor, expenseMinor] = await Promise.all([
-        computeUserBalances(userId, workspaceId),
+        computeUserBalances(userId, workspaceId, conversion),
         sumPostedTransactionsByType(userId, 'income', periodStart, periodEnd, workspaceId),
         sumPostedTransactionsByType(userId, 'expense', periodStart, periodEnd, workspaceId),
     ])

@@ -332,6 +332,12 @@ const Accounts = () => {
                                             {formatCurrency(account.currentBalance, account.currency)}
                                         </p>
                                         <p className="text-[11px] text-fg-muted">Current balance</p>
+                                        {account.currency !== preferredCurrency &&
+                                            account.convertedBalance !== undefined && (
+                                                <p className="text-[11px] text-fg-muted">
+                                                    ≈ {formatCurrency(account.convertedBalance, preferredCurrency)}
+                                                </p>
+                                            )}
                                     </div>
                                     {!account.isDefault && isPersonal && canEdit && (
                                         <button

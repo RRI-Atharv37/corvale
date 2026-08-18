@@ -28,7 +28,7 @@ import { useUser } from '../../hooks/useUser'
 import toast from 'react-hot-toast'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
-import CurrencySelect from '../inputs/CurrencySelect'
+import CurrencySelect from '../Inputs/CurrencySelect'
 import Modal from '../ui/Modal'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
 import {
@@ -44,6 +44,7 @@ import { getApiErrorMessage } from '../../utils/apiError'
 import NotificationCenter from '../notifications/NotificationCenter'
 import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
 import BackupRestoreSettings from '../settings/BackupRestoreSettings'
+import ExchangeRatesSettings from '../settings/ExchangeRatesSettings'
 
 const DOCS_URL = 'http://localhost:5174'
 
@@ -318,6 +319,7 @@ const DashboardLayout: React.FC = () => {
                 <div className="space-y-6">
                     <BackupRestoreSettings />
                     <TransactionTemplatesSettings />
+                    <ExchangeRatesSettings />
 
                     <div>
                         <p className="section-label mb-3">Preferences</p>

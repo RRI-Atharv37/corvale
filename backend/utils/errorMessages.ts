@@ -155,6 +155,9 @@ export const ERROR_MESSAGES = {
         INVALID_CLEARED_STATUS: 'Invalid clearedStatus',
         SESSION_NOT_FOUND: 'Reconciliation session not found',
     },
+    EXCHANGE_RATE: {
+        RATE_NOT_FOUND: 'Exchange rate not found',
+    },
     WORKSPACE: {
         WORKSPACE_NOT_FOUND: 'Workspace not found',
         NOT_A_MEMBER: 'Not authorized to access this workspace',

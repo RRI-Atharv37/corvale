@@ -11,6 +11,7 @@ import {
     computeNetWorthTrend,
     resolveDashboardQuery,
 } from '../utils/dashboardUtils'
+import { computeUserBalances } from '../utils/balanceUtils'
 import { getUserId, handleResponses } from '../utils/sharedUtils'
 import {
     assertWorkspaceMembership,
@@ -44,9 +45,36 @@ export const getDashboardSummary = asyncHandler(async (req: AuthRequest, res: Re
         periodEnd,
         startDate,
         endDate,
-        workspaceId
+        workspaceId,
+        {
+            preferredCurrency: req.user!.preferredCurrency,
+            exchangeRates: req.user!.exchangeRates ?? {},
+        }
     )
     handleResponses(res, 200, summary)
+})
+
+export const getDashboardOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const workspaceId = await resolveListWorkspaceId(req)
+    const preferredCurrency = req.user!.preferredCurrency
+    const exchangeRates = req.user!.exchangeRates ?? {}
+
+    const balances = await computeUserBalances(userId, workspaceId, {
+        preferredCurrency,
+        exchangeRates,
+    })
+
+    handleResponses(res, 200, {
+        netWorth: balances.netWorth,
+        netWorthInPreferredCurrency: balances.netWorth,
+        preferredCurrency,
+        totalAccountBalance: balances.totalAccountBalance,
+        liquidBalance: balances.liquidBalance,
+        spendableBalance: balances.spendableBalance,
+        accountCount: balances.accountCount,
+        balanceSource: balances.balanceSource,
+    })
 })
 
 export const getDashboardCashFlow = asyncHandler(async (req: AuthRequest, res: Response) => {
