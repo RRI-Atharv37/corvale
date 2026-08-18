@@ -305,6 +305,8 @@ export interface Account {
     currentBalance: number
     isDefault: boolean
     isArchived: boolean
+    interestRate?: number
+    minimumPayment?: number
     createdAt?: string
     updatedAt?: string
 }
@@ -314,11 +316,15 @@ export interface AccountFormData {
     type: AccountType
     currency: string
     openingBalance: string
+    interestRate: string
+    minimumPayment: string
 }
 
 export interface AccountEditFormData {
     name: string
     type: AccountType
+    interestRate: string
+    minimumPayment: string
 }
 
 export interface Category {
@@ -592,8 +598,100 @@ export interface RecurringRule {
     tags?: string[]
     isActive: boolean
     isArchived: boolean
+    isCancelled: boolean
     createdAt?: string
     updatedAt?: string
+}
+
+// --- Phase 11: financial planning ---
+
+export type ForecastChangeType = 'recurring' | 'goal' | 'discretionary'
+
+export interface ForecastChange {
+    date: string
+    type: ForecastChangeType
+    amount: number
+    label: string
+    refId?: string
+}
+
+export interface ForecastWarning {
+    date: string
+    projectedBalance: number
+}
+
+export interface ForecastAccount {
+    accountId: string
+    accountName: string
+    currency: string
+    startingBalance: number
+    projectedEndingBalance: number
+    projectedChanges: ForecastChange[]
+    lowBalanceWarnings: ForecastWarning[]
+}
+
+export interface ForecastResponse {
+    days: number
+    startDate: string
+    endDate: string
+    accounts: ForecastAccount[]
+}
+
+export type CalendarEventType = 'recurring' | 'budget_end' | 'goal_deadline'
+
+export interface CalendarEvent {
+    id: string
+    type: CalendarEventType
+    date: string
+    title: string
+    amount?: number
+    refId: string
+    accountId?: string
+    categoryId?: string
+}
+
+export interface Subscription {
+    ruleId: string
+    title: string
+    amount: number
+    currency: string
+    interval: RecurringInterval
+    monthlyCost: number
+    annualCost: number
+    nextChargeDate: string
+    categoryId: string
+    accountId: string
+    isCancelled: boolean
+}
+
+export interface SubscriptionsResponse {
+    subscriptions: Subscription[]
+    totalMonthlyCost: number
+    totalAnnualCost: number
+}
+
+export type DebtPayoffStrategy = 'snowball' | 'avalanche'
+
+export interface DebtPayment {
+    accountId: string
+    interestPaid: number
+    principalPaid: number
+    paymentAmount: number
+    remainingBalance: number
+}
+
+export interface DebtPayoffMonth {
+    month: number
+    payments: DebtPayment[]
+}
+
+export interface DebtPayoffPlan {
+    strategy: DebtPayoffStrategy
+    extraPayment: number
+    order: string[]
+    totalMonths: number
+    totalInterestPaid: number
+    months: DebtPayoffMonth[]
 }
 
 export interface RecurringRuleFormData {

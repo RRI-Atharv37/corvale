@@ -22,6 +22,10 @@ import notificationRoutes from './routes/notificationRoutes'
 import workspaceRoutes from './routes/workspaceRoutes'
 import importRoutes from './routes/importRoutes'
 import backupRoutes from './routes/backupRoutes'
+import forecastRoutes from './routes/forecastRoutes'
+import calendarRoutes from './routes/calendarRoutes'
+import subscriptionRoutes from './routes/subscriptionRoutes'
+import debtRoutes from './routes/debtRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -60,6 +64,10 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/workspaces', workspaceRoutes)
     app.use('/api/v1/imports', importRoutes)
     app.use('/api/v1/backup', backupRoutes)
+    app.use('/api/v1/forecast', forecastRoutes)
+    app.use('/api/v1/calendar', calendarRoutes)
+    app.use('/api/v1/subscriptions', subscriptionRoutes)
+    app.use('/api/v1/debts', debtRoutes)
     app.use(errorHandler)
 
     return app

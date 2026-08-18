@@ -198,4 +198,16 @@ export const API_PATHS = {
         PREVIEW: '/backup/preview',
         RESTORE: '/backup/restore',
     },
+    FORECAST: {
+        GET: '/forecast',
+    },
+    CALENDAR: {
+        GET: '/calendar',
+    },
+    SUBSCRIPTIONS: {
+        GET_ALL: '/subscriptions',
+    },
+    DEBTS: {
+        PLAN: '/debts/plan',
+    },
 } as const

@@ -18,6 +18,10 @@ import {
     FiBarChart2,
     FiSettings,
     FiUsers,
+    FiTrendingUp,
+    FiClock,
+    FiLayers,
+    FiTrendingDown,
 } from 'react-icons/fi'
 import WorkspaceSwitcher from '../workspaces/WorkspaceSwitcher'
 import { useUser } from '../../hooks/useUser'
@@ -59,6 +63,10 @@ const navItems: NavItem[] = [
     { to: '/savings-goals', label: 'Savings Goals', icon: <FiFlag size={18} /> },
     { to: '/recurring', label: 'Recurring', icon: <FiCalendar size={18} /> },
     { to: '/reports', label: 'Reports', icon: <FiBarChart2 size={18} /> },
+    { to: '/forecast', label: 'Forecast', icon: <FiTrendingUp size={18} /> },
+    { to: '/calendar', label: 'Calendar', icon: <FiClock size={18} /> },
+    { to: '/subscriptions', label: 'Subscriptions', icon: <FiLayers size={18} /> },
+    { to: '/debts', label: 'Debt Payoff', icon: <FiTrendingDown size={18} /> },
     { to: '/workspaces', label: 'Workspaces', icon: <FiUsers size={18} /> },
     { to: '/saver', label: 'Saver', icon: <FiDollarSign size={18} /> },
     { to: '/pushover', label: 'Pushover', icon: <FiRepeat size={18} /> },

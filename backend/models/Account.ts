@@ -17,6 +17,8 @@ export interface IAccount extends Document {
     currentBalance: number
     isDefault: boolean
     isArchived: boolean
+    interestRate?: number
+    minimumPayment?: number
 }
 
 const AccountSchema = new Schema<IAccount>(
@@ -37,6 +39,8 @@ const AccountSchema = new Schema<IAccount>(
         currentBalance: { type: Number, required: true, default: 0 },
         isDefault: { type: Boolean, default: false },
         isArchived: { type: Boolean, default: false },
+        interestRate: { type: Number, min: 0 },
+        minimumPayment: { type: Number, min: 0 },
     },
     { timestamps: true }
 )

@@ -7,6 +7,8 @@ interface AccountMultiSelectProps {
     selectedIds: string[]
     onChange: (ids: string[]) => void
     disabled?: boolean
+    emptyMessage?: string
+    allSelectedMessage?: string
 }
 
 const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
@@ -14,6 +16,8 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
     selectedIds,
     onChange,
     disabled,
+    emptyMessage = 'No accounts available. Create an account first to scope this budget.',
+    allSelectedMessage = 'Expenses from all accounts count toward this budget.',
 }) => {
     const allSelected = accounts.length > 0 && selectedIds.length === 0
 
@@ -43,11 +47,7 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
         allSelected || selectedIds.includes(accountId)
 
     if (accounts.length === 0) {
-        return (
-            <p className="text-xs text-warning">
-                No accounts available. Create an account first to scope this budget.
-            </p>
-        )
+        return <p className="text-xs text-warning">{emptyMessage}</p>
     }
 
     return (
@@ -90,7 +90,7 @@ const AccountMultiSelect: React.FC<AccountMultiSelectProps> = ({
             </div>
             <p className="text-[11px] text-fg-muted">
                 {allSelected
-                    ? 'Expenses from all accounts count toward this budget.'
+                    ? allSelectedMessage
                     : selectedIds.length === 0
                       ? 'Select at least one account, or check "All accounts".'
                       : `${selectedIds.length} account${selectedIds.length === 1 ? '' : 's'} selected.`}

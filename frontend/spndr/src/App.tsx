@@ -20,6 +20,10 @@ import SavingsGoals from './pages/Dashboard/SavingsGoals'
 import Recurring from './pages/Dashboard/Recurring'
 import Reports from './pages/Dashboard/Reports'
 import Workspaces from './pages/Dashboard/Workspaces'
+import Forecast from './pages/Dashboard/Forecast'
+import CalendarPage from './pages/Dashboard/CalendarPage'
+import Subscriptions from './pages/Dashboard/Subscriptions'
+import DebtPayoff from './pages/Dashboard/DebtPayoff'
 import UserProvider from './context/UserContext'
 import WorkspaceProvider from './context/WorkspaceContext'
 import ProtectedRoute from './routes/ProtectedRoute'
@@ -62,6 +66,10 @@ const AppRoutes = () => {
                 <Route path="/recurring" element={<Recurring />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/workspaces" element={<Workspaces />} />
+                <Route path="/forecast" element={<Forecast />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/subscriptions" element={<Subscriptions />} />
+                <Route path="/debts" element={<DebtPayoff />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

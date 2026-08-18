@@ -238,6 +238,10 @@ export const updateRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
         rule.isActive = req.body.isActive === true
     }
 
+    if (req.body.isCancelled !== undefined) {
+        rule.isCancelled = req.body.isCancelled === true
+    }
+
     const updated = await rule.save()
     handleResponses(res, 200, serializeRecurringRule(updated))
 })

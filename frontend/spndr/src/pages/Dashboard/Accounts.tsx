@@ -16,7 +16,7 @@ import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
 import { DEFAULT_CURRENCY, formatCurrencyLabel } from '../../utils/currencies'
-import CurrencySelect from '../../components/inputs/CurrencySelect'
+import CurrencySelect from '../../components/Inputs/CurrencySelect'
 import { useUser } from '../../hooks/useUser'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
@@ -34,11 +34,15 @@ const emptyCreateForm = (preferredCurrency = DEFAULT_CURRENCY): AccountFormData 
     type: 'checking',
     currency: preferredCurrency,
     openingBalance: '0',
+    interestRate: '',
+    minimumPayment: '',
 })
 
 const emptyEditForm = (): AccountEditFormData => ({
     name: '',
     type: 'checking',
+    interestRate: '',
+    minimumPayment: '',
 })
 
 const formatAccountType = (type: AccountType): string =>
@@ -127,6 +131,8 @@ const Accounts = () => {
         setEditForm({
             name: account.name,
             type: account.type,
+            interestRate: account.interestRate !== undefined ? String(account.interestRate) : '',
+            minimumPayment: account.minimumPayment !== undefined ? String(account.minimumPayment) : '',
         })
         setEditOpen(true)
     }
@@ -151,6 +157,20 @@ const Accounts = () => {
             return
         }
 
+        const isCredit = createForm.type === 'credit'
+        const interestRate = isCredit && createForm.interestRate !== '' ? Number(createForm.interestRate) : undefined
+        const minimumPayment =
+            isCredit && createForm.minimumPayment !== '' ? Number(createForm.minimumPayment) : undefined
+
+        if (interestRate !== undefined && isNaN(interestRate)) {
+            toast.error('Interest rate must be a valid number')
+            return
+        }
+        if (minimumPayment !== undefined && isNaN(minimumPayment)) {
+            toast.error('Minimum payment must be a valid number')
+            return
+        }
+
         setSubmitting(true)
         try {
             await axiosInstance.post(API_PATHS.ACCOUNTS.CREATE, {
@@ -158,6 +178,8 @@ const Accounts = () => {
                 type: createForm.type,
                 currency: createForm.currency,
                 openingBalance,
+                interestRate,
+                minimumPayment,
                 ...buildWorkspaceBodyFields(activeWorkspaceId),
             })
             toast.success('Account created')
@@ -179,11 +201,27 @@ const Accounts = () => {
             return
         }
 
+        const isCredit = editForm.type === 'credit'
+        const interestRate = isCredit && editForm.interestRate !== '' ? Number(editForm.interestRate) : undefined
+        const minimumPayment =
+            isCredit && editForm.minimumPayment !== '' ? Number(editForm.minimumPayment) : undefined
+
+        if (interestRate !== undefined && isNaN(interestRate)) {
+            toast.error('Interest rate must be a valid number')
+            return
+        }
+        if (minimumPayment !== undefined && isNaN(minimumPayment)) {
+            toast.error('Minimum payment must be a valid number')
+            return
+        }
+
         setSubmitting(true)
         try {
             await axiosInstance.put(API_PATHS.ACCOUNTS.UPDATE(editingAccount._id), {
                 name: editForm.name.trim(),
                 type: editForm.type,
+                interestRate,
+                minimumPayment,
             })
             toast.success('Account updated')
             closeEdit()
@@ -281,6 +319,9 @@ const Accounts = () => {
                                     </div>
                                     <p className="text-xs text-fg-muted mt-0.5">
                                         {formatAccountType(account.type)} · {formatCurrencyLabel(account.currency)}
+                                        {account.type === 'credit' && account.interestRate !== undefined && (
+                                            <> · {account.interestRate}% APR</>
+                                        )}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
@@ -351,6 +392,30 @@ const Accounts = () => {
                         required
                         disabled={submitting}
                     />
+                    {createForm.type === 'credit' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                                label="Interest rate (APR %)"
+                                type="number"
+                                value={createForm.interestRate}
+                                onChange={(v) => setCreateForm((f) => ({ ...f, interestRate: v }))}
+                                placeholder="24.99"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                            <FormField
+                                label="Minimum payment"
+                                type="number"
+                                value={createForm.minimumPayment}
+                                onChange={(v) => setCreateForm((f) => ({ ...f, minimumPayment: v }))}
+                                placeholder="35.00"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                    )}
                     <CurrencySelect
                         value={createForm.currency}
                         onChange={(v) => setCreateForm((f) => ({ ...f, currency: v }))}
@@ -405,6 +470,30 @@ const Accounts = () => {
                         required
                         disabled={submitting}
                     />
+                    {editForm.type === 'credit' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                                label="Interest rate (APR %)"
+                                type="number"
+                                value={editForm.interestRate}
+                                onChange={(v) => setEditForm((f) => ({ ...f, interestRate: v }))}
+                                placeholder="24.99"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                            <FormField
+                                label="Minimum payment"
+                                type="number"
+                                value={editForm.minimumPayment}
+                                onChange={(v) => setEditForm((f) => ({ ...f, minimumPayment: v }))}
+                                placeholder="35.00"
+                                disabled={submitting}
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                    )}
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"

@@ -33,6 +33,7 @@ export interface IRecurringRule extends Document {
     tags?: string[]
     isActive: boolean
     isArchived: boolean
+    isCancelled: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -62,6 +63,7 @@ const RecurringRuleSchema = new Schema<IRecurringRule>(
         tags: [{ type: String, trim: true }],
         isActive: { type: Boolean, default: true },
         isArchived: { type: Boolean, default: false },
+        isCancelled: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

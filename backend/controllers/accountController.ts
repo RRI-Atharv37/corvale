@@ -35,6 +35,23 @@ const parseOpeningBalance = (value: unknown): number => {
     return balance
 }
 
+const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): number | undefined => {
+    if (value === undefined || value === null) {
+        return undefined
+    }
+    const parsed = Number(value)
+    if (isNaN(parsed) || parsed < 0) {
+        throw new CustomError(`Invalid ${fieldName}; must be a non-negative number`, 400)
+    }
+    return roundMoney(parsed)
+}
+
+const assertCreditOnlyFields = (type: string, body: Record<string, unknown>): void => {
+    if (type !== 'credit' && (body.interestRate !== undefined || body.minimumPayment !== undefined)) {
+        throw new CustomError('interestRate and minimumPayment can only be set on credit accounts', 400)
+    }
+}
+
 export const createAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
 
@@ -54,6 +71,10 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
     if (req.body.currentBalance !== undefined) {
         throw new CustomError('currentBalance is server-derived and cannot be set directly', 400)
     }
+
+    assertCreditOnlyFields(type, req.body)
+    const interestRate = parseOptionalNonNegativeNumber(req.body.interestRate, 'interestRate')
+    const minimumPayment = parseOptionalNonNegativeNumber(req.body.minimumPayment, 'minimumPayment')
 
     const parsedOpeningBalance = parseOpeningBalance(openingBalance)
     const activeAccountCount = await Account.countDocuments(
@@ -76,6 +97,8 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
         openingBalance: parsedOpeningBalance,
         currentBalance: parsedOpeningBalance,
         isDefault: shouldBeDefault,
+        interestRate,
+        minimumPayment,
     })
 
     handleResponses(res, 201, account)
@@ -148,6 +171,16 @@ export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response
             )
         }
         account.type = type
+    }
+
+    assertCreditOnlyFields(account.type, req.body)
+
+    if (req.body.interestRate !== undefined) {
+        account.interestRate = parseOptionalNonNegativeNumber(req.body.interestRate, 'interestRate')
+    }
+
+    if (req.body.minimumPayment !== undefined) {
+        account.minimumPayment = parseOptionalNonNegativeNumber(req.body.minimumPayment, 'minimumPayment')
     }
 
     if (name !== undefined) {
