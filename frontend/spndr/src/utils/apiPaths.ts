@@ -221,4 +221,11 @@ export const API_PATHS = {
         UPDATE: (pair: string) => `/exchange-rates/${pair}`,
         DELETE: (pair: string) => `/exchange-rates/${pair}`,
     },
+    ONBOARDING: {
+        START: '/onboarding/start',
+        STATUS: '/onboarding/status',
+        STEP: (step: string) => `/onboarding/step/${step}`,
+        SKIP: '/onboarding/skip',
+        REPLAY: '/onboarding/replay',
+    },
 } as const

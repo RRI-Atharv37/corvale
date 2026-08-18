@@ -9,6 +9,7 @@ import {
     MAX_PAGE_SIZE,
     MIN_PAGE_SIZE,
 } from '../utils/userPreferencesUtils'
+import { OnboardingStep } from '../utils/onboardingUtils'
 
 export interface NotificationPreferences {
     billRemindersEnabled: boolean
@@ -29,6 +30,11 @@ export interface IUser extends Document {
     tokenVersion: number
     passwordResetTokenHash?: string
     passwordResetExpires?: Date
+    onboardingStarted: boolean
+    onboardingCompleted: boolean
+    onboardingSkipped: boolean
+    onboardingCurrentStep: OnboardingStep | null
+    onboardingStepsCompleted: string[]
     comparePassword(candidatePassword: string): Promise<boolean>
 }
 
@@ -64,6 +70,11 @@ const userSchema = new Schema<IUser>({
     tokenVersion: { type: Number, default: 0 },
     passwordResetTokenHash: { type: String },
     passwordResetExpires: { type: Date },
+    onboardingStarted: { type: Boolean, default: false },
+    onboardingCompleted: { type: Boolean, default: false },
+    onboardingSkipped: { type: Boolean, default: false },
+    onboardingCurrentStep: { type: String, default: null },
+    onboardingStepsCompleted: { type: [String], default: [] },
     }, {timestamps: true}
 )
 

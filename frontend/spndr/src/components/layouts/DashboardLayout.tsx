@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
     FiHome,
@@ -22,7 +22,9 @@ import {
     FiClock,
     FiLayers,
     FiTrendingDown,
+    FiCompass,
 } from 'react-icons/fi'
+import OnboardingWizard, { OnboardingWizardHandle } from '../onboarding/OnboardingWizard'
 import WorkspaceSwitcher from '../workspaces/WorkspaceSwitcher'
 import { useUser } from '../../hooks/useUser'
 import toast from 'react-hot-toast'
@@ -89,6 +91,13 @@ const DashboardLayout: React.FC = () => {
     const [savingCurrency, setSavingCurrency] = useState(false)
     const [savingNotifications, setSavingNotifications] = useState(false)
     const [savingDisplay, setSavingDisplay] = useState(false)
+    const onboardingRef = useRef<OnboardingWizardHandle>(null)
+
+    const handleReplayOnboarding = () => {
+        setSettingsOpen(false)
+        closeMobile()
+        onboardingRef.current?.replay()
+    }
 
     const handlePreferredCurrencyChange = async (value: string) => {
         if (!user) return
@@ -403,6 +412,14 @@ const DashboardLayout: React.FC = () => {
                         <div className="space-y-2">
                             <button
                                 type="button"
+                                onClick={handleReplayOnboarding}
+                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-muted hover:text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <FiCompass size={18} />
+                                Replay onboarding tour
+                            </button>
+                            <button
+                                type="button"
                                 onClick={() => void handleLogoutAll()}
                                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-muted hover:text-warning hover:bg-warning/10 transition-colors"
                             >
@@ -421,6 +438,8 @@ const DashboardLayout: React.FC = () => {
                     </div>
                 </div>
             </Modal>
+
+            <OnboardingWizard ref={onboardingRef} />
         </div>
     )
 }

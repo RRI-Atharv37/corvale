@@ -158,6 +158,11 @@ export const ERROR_MESSAGES = {
     EXCHANGE_RATE: {
         RATE_NOT_FOUND: 'Exchange rate not found',
     },
+    ONBOARDING: {
+        NOT_STARTED: 'Onboarding has not been started',
+        INVALID_STEP: 'Invalid onboarding step',
+        INVALID_STEP_ORDER: 'Onboarding steps must be completed in order',
+    },
     WORKSPACE: {
         WORKSPACE_NOT_FOUND: 'Workspace not found',
         NOT_A_MEMBER: 'Not authorized to access this workspace',

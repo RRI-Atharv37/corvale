@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
+import { createApp } from '../app'
 import User from '../models/User'
 import { authHeader, registerUser } from './helpers'
 
@@ -35,11 +35,13 @@ import { authHeader, registerUser } from './helpers'
 
 describe('Onboarding - Start and status', () => {
     it('requires authentication', async () => {
+        const app = createApp()
         const res = await request(app).post('/api/v1/onboarding/start')
         expect(res.status).toBe(401)
     })
 
     it('initializes onboarding for new user', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         const res = await request(app)
@@ -53,6 +55,7 @@ describe('Onboarding - Start and status', () => {
     })
 
     it('returns existing onboarding status if already started', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -68,6 +71,7 @@ describe('Onboarding - Start and status', () => {
     })
 
     it('retrieves onboarding status', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -86,6 +90,7 @@ describe('Onboarding - Start and status', () => {
     })
 
     it('returns 404 if onboarding not started', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         const res = await request(app)
@@ -98,6 +103,7 @@ describe('Onboarding - Start and status', () => {
 
 describe('Onboarding - Step progression', () => {
     it('completes account creation step', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -119,6 +125,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('requires account data for account step', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -134,6 +141,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('creates account during onboarding', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -155,6 +163,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('completes categories step', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -183,6 +192,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('skips optional budget step', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -217,6 +227,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('creates budget during onboarding', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -253,6 +264,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('skips optional goal step', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -294,6 +306,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('creates savings goal during onboarding', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -336,6 +349,7 @@ describe('Onboarding - Step progression', () => {
     })
 
     it('completes tour step and onboarding', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -387,6 +401,7 @@ describe('Onboarding - Step progression', () => {
 
 describe('Onboarding - Skip and restart', () => {
     it('skips entire onboarding flow', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -403,6 +418,7 @@ describe('Onboarding - Skip and restart', () => {
     })
 
     it('cannot skip onboarding without starting it', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         const res = await request(app)
@@ -413,6 +429,7 @@ describe('Onboarding - Skip and restart', () => {
     })
 
     it('allows replay of onboarding from settings', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -435,6 +452,7 @@ describe('Onboarding - Skip and restart', () => {
 
 describe('Onboarding - Progress tracking', () => {
     it('tracks progress percentage through steps', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         const startRes = await request(app)
@@ -461,6 +479,7 @@ describe('Onboarding - Progress tracking', () => {
     })
 
     it('persists onboarding status on User model', async () => {
+        const app = createApp()
         const { token, userId } = await registerUser(app)
 
         await request(app)
@@ -483,6 +502,7 @@ describe('Onboarding - Progress tracking', () => {
     })
 
     it('tracks completed steps', async () => {
+        const app = createApp()
         const { token } = await registerUser(app)
 
         await request(app)
@@ -509,6 +529,7 @@ describe('Onboarding - Progress tracking', () => {
 
 describe('Onboarding - Isolation', () => {
     it('prevents unauthorized access to another user\'s onboarding', async () => {
+        const app = createApp()
         const user1 = await registerUser(app)
         const user2 = await registerUser(app, { email: 'user2@example.com' })
 
@@ -524,6 +545,7 @@ describe('Onboarding - Isolation', () => {
     })
 
     it('isolates onboarding progress between users', async () => {
+        const app = createApp()
         const user1 = await registerUser(app)
         const user2 = await registerUser(app, { email: 'user2@example.com' })
 
