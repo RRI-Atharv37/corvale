@@ -2,15 +2,19 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import Account, { ACCOUNT_TYPES, IAccount } from '../models/Account'
+import Transaction from '../models/Transaction'
 import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { roundMoney } from '../utils/balanceUtils'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
 import { convertAmount } from '../utils/exchangeRateUtils'
+import { recomputeAccountBalance } from '../../shared/src/balances'
 import {
     getUserId,
     handleResponses,
+    isDuplicateKeyError,
+    resolveClientObjectId,
     validateRequiredFields,
 } from '../utils/sharedUtils'
 import {
@@ -96,6 +100,7 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
     const interestRate = parseOptionalNonNegativeNumber(req.body.interestRate, 'interestRate')
     const minimumPayment = parseOptionalNonNegativeNumber(req.body.minimumPayment, 'minimumPayment')
 
+    const clientId = resolveClientObjectId(req.body._id)
     const parsedOpeningBalance = parseOpeningBalance(openingBalance)
     const activeAccountCount = await Account.countDocuments(
         workspaceId
@@ -108,18 +113,27 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
         await unsetPreviousDefault(userId)
     }
 
-    const account = await Account.create({
-        userId,
-        workspaceId,
-        name: name.trim(),
-        type,
-        currency: parseOptionalSupportedCurrency(currency),
-        openingBalance: parsedOpeningBalance,
-        currentBalance: parsedOpeningBalance,
-        isDefault: shouldBeDefault,
-        interestRate,
-        minimumPayment,
-    })
+    let account
+    try {
+        account = await Account.create({
+            ...(clientId ? { _id: clientId } : {}),
+            userId,
+            workspaceId,
+            name: name.trim(),
+            type,
+            currency: parseOptionalSupportedCurrency(currency),
+            openingBalance: parsedOpeningBalance,
+            currentBalance: parsedOpeningBalance,
+            isDefault: shouldBeDefault,
+            interestRate,
+            minimumPayment,
+        })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            throw new CustomError('An account with this id already exists', 400)
+        }
+        throw error
+    }
 
     handleResponses(res, 201, account)
 })
@@ -258,4 +272,73 @@ export const archiveAccount = asyncHandler(async (req: AuthRequest, res: Respons
     await account.save()
 
     handleResponses(res, 200, { message: 'Account archived successfully', data: account })
+})
+
+export const recomputeBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const { accountId } = req.params
+
+    validateRequiredFields({ accountId }, ['accountId'])
+
+    const account = await validateResourceAccess(
+        Account,
+        accountId,
+        userId,
+        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
+        'editor'
+    )
+
+    const scope = buildScopedListFilter(userId, account.workspaceId?.toString() ?? null)
+
+    const transactions = await Transaction.find({
+        ...scope,
+        accountId: account._id,
+    }).select('type amount status splitTransactionId transferPairId createdAt')
+
+    // Both legs of a transfer persist with type: 'transfer' (see
+    // transactionController.createTransfer) — direction (in vs out) is only
+    // recoverable via creation order relative to the paired leg, the same
+    // technique deleteTransactionForUser uses. The outbound leg keeps the
+    // 'transfer' delta formula; the inbound leg is fed as 'income' to reuse
+    // getTransferInDeltaMajor's formula (see shared/src/money.ts).
+    const pairIds = transactions
+        .filter((transaction) => transaction.type === 'transfer' && transaction.transferPairId)
+        .map((transaction) => transaction.transferPairId!)
+
+    const pairs = pairIds.length
+        ? await Transaction.find({ ...scope, _id: { $in: pairIds } }).select('createdAt')
+        : []
+    const pairCreatedAtById = new Map(
+        pairs.map((pair) => [pair._id.toString(), pair.createdAt])
+    )
+
+    const previousBalance = account.currentBalance
+    const recomputedBalance = recomputeAccountBalance(
+        { openingBalance: account.openingBalance, type: account.type },
+        transactions.map((transaction) => {
+            let effectiveType = transaction.type
+
+            if (transaction.type === 'transfer' && transaction.transferPairId) {
+                const pairCreatedAt = pairCreatedAtById.get(transaction.transferPairId.toString())
+                const isInbound = pairCreatedAt !== undefined && transaction.createdAt > pairCreatedAt
+                effectiveType = isInbound ? 'income' : 'transfer'
+            }
+
+            return {
+                type: effectiveType,
+                amount: transaction.amount,
+                status: transaction.status,
+                splitTransactionId: transaction.splitTransactionId?.toString() ?? null,
+            }
+        })
+    )
+
+    account.currentBalance = recomputedBalance
+    await account.save()
+
+    handleResponses(res, 200, {
+        accountId: account._id.toString(),
+        previousBalance,
+        recomputedBalance,
+    })
 })

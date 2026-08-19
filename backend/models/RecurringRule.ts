@@ -70,6 +70,8 @@ const RecurringRuleSchema = new Schema<IRecurringRule>(
 
 RecurringRuleSchema.index({ userId: 1, nextDueDate: 1 })
 RecurringRuleSchema.index({ userId: 1, isArchived: 1, isActive: 1 })
+RecurringRuleSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+RecurringRuleSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
 
 applyRowLevelSecurity(RecurringRuleSchema, { supportsWorkspace: true })
 

@@ -80,6 +80,8 @@ const SavingsGoalSchema = new Schema<ISavingsGoal>(
 
 SavingsGoalSchema.index({ userId: 1, status: 1, createdAt: -1 })
 SavingsGoalSchema.index({ userId: 1, targetDate: 1 })
+SavingsGoalSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+SavingsGoalSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
 
 applyRowLevelSecurity(SavingsGoalSchema, { supportsWorkspace: true })
 

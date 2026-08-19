@@ -40,6 +40,7 @@ CategorySchema.index(
     { unique: true, partialFilterExpression: { isArchived: false, userId: { $type: 'objectId' } } }
 )
 CategorySchema.index({ userId: 1, name: 1 }, { unique: true, partialFilterExpression: { userId: null } })
+CategorySchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 
 const Category: Model<ICategory> = mongoose.model<ICategory>('Category', CategorySchema)
 export default Category

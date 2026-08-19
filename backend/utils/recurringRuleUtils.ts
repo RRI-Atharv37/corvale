@@ -251,7 +251,8 @@ export const confirmRecurringDraft = async (
 
 export const dismissRecurringDraft = async (transaction: ITransaction): Promise<void> => {
     assertRecurringDraft(transaction)
-    await Transaction.deleteOne({ _id: transaction._id })
+    transaction.deletedAt = new Date()
+    await transaction.save()
 }
 
 export const validateRuleReferences = async (

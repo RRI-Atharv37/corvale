@@ -21,7 +21,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate:transactions": "ts-node scripts/migrateIncomeExpenseToTransactions.ts",
-    "migrate:transactions:dry-run": "ts-node scripts/migrateIncomeExpenseToTransactions.ts --dry-run"
+    "migrate:transactions:dry-run": "ts-node scripts/migrateIncomeExpenseToTransactions.ts --dry-run",
+    "purge:tombstones": "ts-node scripts/purgeTombstones.ts"
   },
   "dependencies": {
     "adm-zip": "^0.6.0",

@@ -20,6 +20,8 @@ import { parseClientAmount } from '../utils/transactionUtils'
 import {
     getUserId,
     handleResponses,
+    isDuplicateKeyError,
+    resolveClientObjectId,
     validateRequiredFields,
 } from '../utils/sharedUtils'
 
@@ -59,19 +61,30 @@ export const createCategorizationRule = asyncHandler(async (req: AuthRequest, re
     const criteria = buildCriteriaFromBody(req.body)
     await validateRuleCriteria(userId, matchType, criteria)
 
-    const rule = await CategorizationRule.create({
-        userId,
-        name,
-        matchType,
-        matchValue: criteria.matchValue?.trim(),
-        amountMin: criteria.amountMin,
-        amountMax: criteria.amountMax,
-        accountId: criteria.accountId,
-        categoryId: criteria.categoryId,
-        tags: criteria.tags,
-        priority: parsePriority(req.body.priority),
-        isActive: req.body.isActive !== false,
-    })
+    const clientId = resolveClientObjectId(req.body._id)
+
+    let rule
+    try {
+        rule = await CategorizationRule.create({
+            ...(clientId ? { _id: clientId } : {}),
+            userId,
+            name,
+            matchType,
+            matchValue: criteria.matchValue?.trim(),
+            amountMin: criteria.amountMin,
+            amountMax: criteria.amountMax,
+            accountId: criteria.accountId,
+            categoryId: criteria.categoryId,
+            tags: criteria.tags,
+            priority: parsePriority(req.body.priority),
+            isActive: req.body.isActive !== false,
+        })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            throw new CustomError('A categorization rule with this id already exists', 400)
+        }
+        throw error
+    }
 
     handleResponses(res, 201, serializeCategorizationRule(rule))
 })
@@ -171,7 +184,8 @@ export const deleteCategorizationRule = asyncHandler(async (req: AuthRequest, re
     validateRequiredFields({ ruleId }, ['ruleId'])
 
     const rule = await validateUserRule(ruleId, userId)
-    await rule.deleteOne()
+    rule.deletedAt = new Date()
+    await rule.save()
 
     handleResponses(res, 200, { message: 'Categorization rule deleted successfully' })
 })

@@ -17,6 +17,8 @@ import { DEFAULT_TIMEZONE } from '../utils/timezoneUtils'
 import {
     getUserId,
     handleResponses,
+    isDuplicateKeyError,
+    resolveClientObjectId,
     validateRequiredFields,
 } from '../utils/sharedUtils'
 import {
@@ -104,7 +106,23 @@ export const createSavedReport = asyncHandler(async (req: AuthRequest, res: Resp
     }
 
     const config = parseSavedReportConfig(req.body)
-    const report = await SavedReport.create({ userId, workspaceId, name, config })
+    const clientId = resolveClientObjectId(req.body._id)
+
+    let report
+    try {
+        report = await SavedReport.create({
+            ...(clientId ? { _id: clientId } : {}),
+            userId,
+            workspaceId,
+            name,
+            config,
+        })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            throw new CustomError('A saved report with this id already exists', 400)
+        }
+        throw error
+    }
     handleResponses(res, 201, report)
 })
 
@@ -147,7 +165,8 @@ export const deleteSavedReport = asyncHandler(async (req: AuthRequest, res: Resp
         'Saved report not found',
         'editor'
     )
-    await report.deleteOne()
+    report.deletedAt = new Date()
+    await report.save()
     handleResponses(res, 200, { message: 'Saved report deleted' })
 })
 

@@ -461,8 +461,11 @@ export const deleteTransactionForUser = async (
         )
 
         await reverseTransferOnAccounts(fromAccount, toAccount, transaction.amount)
-        await Transaction.deleteOne({ _id: outbound._id })
-        await Transaction.deleteOne({ _id: inbound._id })
+        const deletedAt = new Date()
+        await Transaction.updateMany(
+            { _id: { $in: [outbound._id, inbound._id] }, userId: new Types.ObjectId(userId) },
+            { deletedAt }
+        )
         return
     }
 
@@ -474,14 +477,19 @@ export const deleteTransactionForUser = async (
 
     await reverseTransactionOnAccount(account, transaction.type, transaction.amount)
 
+    const deletedAt = new Date()
+
     if (splitChildren.length > 0) {
-        await Transaction.deleteMany({
-            _id: { $in: splitChildren.map((child) => child._id) },
-            userId: new Types.ObjectId(userId),
-        })
+        await Transaction.updateMany(
+            {
+                _id: { $in: splitChildren.map((child) => child._id) },
+                userId: new Types.ObjectId(userId),
+            },
+            { deletedAt }
+        )
     }
 
-    await Transaction.deleteOne({ _id: transaction._id })
+    await Transaction.updateMany({ _id: transaction._id }, { deletedAt })
 }
 
 export { Transaction, toMinorUnits, fromMinorUnits }

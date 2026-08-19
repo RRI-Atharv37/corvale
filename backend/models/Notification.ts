@@ -1,6 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
 import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+import { applySoftDelete } from '../utils/applySoftDelete'
 
 export const NOTIFICATION_TYPES = [
     'budget_over_limit',
@@ -30,6 +31,7 @@ export interface INotification extends Document {
     readAt?: Date | null
     dismissedAt?: Date | null
     metadata?: Record<string, unknown>
+    deletedAt?: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -50,11 +52,16 @@ const NotificationSchema = new Schema<INotification>(
     { timestamps: true }
 )
 
-NotificationSchema.index({ userId: 1, dedupeKey: 1 }, { unique: true })
+NotificationSchema.index(
+    { userId: 1, dedupeKey: 1 },
+    { unique: true, partialFilterExpression: { deletedAt: null } }
+)
 NotificationSchema.index({ userId: 1, dismissedAt: 1, createdAt: -1 })
 NotificationSchema.index({ userId: 1, readAt: 1 })
+NotificationSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 
 applyRowLevelSecurity(NotificationSchema)
+applySoftDelete(NotificationSchema)
 
 const Notification: Model<INotification> = mongoose.model<INotification>(
     'Notification',

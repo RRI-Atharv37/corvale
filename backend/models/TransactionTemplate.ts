@@ -1,5 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applySoftDelete } from '../utils/applySoftDelete'
 import { TRANSACTION_TYPES, TransactionType } from './Transaction'
 
 const TEMPLATE_TYPES = TRANSACTION_TYPES.filter((type) => type !== 'transfer') as Exclude<
@@ -19,6 +20,7 @@ export interface ITransactionTemplate extends Document {
     categoryId: Types.ObjectId
     tags?: string[]
     description?: string
+    deletedAt?: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -38,6 +40,9 @@ const TransactionTemplateSchema = new Schema<ITransactionTemplate>(
 )
 
 TransactionTemplateSchema.index({ userId: 1, name: 1 })
+TransactionTemplateSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+
+applySoftDelete(TransactionTemplateSchema)
 
 const TransactionTemplate: Model<ITransactionTemplate> = mongoose.model<ITransactionTemplate>(
     'TransactionTemplate',

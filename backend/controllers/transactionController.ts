@@ -8,10 +8,6 @@ import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { DEFAULT_TIMEZONE, resolveDateRange } from '../utils/timezoneUtils'
 import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
 import {
-    applyCategorizationRules,
-    mergeTags,
-} from '../utils/categorizationRuleUtils'
-import {
     adjustAccountForTransactionChange,
     applyTransactionToAccount,
     applyTransferToAccounts,
@@ -34,13 +30,11 @@ import {
     serializeTransactionWithSplits,
     SerializedTransaction,
     SerializedTransactionWithSplits,
-    SplitInput,
     Transaction,
     validateAccountForTransaction,
     validateCategoryForTransaction,
     validateOwnership,
     validateRequiredFields,
-    validateSplitInputs,
     buildSearchRegex,
 } from '../utils/transactionUtils'
 import {
@@ -59,6 +53,7 @@ import {
     validateResourceAccess,
 } from '../utils/workspaceUtils'
 import { buildTagFilter, parseTagsQuery } from '../utils/tagUtils'
+import { createTransactionForUser } from '../services/transactionService'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 
@@ -156,160 +151,9 @@ const enrichTransactionForWorkspace = async <T extends SerializedTransaction>(
     return enriched as T
 }
 
-const createSplitChildren = async (
-    userId: string,
-    parentId: Types.ObjectId,
-    accountId: Types.ObjectId,
-    currency: string,
-    title: string,
-    date: Date,
-    status: string,
-    workspaceId: unknown,
-    splits: SplitInput[],
-    parentAmountMinor: number,
-    paymentMethod?: string,
-    tags?: string[],
-    description?: string
-) => {
-    const normalizedSplits = validateSplitInputs(splits, parentAmountMinor)
-
-    for (const split of normalizedSplits) {
-        await validateCategoryForTransaction(split.categoryId, userId)
-    }
-
-    await Transaction.insertMany(
-        normalizedSplits.map((split) => ({
-            userId,
-            workspaceId: workspaceId ?? null,
-            accountId,
-            categoryId: split.categoryId,
-            type: 'expense',
-            status,
-            amount: split.amount,
-            currency,
-            title,
-            description: description?.trim(),
-            date,
-            paymentMethod: paymentMethod?.trim(),
-            tags,
-            splitTransactionId: parentId,
-        }))
-    )
-}
-
 export const createTransaction = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
-
-    validateRequiredFields(req.body, ['type', 'title', 'amount', 'date', 'accountId'])
-
-    const {
-        type,
-        title,
-        amount,
-        date,
-        accountId,
-        categoryId,
-        description,
-        source,
-        paymentMethod,
-        tags,
-        status,
-        workspaceId,
-        splits,
-    } = req.body
-
-    if (!SUPPORTED_CREATE_TYPES.includes(type)) {
-        throw new CustomError(ERROR_MESSAGES.TRANSACTION.UNSUPPORTED_TYPE, 400)
-    }
-
-    if (isNaN(Date.parse(date))) {
-        throw new CustomError('Invalid date format', 400)
-    }
-
-    const amountMinor = parseClientAmount(amount)
-    const resolvedWorkspaceId = parseOptionalWorkspaceId(workspaceId) ?? null
-
-    if (resolvedWorkspaceId) {
-        await assertWorkspaceMembership(resolvedWorkspaceId, userId, 'editor')
-    }
-
-    const account = await validateAccountForTransaction(accountId, userId)
-    assertAccountMatchesWorkspace(account.workspaceId, resolvedWorkspaceId)
-    const hasSplits = Array.isArray(splits) && splits.length > 0
-
-    if (hasSplits) {
-        if (type !== 'expense') {
-            throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_REQUIRES_EXPENSE, 400)
-        }
-        validateSplitInputs(splits, amountMinor)
-    } else {
-        validateRequiredFields(req.body, ['categoryId'])
-        await validateCategoryForTransaction(categoryId, userId)
-    }
-
-    const resolvedCategoryId = hasSplits ? splits[0].categoryId : categoryId
-    if (hasSplits) {
-        await validateCategoryForTransaction(resolvedCategoryId, userId)
-    }
-
-    let finalCategoryId = resolvedCategoryId
-    let finalTags = tags
-
-    if (!hasSplits && type !== 'transfer') {
-        const ruleResult = await applyCategorizationRules(userId, {
-            title: title.trim(),
-            description: description?.trim(),
-            amount: amountMinor,
-            accountId,
-            type,
-        })
-
-        if (ruleResult) {
-            await validateCategoryForTransaction(ruleResult.categoryId.toString(), userId)
-            finalCategoryId = ruleResult.categoryId.toString()
-            finalTags = mergeTags(tags, ruleResult.tags)
-        }
-    }
-
-    const transaction = await Transaction.create({
-        userId,
-        workspaceId: resolvedWorkspaceId,
-        accountId,
-        categoryId: finalCategoryId,
-        type,
-        status: status ?? 'posted',
-        amount: amountMinor,
-        currency: account.currency,
-        title: title.trim(),
-        description: description?.trim(),
-        date: new Date(date),
-        source: source?.trim(),
-        paymentMethod: paymentMethod?.trim(),
-        tags: finalTags,
-    })
-
-    await applyTransactionToAccount(account, type, amountMinor)
-
-    if (hasSplits) {
-        await createSplitChildren(
-            userId,
-            transaction._id,
-            transaction.accountId,
-            transaction.currency,
-            transaction.title,
-            transaction.date,
-            transaction.status,
-            resolvedWorkspaceId,
-            splits,
-            amountMinor,
-            paymentMethod,
-            tags,
-            description
-        )
-    }
-
-    const payload = await serializeTransactionWithSplits(transaction, userId)
-    await evaluateBudgetOverLimitNotifications(userId, transaction)
+    const payload = await createTransactionForUser(userId, req.body)
     handleResponses(res, 201, payload)
 })
 

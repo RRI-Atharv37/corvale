@@ -46,6 +46,8 @@ const AccountSchema = new Schema<IAccount>(
 )
 
 AccountSchema.index({ userId: 1, isArchived: 1 })
+AccountSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+AccountSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
 AccountSchema.index(
     { userId: 1, isDefault: 1 },
     { unique: true, partialFilterExpression: { isDefault: true, isArchived: false } }

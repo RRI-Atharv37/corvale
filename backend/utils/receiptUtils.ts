@@ -68,7 +68,8 @@ export const deleteReceiptFile = (userId: string, storedFilename: string): void 
 
 export const deleteReceiptRecord = async (receipt: IReceipt, userId: string): Promise<void> => {
     deleteReceiptFile(userId, receipt.storedFilename)
-    await Receipt.deleteOne({ _id: receipt._id })
+    receipt.deletedAt = new Date()
+    await receipt.save()
 }
 
 export const assertAllowedReceiptMimeType = (mimeType: string): void => {

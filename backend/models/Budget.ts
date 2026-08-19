@@ -52,6 +52,8 @@ const BudgetSchema = new Schema<IBudget>(
 BudgetSchema.index({ userId: 1, periodStart: -1 })
 BudgetSchema.index({ userId: 1, categoryId: 1, periodStart: -1 })
 BudgetSchema.index({ userId: 1, isArchived: 1, periodStart: -1 })
+BudgetSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+BudgetSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
 
 applyRowLevelSecurity(BudgetSchema, { supportsWorkspace: true })
 
