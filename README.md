@@ -7,14 +7,14 @@
 
 Built for students and young adults who want clarity over complexity.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.5.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
-<img src="docs/public/screenshots/hero-dashboard.png" alt="spndr dashboard preview" width="900" />
+<img src="docs/public/screenshots/dashboard-overview.png" alt="spndr dashboard preview" width="900" />
 <br />
 
-[Quick Start](#-quick-start-3-minute-setup) · [Features](#-key-features) · [Documentation](#-documentation) · [Roadmap](#-roadmap)
+[Quick Start](#-quick-start-3-minute-setup) · [Features](#-key-features) · [Screenshots](#-screenshots) · [Documentation](#-documentation)
 
 </div>
 
@@ -28,19 +28,27 @@ Built for students and young adults who want clarity over complexity.
 
 ### Unified Transactions
 
-One ledger for income, expenses, and transfers - with search, date filters, sort, receipt attachments, split expenses, and bulk delete/category actions.
+One ledger for income, expenses, and transfers - with search, date filters, sort, receipt attachments, split expenses, structured [tags](docs/tags/overview.md), and bulk delete/category actions. Import historical transactions from a bank CSV/OFX/QFX file with automatic duplicate detection.
 
 ### Multi-Account Tracking
 
-Create checking, cash, credit, and savings accounts. Transaction activity updates balances automatically. Net worth and spendable balance derive from account totals.
+Create checking, cash, credit, and savings accounts. Transaction activity updates balances automatically. Net worth and spendable balance derive from account totals. **Reconcile** any account against a bank statement, and view **converted balances** across accounts held in different currencies.
 
-### Hierarchical Categories
+### Hierarchical Categories & Automation
 
-Nine master categories plus your own sub-categories with icons and colors. Reusable category picker on every transaction form.
+Nine master categories plus your own sub-categories with icons and colors. **Auto-categorization rules** assign a category (and tags) to matching transactions on creation - test a rule before saving it, or bulk-apply rules to your existing history.
 
 ### Budgets
 
 Set monthly or custom spending limits - overall or per category - with progress bars, over-budget warnings, and optional account scoping. Posted expenses count toward spent totals; drafts and transfers are excluded.
+
+### Recurring Rules & Draft Inbox
+
+Schedule repeating income and bills (daily through yearly, or a custom interval). Rules generate **draft transactions** for review - nothing posts or touches your balance until you confirm it - plus a calendar view of upcoming due dates.
+
+### Bank Import & Backup/Restore
+
+Import a bank statement with a guided mapping + duplicate-resolution wizard. Export a full JSON or ZIP (with receipts) backup of your data at any time and restore it later - restores always create fresh records, never overwrite.
 
 </td>
 <td width="50%" valign="top">
@@ -53,38 +61,53 @@ Named targets with deadlines, progress metrics, manual contributions, and option
 
 Dual metrics with smart **Saver pool** math - legacy mode (income − expenses) or **accounts mode** (checking, cash, credit, savings). Spendable balance excludes savings and reflects what you can actually use today.
 
+### Reports & Analytics
+
+Charts for spending trends, income vs. expense, savings rate, largest expenses, and more, plus a **custom report builder** (split by category/time/payment method, choose a chart type) and **saved reports** you can re-run anytime.
+
+### Tags & Quick-Add Templates
+
+Attach colored, renameable tags across transactions, recurring rules, and templates for cross-cutting labels categories don't cover. Save a **quick-add template** for anything you log often and create it in one click from Home or Transactions.
+
+### Workspaces & Collaboration
+
+Share accounts, transactions, budgets, savings goals, and recurring rules with a household or roommates. Invite members as **editor** or **viewer**, switch scope from a sidebar dropdown, and keep personal data completely separate.
+
+### In-App Notifications & Onboarding
+
+A notification center flags over-budget spending, bills due soon, savings milestones, and workspace invites. New users are walked through a short **onboarding wizard** (first account, categories, a starter budget and goal) - replayable anytime from Settings.
+
+### Financial Planning Tools
+
+A cash flow **forecast** projects account balances 30/60/90 days out from recurring bills, goal contributions, and average discretionary spending, with low-balance warnings. A unified **calendar** shows bill due dates, budget period ends, and savings goal deadlines in one month view. Track **subscriptions** with monthly/annual cost totals and a one-click cancel/reactivate toggle. Build a **debt payoff plan** (snowball or avalanche) for credit accounts with configurable APR and minimum payment.
+
 ### Pushover Month-End Rollover
 
 Automated rollover engine snapshots your Saver balance at month-end, resets the pool, and keeps a browsable history - so every month starts clean.
 
 ### Battle-Tested Backend
 
-Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **159 tests** across 21 files covering auth lifecycle, accounts, categories, transactions, budgets, savings goals, transfers, splits, receipts, migration, saver, pushover, and ownership.
+Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **480 tests** across 41 files covering auth lifecycle, accounts, categories, transactions, budgets, savings goals, recurring rules, workspaces, tags, categorization rules, import/export, reconciliation, multi-currency, onboarding, and more.
 
 </td>
 </tr>
 </table>
 
 <details>
-<summary><strong>Also included in v0.5.0</strong></summary>
+<summary><strong>Also shipped</strong></summary>
 
+- Manual currency exchange rates (`/api/v1/exchange-rates`) power converted account balances
 - JWT access tokens with refresh rotation (httpOnly cookie), logout-all, and password reset
 - Auth rate limiting on login, register, and password reset
 - Optional ClamAV virus scan on receipt upload (env-gated)
-- Saver deposits by percentage or custom amount, with withdrawal guards
-- Transaction API extras - search, timezone-aware date filters, sort, CSV download, duplicate
-- Receipt upload (JPEG/PNG/WebP/PDF, 5 MB max) with per-user storage isolation
-- Budget progress API - category vs overall scope, split attribution, draft exclusion
-- Savings goal lifecycle - pause, resume, complete, archive, contribution timeline
-- Legacy data migration CLI (`npm run migrate:transactions`) from Income/Expense to Transaction
-- Compound database indexes and production-safe error handling
+- Legacy Income/Expense routes kept for backward compatibility and migration (`npm run migrate:transactions`)
 - Modern dark UI - React 19, Vite 6, Tailwind CSS 4, responsive sidebar, settings modal, toast feedback
 
 </details>
 
 ---
 
-## Screenshots
+## 📸 Screenshots
 
 <!-- Replace placeholder paths when assets are ready -->
 
@@ -93,7 +116,15 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **159 tests**
 <p align="center">
   <img src="docs/public/screenshots/dashboard-overview.png" alt="Dashboard overview" width="720" />
   <br />
-  <em>Summary cards & quick links to Transactions, Budgets, Savings Goals, and Accounts</em>
+  <em>Summary cards & quick links to Transactions, Budgets, Reports, Savings Goals, Recurring, and Accounts</em>
+</p>
+
+### Transactions
+
+<p align="center">
+  <img src="docs/public/screenshots/transactions.png" alt="Transactions page" width="720" />
+  <br />
+  <em>Unified ledger for income, expenses, and transfers</em>
 </p>
 
 ### Accounts
@@ -104,28 +135,12 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **159 tests**
   <em>Multi-account balances - checking, cash, credit, and savings</em>
 </p>
 
-### Transactions (unified ledger)
+### Reports
 
 <p align="center">
-  <img src="docs/public/screenshots/income.png" alt="Transactions page" width="720" />
+  <img src="docs/public/screenshots/reports.png" alt="Reports page" width="720" />
   <br />
-  <em>Unified income, expense, and transfer ledger (legacy income screenshot)</em>
-</p>
-
-### Saver
-
-<p align="center">
-  <img src="docs/public/screenshots/saver.png" alt="Saver page" width="720" />
-  <br />
-  <em>Allocate from spendable balance by percentage or custom amount</em>
-</p>
-
-### Pushover
-
-<p align="center">
-  <img src="docs/public/screenshots/pushover.png" alt="Pushover page" width="720" />
-  <br />
-  <em>Month-end rollover with snapshot history</em>
+  <em>Advanced Reports Generation including custom reports</em>
 </p>
 
 ---
@@ -136,6 +151,7 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **159 tests**
 | :--- | :--- |
 | **Backend** | ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=white) ![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white) ![Mongoose](https://img.shields.io/badge/Mongoose-880000?logo=mongodb&logoColor=white) ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white) |
 | **Frontend** | ![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black) ![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white) ![Axios](https://img.shields.io/badge/Axios-5A29E4?logo=axios&logoColor=white) |
+| **Docs** | ![VitePress](https://img.shields.io/badge/VitePress-5C73E7?logo=vite&logoColor=white) |
 
 ---
 
@@ -175,6 +191,8 @@ JWT_REFRESH_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
 ```
 
+See [Environment Variables](docs/developers/environment-variables.md) for the full list, including refresh-token, rate-limit, and receipt virus-scan settings.
+
 **Frontend** - copy the example file:
 
 ```bash
@@ -193,7 +211,7 @@ npm run dev
 npm run dev
 ```
 
-Open **[http://localhost:5173](http://localhost:5173)** → sign up → explore the dashboard.
+Open **[http://localhost:5173](http://localhost:5173)** → sign up → the onboarding wizard walks you through creating your first account.
 
 <details>
 <summary><strong>Optional: migrate legacy data, docs site & tests</strong></summary>
@@ -226,11 +244,13 @@ npm test
 
 Run locally with `npm run dev` inside [`./docs`](./docs). Covers:
 
-- Getting started & installation
-- Dashboard, Transactions, Categories, Accounts, Budgets, Savings Goals, Saver, Pushover
+- Getting started, installation & onboarding
+- Dashboard, Transactions, Recurring, Categories, Tags, Accounts, Budgets, Savings Goals, Saver, Pushover
+- Reports & custom report building, Notifications, Workspaces & permissions
+- Bank import, backup & restore, account reconciliation, multi-currency balances
 - Authentication - sign-in, password reset, sessions, account settings
 - Balance calculation deep-dives
-- Complete REST API reference (`/api/v1`) including transactions, budgets, savings goals, categories, and receipts
+- Complete REST API reference (`/api/v1`) - every route above, plus forecast, calendar, subscriptions, and debt payoff
 
 </td>
 <td align="center" width="120">
@@ -245,22 +265,7 @@ Run locally with `npm run dev` inside [`./docs`](./docs). Covers:
 
 Source lives in [`./docs`](./docs) (VitePress). Build for production with `npm run build` inside that folder.
 
----
-
-## Roadmap
-
-| Phase | Focus | Status |
-| :--- | :--- | :--- |
-| **Phase 0** | Foundation - auth, CRUD, Saver, Pushover, test infra, dark UI | ✅ **Complete** · `v0.1.0` |
-| **Phase 1a** | Accounts - multi-account tracking, balance integration | ✅ **Complete** `v0.2.1` |
-| **Phase 1b** | Categories - master seed, sub-categories, dashboard UI | ✅ **Complete** `v0.2.2` |
-| **Phase 1c** | Unified transactions - migration, transfers, splits, receipts, bulk ops | ✅ **Complete** · `v0.2.3` |
-| **Phase 2** | Auth lifecycle - refresh tokens, logout-all, password reset, ClamAV | ✅ **Complete** `v0.3.0` |
-| **Phase 3** | Budgets - CRUD API, progress tracking, UI | ✅ **Complete** `v0.4.0` |
-| **Phase 4** | Savings goals - CRUD API, contributions, auto-contribute, UI | ✅ **Complete** · `v0.5.0` |
-| **Phase 5** | Recurring transactions & bill drafts | 🔜 **Up next** |
-
-Phases **0–4** are complete with **159 backend tests**. Phase 5 adds recurring rules that generate draft transactions only.
+Phases **0–12** are complete with **480 backend tests** across 41 files, zero regressions. See [ROADMAP.md](./ROADMAP.md) for the full phase-by-phase roadmap and architectural detail.
 
 ---
 
