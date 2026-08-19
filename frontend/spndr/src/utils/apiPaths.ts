@@ -228,4 +228,9 @@ export const API_PATHS = {
         SKIP: '/onboarding/skip',
         REPLAY: '/onboarding/replay',
     },
+    SYNC: {
+        BOOTSTRAP: '/sync/bootstrap',
+        PULL: '/sync/pull',
+        PUSH: '/sync/push',
+    },
 } as const
