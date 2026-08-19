@@ -1,10 +1,18 @@
 import express from 'express'
 
-import { pushSyncOps } from '../controllers/syncController'
+import { getSyncBootstrap, getSyncPull, pushSyncOps } from '../controllers/syncController'
 import { protect } from '../middleware/authMiddleware'
+import { createSyncPushRateLimiter } from '../middleware/rateLimitMiddleware'
 
-const router = express.Router()
+export const createSyncRoutes = (): express.Router => {
+    const router = express.Router()
+    const syncPushRateLimiter = createSyncPushRateLimiter()
 
-router.post('/push', protect, pushSyncOps)
+    router.get('/bootstrap', protect, getSyncBootstrap)
+    router.get('/pull', protect, getSyncPull)
+    router.post('/push', protect, syncPushRateLimiter, pushSyncOps)
 
-export default router
+    return router
+}
+
+export default createSyncRoutes()

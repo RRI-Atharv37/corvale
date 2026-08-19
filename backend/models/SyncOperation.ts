@@ -1,6 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-export const SYNC_OP_STATUSES = ['applied', 'conflict', 'rejected'] as const
+export const SYNC_OP_STATUSES = ['applied', 'noop', 'conflict', 'rejected'] as const
 export type SyncOpStatus = (typeof SYNC_OP_STATUSES)[number]
 
 /**

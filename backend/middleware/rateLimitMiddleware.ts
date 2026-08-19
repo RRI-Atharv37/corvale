@@ -15,3 +15,18 @@ export const createAuthRateLimiter = () =>
             })
         },
     })
+
+export const createSyncPushRateLimiter = () =>
+    rateLimit({
+        windowMs: Number(process.env.SYNC_PUSH_RATE_LIMIT_WINDOW_MS) || 60 * 1000,
+        max: Number(process.env.SYNC_PUSH_RATE_LIMIT_MAX) || 120,
+        standardHeaders: true,
+        legacyHeaders: false,
+        handler: (_req, res) => {
+            res.status(429).json({
+                success: false,
+                statusCode: 429,
+                message: ERROR_MESSAGES.AUTH.TOO_MANY_REQUESTS,
+            })
+        },
+    })

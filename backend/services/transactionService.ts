@@ -1,12 +1,15 @@
 import { Types } from 'mongoose'
 
+import { ITransaction, TransactionStatus } from '../models/Transaction'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
 import { applyCategorizationRules, mergeTags } from '../utils/categorizationRuleUtils'
 import {
     applyTransactionToAccount,
+    applyTransferToAccounts,
     fetchSplitChildren,
+    getOtherMasterCategoryId,
     isSplitChild,
     isTransferLeg,
     parseClientAmount,
@@ -281,4 +284,182 @@ export const deleteTransactionForOp = async (
 
     await Transaction.updateMany({ _id: transaction._id }, { deletedAt })
     return transaction._id.toString()
+}
+
+/**
+ * Update-transaction logic for POST /sync/push (Sprint 13.3).
+ *
+ * Unlike updateTransaction's REST behavior, this never adjusts the account
+ * balance incrementally, matching deleteTransactionForOp's rationale above:
+ * an offline-originated update can arrive out of order relative to other
+ * offline mutations, so incremental reversal/reapplication here is unsafe.
+ * Balance correctness is restored via POST /accounts/:accountId/recompute-balance.
+ */
+export const updateTransactionForOp = async (
+    userId: string,
+    payload: Record<string, unknown>
+): Promise<ITransaction> => {
+    const transactionId = payload._id
+    if (typeof transactionId !== 'string') {
+        throw new CustomError('Missing required field: _id', 400)
+    }
+
+    const transaction = await validateResourceAccess(
+        Transaction,
+        transactionId,
+        userId,
+        ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
+        'editor'
+    )
+
+    if (isSplitChild(transaction)) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
+    }
+
+    const { title, amount, description, categoryId, date, tags, status, paymentMethod, source } =
+        payload as {
+            title?: string
+            amount?: unknown
+            description?: string
+            categoryId?: string
+            date?: string
+            tags?: string[]
+            status?: TransactionStatus
+            paymentMethod?: string
+            source?: string
+        }
+
+    if (categoryId !== undefined) {
+        await validateCategoryForTransaction(categoryId, userId)
+        transaction.categoryId = new Types.ObjectId(categoryId)
+    }
+    if (title !== undefined) transaction.title = String(title).trim()
+    if (amount !== undefined) {
+        const amountMinor = Number(amount)
+        if (isNaN(amountMinor)) {
+            throw new CustomError('Invalid amount format', 400)
+        }
+        transaction.amount = amountMinor
+    }
+    if (description !== undefined) transaction.description = String(description).trim() || undefined
+    if (date !== undefined) {
+        if (isNaN(Date.parse(date))) {
+            throw new CustomError('Invalid date format', 400)
+        }
+        transaction.date = new Date(date)
+    }
+    if (paymentMethod !== undefined) transaction.paymentMethod = String(paymentMethod).trim() || undefined
+    if (source !== undefined) transaction.source = String(source).trim() || undefined
+    if (tags !== undefined) transaction.tags = tags
+    if (status !== undefined) transaction.status = status
+
+    await transaction.save()
+    await evaluateBudgetOverLimitNotifications(userId, transaction)
+    return transaction
+}
+
+/**
+ * Transfer-create logic for POST /sync/push (Sprint 13.3), mirroring
+ * transactionController.createTransfer. `payload.amount` is minor units
+ * directly (the sync wire convention), unlike the REST endpoint's
+ * major-unit body — callers must not run this through the
+ * fromMinorUnits/parseClientAmount round-trip used for plain transaction.create.
+ */
+export const createTransferForOp = async (
+    userId: string,
+    payload: Record<string, unknown>
+): Promise<string> => {
+    validateRequiredFields(payload, ['amount', 'date', 'fromAccountId', 'toAccountId'])
+
+    const { amount, date, fromAccountId, toAccountId, title, description, status, workspaceId } =
+        payload as {
+            amount: unknown
+            date: string
+            fromAccountId: string
+            toAccountId: string
+            title?: string
+            description?: string
+            status?: string
+            workspaceId?: unknown
+        }
+
+    if (fromAccountId === toAccountId) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.SAME_TRANSFER_ACCOUNT, 400)
+    }
+    if (isNaN(Date.parse(date))) {
+        throw new CustomError('Invalid date format', 400)
+    }
+
+    const amountMinor = Number(amount)
+    if (isNaN(amountMinor) || amountMinor < 0) {
+        throw new CustomError('Invalid amount format', 400)
+    }
+
+    const resolvedWorkspaceId = parseOptionalWorkspaceId(workspaceId) ?? null
+    if (resolvedWorkspaceId) {
+        await assertWorkspaceMembership(resolvedWorkspaceId, userId, 'editor')
+    }
+
+    const fromAccount = await validateAccountForTransaction(fromAccountId, userId)
+    const toAccount = await validateAccountForTransaction(toAccountId, userId)
+    assertAccountMatchesWorkspace(fromAccount.workspaceId, resolvedWorkspaceId)
+    assertAccountMatchesWorkspace(toAccount.workspaceId, resolvedWorkspaceId)
+
+    if (fromAccount.currency !== toAccount.currency) {
+        throw new CustomError('Transfer accounts must use the same currency', 400)
+    }
+
+    const transferCategoryId = await getOtherMasterCategoryId()
+    const parsedDate = new Date(date)
+    const trimmedTitle = (title ?? 'Transfer').trim()
+    const trimmedDescription = description?.trim()
+
+    let outbound: ITransaction | null = null
+    let inbound: ITransaction | null = null
+
+    try {
+        outbound = await Transaction.create({
+            userId,
+            workspaceId: resolvedWorkspaceId,
+            accountId: fromAccountId,
+            categoryId: transferCategoryId,
+            type: 'transfer',
+            status: status ?? 'posted',
+            amount: amountMinor,
+            currency: fromAccount.currency,
+            title: trimmedTitle,
+            description: trimmedDescription,
+            date: parsedDate,
+        })
+
+        inbound = await Transaction.create({
+            userId,
+            workspaceId: resolvedWorkspaceId,
+            accountId: toAccountId,
+            categoryId: transferCategoryId,
+            type: 'transfer',
+            status: status ?? 'posted',
+            amount: amountMinor,
+            currency: toAccount.currency,
+            title: trimmedTitle,
+            description: trimmedDescription,
+            date: parsedDate,
+            transferPairId: outbound._id,
+        })
+
+        outbound.transferPairId = inbound._id
+        await outbound.save()
+
+        await applyTransferToAccounts(fromAccount, toAccount, amountMinor)
+    } catch (error) {
+        if (inbound) {
+            await Transaction.deleteOne({ _id: inbound._id })
+        }
+        if (outbound) {
+            await Transaction.deleteOne({ _id: outbound._id })
+        }
+        throw error
+    }
+
+    return outbound._id.toString()
 }

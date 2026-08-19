@@ -4,6 +4,7 @@ import { createApp } from '../app'
 import Account from '../models/Account'
 import Category from '../models/Category'
 import Transaction from '../models/Transaction'
+import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { registerUser, authHeader, RegisteredUser } from './helpers'
 
 /**
@@ -164,8 +165,8 @@ describe('Sync API — conflict resolution', () => {
         expect(res.body.data.results[1].status).toBe('applied')
 
         const stored = await Transaction.findOne({ _id: transaction._id }).setOptions({
-            rlsBypass: true,
-        } as Record<string, unknown>)
+            [SOFT_DELETE_BYPASS]: true,
+        })
         expect(stored?.deletedAt).toBeTruthy()
     })
 
@@ -217,8 +218,8 @@ describe('Sync API — conflict resolution', () => {
         expect(updateRes.body.data.results[0].status).toBe('conflict')
 
         const stored = await Transaction.findOne({ _id: transaction._id }).setOptions({
-            rlsBypass: true,
-        } as Record<string, unknown>)
+            [SOFT_DELETE_BYPASS]: true,
+        })
         expect(stored?.deletedAt).toBeTruthy()
         expect(stored?.title).toBe('Delete first')
     })

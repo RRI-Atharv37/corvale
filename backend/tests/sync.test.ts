@@ -400,7 +400,7 @@ describe('Sync API — push ordered apply', () => {
 
         const fromAfter = await Account.findById(from._id)
         const toAfter = await Account.findById(to._id)
-        expect(fromAfter?.currentBalance).toBe(600)
+        expect(fromAfter?.currentBalance).toBe(960)
         expect(toAfter?.currentBalance).toBe(40)
     })
 

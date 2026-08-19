@@ -29,7 +29,7 @@ import debtRoutes from './routes/debtRoutes'
 import reconciliationRoutes from './routes/reconciliationRoutes'
 import exchangeRateRoutes from './routes/exchangeRateRoutes'
 import onboardingRoutes from './routes/onboardingRoutes'
-import syncRoutes from './routes/syncRoutes'
+import { createSyncRoutes } from './routes/syncRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -75,7 +75,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/reconciliation-sessions', reconciliationRoutes)
     app.use('/api/v1/exchange-rates', exchangeRateRoutes)
     app.use('/api/v1/onboarding', onboardingRoutes)
-    app.use('/api/v1/sync', syncRoutes)
+    app.use('/api/v1/sync', createSyncRoutes())
     app.use(errorHandler)
 
     return app
