@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
     FiHome,
@@ -47,6 +47,10 @@ import NotificationCenter from '../notifications/NotificationCenter'
 import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
 import BackupRestoreSettings from '../settings/BackupRestoreSettings'
 import ExchangeRatesSettings from '../settings/ExchangeRatesSettings'
+import SyncSettings from '../settings/SyncSettings'
+import SyncStatusBadge from '../sync/SyncStatusBadge'
+import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
+import { startSyncEngine, syncNow } from '../../sync/syncEngine'
 
 const DOCS_URL = 'http://localhost:5174'
 
@@ -92,6 +96,13 @@ const DashboardLayout: React.FC = () => {
     const [savingNotifications, setSavingNotifications] = useState(false)
     const [savingDisplay, setSavingDisplay] = useState(false)
     const onboardingRef = useRef<OnboardingWizardHandle>(null)
+
+    useEffect(() => {
+        if (!isLocalFirstEnabled()) return
+        const stop = startSyncEngine()
+        void syncNow()
+        return stop
+    }, [])
 
     const handleReplayOnboarding = () => {
         setSettingsOpen(false)
@@ -306,6 +317,7 @@ const DashboardLayout: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                        {isLocalFirstEnabled() && <SyncStatusBadge />}
                         <NotificationCenter />
                         <a
                             href={DOCS_URL}
@@ -406,6 +418,7 @@ const DashboardLayout: React.FC = () => {
                     <TransactionTemplatesSettings />
                     <ExchangeRatesSettings />
                     <BackupRestoreSettings />
+                    {isLocalFirstEnabled() && <SyncSettings />}
 
                     <div>
                         <p className="section-label mb-3">Account</p>
