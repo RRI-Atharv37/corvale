@@ -13,6 +13,8 @@ const REPOSITORIES: Record<SeedableField, Repository<SyncableRecord>> = {
   savingsGoals: new Repository('savingsGoals' as SyncableTableName),
   tags: new Repository('tags' as SyncableTableName),
   recurringRules: new Repository('recurringRules' as SyncableTableName),
+  categorizationRules: new Repository('categorizationRules' as SyncableTableName),
+  savingsGoalContributions: new Repository('savingsGoalContributions' as SyncableTableName),
 }
 
 /**

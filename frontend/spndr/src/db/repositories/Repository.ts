@@ -9,6 +9,8 @@ export type SyncableTableName =
   | 'savingsGoals'
   | 'tags'
   | 'recurringRules'
+  | 'categorizationRules'
+  | 'savingsGoalContributions'
 
 export interface SyncableRecord {
   _id: string
@@ -22,11 +24,57 @@ interface SyncableRow extends LocalDbRow {
 }
 
 /**
- * Skeleton repository: every syncable table stores its rows as the
- * full server document (JSON, in `data`) plus the shared sync/query metadata
- * columns from the schema. Sprint 13.5 (local domain engine) builds the
- * entity-specific read APIs on top of this; this sprint only needs enough to
- * seed and re-seed a table from the server and read rows back out.
+ * Columns promoted out of `data` per table (see `sql/0001_init.sql` and
+ * `sql/0002_local_domain_entities.sql`), by the same field name the server
+ * document uses. Several of these are `NOT NULL` with no default (e.g.
+ * `accounts.userId`), so `upsertFromServer` must populate them explicitly —
+ * inserting only the metadata columns fails the very first real seed.
+ */
+const PROMOTED_COLUMNS: Record<SyncableTableName, readonly string[]> = {
+  accounts: ['userId', 'workspaceId', 'name', 'type', 'currency', 'currentBalance', 'isArchived'],
+  transactions: [
+    'userId',
+    'workspaceId',
+    'accountId',
+    'categoryId',
+    'type',
+    'status',
+    'amount',
+    'date',
+    'clearedStatus',
+  ],
+  categories: ['userId', 'masterCategoryId', 'name', 'isArchived'],
+  budgets: ['userId', 'workspaceId', 'categoryId', 'periodStart', 'periodEnd', 'isArchived'],
+  savingsGoals: ['userId', 'workspaceId', 'accountId', 'status'],
+  tags: ['userId', 'name'],
+  recurringRules: ['userId', 'workspaceId', 'accountId', 'categoryId', 'nextDueDate', 'isActive', 'isArchived'],
+  categorizationRules: ['userId', 'categoryId', 'accountId', 'priority', 'isActive'],
+  savingsGoalContributions: ['userId', 'goalId', 'amount', 'contributedAt'],
+}
+
+/** Mirrors the Mongoose schema defaults for promoted fields that are optional on the wire but NOT NULL locally. */
+const PROMOTED_COLUMN_DEFAULTS: Readonly<Record<string, unknown>> = {
+  currentBalance: 0,
+  isArchived: false,
+  status: 'posted',
+  clearedStatus: 'pending',
+  isActive: true,
+  priority: 0,
+}
+
+/** SQLite has no boolean type; promoted boolean fields (isArchived, isActive) store as 0/1. */
+const toSqlValue = (column: string, value: unknown): unknown => {
+  const resolved = value === undefined ? PROMOTED_COLUMN_DEFAULTS[column] : value
+  if (typeof resolved === 'boolean') return resolved ? 1 : 0
+  if (resolved === undefined) return null
+  return resolved
+}
+
+/**
+ * Every syncable table stores its rows as the full server document (JSON,
+ * in `data`) plus the shared sync/query metadata columns, plus a handful of
+ * promoted columns the local domain engine (Sprint 13.5) and outbox (13.6)
+ * filter/sort/join on.
  */
 export class Repository<T extends SyncableRecord> {
   constructor(private readonly table: SyncableTableName) {}
@@ -34,18 +82,37 @@ export class Repository<T extends SyncableRecord> {
   /** Upserts server-shaped documents (as returned by bootstrap/pull) as already-synced rows. */
   async upsertFromServer(db: LocalDb, docs: T[]): Promise<void> {
     const localUpdatedAt = new Date().toISOString()
+    const promoted = PROMOTED_COLUMNS[this.table] ?? []
+    const columns = ['_id', 'data', 'updatedAt', 'deletedAt', '_localUpdatedAt', '_dirty', '_syncState', ...promoted]
+
+    const updateClause = [
+      'data = excluded.data',
+      'updatedAt = excluded.updatedAt',
+      'deletedAt = excluded.deletedAt',
+      '_localUpdatedAt = excluded._localUpdatedAt',
+      '_dirty = 0',
+      "_syncState = 'synced'",
+      ...promoted.map((column) => `${column} = excluded.${column}`),
+    ].join(', ')
+
     for (const doc of docs) {
+      const record = doc as unknown as Record<string, unknown>
+      const values = [
+        doc._id,
+        JSON.stringify(doc),
+        doc.updatedAt,
+        doc.deletedAt ?? null,
+        localUpdatedAt,
+        0,
+        'synced',
+        ...promoted.map((column) => toSqlValue(column, record[column])),
+      ]
+
       await db.exec(
-        `INSERT INTO ${this.table} (_id, data, updatedAt, deletedAt, _localUpdatedAt, _dirty, _syncState)
-         VALUES (?, ?, ?, ?, ?, 0, 'synced')
-         ON CONFLICT(_id) DO UPDATE SET
-           data = excluded.data,
-           updatedAt = excluded.updatedAt,
-           deletedAt = excluded.deletedAt,
-           _localUpdatedAt = excluded._localUpdatedAt,
-           _dirty = 0,
-           _syncState = 'synced'`,
-        [doc._id, JSON.stringify(doc), doc.updatedAt, doc.deletedAt ?? null, localUpdatedAt]
+        `INSERT INTO ${this.table} (${columns.join(', ')})
+         VALUES (${columns.map(() => '?').join(', ')})
+         ON CONFLICT(_id) DO UPDATE SET ${updateClause}`,
+        values
       )
     }
   }

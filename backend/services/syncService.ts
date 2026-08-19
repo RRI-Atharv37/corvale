@@ -3,8 +3,10 @@ import { Document, Model, Types } from 'mongoose'
 import Account from '../models/Account'
 import Budget from '../models/Budget'
 import Category from '../models/Category'
+import CategorizationRule from '../models/CategorizationRule'
 import RecurringRule from '../models/RecurringRule'
 import SavingsGoal from '../models/SavingsGoal'
+import SavingsGoalContribution from '../models/SavingsGoalContribution'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import { CustomError } from '../utils/customError'
@@ -15,6 +17,13 @@ import { buildScopedListFilter } from '../utils/workspaceUtils'
  * Sprint 13.3 sync surface: bootstrap (full snapshot) + pull (checkpoint
  * pagination) share the same entity registry and checkpoint format so a
  * bootstrap's checkpoint can be handed straight to a subsequent pull.
+ *
+ * `categorizationRule` and `savingsGoalContribution` were added in Sprint
+ * 13.5: the local domain engine's rule application/testing/bulk-apply and
+ * savings goal projection math both need these locally, and neither had
+ * ever been added to the sync surface. Both are personal-only (no
+ * `workspaceId` field on either model), scoped by `userId` regardless of
+ * the caller's active workspace, the same way `tag` already is.
  */
 export const SYNC_ENTITIES = [
     'account',
@@ -24,6 +33,8 @@ export const SYNC_ENTITIES = [
     'savingsGoal',
     'tag',
     'recurringRule',
+    'categorizationRule',
+    'savingsGoalContribution',
 ] as const
 export type SyncEntityName = (typeof SYNC_ENTITIES)[number]
 
@@ -35,6 +46,8 @@ const RESPONSE_FIELD: Record<SyncEntityName, string> = {
     savingsGoal: 'savingsGoals',
     tag: 'tags',
     recurringRule: 'recurringRules',
+    categorizationRule: 'categorizationRules',
+    savingsGoalContribution: 'savingsGoalContributions',
 }
 
 interface EntityConfig {
@@ -80,6 +93,16 @@ const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
         model: RecurringRule as unknown as Model<Document>,
         hasSoftDelete: false,
         buildScope: (userId, workspaceId) => buildScopedListFilter(userId, workspaceId),
+    },
+    categorizationRule: {
+        model: CategorizationRule as unknown as Model<Document>,
+        hasSoftDelete: true,
+        buildScope: (userId) => ({ userId: new Types.ObjectId(userId) }),
+    },
+    savingsGoalContribution: {
+        model: SavingsGoalContribution as unknown as Model<Document>,
+        hasSoftDelete: false,
+        buildScope: (userId) => ({ userId: new Types.ObjectId(userId) }),
     },
 }
 
