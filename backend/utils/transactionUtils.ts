@@ -1,6 +1,6 @@
 import { Types } from 'mongoose'
 
-import Account, { AccountType, IAccount } from '../models/Account'
+import Account, { IAccount } from '../models/Account'
 import Category, { ICategory } from '../models/Category'
 import Receipt from '../models/Receipt'
 import Transaction, { ITransaction, TransactionType } from '../models/Transaction'
@@ -10,6 +10,11 @@ import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from './moneyUtils'
 import { isMasterCategory, ensureMasterCategoriesSeeded } from './categorySeed'
 import { roundMoney } from './balanceUtils'
+import {
+    getBalanceDeltaMajor,
+    getTransferInDeltaMajor,
+    getTransferOutDeltaMajor,
+} from '../../shared/src/money'
 import { assertWorkspaceMembership, validateResourceAccess } from './workspaceUtils'
 import { WorkspaceRole } from '../models/Workspace'
 import { serializeReceipt, SerializedReceipt } from './receiptUtils'
@@ -161,34 +166,7 @@ export const validateCategoryForTransaction = async (
     return category
 }
 
-export const getBalanceDeltaMajor = (
-    type: TransactionType,
-    amountMinor: number,
-    accountType: AccountType
-): number => {
-    const amountMajor = fromMinorUnits(amountMinor)
-
-    if (type === 'transfer') {
-        if (accountType === 'credit') {
-            return amountMajor
-        }
-        return -amountMajor
-    }
-
-    if (accountType === 'credit') {
-        return type === 'expense' ? amountMajor : -amountMajor
-    }
-
-    return type === 'income' ? amountMajor : -amountMajor
-}
-
-export const getTransferInDeltaMajor = (amountMinor: number, accountType: AccountType): number => {
-    return getBalanceDeltaMajor('income', amountMinor, accountType)
-}
-
-export const getTransferOutDeltaMajor = (amountMinor: number, accountType: AccountType): number => {
-    return getBalanceDeltaMajor('transfer', amountMinor, accountType)
-}
+export { getBalanceDeltaMajor, getTransferInDeltaMajor, getTransferOutDeltaMajor }
 
 export const LISTABLE_TRANSACTION_FILTER = {
     splitTransactionId: null,

@@ -12,6 +12,7 @@ import { normalizeTagName } from './tagUtils'
 import { fromMinorUnits } from './moneyUtils'
 import { LISTABLE_TRANSACTION_FILTER, validateCategoryForTransaction } from './transactionUtils'
 import { parseClientAmount, validateAccountForTransaction } from './transactionUtils'
+import { matchCategorizationRule, RuleLike } from '../../shared/src/categorization'
 
 export interface TransactionMatchInput {
     title: string
@@ -29,13 +30,6 @@ export interface RuleApplyResult {
 }
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-const normalizeMatchText = (value: string | undefined): string => (value ?? '').trim().toLowerCase()
-
-const getSearchableText = (input: TransactionMatchInput): string[] => {
-    const parts = [input.title, input.description].filter(Boolean) as string[]
-    return parts.map((part) => normalizeMatchText(part))
-}
 
 export const parseMatchType = (value: unknown): CategorizationMatchType => {
     const matchType = String(value ?? '').trim()
@@ -138,37 +132,16 @@ export const ruleMatchesTransaction = (
     rule: ICategorizationRule,
     input: TransactionMatchInput
 ): boolean => {
-    if (!rule.isActive || input.type === 'transfer') {
-        return false
+    const ruleLike: RuleLike = {
+        isActive: rule.isActive,
+        matchType: rule.matchType,
+        matchValue: rule.matchValue,
+        amountMin: rule.amountMin,
+        amountMax: rule.amountMax,
+        accountId: rule.accountId?.toString(),
     }
 
-    switch (rule.matchType) {
-        case 'description_contains': {
-            const needle = normalizeMatchText(rule.matchValue)
-            if (!needle) return false
-            return getSearchableText(input).some((haystack) => haystack.includes(needle))
-        }
-        case 'description_equals': {
-            const needle = normalizeMatchText(rule.matchValue)
-            if (!needle) return false
-            return getSearchableText(input).some((haystack) => haystack === needle)
-        }
-        case 'amount_range': {
-            if (rule.amountMin !== undefined && input.amount < rule.amountMin) {
-                return false
-            }
-            if (rule.amountMax !== undefined && input.amount > rule.amountMax) {
-                return false
-            }
-            return true
-        }
-        case 'account_id': {
-            if (!rule.accountId) return false
-            return rule.accountId.toString() === String(input.accountId)
-        }
-        default:
-            return false
-    }
+    return matchCategorizationRule(ruleLike, { ...input, accountId: String(input.accountId) })
 }
 
 export const mergeTags = (

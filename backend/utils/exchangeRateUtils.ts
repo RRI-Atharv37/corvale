@@ -1,4 +1,5 @@
 import { CustomError } from './customError'
+import { convertAmount as sharedConvertAmount } from '../../shared/src/timezone'
 
 const PAIR_PATTERN = /^[A-Z]{3}_[A-Z]{3}$/
 
@@ -44,21 +45,21 @@ export const convertAmount = (
     toCurrency: string,
     rates: Record<string, number>
 ): ConversionResult => {
+    const convertedAmount = sharedConvertAmount(amount, fromCurrency, toCurrency, rates)
+
     if (fromCurrency === toCurrency) {
-        return { convertedAmount: amount, rateApplied: 1, rateConfigured: true }
+        return { convertedAmount, rateApplied: 1, rateConfigured: true }
     }
 
     const directKey = `${fromCurrency}_${toCurrency}`
     if (typeof rates[directKey] === 'number') {
-        const rate = rates[directKey]
-        return { convertedAmount: amount * rate, rateApplied: rate, rateConfigured: true }
+        return { convertedAmount, rateApplied: rates[directKey], rateConfigured: true }
     }
 
     const reverseKey = `${toCurrency}_${fromCurrency}`
     if (typeof rates[reverseKey] === 'number' && rates[reverseKey] !== 0) {
-        const rate = 1 / rates[reverseKey]
-        return { convertedAmount: amount * rate, rateApplied: rate, rateConfigured: true }
+        return { convertedAmount, rateApplied: 1 / rates[reverseKey], rateConfigured: true }
     }
 
-    return { convertedAmount: amount, rateApplied: 1, rateConfigured: false }
+    return { convertedAmount, rateApplied: 1, rateConfigured: false }
 }

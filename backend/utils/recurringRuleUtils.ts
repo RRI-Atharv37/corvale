@@ -10,6 +10,7 @@ import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from './moneyUtils'
 import { startOfDayInTimezone } from './timezoneUtils'
+import { advanceNextDueDate as sharedAdvanceNextDueDate } from '../../shared/src/categorization'
 import {
     applyTransactionToAccount,
     serializeTransaction,
@@ -105,38 +106,11 @@ export const advanceNextDueDate = (
     interval: RecurringInterval,
     customIntervalDays?: number
 ): Date => {
-    const next = new Date(current)
-
-    switch (interval) {
-        case 'daily':
-            next.setUTCDate(next.getUTCDate() + 1)
-            break
-        case 'weekly':
-            next.setUTCDate(next.getUTCDate() + 7)
-            break
-        case 'biweekly':
-            next.setUTCDate(next.getUTCDate() + 14)
-            break
-        case 'monthly':
-            next.setUTCMonth(next.getUTCMonth() + 1)
-            break
-        case 'quarterly':
-            next.setUTCMonth(next.getUTCMonth() + 3)
-            break
-        case 'yearly':
-            next.setUTCFullYear(next.getUTCFullYear() + 1)
-            break
-        case 'custom': {
-            const days = customIntervalDays
-            if (!days || days < 1) {
-                throw new CustomError('customIntervalDays is required for custom intervals', 400)
-            }
-            next.setUTCDate(next.getUTCDate() + days)
-            break
-        }
+    if (interval === 'custom' && (!customIntervalDays || customIntervalDays < 1)) {
+        throw new CustomError('customIntervalDays is required for custom intervals', 400)
     }
 
-    return next
+    return sharedAdvanceNextDueDate(current, interval, customIntervalDays, 'UTC')
 }
 
 export const serializeRecurringRule = (rule: IRecurringRule): SerializedRecurringRule => {
