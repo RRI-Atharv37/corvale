@@ -31,6 +31,7 @@ import DashboardLayout from './components/layouts/DashboardLayout'
 import { useUser } from './hooks/useUser'
 import LoadingState from './components/ui/LoadingState'
 import Landing from './pages/Landing'
+import PinGate from './offline/PinGate'
 
 const AppRoutes = () => {
     return (
@@ -44,9 +45,11 @@ const AppRoutes = () => {
             <Route
                 element={
                     <ProtectedRoute>
-                        <WorkspaceProvider>
-                            <DashboardLayout />
-                        </WorkspaceProvider>
+                        <PinGate>
+                            <WorkspaceProvider>
+                                <DashboardLayout />
+                            </WorkspaceProvider>
+                        </PinGate>
                     </ProtectedRoute>
                 }
             >

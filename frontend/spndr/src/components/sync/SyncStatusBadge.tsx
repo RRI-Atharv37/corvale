@@ -3,6 +3,7 @@ import { FiAlertTriangle, FiCloud, FiCloudOff, FiRefreshCw } from 'react-icons/f
 import toast from 'react-hot-toast'
 
 import { useSyncStatus } from '../../hooks/useSyncStatus'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 import { formatRelativeTime } from '../../utils/format'
 import { getLocalDb } from '../../db/localDbInstance'
 import { tableInvalidationBus } from '../../db/invalidation/tableInvalidationBus'
@@ -10,7 +11,12 @@ import { listUnresolvedConflicts, resolveConflict, type Conflict } from '../../s
 
 /** Online/offline + pending-op badge with a "Sync issues" conflict inbox (Sprint 13.6). */
 const SyncStatusBadge: React.FC = () => {
-    const { online, pendingCount, conflictCount, lastSyncedAt, syncing, syncNow } = useSyncStatus()
+    const { online: reportedOnline, pendingCount, conflictCount, lastSyncedAt, syncing, syncNow } = useSyncStatus()
+    // `navigator.onLine` (what `useSyncStatus` reports) can be true with no real route to the
+    // backend (LAN-but-no-internet, captive portal); fold in the periodic reachability probe
+    // so the badge doesn't claim "Online" when sync would actually fail.
+    const reachable = useOnlineStatus()
+    const online = reportedOnline && reachable
     const [open, setOpen] = useState(false)
     const [conflicts, setConflicts] = useState<Conflict[]>([])
     const [resolvingId, setResolvingId] = useState<string | null>(null)

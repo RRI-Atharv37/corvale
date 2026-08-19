@@ -25,6 +25,8 @@ import {
     FiCompass,
 } from 'react-icons/fi'
 import OnboardingWizard, { OnboardingWizardHandle } from '../onboarding/OnboardingWizard'
+import PinSetupPrompt from '../onboarding/PinSetupPrompt'
+import PinSettings from '../settings/PinSettings'
 import WorkspaceSwitcher from '../workspaces/WorkspaceSwitcher'
 import { useUser } from '../../hooks/useUser'
 import toast from 'react-hot-toast'
@@ -419,6 +421,7 @@ const DashboardLayout: React.FC = () => {
                     <ExchangeRatesSettings />
                     <BackupRestoreSettings />
                     {isLocalFirstEnabled() && <SyncSettings />}
+                    {isLocalFirstEnabled() && <PinSettings />}
 
                     <div>
                         <p className="section-label mb-3">Account</p>
@@ -453,6 +456,7 @@ const DashboardLayout: React.FC = () => {
             </Modal>
 
             <OnboardingWizard ref={onboardingRef} />
+            <PinSetupPrompt />
         </div>
     )
 }

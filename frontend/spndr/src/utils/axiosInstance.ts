@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
 import { BASE_URL } from './apiPaths'
+import { TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
 
 const client = axios.create({
     baseURL: BASE_URL,
@@ -36,6 +37,16 @@ const isAuthMutationRoute = (url?: string): boolean => {
 const shouldAttemptRefresh = (message: unknown): boolean => {
     if (typeof message !== 'string') return false
     return message.includes('expired') || message.includes('revoked')
+}
+
+/** Distinct from `shouldAttemptRefresh`'s broader `.includes('revoked')` match - this only fires the offline-recovery flow (`tokenRevokedFlow.ts`) for the backend's exact `TOKEN_REVOKED` message, not any expiry-adjacent wording. */
+const isTokenRevokedMessage = (message: unknown): boolean =>
+    typeof message === 'string' && message.toLowerCase().includes('session revoked')
+
+const notifyTokenRevoked = (message: unknown): void => {
+    if (isTokenRevokedMessage(message) && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(TOKEN_REVOKED_EVENT))
+    }
 }
 
 client.interceptors.request.use(
@@ -101,6 +112,7 @@ client.interceptors.response.use(
             } catch (refreshError) {
                 processRefreshQueue(null)
                 localStorage.removeItem('token')
+                notifyTokenRevoked(message)
                 return Promise.reject(refreshError)
             } finally {
                 isRefreshing = false
@@ -109,6 +121,7 @@ client.interceptors.response.use(
 
         if (status === 401 && !isAuthMutationRoute(originalRequest?.url)) {
             localStorage.removeItem('token')
+            notifyTokenRevoked(message)
         }
 
         return Promise.reject(error)
