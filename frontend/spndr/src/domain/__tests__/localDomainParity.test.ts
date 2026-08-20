@@ -149,6 +149,53 @@ describe('local domain engine: account balances', () => {
     const persisted = await accountsRepo.findById(db, accountId)
     expect(persisted?.currentBalance).toBe(1500)
   })
+
+  it('resolves a transfer pair by creation order: outbound leg withdraws, inbound leg deposits (Sprint 13.9)', async () => {
+    const db = await freshDb()
+    const fromId = nextId()
+    const toId = nextId()
+    await accountsRepo.upsertFromServer(db, [
+      { _id: fromId, updatedAt: nowIso(), userId: 'u1', name: 'Checking', type: 'checking', currency: 'USD', currentBalance: 1000, isArchived: false },
+      { _id: toId, updatedAt: nowIso(), userId: 'u1', name: 'Savings', type: 'savings', currency: 'USD', currentBalance: 500, isArchived: false },
+    ])
+    const outboundId = nextId()
+    const inboundId = nextId()
+    await transactionsRepo.upsertFromServer(db, [
+      {
+        _id: outboundId,
+        updatedAt: nowIso(),
+        createdAt: '2026-04-01T00:00:00.000Z',
+        userId: 'u1',
+        accountId: fromId,
+        categoryId: 'c1',
+        type: 'transfer',
+        status: 'posted',
+        amount: 20000,
+        title: 'Transfer',
+        date: '2026-04-01T00:00:00.000Z',
+        splitTransactionId: null,
+        transferPairId: inboundId,
+      },
+      {
+        _id: inboundId,
+        updatedAt: nowIso(),
+        createdAt: '2026-04-01T00:00:00.001Z',
+        userId: 'u1',
+        accountId: toId,
+        categoryId: 'c1',
+        type: 'transfer',
+        status: 'posted',
+        amount: 20000,
+        title: 'Transfer',
+        date: '2026-04-01T00:00:00.000Z',
+        splitTransactionId: null,
+        transferPairId: outboundId,
+      },
+    ])
+
+    expect(await recomputeLocalAccountBalance(db, fromId)).toBe(800)
+    expect(await recomputeLocalAccountBalance(db, toId)).toBe(700)
+  })
 })
 
 describe('local domain engine: budget progress', () => {

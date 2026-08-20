@@ -38,6 +38,7 @@ export interface DashboardSummary {
   accountCount: number
   balanceSource: 'accounts' | 'legacy'
   spendableBalance: number
+  saverBalance: number
   netSavings: number
   totalIncome: number
   totalExpenses: number
@@ -269,6 +270,7 @@ export const computeLocalDashboardSummary = async (
     accountCount: balances.accountCount,
     balanceSource: balances.balanceSource,
     spendableBalance: balances.spendableBalance,
+    saverBalance: balances.saverBalance,
     netSavings: roundMoney(totalIncome - totalExpenses),
     totalIncome,
     totalExpenses,

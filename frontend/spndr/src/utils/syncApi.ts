@@ -18,6 +18,7 @@ export interface BootstrapSyncSnapshot {
     recurringRules: SyncableRecord[]
     categorizationRules: SyncableRecord[]
     savingsGoalContributions: SyncableRecord[]
+    transactionTemplates: SyncableRecord[]
 }
 
 export const fetchBootstrapSnapshot = async (

@@ -41,11 +41,15 @@ Create a `.env` file in the `frontend/spndr/` folder (copy from `.env.example`).
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `VITE_API_URL` | No | `http://localhost:5000/api/v1` | Backend API base URL |
+| `VITE_DOCS_URL` | No | `http://localhost:5174` | URL the "Docs" link in the dashboard header opens |
+| `VITE_LOCAL_FIRST` | No | `false` | Enables the offline local-first sync engine, its settings UI, and local-store reads/writes on dashboard pages |
 
 ### Example frontend `.env`
 
 ```
 VITE_API_URL=http://localhost:5000/api/v1
+VITE_DOCS_URL=http://localhost:5174
+VITE_LOCAL_FIRST=false
 ```
 
 ## Security notes

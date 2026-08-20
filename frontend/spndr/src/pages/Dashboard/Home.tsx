@@ -1,13 +1,9 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { useUser } from '../../hooks/useUser'
-import type { ApiResponse, DashboardPeriodPreset, DashboardSummary } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
-import { getApiErrorMessage } from '../../utils/apiError'
+import type { DashboardPeriodPreset } from '../../types/api'
+import { useDashboardSummaryData } from './hooks/useDashboardSummaryData'
 import { Link } from 'react-router-dom'
 import { formatCurrency, toDateInputValue } from '../../utils/format'
 import StatCard from '../../components/ui/StatCard'
@@ -53,19 +49,7 @@ const Home = () => {
 
     const periodQuery = useMemo(() => resolvePeriodRange(periodPreset), [periodPreset])
 
-    const fetchSummary = useCallback(async (): Promise<DashboardSummary> => {
-        try {
-            const summaryRes = await axiosInstance.get<ApiResponse<DashboardSummary>>(
-                API_PATHS.DASHBOARD.SUMMARY,
-                { params: periodQuery }
-            )
-            return unwrapApiData(summaryRes)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load dashboard'))
-        }
-    }, [periodQuery])
-
-    const { data: summary, loading, error, refetch } = useAsyncData(fetchSummary, [fetchSummary])
+    const { data: summary, loading, error, refetch } = useDashboardSummaryData(periodQuery)
 
     const periodLabel = PERIOD_PRESETS.find((preset) => preset.value === periodPreset)?.label ?? 'Selected period'
 

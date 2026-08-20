@@ -121,7 +121,15 @@ const buildBatch = (pending: OutboxOp[], now: number): OutboxOp[] => {
     return batch
 }
 
-export const createOutbox = (store: OutboxStore = createMemoryOutboxStore()): Outbox => {
+export interface OutboxOptions {
+    /** Fired after a successful enqueue - Sprint 13.8 uses this to register Background Sync so a
+     * closed/backgrounded tab still has a chance to flush (see `pwa/backgroundSync.ts`). Kept as an
+     * injected callback rather than an import here so this module stays environment-agnostic and
+     * testable outside a browser (see the design notes atop `sync/__tests__/outbox.test.ts`). */
+    onEnqueued?: () => void
+}
+
+export const createOutbox = (store: OutboxStore = createMemoryOutboxStore(), options: OutboxOptions = {}): Outbox => {
     const enqueue = async (input: EnqueueInput): Promise<OutboxOp> => {
         if (!isOnline() && isWorkspaceScoped(input.payload)) {
             throw new Error('Workspace-scoped writes require connectivity - you are offline')
@@ -136,6 +144,7 @@ export const createOutbox = (store: OutboxStore = createMemoryOutboxStore()): Ou
             nextAttemptAt: null,
         }
         await store.insert(op)
+        options.onEnqueued?.()
         return op
     }
 

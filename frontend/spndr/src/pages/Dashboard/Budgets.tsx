@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoAdd, IoPencil, IoTrash, IoTime } from 'react-icons/io5'
 import PageHeader from '../../components/ui/PageHeader'
@@ -10,29 +10,23 @@ import FormField from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
 import BudgetProgressBar from '../../components/budgets/BudgetProgressBar'
 import AccountMultiSelect from '../../components/budgets/AccountMultiSelect'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { usePageSize } from '../../hooks/usePaginatedList'
 import { useUser } from '../../hooks/useUser'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
-import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
+import { useBudgetsData, type BudgetPayload } from './hooks/useBudgetsData'
 import type {
-    Account,
-    ApiResponse,
     Budget,
     BudgetFormData,
     BudgetPeriodType,
     BudgetScopeType,
     CategoriesResponse,
 } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatBudgetPeriod, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
 import { CategoryIcon } from '../../utils/categoryIcons'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
-import CurrencySelect from '../../components/inputs/CurrencySelect'
+import CurrencySelect from '../../components/Inputs/CurrencySelect'
 
 type BudgetView = 'active' | 'history'
 
@@ -154,7 +148,7 @@ const budgetToForm = (budget: Budget): BudgetFormData => {
 
 const Budgets = () => {
     const { user } = useUser()
-    const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
+    const { canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
     const pageSize = usePageSize()
     const [view, setView] = useState<BudgetView>('active')
@@ -166,37 +160,17 @@ const Budgets = () => {
     const [archiveTarget, setArchiveTarget] = useState<Budget | null>(null)
     const [archiving, setArchiving] = useState(false)
 
-    const fetchBudgets = useCallback(async (): Promise<Budget[]> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<Budget[]>>(API_PATHS.BUDGETS.GET_ALL, {
-                params: {
-                    includeArchived: view === 'history' ? 'true' : 'false',
-                    ...buildWorkspaceQueryParams(activeWorkspaceId),
-                },
-            })
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load budgets'))
-        }
-    }, [view, activeWorkspaceId])
-
-    const fetchCategories = useCallback(async (): Promise<CategoriesResponse> => {
-        const response = await axiosInstance.get<ApiResponse<CategoriesResponse>>(
-            API_PATHS.CATEGORIES.GET_ALL
-        )
-        return unwrapApiData(response)
-    }, [])
-
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
-            params: buildWorkspaceQueryParams(activeWorkspaceId),
-        })
-        return unwrapApiData(response).filter((account) => !account.isArchived)
-    }, [activeWorkspaceId])
-
-    const { data: budgets, loading, error, refetch } = useAsyncData(fetchBudgets, [fetchBudgets])
-    const { data: categories } = useAsyncData(fetchCategories, [fetchCategories])
-    const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
+    const {
+        budgets,
+        loading,
+        error,
+        refetch,
+        categories,
+        accounts,
+        createBudget,
+        updateBudget,
+        archiveBudget,
+    } = useBudgetsData(view)
 
     const displayedBudgets = useMemo(() => {
         if (!budgets) return []
@@ -228,7 +202,7 @@ const Budgets = () => {
         setForm(emptyForm(preferredCurrency))
     }
 
-    const buildPayload = (formData: BudgetFormData) => {
+    const buildPayload = (formData: BudgetFormData): BudgetPayload => {
         const amount = Number(formData.amount)
         if (isNaN(amount) || amount <= 0) {
             throw new Error('Budget amount must be a positive number')
@@ -246,7 +220,7 @@ const Budgets = () => {
             throw new Error('Select at least one account or use all accounts')
         }
 
-        const payload: Record<string, unknown> = {
+        const payload: BudgetPayload = {
             name: formData.name.trim() || undefined,
             periodType: formData.periodType,
             amount,
@@ -272,10 +246,7 @@ const Budgets = () => {
         setSubmitting(true)
         try {
             const payload = buildPayload(form)
-            await axiosInstance.post(API_PATHS.BUDGETS.CREATE, {
-                ...payload,
-                ...buildWorkspaceBodyFields(activeWorkspaceId),
-            })
+            await createBudget(payload)
             toast.success('Budget created')
             closeCreate()
             await refetch()
@@ -293,7 +264,7 @@ const Budgets = () => {
         setSubmitting(true)
         try {
             const payload = buildPayload(form)
-            await axiosInstance.put(API_PATHS.BUDGETS.UPDATE(editingBudget._id), payload)
+            await updateBudget(editingBudget, payload)
             toast.success('Budget updated')
             closeEdit()
             await refetch()
@@ -309,7 +280,7 @@ const Budgets = () => {
 
         setArchiving(true)
         try {
-            await axiosInstance.delete(API_PATHS.BUDGETS.DELETE(archiveTarget._id))
+            await archiveBudget(archiveTarget)
             toast.success('Budget archived')
             setArchiveTarget(null)
             await refetch()

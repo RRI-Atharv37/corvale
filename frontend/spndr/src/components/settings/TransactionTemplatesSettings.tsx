@@ -1,23 +1,17 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoAdd, IoPencil, IoTrash } from 'react-icons/io5'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
-import { useWorkspace } from '../../hooks/useWorkspace'
+import { useTransactionTemplatesData } from './hooks/useTransactionTemplatesData'
+import { useAccountsData } from '../../pages/Dashboard/hooks/useAccountsData'
+import { useCategoriesData } from '../../pages/Dashboard/hooks/useCategoriesData'
+import { useTagsData } from '../../pages/Dashboard/hooks/useTagsData'
 import type {
-    Account,
-    ApiResponse,
-    CategoriesResponse,
-    Tag,
     TransactionTemplate,
     TransactionTemplateFormData,
     TransactionTemplateType,
 } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
-import { buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 import Modal from '../ui/Modal'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import FormField, { TextAreaField } from '../forms/FormField'
@@ -68,7 +62,6 @@ const TypeSelect: React.FC<TypeSelectProps> = ({ value, onChange, disabled }) =>
 )
 
 const TransactionTemplatesSettings: React.FC = () => {
-    const { activeWorkspaceId } = useWorkspace()
     const [formOpen, setFormOpen] = useState(false)
     const [editingTemplate, setEditingTemplate] = useState<TransactionTemplate | null>(null)
     const [form, setForm] = useState<TransactionTemplateFormData>(emptyForm())
@@ -76,46 +69,15 @@ const TransactionTemplatesSettings: React.FC = () => {
     const [deleteTarget, setDeleteTarget] = useState<TransactionTemplate | null>(null)
     const [deleting, setDeleting] = useState(false)
 
-    const fetchTemplates = useCallback(async (): Promise<TransactionTemplate[]> => {
-        const response = await axiosInstance.get<ApiResponse<TransactionTemplate[]>>(
-            API_PATHS.TRANSACTION_TEMPLATES.GET_ALL
-        )
-        return unwrapApiData(response)
-    }, [])
-
-    const fetchLookups = useCallback(async () => {
-        const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
-        const [accountsRes, categoriesRes, tagsRes] = await Promise.all([
-            axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
-                params: workspaceParams,
-            }),
-            axiosInstance.get<ApiResponse<CategoriesResponse>>(API_PATHS.CATEGORIES.GET_ALL),
-            axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL),
-        ])
-        return {
-            accounts: unwrapApiData(accountsRes),
-            categories: unwrapApiData(categoriesRes),
-            tags: unwrapApiData(tagsRes),
-        }
-    }, [activeWorkspaceId])
-
-    const {
-        data: templates,
-        loading,
-        error,
-        refetch,
-    } = useAsyncData(fetchTemplates, [fetchTemplates])
-
-    const { data: lookups } = useAsyncData(fetchLookups, [fetchLookups])
+    const { templates, loading, error, createTemplate, updateTemplate, deleteTemplate } =
+        useTransactionTemplatesData()
+    const { accounts } = useAccountsData()
+    const { categories } = useCategoriesData()
+    const { tags } = useTagsData()
 
     const availableAccountIds = useMemo(
-        () =>
-            new Set(
-                (lookups?.accounts ?? [])
-                    .filter((account) => !account.isArchived)
-                    .map((account) => account._id)
-            ),
-        [lookups?.accounts]
+        () => new Set((accounts ?? []).map((account) => account._id)),
+        [accounts]
     )
 
     const visibleTemplates = useMemo(
@@ -124,10 +86,9 @@ const TransactionTemplatesSettings: React.FC = () => {
     )
 
     const getAccountName = (accountId: string): string =>
-        lookups?.accounts.find((account) => account._id === accountId)?.name ?? 'Account'
+        accounts?.find((account) => account._id === accountId)?.name ?? 'Account'
 
     const getCategoryName = (categoryId: string): string => {
-        const categories = lookups?.categories
         if (!categories) return 'Category'
         const match = [...categories.masters, ...categories.userCategories].find(
             (category) => category._id === categoryId
@@ -173,12 +134,18 @@ const TransactionTemplatesSettings: React.FC = () => {
             return
         }
 
+        const amount = Number(form.amount)
+        if (isNaN(amount) || amount <= 0) {
+            toast.error('Amount must be a positive number')
+            return
+        }
+
         setSubmitting(true)
         try {
             const payload = {
                 name: form.name.trim(),
                 type: form.type,
-                amount: form.amount,
+                amount,
                 accountId: form.accountId,
                 categoryId: form.categoryId,
                 tags: form.tags,
@@ -186,18 +153,14 @@ const TransactionTemplatesSettings: React.FC = () => {
             }
 
             if (editingTemplate) {
-                await axiosInstance.put(
-                    API_PATHS.TRANSACTION_TEMPLATES.UPDATE(editingTemplate._id),
-                    payload
-                )
+                await updateTemplate(editingTemplate, payload)
                 toast.success('Template updated')
             } else {
-                await axiosInstance.post(API_PATHS.TRANSACTION_TEMPLATES.CREATE, payload)
+                await createTemplate(payload)
                 toast.success('Template created')
             }
 
             closeForm()
-            await refetch()
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to save template'))
         } finally {
@@ -210,10 +173,9 @@ const TransactionTemplatesSettings: React.FC = () => {
 
         setDeleting(true)
         try {
-            await axiosInstance.delete(API_PATHS.TRANSACTION_TEMPLATES.DELETE(deleteTarget._id))
+            await deleteTemplate(deleteTarget)
             toast.success('Template deleted')
             setDeleteTarget(null)
-            await refetch()
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to delete template'))
         } finally {
@@ -320,20 +282,20 @@ const TransactionTemplatesSettings: React.FC = () => {
                         onChange={(accountId) => setForm((current) => ({ ...current, accountId }))}
                         required
                         disabled={submitting}
-                        accountsData={lookups?.accounts.filter((account) => !account.isArchived)}
+                        accountsData={accounts ?? undefined}
                     />
                     <CategoryPicker
                         value={form.categoryId}
                         onChange={(categoryId) => setForm((current) => ({ ...current, categoryId }))}
                         required
                         disabled={submitting}
-                        categoriesData={lookups?.categories}
+                        categoriesData={categories ?? undefined}
                     />
                     <TagPicker
                         value={form.tags}
                         onChange={(tags) => setForm((current) => ({ ...current, tags }))}
                         disabled={submitting}
-                        tagsData={lookups?.tags}
+                        tagsData={tags ?? undefined}
                     />
                     <TextAreaField
                         label="Description"

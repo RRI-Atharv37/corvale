@@ -15,6 +15,7 @@ const REPOSITORIES: Record<SeedableField, Repository<SyncableRecord>> = {
   recurringRules: new Repository('recurringRules' as SyncableTableName),
   categorizationRules: new Repository('categorizationRules' as SyncableTableName),
   savingsGoalContributions: new Repository('savingsGoalContributions' as SyncableTableName),
+  transactionTemplates: new Repository('transactionTemplates' as SyncableTableName),
 }
 
 /**
@@ -28,7 +29,11 @@ export const seedFromBootstrap = async (db: LocalDb, snapshot: BootstrapSyncSnap
 
   await db.transaction(async (tx) => {
     for (const field of fields) {
-      await REPOSITORIES[field].upsertFromServer(tx, snapshot[field])
+      // Defensive against an older backend that doesn't yet return a newer
+      // field (e.g. `transactionTemplates`, added in Sprint 13.9) - treat a
+      // missing field as "nothing to seed" rather than failing the whole
+      // bootstrap transaction for every other table.
+      await REPOSITORIES[field].upsertFromServer(tx, snapshot[field] ?? [])
     }
     await tx.exec(
       `INSERT INTO _sync_meta (key, value) VALUES ('checkpoint', ?)

@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import Input from '../../components/inputs/Input'
+import Input from '../../components/Inputs/Input'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import type { ApiResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import toast from 'react-hot-toast'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import OfflineNotice from '../../components/ui/OfflineNotice'
 
 interface PasswordResetConfirmResponse {
     message: string
@@ -17,6 +19,7 @@ const ResetPassword = () => {
     const [searchParams] = useSearchParams()
     const token = searchParams.get('token') ?? ''
     const navigate = useNavigate()
+    const online = useOnlineStatus()
 
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
@@ -103,8 +106,9 @@ const ResetPassword = () => {
                     />
 
                     {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
+                    {!online && <OfflineNotice message="You are offline. Password reset requires a connection." />}
 
-                    <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                    <button type="submit" className="btn-primary" disabled={isSubmitting || !online}>
                         {isSubmitting ? 'Resetting...' : 'Reset password'}
                     </button>
 

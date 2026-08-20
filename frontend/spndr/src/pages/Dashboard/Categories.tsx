@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -16,12 +16,10 @@ import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import FormField from '../../components/forms/FormField'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
-import type { ApiResponse, CategoriesResponse, Category, CategoryEditFormData, CategoryFormData } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
+import type { Category, CategoryEditFormData, CategoryFormData } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import OfflineNotice from '../../components/ui/OfflineNotice'
 import {
     CATEGORY_ICON_OPTIONS,
     CategoryIcon,
@@ -32,6 +30,7 @@ import {
     groupCategoriesByMaster,
     type CategoryGroup,
 } from '../../components/categories/CategoryPicker'
+import { useCategoriesData } from './hooks/useCategoriesData'
 
 interface SelectFieldProps {
     label: string
@@ -122,18 +121,19 @@ const Categories = () => {
     const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
     const [reorderingId, setReorderingId] = useState<string | null>(null)
 
-    const fetchCategories = useCallback(async (): Promise<CategoriesResponse> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<CategoriesResponse>>(
-                API_PATHS.CATEGORIES.GET_ALL
-            )
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load categories'))
-        }
-    }, [])
+    const online = useOnlineStatus()
 
-    const { data: categories, loading, error, refetch } = useAsyncData(fetchCategories, [fetchCategories])
+    const {
+        categories,
+        loading,
+        error,
+        refetch,
+        createCategory,
+        updateCategory,
+        archiveCategory,
+        setDefaultCategory,
+        reorderCategories,
+    } = useCategoriesData()
 
     const grouped = useMemo(() => {
         if (!categories) return []
@@ -181,7 +181,7 @@ const Categories = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.post(API_PATHS.CATEGORIES.CREATE, {
+            await createCategory({
                 masterCategoryId: createForm.masterCategoryId,
                 name: createForm.name.trim(),
                 icon: createForm.icon,
@@ -189,7 +189,6 @@ const Categories = () => {
             })
             toast.success('Category created')
             closeCreate()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to create category'))
         } finally {
@@ -208,14 +207,13 @@ const Categories = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.put(API_PATHS.CATEGORIES.UPDATE(editingCategory._id), {
+            await updateCategory(editingCategory, {
                 name: editForm.name.trim(),
                 icon: editForm.icon,
                 color: editForm.color,
             })
             toast.success('Category updated')
             closeEdit()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to update category'))
         } finally {
@@ -228,9 +226,8 @@ const Categories = () => {
 
         setSettingDefaultId(category._id)
         try {
-            await axiosInstance.put(API_PATHS.CATEGORIES.UPDATE(category._id), { isDefault: true })
+            await setDefaultCategory(category)
             toast.success(`"${category.name}" is now your default category`)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to set default category'))
         } finally {
@@ -243,10 +240,9 @@ const Categories = () => {
 
         setArchiving(true)
         try {
-            await axiosInstance.delete(API_PATHS.CATEGORIES.DELETE(archiveTarget._id))
+            await archiveCategory(archiveTarget)
             toast.success('Category archived')
             setArchiveTarget(null)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to archive category'))
         } finally {
@@ -256,6 +252,10 @@ const Categories = () => {
 
     const handleReorder = async (categoryId: string, direction: 'up' | 'down') => {
         if (!categories) return
+        if (!online) {
+            toast.error('Reordering categories requires an internet connection')
+            return
+        }
 
         const currentGroups = groupCategoriesByMaster(categories.masters, categories.userCategories)
         const nextGroups = reorderWithinGroups(currentGroups, categoryId, direction)
@@ -266,8 +266,7 @@ const Categories = () => {
 
         setReorderingId(categoryId)
         try {
-            await axiosInstance.put(API_PATHS.CATEGORIES.REORDER, { orderedIds })
-            await refetch()
+            await reorderCategories(orderedIds)
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to reorder categories'))
         } finally {
@@ -371,6 +370,8 @@ const Categories = () => {
                 }
             />
 
+            {!online && <OfflineNotice message="You are offline. Reordering categories requires a connection." />}
+
             <AsyncContent
                 loading={loading}
                 error={error}
@@ -459,8 +460,9 @@ const Categories = () => {
                                                         type="button"
                                                         onClick={() => handleReorder(sub._id, 'up')}
                                                         disabled={
-                                                            index === 0 || reorderingId === sub._id
+                                                            index === 0 || reorderingId === sub._id || !online
                                                         }
+                                                        title={online ? undefined : 'Reordering requires a connection'}
                                                         className="p-1.5 text-fg-muted hover:text-fg transition-colors disabled:opacity-30"
                                                         aria-label="Move up"
                                                     >
@@ -471,8 +473,10 @@ const Categories = () => {
                                                         onClick={() => handleReorder(sub._id, 'down')}
                                                         disabled={
                                                             index === group.subs.length - 1 ||
-                                                            reorderingId === sub._id
+                                                            reorderingId === sub._id ||
+                                                            !online
                                                         }
+                                                        title={online ? undefined : 'Reordering requires a connection'}
                                                         className="p-1.5 text-fg-muted hover:text-fg transition-colors disabled:opacity-30"
                                                         aria-label="Move down"
                                                     >

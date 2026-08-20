@@ -10,6 +10,8 @@ export interface ICategory extends Document {
     isDefault: boolean
     isArchived: boolean
     sortOrder: number
+    createdAt: Date
+    updatedAt: Date
 }
 
 const CategorySchema = new Schema<ICategory>(

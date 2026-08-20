@@ -15,6 +15,7 @@ import {
     validateReceiptFile,
 } from '../../utils/receiptApi'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 
 interface ReceiptAttachmentsProps {
     transactionId?: string | null
@@ -132,9 +133,11 @@ const ReceiptAttachments = ({
 }: ReceiptAttachmentsProps) => {
     const inputRef = useRef<HTMLInputElement>(null)
     const [uploading, setUploading] = useState(false)
+    const online = useOnlineStatus()
+    const uploadDisabled = disabled || !online
 
     const handleFilesSelected = async (files: FileList | null) => {
-        if (!files?.length || disabled) return
+        if (!files?.length || uploadDisabled) return
 
         const selected = Array.from(files)
         for (const file of selected) {
@@ -169,7 +172,7 @@ const ReceiptAttachments = ({
     }
 
     const handleDetach = async (receiptId: string) => {
-        if (!transactionId || disabled) return
+        if (!transactionId || uploadDisabled) return
 
         setUploading(true)
         try {
@@ -188,7 +191,7 @@ const ReceiptAttachments = ({
     }
 
     const handleDeleteOrphan = async (receiptId: string) => {
-        if (disabled) return
+        if (uploadDisabled) return
         setUploading(true)
         try {
             await deleteReceipt(receiptId)
@@ -218,7 +221,8 @@ const ReceiptAttachments = ({
                         <button
                             type="button"
                             onClick={() => inputRef.current?.click()}
-                            disabled={uploading}
+                            disabled={uploading || !online}
+                            title={online ? undefined : 'Receipt upload requires a connection'}
                             className="text-xs text-accent hover:text-accent disabled:opacity-50"
                         >
                             {uploading ? 'Uploading...' : '+ Add receipt'}
@@ -227,13 +231,17 @@ const ReceiptAttachments = ({
                 )}
             </div>
 
+            {!disabled && !online && (
+                <p className="text-xs text-warning">Receipt upload requires an internet connection.</p>
+            )}
+
             {(receipts.length > 0 || pendingFiles.length > 0) && (
                 <div className="flex flex-wrap gap-2">
                     {receipts.map((receipt) => (
                         <ReceiptPreviewTile
                             key={receipt._id}
                             receipt={receipt}
-                            disabled={disabled || uploading}
+                            disabled={uploadDisabled || uploading}
                             onDetach={
                                 transactionId
                                     ? () => void handleDetach(receipt._id)
@@ -269,7 +277,7 @@ const ReceiptAttachments = ({
                 </div>
             )}
 
-            {!disabled && receipts.length === 0 && pendingFiles.length === 0 && (
+            {!disabled && online && receipts.length === 0 && pendingFiles.length === 0 && (
                 <p className="text-xs text-fg-muted">Attach JPEG, PNG, WebP, or PDF receipts (max 5 MB).</p>
             )}
         </div>

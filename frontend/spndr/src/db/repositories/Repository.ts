@@ -2,6 +2,11 @@ import type { LocalDb, LocalDbRow } from '../LocalDb'
 import { buildOutboxEntity, TABLE_TO_ENTITY } from '../../sync/entityMap'
 import { createOutbox } from '../../sync/outbox'
 import { createSqliteOutboxStore } from '../../sync/sqliteOutboxStore'
+import { registerBackgroundSync } from '../../pwa/backgroundSync'
+
+/** Every outbox op captured here should also nudge the browser to wake the service worker for a
+ * flush attempt even if this tab later closes (Sprint 13.8) - see `pwa/backgroundSync.ts`. */
+const outboxOptions = { onEnqueued: () => void registerBackgroundSync() }
 
 /** The syncable entity tables created by migration 0001 (see `sql/0001_init.sql`). */
 export type SyncableTableName =
@@ -14,6 +19,7 @@ export type SyncableTableName =
   | 'recurringRules'
   | 'categorizationRules'
   | 'savingsGoalContributions'
+  | 'transactionTemplates'
 
 export interface SyncableRecord {
   _id: string
@@ -53,6 +59,7 @@ const PROMOTED_COLUMNS: Record<SyncableTableName, readonly string[]> = {
   recurringRules: ['userId', 'workspaceId', 'accountId', 'categoryId', 'nextDueDate', 'isActive', 'isArchived'],
   categorizationRules: ['userId', 'categoryId', 'accountId', 'priority', 'isActive'],
   savingsGoalContributions: ['userId', 'goalId', 'amount', 'contributedAt'],
+  transactionTemplates: ['userId', 'name'],
 }
 
 /** Mirrors the Mongoose schema defaults for promoted fields that are optional on the wire but NOT NULL locally. */
@@ -193,7 +200,7 @@ export class Repository<T extends SyncableRecord> {
    */
   async create(db: LocalDb, doc: T): Promise<T> {
     await this.upsertLocal(db, doc, 'pending')
-    const outbox = createOutbox(createSqliteOutboxStore(db))
+    const outbox = createOutbox(createSqliteOutboxStore(db), outboxOptions)
     await outbox.enqueue({
       entity: buildOutboxEntity(TABLE_TO_ENTITY[this.table], doc._id),
       operation: 'create',
@@ -205,7 +212,7 @@ export class Repository<T extends SyncableRecord> {
   /** `baseUpdatedAt` is the record's `updatedAt` before this edit - the server's conflict precondition. */
   async update(db: LocalDb, doc: T, baseUpdatedAt: string): Promise<T> {
     await this.upsertLocal(db, doc, 'pending')
-    const outbox = createOutbox(createSqliteOutboxStore(db))
+    const outbox = createOutbox(createSqliteOutboxStore(db), outboxOptions)
     await outbox.enqueue({
       entity: buildOutboxEntity(TABLE_TO_ENTITY[this.table], doc._id),
       operation: 'update',
@@ -222,7 +229,7 @@ export class Repository<T extends SyncableRecord> {
       `UPDATE ${this.table} SET deletedAt = ?, updatedAt = ?, _localUpdatedAt = ?, _dirty = 1, _syncState = 'pending' WHERE _id = ?`,
       [deletedAt, deletedAt, deletedAt, id]
     )
-    const outbox = createOutbox(createSqliteOutboxStore(db))
+    const outbox = createOutbox(createSqliteOutboxStore(db), outboxOptions)
     const record = existing as unknown as Record<string, unknown> | null
     await outbox.enqueue({
       entity: buildOutboxEntity(TABLE_TO_ENTITY[this.table], id),

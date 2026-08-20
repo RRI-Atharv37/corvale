@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { Suspense, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
     FiHome,
@@ -46,6 +46,7 @@ import type { ApiResponse, User } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import NotificationCenter from '../notifications/NotificationCenter'
+import LoadingState from '../ui/LoadingState'
 import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
 import BackupRestoreSettings from '../settings/BackupRestoreSettings'
 import ExchangeRatesSettings from '../settings/ExchangeRatesSettings'
@@ -54,7 +55,7 @@ import SyncStatusBadge from '../sync/SyncStatusBadge'
 import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import { startSyncEngine, syncNow } from '../../sync/syncEngine'
 
-const DOCS_URL = 'http://localhost:5174'
+const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
 
 interface NavItem {
     to: string
@@ -334,7 +335,9 @@ const DashboardLayout: React.FC = () => {
                 </header>
 
                 <main className="px-4 py-6 lg:px-8 lg:py-8 max-w-6xl">
-                    <Outlet />
+                    <Suspense fallback={<LoadingState message="Loading page..." />}>
+                        <Outlet />
+                    </Suspense>
                 </main>
             </div>
 

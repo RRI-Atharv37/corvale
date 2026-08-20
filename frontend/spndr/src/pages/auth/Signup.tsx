@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link, useNavigate } from 'react-router-dom'
-import Input from '../../components/inputs/Input'
+import Input from '../../components/Inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -10,6 +10,8 @@ import { useUser } from '../../hooks/useUser'
 import type { ApiResponse, AuthPayload } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
 import toast from 'react-hot-toast'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import OfflineNotice from '../../components/ui/OfflineNotice'
 
 const Signup = () => {
     const [fullName, setFullName] = useState('')
@@ -19,6 +21,7 @@ const Signup = () => {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const navigate = useNavigate()
     const { updateUser } = useUser()
+    const online = useOnlineStatus()
 
     const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -96,8 +99,9 @@ const Signup = () => {
                     />
 
                     {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
+                    {!online && <OfflineNotice message="You are offline. Sign up requires a connection." />}
 
-                    <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                    <button type="submit" className="btn-primary" disabled={isSubmitting || !online}>
                         {isSubmitting ? 'Creating account...' : 'Sign up'}
                     </button>
 

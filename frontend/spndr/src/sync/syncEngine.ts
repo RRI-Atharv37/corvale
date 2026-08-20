@@ -8,6 +8,7 @@ import { createSqliteOutboxStore } from './sqliteOutboxStore'
 import { runPullLoop } from './pullLoop'
 import { recordConflict, listUnresolvedConflicts } from './conflicts'
 import { parseOutboxEntity, type SyncEntityName } from './entityMap'
+import { registerBackgroundSync, startBackgroundSyncBridge } from '../pwa/backgroundSync'
 
 const LAST_SYNCED_KEY = 'lastSyncedAt'
 
@@ -21,6 +22,7 @@ const SYNCABLE_TABLES = [
     'recurringRules',
     'categorizationRules',
     'savingsGoalContributions',
+    'transactionTemplates',
 ] as const
 
 let outboxInstance: Outbox | null = null
@@ -28,7 +30,9 @@ let outboxInstance: Outbox | null = null
 const getOutbox = async (): Promise<Outbox> => {
     if (!outboxInstance) {
         const db = await getLocalDb()
-        outboxInstance = createOutbox(createSqliteOutboxStore(db))
+        outboxInstance = createOutbox(createSqliteOutboxStore(db), {
+            onEnqueued: () => void registerBackgroundSync(),
+        })
     }
     return outboxInstance
 }
@@ -141,7 +145,13 @@ export const resetLocalData = async (): Promise<void> => {
 
 let listenersAttached = false
 
-/** Starts the online/offline-driven sync loop. Only called when `VITE_LOCAL_FIRST` is on (see `utils/localFirstFlag.ts`). */
+/**
+ * Starts the online/offline-driven sync loop. Only called when `VITE_LOCAL_FIRST` is on (see
+ * `utils/localFirstFlag.ts`). Also starts the Background Sync bridge (Sprint 13.8): the `online`
+ * listener alone only fires while this tab is open, so `startBackgroundSyncBridge` adds the
+ * service-worker wake-up channel plus a foreground polling fallback for browsers/situations where
+ * Background Sync can't run (see `pwa/backgroundSync.ts`).
+ */
 export const startSyncEngine = (): (() => void) => {
     if (listenersAttached || typeof window === 'undefined') {
         return () => {}
@@ -152,9 +162,11 @@ export const startSyncEngine = (): (() => void) => {
         void syncNow()
     }
     window.addEventListener('online', handleOnline)
+    const stopBackgroundSyncBridge = startBackgroundSyncBridge(syncNow)
 
     return () => {
         window.removeEventListener('online', handleOnline)
+        stopBackgroundSyncBridge()
         listenersAttached = false
     }
 }

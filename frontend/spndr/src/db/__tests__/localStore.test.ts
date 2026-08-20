@@ -188,4 +188,22 @@ describe('useLocalQuery', () => {
 
     await waitFor(() => expect(result.current.data).toEqual({ callCount: 2 }))
   })
+
+  it('accepts an array of tables (Sprint 13.9) and refetches when any one of them is invalidated', async () => {
+    let callCount = 0
+    const fetcher = vi.fn(async (_db: LocalDb) => {
+      callCount += 1
+      return { callCount }
+    })
+
+    const { result } = renderHook(() => useLocalQuery(['accounts', '_prefs'], fetcher))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.data).toEqual({ callCount: 1 })
+
+    tableInvalidationBus.publish('_prefs')
+    await waitFor(() => expect(result.current.data).toEqual({ callCount: 2 }))
+
+    tableInvalidationBus.publish('accounts')
+    await waitFor(() => expect(result.current.data).toEqual({ callCount: 3 }))
+  })
 })

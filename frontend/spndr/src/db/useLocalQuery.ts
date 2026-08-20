@@ -18,9 +18,19 @@ interface UseLocalQueryResult<T> extends LocalQueryState<T> {
  * refetch}` shape, but the fetcher reads from the local SQLite `LocalDb`
  * instead of hitting the API, and refetches are driven by
  * `tableInvalidationBus` rather than a `window` CustomEvent.
+ *
+ * `table` accepts more than one key so a page can also subscribe to the
+ * `'_prefs'` pseudo-table (see `utils/format.ts`) alongside its own entity
+ * table, when its computed values depend on preferred currency, date format
+ * or exchange rates.
  */
-export const useLocalQuery = <T>(table: string, fetcher: (db: LocalDb) => Promise<T>): UseLocalQueryResult<T> => {
+export const useLocalQuery = <T>(
+  table: string | string[],
+  fetcher: (db: LocalDb) => Promise<T>
+): UseLocalQueryResult<T> => {
   const [state, setState] = useState<LocalQueryState<T>>({ data: null, loading: true, error: null })
+  const tables = Array.isArray(table) ? table : [table]
+  const tablesKey = tables.join(',')
 
   const fetcherRef = useRef(fetcher)
   useEffect(() => {
@@ -44,13 +54,13 @@ export const useLocalQuery = <T>(table: string, fetcher: (db: LocalDb) => Promis
 
   useEffect(() => {
     void refetch()
-  }, [table, refetch])
+  }, [tablesKey, refetch])
 
   useEffect(() => {
-    return tableInvalidationBus.subscribe(table, () => {
-      void refetch()
-    })
-  }, [table, refetch])
+    const unsubscribers = tables.map((t) => tableInvalidationBus.subscribe(t, () => void refetch()))
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tablesKey, refetch])
 
   return { ...state, refetch }
 }

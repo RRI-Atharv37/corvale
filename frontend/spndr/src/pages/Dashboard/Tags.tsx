@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoAdd, IoPencil, IoTrash, IoCloudDownloadOutline } from 'react-icons/io5'
 import PageHeader from '../../components/ui/PageHeader'
@@ -7,13 +7,12 @@ import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import FormField from '../../components/forms/FormField'
 import TagChip from '../../components/tags/TagChip'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
-import type { ApiResponse, Tag, TagFormData } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
+import type { Tag, TagFormData } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { DEFAULT_CATEGORY_COLORS } from '../../utils/categoryIcons'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import OfflineNotice from '../../components/ui/OfflineNotice'
+import { useTagsData } from './hooks/useTagsData'
 
 const emptyForm = (): TagFormData => ({
     name: '',
@@ -31,16 +30,9 @@ const Tags = () => {
     const [deleting, setDeleting] = useState(false)
     const [importing, setImporting] = useState(false)
 
-    const fetchTags = useCallback(async (): Promise<Tag[]> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL)
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load tags'))
-        }
-    }, [])
+    const online = useOnlineStatus()
 
-    const { data: tags, loading, error, refetch } = useAsyncData(fetchTags, [fetchTags])
+    const { tags, loading, error, refetch, createTag, updateTag, deleteTag, dedupeTags } = useTagsData()
 
     const openCreate = () => {
         setCreateForm(emptyForm())
@@ -77,13 +69,9 @@ const Tags = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.post(API_PATHS.TAGS.CREATE, {
-                name: createForm.name.trim(),
-                color: createForm.color,
-            })
+            await createTag({ name: createForm.name.trim(), color: createForm.color })
             toast.success('Tag created')
             closeCreate()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to create tag'))
         } finally {
@@ -102,13 +90,9 @@ const Tags = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.put(API_PATHS.TAGS.UPDATE(editingTag._id), {
-                name: editForm.name.trim(),
-                color: editForm.color,
-            })
+            await updateTag(editingTag, { name: editForm.name.trim(), color: editForm.color })
             toast.success('Tag updated')
             closeEdit()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to update tag'))
         } finally {
@@ -121,10 +105,9 @@ const Tags = () => {
 
         setDeleting(true)
         try {
-            await axiosInstance.delete(API_PATHS.TAGS.DELETE(deleteTarget._id))
+            await deleteTag(deleteTarget)
             toast.success('Tag deleted')
             setDeleteTarget(null)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to delete tag'))
         } finally {
@@ -133,14 +116,15 @@ const Tags = () => {
     }
 
     const handleImport = async () => {
+        if (!online) {
+            toast.error('Importing tags from transactions requires an internet connection')
+            return
+        }
+
         setImporting(true)
         try {
-            const response = await axiosInstance.post<
-                ApiResponse<{ created: number; skipped: number; message: string }>
-            >(API_PATHS.TAGS.DEDUPE)
-            const result = unwrapApiData(response)
+            const result = await dedupeTags()
             toast.success(result.message)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to import tags from transactions'))
         } finally {
@@ -194,7 +178,8 @@ const Tags = () => {
                         <button
                             type="button"
                             onClick={handleImport}
-                            disabled={importing}
+                            disabled={importing || !online}
+                            title={online ? undefined : 'Importing requires a connection'}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 transition-colors disabled:opacity-50"
                         >
                             <IoCloudDownloadOutline size={18} />
@@ -211,6 +196,8 @@ const Tags = () => {
                     </div>
                 }
             />
+
+            {!online && <OfflineNotice message="You are offline. Importing tags from transactions requires a connection." />}
 
             <AsyncContent
                 loading={loading}

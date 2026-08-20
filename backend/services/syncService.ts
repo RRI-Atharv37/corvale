@@ -9,6 +9,7 @@ import SavingsGoal from '../models/SavingsGoal'
 import SavingsGoalContribution from '../models/SavingsGoalContribution'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
+import TransactionTemplate from '../models/TransactionTemplate'
 import { CustomError } from '../utils/customError'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { buildScopedListFilter } from '../utils/workspaceUtils'
@@ -24,6 +25,12 @@ import { buildScopedListFilter } from '../utils/workspaceUtils'
  * ever been added to the sync surface. Both are personal-only (no
  * `workspaceId` field on either model), scoped by `userId` regardless of
  * the caller's active workspace, the same way `tag` already is.
+ *
+ * `transactionTemplate` was added in Sprint 13.9 alongside the rest of the
+ * push surface generalization (syncController.ts's applyOp): the new local
+ * TransactionTemplate table needs bootstrap/pull coverage the same way
+ * `categorizationRule` does. Personal-only (no `workspaceId` field), scoped
+ * by `userId`.
  */
 export const SYNC_ENTITIES = [
     'account',
@@ -35,6 +42,7 @@ export const SYNC_ENTITIES = [
     'recurringRule',
     'categorizationRule',
     'savingsGoalContribution',
+    'transactionTemplate',
 ] as const
 export type SyncEntityName = (typeof SYNC_ENTITIES)[number]
 
@@ -48,6 +56,7 @@ const RESPONSE_FIELD: Record<SyncEntityName, string> = {
     recurringRule: 'recurringRules',
     categorizationRule: 'categorizationRules',
     savingsGoalContribution: 'savingsGoalContributions',
+    transactionTemplate: 'transactionTemplates',
 }
 
 interface EntityConfig {
@@ -102,6 +111,11 @@ const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
     savingsGoalContribution: {
         model: SavingsGoalContribution as unknown as Model<Document>,
         hasSoftDelete: false,
+        buildScope: (userId) => ({ userId: new Types.ObjectId(userId) }),
+    },
+    transactionTemplate: {
+        model: TransactionTemplate as unknown as Model<Document>,
+        hasSoftDelete: true,
         buildScope: (userId) => ({ userId: new Types.ObjectId(userId) }),
     },
 }

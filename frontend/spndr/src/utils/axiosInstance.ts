@@ -16,6 +16,24 @@ interface RetryableRequest extends InternalAxiosRequestConfig {
     _retry?: boolean
 }
 
+const WRITE_METHODS = new Set(['post', 'put', 'patch', 'delete'])
+
+/** Workspace-scoped writes are attached via `buildWorkspaceBodyFields`/`buildWorkspaceQueryParams`
+ * (`utils/workspaceScope.ts`) as a plain `workspaceId` body field or query param - never on
+ * `FormData` bodies (receipt upload has no workspace scoping of its own). */
+const isWorkspaceScopedWrite = (config: InternalAxiosRequestConfig): boolean => {
+    const method = config.method?.toLowerCase()
+    if (!method || !WRITE_METHODS.has(method)) return false
+
+    const bodyWorkspaceId =
+        config.data && typeof config.data === 'object' && !(config.data instanceof FormData)
+            ? (config.data as Record<string, unknown>).workspaceId
+            : undefined
+    const paramsWorkspaceId = (config.params as Record<string, unknown> | undefined)?.workspaceId
+
+    return Boolean(bodyWorkspaceId || paramsWorkspaceId)
+}
+
 let isRefreshing = false
 let refreshQueue: Array<(token: string | null) => void> = []
 
@@ -51,6 +69,10 @@ const notifyTokenRevoked = (message: unknown): void => {
 
 client.interceptors.request.use(
     (config) => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine && isWorkspaceScopedWrite(config)) {
+            return Promise.reject(new Error('Workspace changes require an internet connection - you are offline.'))
+        }
+
         const token = localStorage.getItem('token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`

@@ -15,6 +15,7 @@ export const ENTITY_TO_TABLE = {
     recurringRule: 'recurringRules',
     categorizationRule: 'categorizationRules',
     savingsGoalContribution: 'savingsGoalContributions',
+    transactionTemplate: 'transactionTemplates',
 } as const satisfies Record<string, SyncableTableName>
 
 export type SyncEntityName = keyof typeof ENTITY_TO_TABLE

@@ -19,6 +19,8 @@ export interface IAccount extends Document {
     isArchived: boolean
     interestRate?: number
     minimumPayment?: number
+    createdAt: Date
+    updatedAt: Date
 }
 
 const AccountSchema = new Schema<IAccount>(

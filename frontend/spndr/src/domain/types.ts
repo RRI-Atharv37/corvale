@@ -38,6 +38,16 @@ export interface LocalTransaction extends SyncableRecord {
   paymentMethod?: string
   source?: string
   splitTransactionId: string | null
+  /** Set on both legs of a transfer (mirrors `backend/models/Transaction.ts`); null otherwise. */
+  transferPairId?: string | null
+  /**
+   * Mongoose `timestamps: true` creation time - present on every server
+   * document (hence in the `data` JSON blob) even though it isn't a
+   * `PROMOTED_COLUMNS` entry. Needed to tell a transfer's outbound leg from
+   * its inbound leg (see `domain/accountBalances.ts`) the same way
+   * `backend/controllers/accountController.ts`'s `recomputeBalance` does.
+   */
+  createdAt?: string
 }
 
 export interface LocalCategory extends SyncableRecord {
@@ -96,4 +106,41 @@ export interface LocalCategorizationRule extends SyncableRecord {
   tags?: string[]
   priority: number
   isActive: boolean
+}
+
+export interface LocalTag extends SyncableRecord {
+  userId: string
+  name: string
+  color?: string
+}
+
+export interface LocalRecurringRule extends SyncableRecord {
+  userId: string
+  workspaceId?: string | null
+  title: string
+  type: Exclude<TransactionType, 'transfer'>
+  amount: number
+  currency: string
+  accountId: string
+  categoryId: string
+  interval: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom'
+  customIntervalDays?: number
+  nextDueDate: string
+  description?: string
+  paymentMethod?: string
+  tags?: string[]
+  isActive: boolean
+  isArchived: boolean
+  isCancelled: boolean
+}
+
+export interface LocalTransactionTemplate extends SyncableRecord {
+  userId: string
+  name: string
+  type: Exclude<TransactionType, 'transfer'>
+  amount: number
+  accountId: string
+  categoryId: string
+  tags?: string[]
+  description?: string
 }
