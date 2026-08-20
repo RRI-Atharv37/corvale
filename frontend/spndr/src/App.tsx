@@ -16,6 +16,8 @@ import Landing from './pages/Landing'
 import PinGate from './offline/PinGate'
 import UpdatePrompt from './pwa/UpdatePrompt'
 import OfflineBanner from './pwa/OfflineBanner'
+import DesktopUpdatePrompt from './desktop/DesktopUpdatePrompt'
+import { isTauriRuntime } from './desktop/isTauri'
 
 // Sprint 13.8: dashboard pages are route-level code-split (previously all 25 were static
 // imports, so every visitor downloaded the entire dashboard - including Reports/recharts and
@@ -92,7 +94,7 @@ const App = () => {
             <Router>
                 <OfflineBanner />
                 <AppRoutes />
-                <UpdatePrompt />
+                {isTauriRuntime() ? <DesktopUpdatePrompt /> : <UpdatePrompt />}
                 <Toaster
                     position="top-right"
                     toastOptions={{

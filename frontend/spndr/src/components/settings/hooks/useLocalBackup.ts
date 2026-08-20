@@ -12,6 +12,8 @@ import { downloadExportBlob } from '../../../utils/downloadExport'
 import { useUser } from '../../../hooks/useUser'
 import { useWorkspace } from '../../../hooks/useWorkspace'
 import type { BackupRestorePreview, BackupRestoreResult } from '../../../types/api'
+import { isTauriRuntime } from '../../../desktop/isTauri'
+import { saveBackupFileNative } from '../../../desktop/nativeBackup'
 
 export const LOCAL_BACKUP_ACCEPT = '.json,application/json'
 
@@ -59,9 +61,19 @@ export const useLocalBackup = (): UseLocalBackupResult => {
     const exportLocal = useCallback(async () => {
         const db = await getLocalDb()
         const payload = await exportLocalBackup(db, { workspaceId: activeWorkspaceId ?? null })
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
         const scopeLabel = payload.scope.workspaceId ? 'workspace' : 'personal'
-        downloadExportBlob(blob, `spndr-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`)
+        const filename = `spndr-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`
+        const json = JSON.stringify(payload, null, 2)
+
+        // Desktop shell (Sprint 13.11): a real "Save As" dialog via Rust, since a Tauri webview
+        // doesn't reliably turn the browser's `<a download>` blob-URL trick into an OS save prompt.
+        if (isTauriRuntime()) {
+            await saveBackupFileNative(filename, json)
+            return
+        }
+
+        const blob = new Blob([json], { type: 'application/json' })
+        downloadExportBlob(blob, filename)
     }, [activeWorkspaceId])
 
     const parseFile = useCallback(async (file: File): Promise<SpndrBackupPayload> => {

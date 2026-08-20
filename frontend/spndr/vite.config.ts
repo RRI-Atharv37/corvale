@@ -7,6 +7,23 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Tauri-recommended dev-server settings (https://v2.tauri.app/start/frontend/vite/):
+  // `clearScreen: false` keeps Cargo's compiler output visible instead of Vite wiping it, and
+  // `strictPort: true` stops Vite from silently moving to another port if 5173 is busy - which
+  // would leave `tauri.conf.json`'s `devUrl: "http://localhost:5173"` pointed at a dead server.
+  clearScreen: false,
+  server: {
+    port: 5173,
+    strictPort: true,
+    watch: {
+      // Without this, Vite's file watcher also crawls `src-tauri/target/` - the directory Cargo
+      // is actively writing build artifacts into during `tauri dev`/`tauri build`. On Windows
+      // that race trips an EBUSY error (Cargo holds a lock Vite's watcher can't read) and kills
+      // the whole dev server; on Linux/macOS it's merely wasted work. Vite has no reason to watch
+      // Rust build output either way.
+      ignored: ['**/src-tauri/**'],
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
