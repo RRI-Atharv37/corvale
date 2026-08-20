@@ -5,6 +5,7 @@ import { IoCloudDownloadOutline, IoCloudUploadOutline } from 'react-icons/io5'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import type { BackupEntityCounts, BackupRestorePreview } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import {
     BACKUP_ACCEPT,
     commitBackupRestore,
@@ -12,6 +13,7 @@ import {
     previewBackupRestore,
     validateBackupFile,
 } from '../../utils/backupApi'
+import { LOCAL_BACKUP_ACCEPT, useLocalBackup, validateLocalBackupFile } from './hooks/useLocalBackup'
 
 const countLabels: { key: keyof BackupEntityCounts; label: string }[] = [
     { key: 'accounts', label: 'Accounts' },
@@ -43,6 +45,8 @@ const CountGrid: React.FC<{ counts: BackupEntityCounts }> = ({ counts }) => (
 const BackupRestoreSettings: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
+    const localFirst = isLocalFirstEnabled()
+    const localBackup = useLocalBackup()
 
     const [exporting, setExporting] = useState<'json' | 'zip' | null>(null)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -57,7 +61,13 @@ const BackupRestoreSettings: React.FC = () => {
     const handleExport = async (format: 'json' | 'zip') => {
         setExporting(format)
         try {
-            await exportBackup(format, activeWorkspaceId)
+            if (localFirst) {
+                // ZIP (receipts) has no local equivalent - see `domain/backup.ts`'s header comment;
+                // the ZIP button is hidden in local-first mode so this branch is JSON-only in practice.
+                await localBackup.exportLocal()
+            } else {
+                await exportBackup(format, activeWorkspaceId)
+            }
             toast.success(format === 'zip' ? 'ZIP backup downloaded' : 'JSON backup downloaded')
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to export backup'))
@@ -75,7 +85,7 @@ const BackupRestoreSettings: React.FC = () => {
             return
         }
 
-        const validationError = validateBackupFile(file)
+        const validationError = localFirst ? validateLocalBackupFile(file) : validateBackupFile(file)
         if (validationError) {
             toast.error(validationError)
             event.target.value = ''
@@ -91,7 +101,9 @@ const BackupRestoreSettings: React.FC = () => {
 
         setPreviewLoading(true)
         try {
-            const result = await previewBackupRestore(selectedFile, activeWorkspaceId)
+            const result = localFirst
+                ? await localBackup.previewLocalRestoreFile(selectedFile)
+                : await previewBackupRestore(selectedFile, activeWorkspaceId)
             setPreview(result)
             if (!result.valid) {
                 toast.error(result.errors[0] ?? 'Backup could not be restored')
@@ -118,7 +130,9 @@ const BackupRestoreSettings: React.FC = () => {
 
         setRestoring(true)
         try {
-            const result = await commitBackupRestore(selectedFile, activeWorkspaceId)
+            const result = localFirst
+                ? await localBackup.commitLocalRestoreFile(selectedFile)
+                : await commitBackupRestore(selectedFile, activeWorkspaceId)
             const totalCreated = Object.values(result.created).reduce((sum, count) => sum + count, 0)
             toast.success(`Restore complete — ${totalCreated} records created`)
             setSelectedFile(null)
@@ -137,9 +151,15 @@ const BackupRestoreSettings: React.FC = () => {
         <div>
             <p className="section-label mb-3">Backup &amp; restore</p>
             <p className="text-sm text-text-muted mb-4">
-                Export all {scopeLabel} as JSON, or ZIP with receipt files. Restore creates new records
-                with remapped ids — it does not overwrite existing data.
+                {localFirst
+                    ? `Export all ${scopeLabel} as JSON from the local store, or restore a JSON backup — works fully offline. Restore creates new records with remapped ids; it does not overwrite existing data.`
+                    : `Export all ${scopeLabel} as JSON, or ZIP with receipt files. Restore creates new records with remapped ids — it does not overwrite existing data.`}
             </p>
+            {localFirst && (
+                <p className="mb-4 text-xs text-text-quiet">
+                    ZIP export/restore with receipt files requires an online connection.
+                </p>
+            )}
 
             {!canEdit && (
                 <p className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
@@ -159,15 +179,17 @@ const BackupRestoreSettings: React.FC = () => {
                         <IoCloudDownloadOutline size={16} />
                         {exporting === 'json' ? 'Exporting…' : 'Export JSON'}
                     </button>
-                    <button
-                        type="button"
-                        disabled={!canEdit || exporting !== null}
-                        onClick={() => void handleExport('zip')}
-                        className="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-primary hover:border-accent/40 hover:bg-accent-subtle disabled:opacity-50"
-                    >
-                        <IoCloudDownloadOutline size={16} />
-                        {exporting === 'zip' ? 'Exporting…' : 'Export ZIP (+ receipts)'}
-                    </button>
+                    {!localFirst && (
+                        <button
+                            type="button"
+                            disabled={!canEdit || exporting !== null}
+                            onClick={() => void handleExport('zip')}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-primary hover:border-accent/40 hover:bg-accent-subtle disabled:opacity-50"
+                        >
+                            <IoCloudDownloadOutline size={16} />
+                            {exporting === 'zip' ? 'Exporting…' : 'Export ZIP (+ receipts)'}
+                        </button>
+                    )}
                 </div>
 
                 <div className="rounded-lg border border-border-subtle p-4 space-y-3">
@@ -175,7 +197,7 @@ const BackupRestoreSettings: React.FC = () => {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept={BACKUP_ACCEPT}
+                        accept={localFirst ? LOCAL_BACKUP_ACCEPT : BACKUP_ACCEPT}
                         disabled={!canEdit || restoring}
                         onChange={handleFileChange}
                         className="block w-full text-sm text-text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent-subtle file:px-3 file:py-2 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/20"

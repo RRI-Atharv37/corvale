@@ -2,6 +2,7 @@ import type { Migration } from './runMigrations'
 import initSql from './sql/0001_init.sql?raw'
 import localDomainEntitiesSql from './sql/0002_local_domain_entities.sql?raw'
 import transactionTemplatesSql from './sql/0003_transaction_templates.sql?raw'
+import receiptsSql from './sql/0004_receipts.sql?raw'
 
 /**
  * The app's real, versioned schema history. Each entry's `up` runs the
@@ -27,6 +28,12 @@ export const MIGRATIONS: Migration[] = [
     version: 3,
     up: async (tx) => {
       await tx.exec(transactionTemplatesSql)
+    },
+  },
+  {
+    version: 4,
+    up: async (tx) => {
+      await tx.exec(receiptsSql)
     },
   },
 ]

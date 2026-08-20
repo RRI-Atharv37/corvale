@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
     Bar,
@@ -26,23 +26,16 @@ import {
     EXPORT_FORMAT_OPTIONS,
     type ExportFormat,
 } from '../../utils/downloadExport'
-import { useAsyncData } from '../../hooks/useAsyncData'
+import { useReportsData } from './hooks/useReportsData'
 import type {
-    ApiResponse,
     BudgetAnalysisReport,
     CrossoverPointReport,
     IncomeVsExpenseResponse,
-    LargestExpensesResponse,
-    PeriodAverages,
-    RecurringTotalsReport,
     ReportMetricKey,
     ReportPeriodType,
-    SavedReport,
-    SavingsRateReport,
     SpendingAnalysisReport,
     SpendingTrendsResponse,
 } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import {
     formatContributionDate,
@@ -68,35 +61,7 @@ import NetWorthChart from '../../components/dashboard/NetWorthChart'
 import BudgetOverviewChart from '../../components/dashboard/BudgetOverviewChart'
 import DashboardCalendarCard from '../../components/dashboard/DashboardCalendarCard'
 import ThisMonthChart from '../../components/dashboard/ThisMonthChart'
-import type {
-    BudgetOverviewResponse,
-    CategoryBreakdownItem,
-    DashboardCashFlowResponse,
-    DashboardGroupBy,
-    NetWorthTrendResponse,
-    RecurringRule,
-    Transaction,
-} from '../../types/api'
-
-interface ReportsData {
-    averages: PeriodAverages
-    largestExpenses: LargestExpensesResponse
-    spendingTrends: SpendingTrendsResponse
-    incomeVsExpense: IncomeVsExpenseResponse
-    savingsRate: SavingsRateReport
-    recurringTotals: RecurringTotalsReport
-    categoryBreakdown: CategoryBreakdownItem[]
-    budgetAnalysis: BudgetAnalysisReport
-    spendingAnalysis: SpendingAnalysisReport
-    crossoverPoint: CrossoverPointReport
-    savedReports: SavedReport[]
-    cashFlow: DashboardCashFlowResponse
-    netWorthTrend: NetWorthTrendResponse
-    budgetOverview: BudgetOverviewResponse
-    thisMonthCashFlow: DashboardCashFlowResponse
-    recurringRules: RecurringRule[]
-    recurringDrafts: Transaction[]
-}
+import type { DashboardGroupBy } from '../../types/api'
 
 const resolveGroupByFromDates = (startDate: string, endDate: string): DashboardGroupBy => {
     const start = new Date(`${startDate}T12:00:00`)
@@ -207,108 +172,13 @@ const Reports = () => {
         return { startDate, endDate, groupBy: 'day' as DashboardGroupBy }
     }, [])
 
-    const fetchReports = useCallback(async (): Promise<ReportsData> => {
-        try {
-            const [
-                averagesRes,
-                largestRes,
-                trendsRes,
-                comparisonRes,
-                savingsRes,
-                recurringRes,
-                categoryRes,
-                budgetAnalysisRes,
-                spendingAnalysisRes,
-                crossoverRes,
-                savedReportsRes,
-                cashFlowRes,
-                netWorthRes,
-                budgetOverviewRes,
-                thisMonthRes,
-                rulesRes,
-                draftsRes,
-            ] = await Promise.all([
-                axiosInstance.get<ApiResponse<PeriodAverages>>(API_PATHS.REPORTS.AVERAGES, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<LargestExpensesResponse>>(API_PATHS.REPORTS.LARGEST_EXPENSES, {
-                    params: { ...periodParams, limit: 10 },
-                }),
-                axiosInstance.get<ApiResponse<SpendingTrendsResponse>>(API_PATHS.REPORTS.SPENDING_TRENDS, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<IncomeVsExpenseResponse>>(API_PATHS.REPORTS.INCOME_VS_EXPENSE, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<SavingsRateReport>>(API_PATHS.REPORTS.SAVINGS_RATE, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<RecurringTotalsReport>>(API_PATHS.REPORTS.RECURRING_TOTALS, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<{ breakdown: CategoryBreakdownItem[] }>>(
-                    API_PATHS.DASHBOARD.CATEGORY_BREAKDOWN,
-                    {
-                        params: {
-                            startDate: periodDates.startDate,
-                            endDate: periodDates.endDate,
-                            type: 'expense',
-                        },
-                    }
-                ),
-                axiosInstance.get<ApiResponse<BudgetAnalysisReport>>(API_PATHS.REPORTS.BUDGET_ANALYSIS, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<SpendingAnalysisReport>>(API_PATHS.REPORTS.SPENDING_ANALYSIS, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<CrossoverPointReport>>(API_PATHS.REPORTS.CROSSOVER_POINT, {
-                    params: periodParams,
-                }),
-                axiosInstance.get<ApiResponse<SavedReport[]>>(API_PATHS.REPORTS.SAVED),
-                axiosInstance.get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, {
-                    params: chartQuery,
-                }),
-                axiosInstance.get<ApiResponse<NetWorthTrendResponse>>(API_PATHS.DASHBOARD.NET_WORTH_TREND, {
-                    params: chartQuery,
-                }),
-                axiosInstance.get<ApiResponse<BudgetOverviewResponse>>(API_PATHS.DASHBOARD.BUDGET_OVERVIEW),
-                axiosInstance.get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, {
-                    params: thisMonthQuery,
-                }),
-                axiosInstance.get<ApiResponse<RecurringRule[]>>(API_PATHS.RECURRING_RULES.GET_ALL, {
-                    params: { includeArchived: false },
-                }),
-                axiosInstance.get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS),
-            ])
-
-            const categoryPayload = unwrapApiData(categoryRes)
-
-            return {
-                averages: unwrapApiData(averagesRes),
-                largestExpenses: unwrapApiData(largestRes),
-                spendingTrends: unwrapApiData(trendsRes),
-                incomeVsExpense: unwrapApiData(comparisonRes),
-                savingsRate: unwrapApiData(savingsRes),
-                recurringTotals: unwrapApiData(recurringRes),
-                categoryBreakdown: categoryPayload.breakdown,
-                budgetAnalysis: unwrapApiData(budgetAnalysisRes),
-                spendingAnalysis: unwrapApiData(spendingAnalysisRes),
-                crossoverPoint: unwrapApiData(crossoverRes),
-                savedReports: unwrapApiData(savedReportsRes),
-                cashFlow: unwrapApiData(cashFlowRes),
-                netWorthTrend: unwrapApiData(netWorthRes),
-                budgetOverview: unwrapApiData(budgetOverviewRes),
-                thisMonthCashFlow: unwrapApiData(thisMonthRes),
-                recurringRules: unwrapApiData(rulesRes),
-                recurringDrafts: unwrapApiData(draftsRes),
-            }
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load reports'))
-        }
-    }, [periodParams, periodDates, chartQuery, thisMonthQuery, savedReportsKey])
-
-    const { data, loading, error, refetch } = useAsyncData(fetchReports, [fetchReports])
+    const { data, loading, error, refetch } = useReportsData(
+        periodParams,
+        periodDates,
+        chartQuery,
+        thisMonthQuery,
+        savedReportsKey
+    )
 
     const toggleMetric = (metric: ReportMetricKey) => {
         setSelectedMetrics((current) =>

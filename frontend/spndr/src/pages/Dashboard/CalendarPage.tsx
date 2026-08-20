@@ -1,17 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IoChevronBack, IoChevronForward } from 'react-icons/io5'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
-import { buildWorkspaceQueryParams } from '../../utils/workspaceScope'
-import type { ApiResponse, CalendarEvent, CalendarEventType } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
-import { getApiErrorMessage } from '../../utils/apiError'
+import { useCalendarData } from './hooks/useCalendarData'
+import type { CalendarEvent, CalendarEventType } from '../../types/api'
 import { formatCurrency, toDateInputValue } from '../../utils/format'
 import { buildCalendarGrid, WEEKDAY_LABELS } from '../../utils/recurringUtils'
 
@@ -36,7 +31,7 @@ const EVENT_STYLES: Record<CalendarEventType, { label: string; className: string
 const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 const CalendarPage: React.FC = () => {
-    const { activeWorkspaceId, activeWorkspace, isPersonal } = useWorkspace()
+    const { activeWorkspace, isPersonal } = useWorkspace()
     const [cursor, setCursor] = useState(() => {
         const now = new Date()
         return { year: now.getFullYear(), month: now.getMonth() + 1 }
@@ -46,22 +41,7 @@ const CalendarPage: React.FC = () => {
     const rangeStart = cells[0]?.date ?? toDateInputValue(new Date())
     const rangeEnd = cells[cells.length - 1]?.date ?? rangeStart
 
-    const fetchEvents = useCallback(async (): Promise<CalendarEvent[]> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<CalendarEvent[]>>(API_PATHS.CALENDAR.GET, {
-                params: {
-                    start: rangeStart,
-                    end: rangeEnd,
-                    ...buildWorkspaceQueryParams(activeWorkspaceId),
-                },
-            })
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load calendar'))
-        }
-    }, [rangeStart, rangeEnd, activeWorkspaceId])
-
-    const { data: events, loading, error, refetch } = useAsyncData(fetchEvents, [fetchEvents])
+    const { events, loading, error, refetch } = useCalendarData(rangeStart, rangeEnd)
 
     const eventsByDate = useMemo(() => {
         const map = new Map<string, CalendarEvent[]>()

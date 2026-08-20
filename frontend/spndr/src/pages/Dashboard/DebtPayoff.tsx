@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
     CartesianGrid,
@@ -15,14 +15,10 @@ import AsyncContent from '../../components/ui/AsyncContent'
 import StatCard from '../../components/ui/StatCard'
 import FormField from '../../components/forms/FormField'
 import AccountMultiSelect from '../../components/budgets/AccountMultiSelect'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
-import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
-import type { Account, ApiResponse, DebtPayoffPlan, DebtPayoffStrategy } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
+import { useDebtPayoffData } from './hooks/useDebtPayoffData'
+import type { DebtPayoffPlan, DebtPayoffStrategy } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
 import {
@@ -49,22 +45,20 @@ const STRATEGY_OPTIONS: { value: DebtPayoffStrategy; label: string; description:
 ]
 
 const DebtPayoff: React.FC = () => {
-    const { activeWorkspaceId, activeWorkspace, isPersonal, canEdit } = useWorkspace()
+    const { activeWorkspace, isPersonal, canEdit } = useWorkspace()
     const [strategy, setStrategy] = useState<DebtPayoffStrategy>('snowball')
     const [extraPayment, setExtraPayment] = useState('0')
     const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([])
     const [submitting, setSubmitting] = useState(false)
     const [plan, setPlan] = useState<DebtPayoffPlan | null>(null)
 
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
-            params: buildWorkspaceQueryParams(activeWorkspaceId),
-        })
-        return unwrapApiData(response).filter((account) => !account.isArchived)
-    }, [activeWorkspaceId])
-
-    const { data: accounts, loading: accountsLoading, error: accountsError, refetch: refetchAccounts } =
-        useAsyncData(fetchAccounts, [fetchAccounts])
+    const {
+        accounts,
+        loading: accountsLoading,
+        error: accountsError,
+        refetch: refetchAccounts,
+        generatePlan,
+    } = useDebtPayoffData()
 
     const creditAccounts = useMemo(
         () => (accounts ?? []).filter((account) => account.type === 'credit' && account.currentBalance < 0),
@@ -90,13 +84,8 @@ const DebtPayoff: React.FC = () => {
 
         setSubmitting(true)
         try {
-            const response = await axiosInstance.post<ApiResponse<DebtPayoffPlan>>(API_PATHS.DEBTS.PLAN, {
-                strategy,
-                extraPayment: extra,
-                ...(selectedAccountIds.length > 0 ? { accountIds: selectedAccountIds } : {}),
-                ...buildWorkspaceBodyFields(activeWorkspaceId),
-            })
-            setPlan(unwrapApiData(response))
+            const generatedPlan = await generatePlan(strategy, extra, selectedAccountIds)
+            setPlan(generatedPlan)
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to generate payoff plan'))
         } finally {
