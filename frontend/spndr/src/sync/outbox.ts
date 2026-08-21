@@ -37,7 +37,16 @@ export interface OutboxOp extends EnqueueInput {
     nextAttemptAt: number | null
 }
 
-export type PushOpStatus = 'applied' | 'conflict' | 'rejected'
+/**
+ * `id_conflict` (SEC-13, BUG-02): the server rejected a create whose
+ * client-generated id collided with a document owned by someone else. There
+ * is no server doc to reconcile against (unlike `conflict`, this was never
+ * the same logical record), so it isn't routed through the conflict inbox -
+ * it falls through `Outbox.flush`'s default retry-with-backoff path like
+ * `rejected`, keeping the op visibly pending rather than silently dropped,
+ * until the local-id-regeneration flow (not yet built) resolves it.
+ */
+export type PushOpStatus = 'applied' | 'conflict' | 'rejected' | 'id_conflict'
 
 export interface PushResult {
     opId: string

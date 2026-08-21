@@ -15,7 +15,7 @@ import TransactionTemplate from '../models/TransactionTemplate'
 import SyncOperation, { SyncOpStatus } from '../models/SyncOperation'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { getUserId, handleResponses, validateRequiredFields } from '../utils/sharedUtils'
+import { getUserId, handleResponses, isDuplicateKeyError, validateRequiredFields } from '../utils/sharedUtils'
 import {
     createTransactionForUser,
     createTransferForOp,
@@ -86,12 +86,43 @@ type ApplyOpOutcome =
     | { status: 'applied'; resultId: string | null }
     | { status: 'noop'; resultId: string | null }
     | { status: 'conflict'; resultId: string | null; conflict: SyncOpConflict }
+    | { status: 'id_conflict'; resultId: null }
+
+interface OwnableDoc {
+    userId: Types.ObjectId | null
+    workspaceId?: Types.ObjectId | null
+}
+
+/**
+ * Whether an existing document a create op's client-generated `_id`
+ * collided with belongs to the calling user (SEC-13, BUG-02). A workspace
+ * doc is "owned" by any member; a `userId: null` doc (the master-category
+ * concept) is shared and never a conflict; otherwise the doc's `userId`
+ * must match the caller.
+ */
+const isOwnedByCaller = async (existing: OwnableDoc, userId: string): Promise<boolean> => {
+    if (existing.workspaceId) {
+        try {
+            await assertWorkspaceMembership(existing.workspaceId.toString(), userId, 'viewer')
+            return true
+        } catch {
+            return false
+        }
+    }
+    if (existing.userId === null) {
+        return true
+    }
+    return existing.userId.toString() === userId
+}
 
 const applyCreateOp = async (userId: string, payload: Record<string, unknown>): Promise<ApplyOpOutcome> => {
     const clientId = payload._id
     if (typeof clientId === 'string' && Types.ObjectId.isValid(clientId)) {
         const existing = await Transaction.findById(clientId)
         if (existing) {
+            if (!(await isOwnedByCaller(existing, userId))) {
+                return { status: 'id_conflict', resultId: null }
+            }
             return { status: 'noop', resultId: existing._id.toString() }
         }
     }
@@ -184,10 +215,11 @@ interface MinimalSyncDoc extends Document {
 
 /**
  * `category` is the one model with a nullable `userId` (the master-category
- * concept), so it's excluded from this constraint and only ever goes
- * through applyGenericCreate (which doesn't need ownership fields) plus its
- * own bespoke applyCategoryUpdateOp — never fetchCurrentGeneric/
- * applyGenericUpdate, which assume a real owner.
+ * concept), so it's excluded from this constraint (`EntityDoc.userId` is
+ * non-null) and only ever goes through applyGenericCreate — whose ownership
+ * check (`OwnableDoc`, SEC-13) tolerates a null `userId` as a shared/master
+ * resource — plus its own bespoke applyCategoryUpdateOp, never
+ * fetchCurrentGeneric/applyGenericUpdate, which assume a real owner.
  */
 interface EntityDoc extends MinimalSyncDoc {
     userId: Types.ObjectId
@@ -200,8 +232,9 @@ interface EntityDoc extends MinimalSyncDoc {
 const isStaleGeneric = (current: EntityDoc, baseUpdatedAt: string | undefined): boolean =>
     current.deletedAt != null || (baseUpdatedAt !== undefined && current.updatedAt.toISOString() !== baseUpdatedAt)
 
-const applyGenericCreate = async <T extends MinimalSyncDoc>(
+const applyGenericCreate = async <T extends MinimalSyncDoc & OwnableDoc>(
     model: Model<T>,
+    userId: string,
     payload: Record<string, unknown>,
     createForOp: () => Promise<{ _id: Types.ObjectId }>
 ): Promise<ApplyOpOutcome> => {
@@ -209,6 +242,9 @@ const applyGenericCreate = async <T extends MinimalSyncDoc>(
     if (typeof clientId === 'string' && Types.ObjectId.isValid(clientId)) {
         const existing = await model.findById(clientId)
         if (existing) {
+            if (!(await isOwnedByCaller(existing, userId))) {
+                return { status: 'id_conflict', resultId: null }
+            }
             return { status: 'noop', resultId: existing._id.toString() }
         }
     }
@@ -309,14 +345,16 @@ const applyCategoryUpdateOp = async (
 }
 
 const categoryHandlers: EntityOpHandlers = {
-    create: (userId, payload) => applyGenericCreate(Category, payload, () => createCategoryForOp(userId, payload)),
+    create: (userId, payload) =>
+        applyGenericCreate(Category, userId, payload, () => createCategoryForOp(userId, payload)),
     update: applyCategoryUpdateOp,
     delete: (userId, payload) => deleteCategoryForOp(userId, payload),
 }
 
 const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
     account: {
-        create: (userId, payload) => applyGenericCreate(Account, payload, () => createAccountForOp(userId, payload)),
+        create: (userId, payload) =>
+            applyGenericCreate(Account, userId, payload, () => createAccountForOp(userId, payload)),
         update: (userId, payload, baseUpdatedAt) =>
             applyGenericUpdate(
                 Account,
@@ -331,7 +369,8 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
     },
     category: categoryHandlers,
     budget: {
-        create: (userId, payload) => applyGenericCreate(Budget, payload, () => createBudgetForOp(userId, payload)),
+        create: (userId, payload) =>
+            applyGenericCreate(Budget, userId, payload, () => createBudgetForOp(userId, payload)),
         update: (userId, payload, baseUpdatedAt) =>
             applyGenericUpdate(
                 Budget,
@@ -346,7 +385,7 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
     },
     savingsGoal: {
         create: (userId, payload) =>
-            applyGenericCreate(SavingsGoal, payload, () => createSavingsGoalForOp(userId, payload)),
+            applyGenericCreate(SavingsGoal, userId, payload, () => createSavingsGoalForOp(userId, payload)),
         update: (userId, payload, baseUpdatedAt) =>
             applyGenericUpdate(
                 SavingsGoal,
@@ -360,7 +399,7 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
         delete: (userId, payload) => deleteSavingsGoalForOp(userId, payload),
     },
     tag: {
-        create: (userId, payload) => applyGenericCreate(Tag, payload, () => createTagForOp(userId, payload)),
+        create: (userId, payload) => applyGenericCreate(Tag, userId, payload, () => createTagForOp(userId, payload)),
         update: (userId, payload, baseUpdatedAt) =>
             applyGenericUpdate(Tag, userId, payload, baseUpdatedAt, ERROR_MESSAGES.TAG.TAG_NOT_FOUND, true, () =>
                 updateTagForOp(userId, payload)
@@ -369,7 +408,7 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
     },
     recurringRule: {
         create: (userId, payload) =>
-            applyGenericCreate(RecurringRule, payload, () => createRecurringRuleForOp(userId, payload)),
+            applyGenericCreate(RecurringRule, userId, payload, () => createRecurringRuleForOp(userId, payload)),
         update: (userId, payload, baseUpdatedAt) =>
             applyGenericUpdate(
                 RecurringRule,
@@ -384,7 +423,9 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
     },
     categorizationRule: {
         create: (userId, payload) =>
-            applyGenericCreate(CategorizationRule, payload, () => createCategorizationRuleForOp(userId, payload)),
+            applyGenericCreate(CategorizationRule, userId, payload, () =>
+                createCategorizationRuleForOp(userId, payload)
+            ),
         update: (userId, payload, baseUpdatedAt) =>
             applyGenericUpdate(
                 CategorizationRule,
@@ -399,7 +440,9 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
     },
     transactionTemplate: {
         create: (userId, payload) =>
-            applyGenericCreate(TransactionTemplate, payload, () => createTransactionTemplateForOp(userId, payload)),
+            applyGenericCreate(TransactionTemplate, userId, payload, () =>
+                createTransactionTemplateForOp(userId, payload)
+            ),
         update: (userId, payload, baseUpdatedAt) =>
             applyGenericUpdate(
                 TransactionTemplate,
@@ -499,6 +542,59 @@ export const getSyncPull = asyncHandler(async (req: AuthRequest, res: Response) 
     handleResponses(res, 200, page)
 })
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+const PENDING_CLAIM_POLL_INTERVAL_MS = 15
+const PENDING_CLAIM_POLL_TIMEOUT_MS = 2000
+
+type ClaimResult =
+    | { claimed: true }
+    | { claimed: false; status: SyncOpStatus; resultId: string | null }
+
+/**
+ * The unique (userId, opId) index is the mutex for BUG-10: this inserts a
+ * `pending` row *before* the op is applied, so two requests racing on the
+ * same opId can't both pass a read-then-write idempotency check. The loser's
+ * insert fails with a duplicate-key error; it then waits on the winner's
+ * pending row to resolve (or, if a prior attempt crashed mid-apply and left
+ * a stale pending row past the poll deadline, reports the op as not yet
+ * resolved rather than re-applying it).
+ */
+const claimSyncOperation = async (
+    userId: string,
+    op: SyncOpInput
+): Promise<ClaimResult> => {
+    try {
+        await SyncOperation.create({
+            userId,
+            opId: op.opId,
+            entity: op.entity,
+            operation: op.operation,
+            status: 'pending',
+            resultId: null,
+        })
+        return { claimed: true }
+    } catch (error) {
+        if (!isDuplicateKeyError(error)) {
+            throw error
+        }
+    }
+
+    const deadline = Date.now() + PENDING_CLAIM_POLL_TIMEOUT_MS
+    let existing = await SyncOperation.findOne({ userId, opId: op.opId })
+
+    while (existing && existing.status === 'pending' && Date.now() < deadline) {
+        await sleep(PENDING_CLAIM_POLL_INTERVAL_MS)
+        existing = await SyncOperation.findOne({ userId, opId: op.opId })
+    }
+
+    if (!existing || existing.status === 'pending') {
+        return { claimed: false, status: 'rejected', resultId: null }
+    }
+
+    return { claimed: false, status: existing.status, resultId: existing.resultId ?? null }
+}
+
 export const pushSyncOps = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const ops = req.body?.ops
@@ -510,6 +606,11 @@ export const pushSyncOps = asyncHandler(async (req: AuthRequest, res: Response) 
         throw new CustomError(`Push payload exceeds the maximum of ${MAX_PUSH_OPS} operations`, 413)
     }
 
+    const workspaceId = parseOptionalWorkspaceId(req.body?.workspaceId) ?? null
+    if (workspaceId) {
+        await assertWorkspaceReadable(workspaceId, userId)
+    }
+
     const results: SyncOpResult[] = []
 
     for (const rawOp of ops as SyncOpInput[]) {
@@ -519,13 +620,9 @@ export const pushSyncOps = asyncHandler(async (req: AuthRequest, res: Response) 
             'operation',
         ])
 
-        const existing = await SyncOperation.findOne({ userId, opId: rawOp.opId })
-        if (existing) {
-            results.push({
-                opId: rawOp.opId,
-                status: existing.status,
-                resultId: existing.resultId ?? null,
-            })
+        const claim = await claimSyncOperation(userId, rawOp)
+        if (!claim.claimed) {
+            results.push({ opId: rawOp.opId, status: claim.status, resultId: claim.resultId })
             continue
         }
 
@@ -535,16 +632,17 @@ export const pushSyncOps = asyncHandler(async (req: AuthRequest, res: Response) 
             // Only durable outcomes are recorded for idempotency. A conflict
             // reflects "not applied against current state" — replaying it
             // should re-evaluate against whatever the server looks like by
-            // then, not return a stale cached conflict.
+            // then, not return a stale cached conflict. Same for
+            // id_conflict: a client that regenerates its local id and
+            // retries must be re-evaluated fresh, not short-circuited by a
+            // cached collision result.
             if (outcome.status === 'applied' || outcome.status === 'noop') {
-                await SyncOperation.create({
-                    userId,
-                    opId: rawOp.opId,
-                    entity: rawOp.entity,
-                    operation: rawOp.operation,
-                    status: outcome.status,
-                    resultId: outcome.resultId,
-                })
+                await SyncOperation.updateOne(
+                    { userId, opId: rawOp.opId },
+                    { $set: { status: outcome.status, resultId: outcome.resultId } }
+                )
+            } else {
+                await SyncOperation.deleteOne({ userId, opId: rawOp.opId })
             }
 
             results.push({
@@ -554,11 +652,12 @@ export const pushSyncOps = asyncHandler(async (req: AuthRequest, res: Response) 
                 ...(outcome.status === 'conflict' ? { conflict: outcome.conflict } : {}),
             })
         } catch (error) {
+            await SyncOperation.deleteOne({ userId, opId: rawOp.opId })
             const message = error instanceof CustomError ? error.message : 'Failed to apply sync operation'
             results.push({ opId: rawOp.opId, status: 'rejected', resultId: null, message })
         }
     }
 
-    const checkpoint = await computeCurrentCheckpoint(userId, null)
+    const checkpoint = await computeCurrentCheckpoint(userId, workspaceId)
     handleResponses(res, 200, { results, checkpoint })
 })

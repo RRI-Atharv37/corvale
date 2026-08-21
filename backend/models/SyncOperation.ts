@@ -1,6 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-export const SYNC_OP_STATUSES = ['applied', 'noop', 'conflict', 'rejected'] as const
+export const SYNC_OP_STATUSES = ['applied', 'noop', 'conflict', 'rejected', 'id_conflict', 'pending'] as const
 export type SyncOpStatus = (typeof SYNC_OP_STATUSES)[number]
 
 /**
@@ -9,6 +9,16 @@ export type SyncOpStatus = (typeof SYNC_OP_STATUSES)[number]
  * timed-out response" scenario — returns the originally stored result
  * instead of re-running the op's side effects (no double-created document,
  * no double-applied balance delta).
+ *
+ * `pending` (BUG-10) is a transient claim: the row is inserted with this
+ * status *before* the op is applied, so the unique (userId, opId) index
+ * itself is the mutex that makes two concurrent requests racing on the same
+ * opId apply exactly once — the loser's insert fails with a duplicate-key
+ * error and it waits on/reads the winner's eventual result instead of
+ * re-running the op. `id_conflict` (SEC-13, BUG-02) is returned when a
+ * create's client-generated `_id` collides with a document owned by someone
+ * else, instead of the collision being silently treated as an idempotent
+ * no-op of the caller's own create.
  */
 export interface ISyncOperation extends Document {
     _id: Types.ObjectId

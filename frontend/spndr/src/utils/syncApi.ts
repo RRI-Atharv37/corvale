@@ -2,7 +2,7 @@ import axiosInstance from './axiosInstance'
 import { API_PATHS } from './apiPaths'
 import type { ApiResponse } from '../types/api'
 import { unwrapApiData } from './apiHelpers'
-import { buildWorkspaceQueryParams } from './workspaceScope'
+import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from './workspaceScope'
 import type { SyncableRecord } from '../db/repositories/Repository'
 import type { OutboxOp } from '../sync/outbox'
 import { parseOutboxEntity } from '../sync/entityMap'
@@ -62,7 +62,7 @@ export const fetchPullPage = async (
 }
 
 /** Mirrors `backend/controllers/syncController.ts` `SyncOpStatus` - a superset of the `Outbox` core's `PushOpStatus`. */
-export type SyncOpStatus = 'applied' | 'noop' | 'conflict' | 'rejected'
+export type SyncOpStatus = 'applied' | 'noop' | 'conflict' | 'rejected' | 'id_conflict'
 
 export interface SyncOpResult {
     opId: string
@@ -77,8 +77,12 @@ export interface PushOpsResponse {
     checkpoint: string
 }
 
-export const pushOutboxOps = async (ops: OutboxOp[]): Promise<PushOpsResponse> => {
+export const pushOutboxOps = async (
+    ops: OutboxOp[],
+    workspaceId: string | null | undefined = undefined
+): Promise<PushOpsResponse> => {
     const response = await axiosInstance.post<ApiResponse<PushOpsResponse>>(API_PATHS.SYNC.PUSH, {
+        ...buildWorkspaceBodyFields(workspaceId),
         ops: ops.map((op) => ({
             opId: op.opId,
             entity: parseOutboxEntity(op.entity).entityType,

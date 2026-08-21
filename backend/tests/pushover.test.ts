@@ -3,12 +3,12 @@ import request from 'supertest'
 import app from '../app'
 import Saver from '../models/Saver'
 import Pushover from '../models/Pushover'
-import { authHeader, createTestIncome, registerUser } from './helpers'
+import { authHeader, createPostedTransaction, registerUser } from './helpers'
 
 describe('Pushover', () => {
     it('creates snapshot and resets saver balance on rollover', async () => {
         const { token, userId } = await registerUser(app)
-        await createTestIncome(app, token, 500)
+        await createPostedTransaction(userId, 'income', 500)
 
         await request(app)
             .post('/api/v1/saver/add')
@@ -35,8 +35,8 @@ describe('Pushover', () => {
     })
 
     it('rejects rollover when saver balance is zero', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 500)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 500)
 
         const res = await request(app)
             .post('/api/v1/pushover/pushover')

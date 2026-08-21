@@ -1,7 +1,6 @@
-import Income from '../models/Income'
-import Expense from '../models/Expense'
 import Saver from '../models/Saver'
 import Account from '../models/Account'
+import Transaction from '../models/Transaction'
 import { toObjectId } from './sharedUtils'
 import { buildScopedListFilter } from './workspaceUtils'
 import {
@@ -12,7 +11,7 @@ import {
     CurrencyConversionOptions,
     UserBalanceSummary,
 } from '../../shared/src/balances'
-import { roundMoney } from '../../shared/src/money'
+import { fromMinorUnits, roundMoney } from '../../shared/src/money'
 
 export { roundMoney }
 export type { AccountTotals, UserBalanceSummary, CurrencyConversionOptions }
@@ -26,6 +25,36 @@ const toAccountsLike = (
         currency: account.currency,
         isArchived: account.isArchived,
     }))
+
+const POSTED_LEDGER_FILTER = {
+    status: 'posted' as const,
+    splitTransactionId: null,
+}
+
+/**
+ * Lifetime posted income/expense totals sourced from the unified
+ * `Transaction` collection (BUG-01) — mirrors the exclusions
+ * `sumPostedTransactionsByType` (dashboardUtils.ts) applies for the
+ * period-scoped dashboard summary (posted only, split children excluded,
+ * transfers excluded via the `type` match), just without a date bound.
+ */
+const sumLifetimePostedTransactionsByType = async (
+    userId: string,
+    type: 'income' | 'expense'
+): Promise<number> => {
+    const result = await Transaction.aggregate([
+        {
+            $match: {
+                ...buildScopedListFilter(userId, null),
+                type,
+                ...POSTED_LEDGER_FILTER,
+            },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+    ])
+
+    return fromMinorUnits(result[0]?.total ?? 0)
+}
 
 /**
  * Pre-Phase-1c bridge: when active accounts exist, net worth and spendable
@@ -67,24 +96,16 @@ export const computeUserBalances = async (
         })
     }
 
-    const objectId = toObjectId(userId)
-
-    const [incomeAgg, expenseAgg, saver] = await Promise.all([
-        Income.aggregate([
-            { $match: { userId: objectId } },
-            { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]),
-        Expense.aggregate([
-            { $match: { userId: objectId } },
-            { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]),
-        Saver.findOne({ userId: objectId }),
+    const [totalIncomeMajor, totalExpensesMajor, saver] = await Promise.all([
+        sumLifetimePostedTransactionsByType(userId, 'income'),
+        sumLifetimePostedTransactionsByType(userId, 'expense'),
+        Saver.findOne({ userId: toObjectId(userId) }),
     ])
 
     return computeUserBalancesPure({
         accounts: accountsLike,
-        totalIncomeMajor: incomeAgg[0]?.total ?? 0,
-        totalExpensesMajor: expenseAgg[0]?.total ?? 0,
+        totalIncomeMajor,
+        totalExpensesMajor,
         saverBalanceMajor: saver?.saverAmount ?? 0,
         workspaceId: null,
         conversion,

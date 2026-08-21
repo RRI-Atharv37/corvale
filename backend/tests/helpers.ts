@@ -1,7 +1,10 @@
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import { Application } from 'express'
+import { Types } from 'mongoose'
 import User from '../models/User'
+import Transaction from '../models/Transaction'
+import { toMinorUnits } from '../../shared/src/money'
 
 export interface TestUser {
     fullName: string
@@ -85,6 +88,34 @@ export async function createTestExpense(
             category: 'Other',
             date: new Date().toISOString(),
         })
+}
+
+/**
+ * Seeds a posted income/expense Transaction directly (bypassing the
+ * `/api/v1/transactions` REST endpoint's account-existence requirement),
+ * for tests exercising `computeUserBalances`'s lifetime totals (BUG-01)
+ * where the scenario under test deliberately has no active `Account` —
+ * `accountId` here is a synthetic id never resolved against a real account,
+ * since the aggregation that reads it only matches on `userId`/`type`/
+ * `status`/`splitTransactionId`.
+ */
+export async function createPostedTransaction(
+    userId: string,
+    type: 'income' | 'expense',
+    amountMajor: number,
+    title = type === 'income' ? 'Test Income' : 'Test Expense'
+): Promise<void> {
+    await Transaction.create({
+        userId,
+        accountId: new Types.ObjectId(),
+        categoryId: new Types.ObjectId(),
+        type,
+        status: 'posted',
+        amount: toMinorUnits(amountMajor),
+        currency: 'USD',
+        title,
+        date: new Date(),
+    })
 }
 
 export async function seedUserDirectly(overrides: Partial<TestUser> = {}): Promise<RegisteredUser> {

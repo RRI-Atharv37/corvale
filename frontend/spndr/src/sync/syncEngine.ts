@@ -49,7 +49,7 @@ export const resetSyncEngineForTests = (): void => {
  * the pending queue (see `sync/outbox.ts` module doc).
  */
 const buildPushFn = (db: LocalDb) => async (ops: OutboxOp[]): Promise<PushResult[]> => {
-    const response = await pushOutboxOps(ops)
+    const response = await pushOutboxOps(ops, getStoredActiveWorkspaceId())
 
     for (const result of response.results) {
         if (result.status !== 'conflict' || !result.conflict) continue
