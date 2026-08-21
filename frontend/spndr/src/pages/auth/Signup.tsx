@@ -93,7 +93,7 @@ const Signup = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         label="Password"
-                        placeholder="Minimum 8 characters"
+                        placeholder="Minimum 12 characters"
                         type="password"
                         disabled={isSubmitting}
                     />

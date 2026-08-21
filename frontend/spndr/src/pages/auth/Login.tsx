@@ -78,7 +78,7 @@ const Login = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         label="Password"
-                        placeholder="Minimum 8 characters"
+                        placeholder="Enter your password"
                         type="password"
                         disabled={isSubmitting}
                     />

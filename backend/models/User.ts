@@ -10,6 +10,7 @@ import {
     MIN_PAGE_SIZE,
 } from '../utils/userPreferencesUtils'
 import { OnboardingStep } from '../utils/onboardingUtils'
+import { EMAIL_REGEX } from '../utils/emailUtils'
 
 export interface NotificationPreferences {
     billRemindersEnabled: boolean
@@ -40,7 +41,7 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>({
     fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true, match: EMAIL_REGEX },
     password: { type: String, required: true },
     timezone: { type: String, default: 'UTC', trim: true },
     preferredCurrency: {
@@ -80,7 +81,7 @@ const userSchema = new Schema<IUser>({
 
 userSchema.pre<IUser>('save', async function (next) {
     if(!this.isModified('password')) return next()
-    this.password = await bcrypt.hash(this.password, 10)
+    this.password = await bcrypt.hash(this.password, 12)
     next()
 })
 

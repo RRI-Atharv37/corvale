@@ -34,6 +34,7 @@ import reconciliationRoutes from './routes/reconciliationRoutes'
 import exchangeRateRoutes from './routes/exchangeRateRoutes'
 import onboardingRoutes from './routes/onboardingRoutes'
 import { createSyncRoutes } from './routes/syncRoutes'
+import { sanitizeBody } from './middleware/sanitizeBodyMiddleware'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
@@ -72,6 +73,7 @@ export const createApp = (): express.Application => {
 
     app.use(express.json({ limit: '1mb' }))
     app.use(cookieParser())
+    app.use(sanitizeBody)
 
     app.use(healthRoutes)
 

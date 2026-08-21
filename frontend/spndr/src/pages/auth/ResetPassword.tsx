@@ -34,8 +34,8 @@ const ResetPassword = () => {
             return
         }
 
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters')
+        if (password.length < 12) {
+            setError('Password must be at least 12 characters')
             return
         }
 
@@ -91,7 +91,7 @@ const ResetPassword = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         label="New password"
-                        placeholder="Minimum 8 characters"
+                        placeholder="Minimum 12 characters"
                         type="password"
                         disabled={isSubmitting}
                     />

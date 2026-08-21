@@ -27,6 +27,8 @@ import { parseSupportedCurrency, syncUserCurrencyData } from '../utils/currencyU
 import { isValidTimezone } from '../utils/timezoneUtils'
 import { parseNotificationPreferences } from '../utils/notificationUtils'
 import { parseDateFormat, parsePageSize } from '../utils/userPreferencesUtils'
+import { normalizeEmail } from '../utils/emailUtils'
+import { validatePassword } from '../utils/passwordPolicy'
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
@@ -58,16 +60,19 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    if (password.length < 8) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.PASSWORD_TOO_SHORT, 400)
-    }
+    const normalizedEmail = normalizeEmail(email)
+    const validatedPassword = validatePassword(password)
 
-    const userExists = await User.findOne({ email })
+    const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
         throw new CustomError(ERROR_MESSAGES.USER.USER_ALREADY_EXISTS, 400)
     }
 
-    const user = (await User.create({ fullName, email, password })) as IUser
+    const user = (await User.create({
+        fullName,
+        email: normalizedEmail,
+        password: validatedPassword,
+    })) as IUser
     const payload = await issueAuthSession(user, res)
 
     handleResponses(res, 201, payload)
@@ -80,7 +85,13 @@ export const loginUser = asyncHandler(async (req: AuthRequest, res: Response): P
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    const user = (await User.findOne({ email })) as IUser | null
+    if (typeof password !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
+    }
+
+    const normalizedEmail = normalizeEmail(email)
+
+    const user = (await User.findOne({ email: normalizedEmail })) as IUser | null
     if (!user) {
         throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
     }
@@ -226,11 +237,13 @@ export const requestPasswordReset = asyncHandler(async (req: AuthRequest, res: R
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    const resetToken = await createPasswordResetForUser(email)
+    const normalizedEmail = normalizeEmail(email)
+
+    const resetToken = await createPasswordResetForUser(normalizedEmail)
 
     if (resetToken) {
         const resetUrl = buildPasswordResetUrl(resetToken)
-        logPasswordResetLink(email, resetUrl)
+        logPasswordResetLink(normalizedEmail, resetUrl)
     }
 
     handleResponses(res, 200, {
@@ -245,12 +258,10 @@ export const confirmPasswordReset = asyncHandler(async (req: AuthRequest, res: R
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    if (password.length < 8) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.PASSWORD_TOO_SHORT, 400)
-    }
+    const validatedPassword = validatePassword(password)
 
     try {
-        await resetPasswordWithToken(token, password)
+        await resetPasswordWithToken(token, validatedPassword)
     } catch (error) {
         if (error instanceof CustomError) {
             throw error

@@ -12,7 +12,10 @@ export const ERROR_MESSAGES = {
         TOO_MANY_REQUESTS: 'Too many authentication attempts, please try again later',
         PASSWORD_RESET_EMAIL_SENT: 'If an account exists for that email, a password reset link has been sent',
         PASSWORD_RESET_INVALID: 'Invalid or expired password reset token',
-        PASSWORD_TOO_SHORT: 'Password must be at least 8 characters',
+        PASSWORD_TOO_SHORT: 'Password must be at least 12 characters',
+        PASSWORD_TOO_LONG: 'Password must not exceed 72 bytes',
+        INVALID_PASSWORD_TYPE: 'Password must be a string',
+        INVALID_EMAIL: 'Please provide a valid email address',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',
@@ -22,6 +25,7 @@ export const ERROR_MESSAGES = {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
         UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
         ROUTE_NOT_FOUND: 'Route not found',
+        UNSAFE_REQUEST_BODY: 'Request body contains invalid characters',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',
