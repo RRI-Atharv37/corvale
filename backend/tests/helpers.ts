@@ -29,6 +29,12 @@ export async function registerUser(
 
     const res = await request(app).post('/api/v1/auth/register').send(userData)
 
+    // Auto-verify so existing/unrelated tests can keep using protected routes right after
+    // registering, without every caller needing to know about the email-verification flow.
+    // Tests that specifically exercise the unverified state register via raw HTTP instead
+    // (see tests/emailVerification.test.ts).
+    await User.findByIdAndUpdate(res.body.data.user._id, { isEmailVerified: true })
+
     return {
         token: res.body.data.token,
         userId: res.body.data.user._id,
@@ -83,7 +89,7 @@ export async function createTestExpense(
 
 export async function seedUserDirectly(overrides: Partial<TestUser> = {}): Promise<RegisteredUser> {
     const userData = { ...defaultTestUser, ...overrides }
-    const user = await User.create(userData)
+    const user = await User.create({ ...userData, isEmailVerified: true })
     const token = jwt.sign(
         { id: user._id.toString(), tv: user.tokenVersion ?? 0 },
         process.env.JWT_SECRET as string,

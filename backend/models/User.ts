@@ -31,6 +31,9 @@ export interface IUser extends Document {
     tokenVersion: number
     passwordResetTokenHash?: string
     passwordResetExpires?: Date
+    isEmailVerified: boolean
+    emailVerificationTokenHash?: string
+    emailVerificationExpires?: Date
     onboardingStarted: boolean
     onboardingCompleted: boolean
     onboardingSkipped: boolean
@@ -71,6 +74,9 @@ const userSchema = new Schema<IUser>({
     tokenVersion: { type: Number, default: 0 },
     passwordResetTokenHash: { type: String },
     passwordResetExpires: { type: Date },
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerificationTokenHash: { type: String },
+    emailVerificationExpires: { type: Date },
     onboardingStarted: { type: Boolean, default: false },
     onboardingCompleted: { type: Boolean, default: false },
     onboardingSkipped: { type: Boolean, default: false },

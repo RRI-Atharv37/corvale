@@ -11,6 +11,8 @@ export const API_PATHS = {
         LOGOUT_ALL: '/auth/logout-all',
         PASSWORD_RESET_REQUEST: '/auth/password-reset/request',
         PASSWORD_RESET_CONFIRM: '/auth/password-reset/confirm',
+        EMAIL_VERIFICATION_CONFIRM: '/auth/email-verification/confirm',
+        EMAIL_VERIFICATION_RESEND: '/auth/email-verification/resend',
     },
     SAVER: {
         ADD: '/saver/add',

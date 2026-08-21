@@ -53,7 +53,7 @@ const Signup = () => {
             const { token, user } = parseAuthPayload(response)
             setAuthSession({ token, user })
             updateUser(user)
-            toast.success('Account created successfully!')
+            toast.success('Account created! Check your email to verify your address.')
             navigate('/dashboard')
         } catch (err) {
             const message = getApiErrorMessage(err, 'An error occurred. Please try again.')

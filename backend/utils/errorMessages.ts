@@ -16,6 +16,10 @@ export const ERROR_MESSAGES = {
         PASSWORD_TOO_LONG: 'Password must not exceed 72 bytes',
         INVALID_PASSWORD_TYPE: 'Password must be a string',
         INVALID_EMAIL: 'Please provide a valid email address',
+        EMAIL_NOT_VERIFIED: 'Please verify your email address to continue',
+        EMAIL_VERIFICATION_SENT: 'Verification email sent. Please check your inbox',
+        EMAIL_VERIFICATION_INVALID: 'Invalid or expired email verification token',
+        EMAIL_ALREADY_VERIFIED: 'Email address is already verified',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',

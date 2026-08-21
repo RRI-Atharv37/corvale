@@ -16,6 +16,12 @@ Create a `.env` file in the `backend/` folder.
 | `REFRESH_TOKEN_COOKIE_NAME` | No | `spndr_refresh` | httpOnly cookie name for refresh tokens |
 | `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`) |
 | `PASSWORD_RESET_EXPIRY_MS` | No | `3600000` (1 hour) | Password reset token lifetime |
+| `EMAIL_VERIFICATION_EXPIRY_MS` | No | `86400000` (24 hours) | Email verification token lifetime |
+| `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev to log reset/verification links to the console instead of emailing them |
+| `SMTP_PORT` | No | `587` | SMTP server port (`465` switches to implicit TLS) |
+| `SMTP_USER` | No | unset | SMTP account username |
+| `SMTP_PASS` | No | unset | SMTP account password |
+| `SMTP_FROM` | No | SMTP account email | "From" address on outgoing password-reset and email-verification messages |
 | `AUTH_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for auth routes, and for `/auth/refresh` + `/auth/logout` |
 | `AUTH_RATE_LIMIT_MAX` | No | `10` | Max requests per window per IP for auth routes, and for `/auth/refresh` + `/auth/logout` |
 | `GLOBAL_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for mutating requests (POST/PUT/PATCH/DELETE) across the whole API |

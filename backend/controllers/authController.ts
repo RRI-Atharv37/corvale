@@ -23,6 +23,13 @@ import {
     logPasswordResetLink,
     resetPasswordWithToken,
 } from '../utils/passwordResetUtils'
+import {
+    buildEmailVerificationUrl,
+    createEmailVerificationForUser,
+    logEmailVerificationLink,
+    verifyEmailWithToken,
+} from '../utils/emailVerificationUtils'
+import { isSmtpConfigured, sendPasswordResetEmail, sendEmailVerificationEmail } from '../utils/mailService'
 import { parseSupportedCurrency, syncUserCurrencyData } from '../utils/currencyUtils'
 import { isValidTimezone } from '../utils/timezoneUtils'
 import { parseNotificationPreferences } from '../utils/notificationUtils'
@@ -40,6 +47,7 @@ const toPublicUser = (user: IUser) => ({
     pageSize: user.pageSize,
     notificationPreferences: user.notificationPreferences,
     exchangeRates: user.exchangeRates,
+    isEmailVerified: user.isEmailVerified,
 })
 
 const issueAuthSession = async (user: IUser, res: Response) => {
@@ -73,6 +81,20 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
         email: normalizedEmail,
         password: validatedPassword,
     })) as IUser
+
+    const verificationToken = await createEmailVerificationForUser(user)
+    const verificationUrl = buildEmailVerificationUrl(verificationToken)
+
+    if (isSmtpConfigured()) {
+        try {
+            await sendEmailVerificationEmail(normalizedEmail, verificationUrl)
+        } catch (error) {
+            console.error('[email-verification] failed to send email:', error)
+        }
+    } else {
+        logEmailVerificationLink(normalizedEmail, verificationUrl)
+    }
+
     const payload = await issueAuthSession(user, res)
 
     handleResponses(res, 201, payload)
@@ -243,7 +265,16 @@ export const requestPasswordReset = asyncHandler(async (req: AuthRequest, res: R
 
     if (resetToken) {
         const resetUrl = buildPasswordResetUrl(resetToken)
-        logPasswordResetLink(normalizedEmail, resetUrl)
+
+        if (isSmtpConfigured()) {
+            try {
+                await sendPasswordResetEmail(normalizedEmail, resetUrl)
+            } catch (error) {
+                console.error('[password-reset] failed to send email:', error)
+            }
+        } else {
+            logPasswordResetLink(normalizedEmail, resetUrl)
+        }
     }
 
     handleResponses(res, 200, {
@@ -270,4 +301,45 @@ export const confirmPasswordReset = asyncHandler(async (req: AuthRequest, res: R
     }
 
     handleResponses(res, 200, { message: 'Password reset successfully' })
+})
+
+export const confirmEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { token } = req.body
+
+    if (!token) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
+    }
+
+    await verifyEmailWithToken(token)
+
+    handleResponses(res, 200, { message: 'Email verified successfully' })
+})
+
+export const resendEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?._id
+    const user = (await User.findById(userId)) as IUser | null
+
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
+    }
+
+    if (user.isEmailVerified) {
+        handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED })
+        return
+    }
+
+    const verificationToken = await createEmailVerificationForUser(user)
+    const verificationUrl = buildEmailVerificationUrl(verificationToken)
+
+    if (isSmtpConfigured()) {
+        try {
+            await sendEmailVerificationEmail(user.email, verificationUrl)
+        } catch (error) {
+            console.error('[email-verification] failed to send email:', error)
+        }
+    } else {
+        logEmailVerificationLink(user.email, verificationUrl)
+    }
+
+    handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_SENT })
 })

@@ -22,6 +22,8 @@
     "test:watch": "vitest",
     "migrate:transactions": "ts-node scripts/migrateIncomeExpenseToTransactions.ts",
     "migrate:transactions:dry-run": "ts-node scripts/migrateIncomeExpenseToTransactions.ts --dry-run",
+    "migrate:email-verification": "ts-node scripts/backfillEmailVerification.ts",
+    "migrate:email-verification:dry-run": "ts-node scripts/backfillEmailVerification.ts --dry-run",
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts"
   },
   "dependencies": {
@@ -38,6 +40,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "multer": "^1.4.5-lts.2",
+    "nodemailer": "^7.0.13",
     "pdfkit": "^0.19.1"
   },
   "devDependencies": {
@@ -49,6 +52,7 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.14.1",
+    "@types/nodemailer": "^7.0.12",
     "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.2.1",
     "mongodb-memory-server": "^11.2.0",

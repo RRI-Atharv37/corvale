@@ -48,6 +48,10 @@ describe('SMTP password-reset delivery (S7)', () => {
 
         const app = createApp()
         const { email } = await registerUser(app, { email: 'smtp-delivery@example.com' })
+        // registerUser also triggers a verification email (added alongside S7, sharing this
+        // same mail transport) - clear it so the assertions below isolate the password-reset
+        // send under test rather than coupling this spec to registration's mail behavior.
+        sendMail.mockClear()
 
         const res = await request(app)
             .post('/api/v1/auth/password-reset/request')

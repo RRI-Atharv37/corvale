@@ -6,6 +6,7 @@ import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
+import VerifyEmail from './pages/auth/VerifyEmail'
 import UserProvider from './context/UserContext'
 import WorkspaceProvider from './context/WorkspaceContext'
 import ProtectedRoute from './routes/ProtectedRoute'
@@ -49,6 +50,7 @@ const AppRoutes = () => {
             <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
             <Route
                 element={
