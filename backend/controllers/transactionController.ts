@@ -774,35 +774,46 @@ const parseBulkTransactionIds = (transactionIds: unknown): string[] => {
     return uniqueIds
 }
 
-export const bulkDeleteTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const userId = getUserId(req)
-    const transactionIds = parseBulkTransactionIds(req.body.transactionIds)
-
-    const processedTransferPairs = new Set<string>()
-    let deletedCount = 0
-
-    for (const transactionId of transactionIds) {
-        const transaction = await Transaction.findById(transactionId)
-
-        if (!transaction) {
-            const deletedAsTransferPair = [...processedTransferPairs].some((pairKey) =>
-                pairKey.split(':').includes(transactionId)
-            )
-            if (deletedAsTransferPair) {
-                deletedCount += 1
-                continue
-            }
-            throw new CustomError(ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND, 404)
-        }
-
-        await validateResourceAccess(
+/**
+ * `validateResourceAccess` reports "exists but isn't yours" as 403 (correct for the singular
+ * endpoints, which intentionally distinguish the two). Bulk delete must not: SEC-14 flagged the
+ * distinction as a cross-tenant existence oracle, so this endpoint collapses both outcomes into
+ * the same 404 before anything is deleted.
+ */
+const resolveTransactionForBulkDelete = async (
+    transactionId: string,
+    userId: string
+): Promise<ITransaction> => {
+    try {
+        return await validateResourceAccess(
             Transaction,
             transactionId,
             userId,
             ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
             'editor'
         )
+    } catch (error) {
+        if (error instanceof CustomError && error.statusCode === 403) {
+            throw new CustomError(ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND, 404)
+        }
+        throw error
+    }
+}
 
+export const bulkDeleteTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const transactionIds = parseBulkTransactionIds(req.body.transactionIds)
+
+    // Validate every id up front so a bogus or not-owned id anywhere in the batch fails the
+    // whole request before any deletion happens (BUG-03) — no partial delete to roll back.
+    const transactions = await Promise.all(
+        transactionIds.map((transactionId) => resolveTransactionForBulkDelete(transactionId, userId))
+    )
+
+    const processedTransferPairs = new Set<string>()
+    let deletedCount = 0
+
+    for (const transaction of transactions) {
         if (isTransferLeg(transaction) && transaction.transferPairId) {
             const pairKey = [transaction._id.toString(), transaction.transferPairId.toString()]
                 .sort()
