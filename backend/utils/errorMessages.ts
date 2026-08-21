@@ -21,6 +21,7 @@ export const ERROR_MESSAGES = {
     GENERAL: {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
         UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
+        ROUTE_NOT_FOUND: 'Route not found',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',

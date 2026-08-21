@@ -1,6 +1,10 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
+import { validateEnv } from './utils/envValidation'
+import { ERROR_MESSAGES } from './utils/errorMessages'
+import healthRoutes from './routes/healthRoutes'
 import { createAuthRoutes } from './routes/authRoutes'
 import incomeRoutes from './routes/incomeRoutes'
 import expenseRoutes from './routes/expenseRoutes'
@@ -33,19 +37,43 @@ import { createSyncRoutes } from './routes/syncRoutes'
 import { errorHandler } from './middleware/errorMiddleware'
 
 export const createApp = (): express.Application => {
+    validateEnv()
+
     const app = express()
 
     app.use(
+        helmet({
+            contentSecurityPolicy: {
+                useDefaults: false,
+                directives: {
+                    defaultSrc: ["'none'"],
+                    frameAncestors: ["'none'"],
+                },
+            },
+            frameguard: { action: 'deny' },
+            crossOriginResourcePolicy: { policy: 'same-origin' },
+        })
+    )
+
+    app.use(
         cors({
-            origin: process.env.CLIENT_URL,
+            origin: (origin, callback) => {
+                if (!origin || origin === process.env.CLIENT_URL) {
+                    callback(null, true)
+                    return
+                }
+                callback(null, false)
+            },
             methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
             allowedHeaders: ['Content-type', 'Authorization'],
             credentials: true,
         })
     )
 
-    app.use(express.json())
+    app.use(express.json({ limit: '1mb' }))
     app.use(cookieParser())
+
+    app.use(healthRoutes)
 
     app.use('/api/v1/auth', createAuthRoutes())
     app.use('/api/v1/income', incomeRoutes)
@@ -76,6 +104,15 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/exchange-rates', exchangeRateRoutes)
     app.use('/api/v1/onboarding', onboardingRoutes)
     app.use('/api/v1/sync', createSyncRoutes())
+
+    app.use((_req, res) => {
+        res.status(404).json({
+            success: false,
+            statusCode: 404,
+            message: ERROR_MESSAGES.GENERAL.ROUTE_NOT_FOUND,
+        })
+    })
+
     app.use(errorHandler)
 
     return app

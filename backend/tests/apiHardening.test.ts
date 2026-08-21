@@ -13,7 +13,7 @@ import { authHeader, registerUser } from './helpers'
  *     Error listing every missing required var (MONGO_URI, JWT_SECRET,
  *     JWT_EXPIRY, CLIENT_URL) and is called at the top of `createApp()`, so
  *     a misconfigured process fails to boot instead of degrading silently
- *     (SEC-12). Every existing test already sets all four in `tests/setup.ts`,
+ *     (SEC-12). Every existing test already sets all four in `tests/setup.mts`,
  *     so this is safe to wire in without breaking the rest of the suite.
  *   - Helmet is mounted globally (SEC-07): `nosniff`, no `X-Powered-By`,
  *     `frame-ancestors`/deny, a restrictive API CSP, and an HSTS header.
