@@ -75,6 +75,11 @@ const dispatch = async (payload: WorkerPayload): Promise<unknown> => {
     case 'setEncryptionKey':
       encryptionKey = await deriveKey(payload.passphrase, new Uint8Array(payload.salt))
       return undefined
+    case 'hasEncryptionKey':
+      return encryptionKey !== null
+    case 'clearEncryptionKey':
+      encryptionKey = null
+      return undefined
     case 'encryptValue': {
       if (!encryptionKey) {
         throw new Error('Encryption key not set')

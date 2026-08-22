@@ -1,6 +1,8 @@
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm'
 import type { BindingSpec, Database, Sqlite3Static } from '@sqlite.org/sqlite-wasm'
 import type { LocalDb, LocalDbRow } from './LocalDb'
+import { decryptField, deriveKey, encryptField } from './encryption/deriveKey'
+import { parseEncryptedField, serializeEncryptedField } from './encryption/serialization'
 
 let sqlite3Promise: Promise<Sqlite3Static> | null = null
 
@@ -13,6 +15,7 @@ const getSqlite3 = (): Promise<Sqlite3Static> => {
 
 export class MemorySqliteDriver implements LocalDb {
   private db: Database | null
+  private encryptionKey: CryptoKey | null = null
 
   private constructor(db: Database) {
     this.db = db
@@ -61,5 +64,33 @@ export class MemorySqliteDriver implements LocalDb {
       this.db.close()
       this.db = null
     }
+  }
+
+  /** Runs entirely on the main thread (unlike `SqliteWasmDriver`, which delegates to its
+   * worker) - `MemorySqliteDriver` is what tests run against, so the key lives right here. */
+  async setEncryptionKey(passphrase: string, salt: Uint8Array): Promise<void> {
+    this.encryptionKey = await deriveKey(passphrase, salt)
+  }
+
+  hasEncryptionKey(): boolean {
+    return this.encryptionKey !== null
+  }
+
+  clearEncryptionKey(): void {
+    this.encryptionKey = null
+  }
+
+  async encryptText(plaintext: string): Promise<string> {
+    if (!this.encryptionKey) {
+      throw new Error('MemorySqliteDriver: encryption key not set')
+    }
+    return serializeEncryptedField(await encryptField(this.encryptionKey, plaintext))
+  }
+
+  async decryptText(serialized: string): Promise<string> {
+    if (!this.encryptionKey) {
+      throw new Error('MemorySqliteDriver: encryption key not set')
+    }
+    return decryptField(this.encryptionKey, parseEncryptedField(serialized))
   }
 }

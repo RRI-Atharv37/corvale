@@ -3,6 +3,47 @@ import { buildOutboxEntity, TABLE_TO_ENTITY } from '../../sync/entityMap'
 import { createOutbox } from '../../sync/outbox'
 import { createSqliteOutboxStore } from '../../sync/sqliteOutboxStore'
 import { registerBackgroundSync } from '../../pwa/backgroundSync'
+import type { EncryptionCapableDb } from '../encryption/EncryptionCapableDb'
+import { isEncryptedField } from '../encryption/serialization'
+
+/**
+ * S8 / SEC-01: the `data` column (the full server-document JSON blob) is encrypted at rest
+ * whenever the active driver holds a key - see `EncryptionCapableDb`'s header for why this is
+ * the whole blob and not per-field, and why `TauriSqlDriver` (SQLCipher, no app-layer surface)
+ * is deliberately excluded. Promoted columns (`amount`, `accountId`, ...) are never routed
+ * through this - they stay plaintext so the local domain/report engine can keep filtering and
+ * `SUM`-ing on them in SQL.
+ */
+const isEncryptionCapable = (db: LocalDb): db is LocalDb & EncryptionCapableDb => {
+  const candidate = db as Partial<EncryptionCapableDb>
+  return (
+    typeof candidate.hasEncryptionKey === 'function' &&
+    typeof candidate.encryptText === 'function' &&
+    typeof candidate.decryptText === 'function'
+  )
+}
+
+/** Back-compat: with no key configured (local-first PIN never set up) this returns plain JSON,
+ * byte-for-byte what every syncable table stored before S8. */
+const serializeData = async (db: LocalDb, doc: unknown): Promise<string> => {
+  const json = JSON.stringify(doc)
+  if (isEncryptionCapable(db) && db.hasEncryptionKey()) {
+    return db.encryptText(json)
+  }
+  return json
+}
+
+/** Fails closed - an encrypted row read with no active key (or by a driver with no decryption
+ * support) throws rather than returning ciphertext-as-JSON or silently corrupted data. */
+const deserializeData = async <T>(db: LocalDb, data: string): Promise<T> => {
+  if (isEncryptedField(data)) {
+    if (!isEncryptionCapable(db)) {
+      throw new Error('Encrypted local row found but the active driver has no decryption support')
+    }
+    return JSON.parse(await db.decryptText(data)) as T
+  }
+  return JSON.parse(data) as T
+}
 
 /** Every outbox op captured here should also nudge the browser to wake the service worker for a
  * flush attempt even if this tab later closes (Sprint 13.8) - see `pwa/backgroundSync.ts`. */
@@ -109,7 +150,7 @@ export class Repository<T extends SyncableRecord> {
       const record = doc as unknown as Record<string, unknown>
       const values = [
         doc._id,
-        JSON.stringify(doc),
+        await serializeData(db, doc),
         doc.updatedAt,
         doc.deletedAt ?? null,
         localUpdatedAt,
@@ -131,14 +172,14 @@ export class Repository<T extends SyncableRecord> {
     const rows = await db.select<SyncableRow>(`SELECT data FROM ${this.table} WHERE _id = ? AND deletedAt IS NULL`, [
       id,
     ])
-    return rows[0] ? (JSON.parse(rows[0].data) as T) : null
+    return rows[0] ? await deserializeData<T>(db, rows[0].data) : null
   }
 
   async list(db: LocalDb): Promise<T[]> {
     const rows = await db.select<SyncableRow>(
       `SELECT data FROM ${this.table} WHERE deletedAt IS NULL ORDER BY updatedAt DESC`
     )
-    return rows.map((row) => JSON.parse(row.data) as T)
+    return Promise.all(rows.map((row) => deserializeData<T>(db, row.data)))
   }
 
   /**
@@ -151,10 +192,11 @@ export class Repository<T extends SyncableRecord> {
     if (rows.length === 0) {
       return
     }
-    const data = { ...(JSON.parse(rows[0].data) as Record<string, unknown>), deletedAt, updatedAt: deletedAt }
+    const existing = await deserializeData<Record<string, unknown>>(db, rows[0].data)
+    const data = { ...existing, deletedAt, updatedAt: deletedAt }
     await db.exec(
       `UPDATE ${this.table} SET data = ?, updatedAt = ?, deletedAt = ?, _localUpdatedAt = ?, _dirty = 0, _syncState = 'synced' WHERE _id = ?`,
-      [JSON.stringify(data), deletedAt, deletedAt, new Date().toISOString(), id]
+      [await serializeData(db, data), deletedAt, deletedAt, new Date().toISOString(), id]
     )
   }
 
@@ -176,7 +218,7 @@ export class Repository<T extends SyncableRecord> {
     const record = doc as unknown as Record<string, unknown>
     const values = [
       doc._id,
-      JSON.stringify(doc),
+      await serializeData(db, doc),
       doc.updatedAt,
       doc.deletedAt ?? null,
       localUpdatedAt,

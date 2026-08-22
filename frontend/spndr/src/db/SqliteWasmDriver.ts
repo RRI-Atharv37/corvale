@@ -1,6 +1,7 @@
 import SqliteWorker from './worker/sqliteWorker?worker'
 import type { LocalDb, LocalDbRow } from './LocalDb'
 import type { WorkerPayload, WorkerRequest, WorkerResponse } from './worker/workerProtocol'
+import { parseEncryptedField, serializeEncryptedField } from './encryption/serialization'
 
 interface PendingCall {
   resolve: (value: unknown) => void
@@ -18,6 +19,11 @@ export class SqliteWasmDriver implements LocalDb {
   private readonly worker: Worker
   private nextId = 1
   private readonly pending = new Map<number, PendingCall>()
+  /** Mirrors the worker's key state on the main thread so `hasEncryptionKey()` can stay
+   * synchronous (matching `MemorySqliteDriver`'s shape, which `Repository.ts` relies on)
+   * without an RPC round trip on every write. The worker remains the source of truth for
+   * the key itself - this flag only tracks whether one has been set. */
+  private encryptionKeySet = false
 
   private constructor(worker: Worker) {
     this.worker = worker
@@ -77,6 +83,32 @@ export class SqliteWasmDriver implements LocalDb {
   /** Derives the encryption key inside the worker; the key itself never leaves it. */
   async setEncryptionKey(passphrase: string, salt: Uint8Array): Promise<void> {
     await this.send({ type: 'setEncryptionKey', passphrase, salt: Array.from(salt) })
+    this.encryptionKeySet = true
+  }
+
+  hasEncryptionKey(): boolean {
+    return this.encryptionKeySet
+  }
+
+  clearEncryptionKey(): void {
+    this.encryptionKeySet = false
+    void this.send({ type: 'clearEncryptionKey' })
+  }
+
+  /** Round-trips through the worker's `encryptValue`/`decryptValue` handlers (`sqliteWorker.ts`)
+   * so the derived `CryptoKey` never has to leave worker memory - only ciphertext crosses back. */
+  async encryptText(plaintext: string): Promise<string> {
+    const result = await this.send<{ iv: number[]; ciphertext: number[] }>({ type: 'encryptValue', plaintext })
+    return serializeEncryptedField({ iv: Uint8Array.from(result.iv), ciphertext: Uint8Array.from(result.ciphertext) })
+  }
+
+  async decryptText(serialized: string): Promise<string> {
+    const field = parseEncryptedField(serialized)
+    return this.send<string>({
+      type: 'decryptValue',
+      iv: Array.from(field.iv),
+      ciphertext: Array.from(field.ciphertext),
+    })
   }
 
   async close(): Promise<void> {

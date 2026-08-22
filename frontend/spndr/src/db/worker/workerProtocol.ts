@@ -9,6 +9,8 @@ export type WorkerPayload =
   | { type: 'rollback' }
   | { type: 'close' }
   | { type: 'setEncryptionKey'; passphrase: string; salt: number[] }
+  | { type: 'hasEncryptionKey' }
+  | { type: 'clearEncryptionKey' }
   | { type: 'encryptValue'; plaintext: string }
   | { type: 'decryptValue'; iv: number[]; ciphertext: number[] }
 
