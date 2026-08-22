@@ -109,6 +109,7 @@ export const ERROR_MESSAGES = {
         FILE_TOO_LARGE: 'Receipt file exceeds the 5 MB size limit',
         VIRUS_DETECTED: 'Receipt file failed security scan',
         VIRUS_SCAN_FAILED: 'Receipt upload temporarily unavailable; try again later',
+        STORAGE_QUOTA_EXCEEDED: 'This upload would exceed your receipt storage quota',
     },
     BUDGET: {
         BUDGET_NOT_FOUND: 'Budget not found',

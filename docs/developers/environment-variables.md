@@ -36,6 +36,14 @@ Create a `.env` file in the `backend/` folder.
 | `CLAMAV_PORT` | No | `3310` | ClamAV daemon port |
 | `CLAMAV_TIMEOUT_MS` | No | `30000` (30 sec) | ClamAV scan connection timeout |
 | `VIRUS_SCAN_FAIL_CLOSED` | No | `true` | Reject uploads when a scan errors out (not the same as an infected result). Already fail-closed unless explicitly set to the literal string `false` |
+| `RECEIPT_STORAGE_DRIVER` | No | unset (local disk) | Set to `s3` to store receipts in an S3-compatible bucket instead of `uploads/receipts/` on local disk. Required for any hosted deployment — local disk is ephemeral and not shared between instances |
+| `RECEIPT_S3_BUCKET` | Only if driver is `s3` | - | Bucket name receipts are stored in |
+| `RECEIPT_S3_REGION` | No | `us-east-1` | Bucket region |
+| `RECEIPT_S3_ENDPOINT` | No | unset (real AWS S3) | Custom endpoint for an S3-compatible provider (Cloudflare R2, MinIO, Backblaze B2) |
+| `RECEIPT_S3_FORCE_PATH_STYLE` | No | `false` | Set to `true` for providers that require path-style requests (e.g. MinIO) |
+| `RECEIPT_S3_ACCESS_KEY_ID` | Only if driver is `s3` | - | Access key for the bucket |
+| `RECEIPT_S3_SECRET_ACCESS_KEY` | Only if driver is `s3` | - | Secret key for the bucket |
+| `RECEIPT_STORAGE_QUOTA_BYTES` | No | unset (no quota) | Per-user cap on total receipt bytes, enforced at upload under either storage driver |
 
 ### Example backend `.env`
 
