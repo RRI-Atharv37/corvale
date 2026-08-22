@@ -12,6 +12,7 @@ Create a `.env` file in the `backend/` folder.
 | `MONGO_URI` | Yes | - | MongoDB connection string |
 | `JWT_SECRET` | Yes | - | Secret key for signing JWT tokens |
 | `JWT_EXPIRY` | Yes | - | Access token expiry (e.g., `15m`, `1h`) |
+| `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses, reset-link console logging, and secure-cookie flags |
 | `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token expiry |
 | `REFRESH_TOKEN_COOKIE_NAME` | No | `spndr_refresh` | httpOnly cookie name for refresh tokens |
 | `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`) |
@@ -24,13 +25,16 @@ Create a `.env` file in the `backend/` folder.
 | `SMTP_FROM` | No | SMTP account email | "From" address on outgoing password-reset and email-verification messages |
 | `AUTH_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for auth routes, and for `/auth/refresh` + `/auth/logout` |
 | `AUTH_RATE_LIMIT_MAX` | No | `10` | Max requests per window per IP for auth routes, and for `/auth/refresh` + `/auth/logout` |
+| `SYNC_PUSH_RATE_LIMIT_WINDOW_MS` | No | `60000` (1 min) | Rate limit window for `POST /sync/push` |
+| `SYNC_PUSH_RATE_LIMIT_MAX` | No | `120` | Max `POST /sync/push` requests per window per IP |
 | `GLOBAL_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for mutating requests (POST/PUT/PATCH/DELETE) across the whole API |
 | `GLOBAL_RATE_LIMIT_MAX` | No | `300` | Max mutating requests per window per IP across the whole API |
 | `TRUST_PROXY` | No | unset (`false`) | Express `trust proxy` setting — set to the number of hops (e.g. `1`) behind a reverse proxy so rate limiters key on the real client IP |
 | `VIRUS_SCAN_ENABLED` | No | `false` | Enable ClamAV scan on receipt upload |
 | `CLAMAV_HOST` | No | `127.0.0.1` | ClamAV daemon host |
 | `CLAMAV_PORT` | No | `3310` | ClamAV daemon port |
-| `VIRUS_SCAN_FAIL_CLOSED` | No | `false` | Reject uploads when scan fails (use `true` in production) |
+| `CLAMAV_TIMEOUT_MS` | No | `30000` (30 sec) | ClamAV scan connection timeout |
+| `VIRUS_SCAN_FAIL_CLOSED` | No | `true` | Reject uploads when a scan errors out (not the same as an infected result). Already fail-closed unless explicitly set to the literal string `false` |
 
 ### Example backend `.env`
 

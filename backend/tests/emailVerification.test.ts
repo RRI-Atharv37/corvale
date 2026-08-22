@@ -199,7 +199,7 @@ describe('Email verification', () => {
         expect(dryRunResult.matched).toBe(1)
         expect(dryRunResult.modified).toBe(0)
 
-        const legacyStillUnset = await User.findOne({ email: 'legacy@example.com' })
+        const legacyStillUnset = await User.findOne({ email: 'legacy@example.com' }).lean()
         expect(legacyStillUnset?.isEmailVerified).toBeUndefined()
 
         const applyResult = await backfillEmailVerification({ dryRun: false })
