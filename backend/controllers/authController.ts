@@ -183,13 +183,13 @@ export const logoutAllSessions = asyncHandler(async (req: AuthRequest, res: Resp
 export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.user?._id
 
-    const user = (await User.findById(userId).select('-password')) as IUser | null
+    const user = (await User.findById(userId)) as IUser | null
 
     if (!user) {
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
 
-    handleResponses(res, 200, user)
+    handleResponses(res, 200, toPublicUser(user))
 })
 
 export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {

@@ -10,15 +10,22 @@ export interface PinUnlockProps {
     onForgotPin?: () => void
 }
 
-/** Gate component: hides `children` behind a PIN prompt until `verifyPin` accepts an entry. */
+/**
+ * Gate component: hides `children` behind a PIN prompt until `verifyPin` accepts an entry.
+ * Locks out locally after `MAX_ATTEMPTS` wrong guesses in this mount, for immediate UI
+ * feedback. `verifyPin` (`pinStorage.verifyStoredPin`) additionally enforces its own
+ * *persisted* lockout that survives a remount - a rejected promise means that persisted
+ * counter has already maxed out, so it's surfaced the same way rather than crashing.
+ */
 const PinUnlock: React.FC<PinUnlockProps> = ({ verifyPin, onUnlocked, children, onForgotPin }) => {
     const [pin, setPin] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [attempts, setAttempts] = useState(0)
+    const [hardLocked, setHardLocked] = useState(false)
     const [unlocked, setUnlocked] = useState(false)
     const [checking, setChecking] = useState(false)
 
-    const lockedOut = attempts >= MAX_ATTEMPTS
+    const lockedOut = hardLocked || attempts >= MAX_ATTEMPTS
 
     if (unlocked) {
         return <>{children}</>
@@ -46,6 +53,10 @@ const PinUnlock: React.FC<PinUnlockProps> = ({ verifyPin, onUnlocked, children, 
                     ? 'Too many attempts. Locked out - use "Forgot PIN?" to reset and resync.'
                     : 'Incorrect PIN. Please try again.'
             )
+        } catch (err) {
+            setHardLocked(true)
+            setPin('')
+            setError(err instanceof Error ? err.message : 'Too many attempts. Locked out - use "Forgot PIN?" to reset and resync.')
         } finally {
             setChecking(false)
         }

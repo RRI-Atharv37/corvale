@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 import { FiLock } from 'react-icons/fi'
-import { clearPin, hasPinConfigured, setupPin, verifyStoredPin } from '../../offline/pinStorage'
-
-const MIN_PIN_LENGTH = 4
+import { MIN_PIN_LENGTH, clearPin, hasPinConfigured, lockLocalDb, setupPin, verifyStoredPin } from '../../offline/pinStorage'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 /** Settings-modal panel for setting up, changing, or removing the local lock-screen PIN. */
 const PinSettings: React.FC = () => {
@@ -30,20 +29,23 @@ const PinSettings: React.FC = () => {
             toast.error('PINs do not match')
             return
         }
-        if (configured) {
-            const currentOk = await verifyStoredPin(currentPin)
-            if (!currentOk) {
-                toast.error('Current PIN is incorrect')
-                return
-            }
-        }
 
         setSaving(true)
         try {
+            if (configured) {
+                const currentOk = await verifyStoredPin(currentPin)
+                if (!currentOk) {
+                    toast.error('Current PIN is incorrect')
+                    return
+                }
+            }
+
             await setupPin(nextPin)
             setConfigured(true)
             resetForm()
             toast.success(configured ? 'PIN updated' : 'PIN set up')
+        } catch (error) {
+            toast.error(getApiErrorMessage(error))
         } finally {
             setSaving(false)
         }
@@ -58,6 +60,11 @@ const PinSettings: React.FC = () => {
         setConfigured(false)
         resetForm()
         toast.success('PIN removed')
+    }
+
+    const handleLockNow = () => {
+        void lockLocalDb()
+        toast.success('Locked - enter your PIN to continue')
     }
 
     return (
@@ -78,6 +85,15 @@ const PinSettings: React.FC = () => {
                     >
                         {configured ? 'Change PIN' : 'Set up PIN'}
                     </button>
+                    {configured && (
+                        <button
+                            type="button"
+                            onClick={handleLockNow}
+                            className="rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-muted hover:text-accent hover:border-accent/40 transition-colors"
+                        >
+                            Lock now
+                        </button>
+                    )}
                     {configured && (
                         <button
                             type="button"

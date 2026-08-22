@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import Modal from '../ui/Modal'
-import { hasPinConfigured, setupPin } from '../../offline/pinStorage'
+import { MIN_PIN_LENGTH, hasPinConfigured, setupPin } from '../../offline/pinStorage'
 import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const PROMPT_SEEN_KEY = 'spndr_pin_prompt_seen'
-const MIN_PIN_LENGTH = 4
 
 // Onboarding's own wizard modal (`OnboardingWizard`) manages its visibility internally and
 // doesn't expose it, so this prompt is staggered behind a short delay instead of reacting to
@@ -53,6 +53,8 @@ const PinSetupPrompt: React.FC = () => {
             await setupPin(pin)
             toast.success('PIN set up - your offline data is now locked behind it')
             dismiss()
+        } catch (error) {
+            toast.error(getApiErrorMessage(error))
         } finally {
             setSaving(false)
         }

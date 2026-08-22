@@ -8,6 +8,7 @@ export const ERROR_MESSAGES = {
         TOKEN_REVOKED: 'Not authorized, session revoked',
         REFRESH_TOKEN_INVALID: 'Invalid or expired refresh token',
         REFRESH_TOKEN_MISSING: 'Refresh token not found',
+        REFRESH_TOKEN_REUSED: 'You were signed out for security because a session was reused',
         NOT_AUTHORIZED: 'Not authorized to perform this action',
         TOO_MANY_REQUESTS: 'Too many authentication attempts, please try again later',
         PASSWORD_RESET_EMAIL_SENT: 'If an account exists for that email, a password reset link has been sent',
