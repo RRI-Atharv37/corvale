@@ -15,6 +15,7 @@ Create a `.env` file in the `backend/` folder.
 | `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses, reset-link console logging, and secure-cookie flags |
 | `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token expiry |
 | `REFRESH_TOKEN_COOKIE_NAME` | No | `spndr_refresh` | httpOnly cookie name for refresh tokens |
+| `REFRESH_COOKIE_SAME_SITE` | No | `lax` | `lax` \| `strict` \| `none` — see [Deployment topology](#deployment-topology) below. `none` is only accepted when `NODE_ENV=production` |
 | `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`) |
 | `PASSWORD_RESET_EXPIRY_MS` | No | `3600000` (1 hour) | Password reset token lifetime |
 | `EMAIL_VERIFICATION_EXPIRY_MS` | No | `86400000` (24 hours) | Email verification token lifetime |
@@ -65,11 +66,36 @@ VITE_DOCS_URL=http://localhost:5174
 VITE_LOCAL_FIRST=false
 ```
 
+## Deployment topology
+
+spndr's refresh session relies on an httpOnly cookie, and cookies are topology-sensitive:
+**the pinned, supported deployment is same-site** — the frontend and API sharing one
+registrable domain (e.g. `app.spndr.example` + `api.spndr.example`, or an API reverse-proxied
+under the same origin as the frontend). This is a hard requirement, not a suggestion: with a
+same-site deployment, leave `REFRESH_COOKIE_SAME_SITE` unset and the refresh cookie is sent as
+`SameSite=Lax`, which works correctly.
+
+Deploying the frontend and API on unrelated domains (for example a Vercel frontend against a
+Render/Fly API) is **cross-site**, and `SameSite=Lax` cookies are not sent on cross-site
+requests at all. Symptom: users are silently logged out every time the 15-minute access token
+expires, with no error anywhere — `POST /auth/refresh` just never receives the cookie. If a
+cross-site deployment is genuinely required, set `REFRESH_COOKIE_SAME_SITE=none` explicitly
+(only accepted with `NODE_ENV=production`, since `SameSite=None` cookies must also be `Secure`
+or browsers reject them). Note this does **not** add CSRF protection for the auth routes —
+that lands with the wider token-storage rework (`SEC-18`) — so treat `none` as a stopgap, not
+a long-term posture.
+
+The desktop (Tauri) app is a distinct cross-site case tracked separately (`SEC-10`/`SEC-11`
+cross-cutting note in `ROADMAP.md`) and is expected to use a non-cookie refresh path rather
+than `SameSite=None`.
+
 ## Security notes
 
 - Never commit `.env` files to version control
 - Use a strong, unique `JWT_SECRET` in production
 - Set `CLIENT_URL` to your actual frontend domain in production
+- Deploy the frontend and API same-site; see [Deployment topology](#deployment-topology) above
+  before considering a cross-site setup
 - Use a managed MongoDB instance with authentication in production
 
 ## Related pages
