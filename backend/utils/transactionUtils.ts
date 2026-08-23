@@ -395,10 +395,12 @@ export const CSV_HEADERS = [
 ]
 
 export const escapeCsvValue = (value: string): string => {
-    if (/[",\n]/.test(value)) {
-        return `"${value.replace(/"/g, '""')}"`
+    const neutralized = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+
+    if (/["\r\n,]/.test(neutralized)) {
+        return `"${neutralized.replace(/"/g, '""')}"`
     }
-    return value
+    return neutralized
 }
 
 export const buildCsvString = (rows: string[][]): string => {
