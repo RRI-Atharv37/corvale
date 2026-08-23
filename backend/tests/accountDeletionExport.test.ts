@@ -150,6 +150,7 @@ describe('Self-service account deletion (L7)', () => {
             email: 'delete-shared-categories@example.com',
             password: DELETE_PASSWORD,
         })
+        await getFoodMasterId(token)
 
         const mastersBefore = await Category.countDocuments({ userId: null })
         expect(mastersBefore).toBeGreaterThan(0)

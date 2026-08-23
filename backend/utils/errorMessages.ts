@@ -189,5 +189,7 @@ export const ERROR_MESSAGES = {
         INVITE_NOT_PENDING: 'This invitation is no longer pending',
         INVITE_ALREADY_PENDING: 'An invitation is already pending for this user',
         CANNOT_INVITE_SELF: 'You cannot invite yourself to a workspace',
+        SOLE_OWNER_HAS_MEMBERS:
+            'Transfer ownership or remove the other members of your workspace(s) before deleting your account',
     },
 }

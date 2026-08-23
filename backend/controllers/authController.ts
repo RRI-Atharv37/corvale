@@ -36,6 +36,7 @@ import { parseNotificationPreferences } from '../utils/notificationUtils'
 import { parseDateFormat, parsePageSize } from '../utils/userPreferencesUtils'
 import { normalizeEmail } from '../utils/emailUtils'
 import { validatePassword } from '../utils/passwordPolicy'
+import { assertAccountDeletionAllowed, deleteUserAccountCascade } from '../utils/accountDeletionUtils'
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
@@ -313,6 +314,36 @@ export const confirmEmailVerification = asyncHandler(async (req: AuthRequest, re
     await verifyEmailWithToken(token)
 
     handleResponses(res, 200, { message: 'Email verified successfully' })
+})
+
+export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?._id.toString()
+    if (!userId) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 401)
+    }
+
+    const { password } = req.body
+    if (!password || typeof password !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
+    }
+
+    // req.user comes from authenticateRequest, which loads the user with `.select('-password')` -
+    // re-fetch with the password field to verify it, same as loginUser.
+    const user = (await User.findById(userId)) as IUser | null
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
+    }
+
+    const isMatch = await user.comparePassword(password)
+    if (!isMatch) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
+    }
+
+    await assertAccountDeletionAllowed(userId)
+    await deleteUserAccountCascade(userId)
+
+    clearRefreshTokenCookie(res)
+    handleResponses(res, 200, { message: 'Account deleted successfully' })
 })
 
 export const resendEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {

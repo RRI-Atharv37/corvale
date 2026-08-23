@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      npm-backend:
+        patterns:
+          - '*'
+
+  - package-ecosystem: npm
+    directory: /frontend/spndr
+    schedule:
+      interval: weekly
+    groups:
+      npm-frontend:
+        patterns:
+          - '*'
+
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: weekly
+    groups:
+      npm-docs:
+        patterns:
+          - '*'
+
+  - package-ecosystem: cargo
+    directory: /frontend/spndr/src-tauri
+    schedule:
+      interval: weekly
+    groups:
+      cargo-desktop:
+        patterns:
+          - '*'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

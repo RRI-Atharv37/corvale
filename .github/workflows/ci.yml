@@ -31,6 +31,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # SEC-19: gate on any newly-introduced high/critical advisory. Clean as of the
+      # multer@2.x / nodemailer@9.x upgrade (TODO.md L6) — fails CI on regression, not on
+      # pre-existing unfixable issues, since there are none left at this threshold.
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
       - name: Type-check
         run: npx tsc --noEmit
 
@@ -58,6 +64,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # SEC-19: gate on any newly-introduced high/critical advisory. Clean as of the
+      # happy-dom@20.x bump (TODO.md L6, dev-only — the DOM test environment, never shipped).
+      - name: Dependency audit
+        run: npm audit --audit-level=high
 
       - name: Lint
         run: npm run lint
@@ -89,7 +100,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # SEC-19: docs/ is 100% devDependencies (vitepress, never shipped — `npm run build`
+      # emits static HTML/CSS/JS with no Node runtime in production). The one remaining
+      # finding is a moderate/high esbuild dev-server request-forgery advisory with no fix
+      # published upstream (transitive via vitepress -> vite -> esbuild), exploitable only by
+      # visiting a malicious site while `vitepress dev` happens to be running locally — so the
+      # gate here is critical-only rather than high, to avoid failing CI on that accepted,
+      # unfixable risk while still catching anything worse.
+      - name: Dependency audit
+        run: npm audit --audit-level=critical
+
       # docs/ has no lint or test script (VitePress content site) — build is the
       # meaningful check: it fails on broken links/config and bad frontmatter.
       - name: Build
         run: npm run build
+
+  desktop:
+    name: Desktop (cargo audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/spndr/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/spndr/src-tauri
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      # SEC-19/L6: scans Cargo.lock against the RustSec advisory database. Only fails on an
+      # actual vulnerability (default behavior) — "unmaintained"/"unsound" warnings on the
+      # Linux gtk-rs bindings Tauri pulls in are informational, not gating.
+      - name: Dependency audit
+        run: cargo audit

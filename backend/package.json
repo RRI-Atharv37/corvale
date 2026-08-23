@@ -41,9 +41,10 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
-    "multer": "^1.4.5-lts.2",
-    "nodemailer": "^7.0.13",
-    "pdfkit": "^0.19.1"
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.5",
+    "pdfkit": "^0.19.1",
+    "@sentry/node": "^10.70.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",
@@ -54,7 +55,7 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.14.1",
-    "@types/nodemailer": "^7.0.12",
+    "@types/nodemailer": "^8.0.1",
     "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.2.1",
     "mongodb-memory-server": "^11.2.0",

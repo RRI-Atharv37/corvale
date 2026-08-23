@@ -13,6 +13,7 @@ export const API_PATHS = {
         PASSWORD_RESET_CONFIRM: '/auth/password-reset/confirm',
         EMAIL_VERIFICATION_CONFIRM: '/auth/email-verification/confirm',
         EMAIL_VERIFICATION_RESEND: '/auth/email-verification/resend',
+        DELETE_ACCOUNT: '/auth/account',
     },
     SAVER: {
         ADD: '/saver/add',

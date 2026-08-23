@@ -13,6 +13,7 @@ import {
     confirmEmailVerification,
     resendEmailVerification,
     updateUserPreferences,
+    deleteUserAccount,
 } from '../controllers/authController'
 
 export const createAuthRoutes = (): express.Router => {
@@ -26,6 +27,9 @@ export const createAuthRoutes = (): express.Router => {
     const passwordResetRateLimiter = createAuthRateLimiter()
     // Same reasoning for email verification (resend/confirm).
     const verificationRateLimiter = createAuthRateLimiter()
+    // Account deletion re-checks the password like login does, so it gets the same
+    // brute-force protection, on its own instance so it can't lock a user out of login.
+    const accountDeletionRateLimiter = createAuthRateLimiter()
 
     router.post('/register', authRateLimiter, registerUser)
     router.post('/login', authRateLimiter, loginUser)
@@ -38,6 +42,7 @@ export const createAuthRoutes = (): express.Router => {
     router.post('/email-verification/resend', verificationRateLimiter, authenticateOnly, resendEmailVerification)
     router.get('/user', authenticateOnly, getUserInfo)
     router.patch('/user', protect, updateUserPreferences)
+    router.delete('/account', accountDeletionRateLimiter, authenticateOnly, deleteUserAccount)
 
     return router
 }

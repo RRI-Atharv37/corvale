@@ -5,6 +5,9 @@ import app from './app'
 import connectDB from './config/db'
 import { ensureMasterCategoriesSeeded } from './utils/categorySeed'
 import { registerGracefulShutdown } from './utils/gracefulShutdown'
+import { initErrorTracking } from './utils/errorTracking'
+
+initErrorTracking()
 
 connectDB().then(() => ensureMasterCategoriesSeeded())
 

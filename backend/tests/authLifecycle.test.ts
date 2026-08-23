@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
+import mongoose from 'mongoose'
 import User from '../models/User'
 import RefreshToken from '../models/RefreshToken'
 import { createApp } from '../app'
@@ -80,7 +81,7 @@ describe('Auth lifecycle', () => {
             .set('Cookie', toCookieHeader(oldRefreshCookie!))
 
         expect(reuseRes.status).toBe(401)
-        expect(reuseRes.body.message).toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID)
+        expect(reuseRes.body.message).toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_REUSED)
     })
 
     it('rejects a refresh token after rotation', async () => {
@@ -104,7 +105,7 @@ describe('Auth lifecycle', () => {
             .set('Cookie', toCookieHeader(oldRefreshCookie!))
 
         expect(reuseRes.status).toBe(401)
-        expect(reuseRes.body.message).toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID)
+        expect(reuseRes.body.message).toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_REUSED)
     })
 
     it('rejects expired refresh tokens', async () => {
@@ -114,9 +115,12 @@ describe('Auth lifecycle', () => {
         })
 
         const rawToken = 'expired-refresh-token-value'
+        const tokenId = new mongoose.Types.ObjectId()
         await RefreshToken.create({
+            _id: tokenId,
             userId,
             tokenHash: hashToken(rawToken),
+            familyId: tokenId,
             expiresAt: new Date(Date.now() - 60_000),
         })
 
@@ -147,7 +151,7 @@ describe('Auth lifecycle', () => {
             .set('Cookie', toCookieHeader(refreshCookie!))
 
         expect(refreshRes.status).toBe(401)
-        expect(refreshRes.body.message).toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID)
+        expect(refreshRes.body.message).toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_REUSED)
     })
 
     it('logout-all invalidates existing access tokens via tokenVersion', async () => {

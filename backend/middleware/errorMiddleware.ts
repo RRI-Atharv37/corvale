@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { CustomError } from '../utils/customError'
+import { logger } from '../utils/logger'
+import { captureException } from '../utils/errorTracking'
 
 export const errorHandler = (
     err: Error,
@@ -20,9 +22,17 @@ export const errorHandler = (
           : 500
     const message = isCustomError ? err.message : 'Internal Server Error'
 
-    console.error(`[${new Date().toISOString()}] ${statusCode} - ${message}`)
-    if (!isCustomError) {
-        console.error(err)
+    logger.error(message, {
+        statusCode,
+        path: req.path,
+        method: req.method,
+        stack: isCustomError ? undefined : err.stack,
+    })
+
+    // Only 5xx (unexpected/server-side) failures go to error tracking -- 4xx CustomErrors
+    // (validation, auth, not-found) are expected client-facing responses, not incidents.
+    if (statusCode >= 500) {
+        captureException(err, { statusCode, path: req.path, method: req.method })
     }
 
     res.status(statusCode).json({

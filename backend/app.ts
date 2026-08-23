@@ -37,6 +37,7 @@ import { createSyncRoutes } from './routes/syncRoutes'
 import { sanitizeBody } from './middleware/sanitizeBodyMiddleware'
 import { createGlobalRateLimiter } from './middleware/rateLimitMiddleware'
 import { errorHandler } from './middleware/errorMiddleware'
+import { requestLogger } from './middleware/requestLoggerMiddleware'
 
 /**
  * TRUST_PROXY is unset (false) by default so req.ip is the socket's own address, matching
@@ -91,6 +92,7 @@ export const createApp = (): express.Application => {
     app.use(express.json({ limit: '1mb' }))
     app.use(cookieParser())
     app.use(sanitizeBody)
+    app.use(requestLogger)
 
     app.use(healthRoutes)
 

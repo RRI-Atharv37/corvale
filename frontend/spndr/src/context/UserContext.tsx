@@ -26,6 +26,7 @@ interface UserContextType {
     clearUser: () => void
     logout: () => Promise<void>
     logoutAllSessions: () => Promise<void>
+    deleteAccount: (password: string) => Promise<void>
     restoreSession: () => Promise<void>
 }
 
@@ -80,6 +81,12 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         } catch {
             // Clear local session even if the server call fails (e.g. offline)
         }
+        clearUser()
+        await wipeLocalData()
+    }, [clearUser])
+
+    const deleteAccount = useCallback(async (password: string) => {
+        await axiosInstance.delete(API_PATHS.AUTH.DELETE_ACCOUNT, { data: { password } })
         clearUser()
         await wipeLocalData()
     }, [clearUser])
@@ -156,9 +163,19 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             clearUser,
             logout,
             logoutAllSessions,
+            deleteAccount,
             restoreSession,
         }),
-        [user, isInitializing, updateUser, clearUser, logout, logoutAllSessions, restoreSession]
+        [
+            user,
+            isInitializing,
+            updateUser,
+            clearUser,
+            logout,
+            logoutAllSessions,
+            deleteAccount,
+            restoreSession,
+        ]
     )
 
     return <UserContext.Provider value={value}>{children}</UserContext.Provider>

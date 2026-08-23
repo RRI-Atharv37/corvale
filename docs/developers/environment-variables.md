@@ -44,6 +44,8 @@ Create a `.env` file in the `backend/` folder.
 | `RECEIPT_S3_ACCESS_KEY_ID` | Only if driver is `s3` | - | Access key for the bucket |
 | `RECEIPT_S3_SECRET_ACCESS_KEY` | Only if driver is `s3` | - | Secret key for the bucket |
 | `RECEIPT_STORAGE_QUOTA_BYTES` | No | unset (no quota) | Per-user cap on total receipt bytes, enforced at upload under either storage driver |
+| `SENTRY_DSN` | No | unset (error tracking off) | Sentry (or Sentry-compatible) ingest DSN. When unset, 5xx errors are only written to the structured JSON logs, not reported anywhere external |
+| `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag attached to reported errors, e.g. `production`, `staging` |
 
 ### Example backend `.env`
 
@@ -96,6 +98,25 @@ a long-term posture.
 The desktop (Tauri) app is a distinct cross-site case tracked separately (`SEC-10`/`SEC-11`
 cross-cutting note in `ROADMAP.md`) and is expected to use a non-cookie refresh path rather
 than `SameSite=None`.
+
+## Monitoring
+
+spndr exposes two endpoints for operators, with no configuration required:
+
+- `GET /health` — liveness. Returns `200` as soon as the process is up, without touching
+  MongoDB, so it stays fast even if the database is down.
+- `GET /ready` — readiness. Returns `200` only once the MongoDB connection is actually
+  established, and `503` otherwise.
+
+Point an external uptime monitor (UptimeRobot, Better Uptime, Pingdom, or your hosting
+provider's built-in health check) at `GET /health` to get alerted the moment the process stops
+responding, and at `GET /ready` if you want load-balancer or orchestrator traffic held back
+until the database connection is up.
+
+Every request is also logged as one structured JSON line to stdout (or stderr for errors),
+suitable for ingestion by any log aggregator that reads container/process logs — no extra
+configuration needed. Set `SENTRY_DSN` to additionally forward unexpected 5xx errors to Sentry
+for alerting and stack-trace triage; leave it unset in development.
 
 ## Security notes
 
