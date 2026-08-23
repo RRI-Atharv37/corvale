@@ -147,7 +147,9 @@ describe('requestLogger middleware (L4)', () => {
 
         const app = express()
         app.use(requestLogger)
-        app.get('/api/v1/__test/ok', (_req, res) => res.status(200).json({ success: true }))
+        app.get('/api/v1/__test/ok', (_req, res) => {
+            res.status(200).json({ success: true })
+        })
 
         await request(app).get('/api/v1/__test/ok')
         await new Promise((resolve) => setImmediate(resolve))
@@ -166,8 +168,12 @@ describe('requestLogger middleware (L4)', () => {
 
         const app = express()
         app.use(requestLogger)
-        app.get('/health', (_req, res) => res.status(200).json({ success: true }))
-        app.get('/ready', (_req, res) => res.status(200).json({ success: true }))
+        app.get('/health', (_req, res) => {
+            res.status(200).json({ success: true })
+        })
+        app.get('/ready', (_req, res) => {
+            res.status(200).json({ success: true })
+        })
 
         await request(app).get('/health')
         await request(app).get('/ready')
