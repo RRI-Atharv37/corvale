@@ -53,9 +53,16 @@ const WorkspaceProbe = () => {
 
 describe('WorkspaceContext offline fallback for the stored active workspace', () => {
     beforeEach(() => {
-        localStorage.setItem('token', 'tok')
         localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, 'ws1')
-        vi.mocked(axiosInstance.get).mockResolvedValue({ success: true, data: mockUser })
+        // restoreSession now goes through POST /auth/refresh (S16/SEC-18) rather than a stored
+        // token + GET /auth/user - mocked to resolve unconditionally so `isAuthenticated` is
+        // true regardless of the `setOnline` value each test below sets before rendering
+        // (the mock doesn't actually consult `navigator.onLine`; only the real axios instance's
+        // request would fail while offline).
+        vi.mocked(axiosInstance.post).mockResolvedValue({
+            success: true,
+            data: { token: 'tok', user: mockUser, offlineGrant: 'unused-online' },
+        })
         setOnline(true)
     })
 

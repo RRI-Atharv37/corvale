@@ -17,6 +17,8 @@ Create a `.env` file in the `backend/` folder.
 | `REFRESH_TOKEN_COOKIE_NAME` | No | `spndr_refresh` | httpOnly cookie name for refresh tokens |
 | `REFRESH_COOKIE_SAME_SITE` | No | `lax` | `lax` \| `strict` \| `none` — see [Deployment topology](#deployment-topology) below. `none` is only accepted when `NODE_ENV=production` |
 | `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`) |
+| `OFFLINE_GRANT_PRIVATE_KEY` | Yes | - | EC (P-256) private key, PEM-encoded with real newlines replaced by literal `\n`, that signs the client's offline session grant. See [Offline session grant](#offline-session-grant) below |
+| `OFFLINE_GRANT_DAYS` | No | `30` | How many days a client may render its cached data offline before the signed grant expires |
 | `PASSWORD_RESET_EXPIRY_MS` | No | `3600000` (1 hour) | Password reset token lifetime |
 | `EMAIL_VERIFICATION_EXPIRY_MS` | No | `86400000` (24 hours) | Email verification token lifetime |
 | `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev to log reset/verification links to the console instead of emailing them |
@@ -59,6 +61,7 @@ JWT_SECRET=replace-with-a-long-random-string
 JWT_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
+OFFLINE_GRANT_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIGHAgEA...\n-----END PRIVATE KEY-----
 ```
 
 ## Frontend environment variables
@@ -68,15 +71,19 @@ Create a `.env` file in the `frontend/spndr/` folder (copy from `.env.example`).
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `VITE_API_URL` | No | `http://localhost:5000/api/v1` | Backend API base URL |
+| `VITE_API_ORIGIN` | No | `http://localhost:5000` | Same backend, origin only (no `/api/v1` path) - builds the `connect-src` directive in the page's Content-Security-Policy. Keep in sync with `VITE_API_URL`'s origin |
 | `VITE_DOCS_URL` | No | `http://localhost:5174` | URL the "Docs" link in the dashboard header opens |
 | `VITE_LOCAL_FIRST` | No | `false` | Enables the offline local-first sync engine, its settings UI, and local-store reads/writes on dashboard pages |
+| `VITE_OFFLINE_GRANT_PUBLIC_KEY` | Yes | - | EC (P-256) public key, PEM-encoded with real newlines replaced by literal `\n`, matching the backend's `OFFLINE_GRANT_PRIVATE_KEY`. Without it, offline rendering of cached data fails closed — see [Offline session grant](#offline-session-grant) below |
 
 ### Example frontend `.env`
 
 ```
 VITE_API_URL=http://localhost:5000/api/v1
+VITE_API_ORIGIN=http://localhost:5000
 VITE_DOCS_URL=http://localhost:5174
 VITE_LOCAL_FIRST=false
+VITE_OFFLINE_GRANT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\nMFkwEwYH...\n-----END PUBLIC KEY-----
 ```
 
 ## Deployment topology
@@ -102,6 +109,28 @@ The desktop (Tauri) app is a distinct cross-site case tracked separately (`SEC-1
 cross-cutting note in `ROADMAP.md`) and is expected to use a non-cookie refresh path rather
 than `SameSite=None`.
 
+## Offline session grant
+
+spndr keeps the access token itself in memory only, never in `localStorage` — a page reload has
+no token to read back, so the app calls `POST /auth/refresh` (backed by the httpOnly refresh
+cookie) on boot to get a fresh one instead. That's the online path.
+
+Offline is different: with no server reachable, the app falls back to the last-known cached
+user, gated by a signed **offline session grant** rather than a plain expiry date. Every
+successful login, refresh, or reconnect issues a fresh grant — a JWT signed with
+`OFFLINE_GRANT_PRIVATE_KEY` — that the client stores and can verify locally with the matching
+`VITE_OFFLINE_GRANT_PUBLIC_KEY`, but can never mint or extend on its own. If the grant is
+missing, tampered with, or has expired, offline rendering is refused rather than allowed by
+default — generate a real keypair per deployment and never reuse the sample values above:
+
+```bash
+openssl ecparam -genkey -name prime256v1 -noout -out offline-grant-private.pem
+openssl ec -in offline-grant-private.pem -pubout -out offline-grant-public.pem
+```
+
+Paste each file's contents into the matching env var with real newlines replaced by literal
+`\n`, keeping the value on one line.
+
 ## Monitoring
 
 spndr exposes two endpoints for operators, with no configuration required:
@@ -125,6 +154,8 @@ for alerting and stack-trace triage; leave it unset in development.
 
 - Never commit `.env` files to version control
 - Use a strong, unique `JWT_SECRET` in production
+- Generate a dedicated `OFFLINE_GRANT_PRIVATE_KEY` keypair per deployment and never commit it —
+  only the public half belongs in the frontend build
 - Set `CLIENT_URL` to your actual frontend domain in production
 - Deploy the frontend and API same-site; see [Deployment topology](#deployment-topology) above
   before considering a cross-site setup

@@ -7,7 +7,8 @@ import axiosInstance from '../../utils/axiosInstance'
 import { getCachedUser, setCachedUser } from '../cachedUser'
 import { wipeLocalData } from '../wipeLocalData'
 import PinUnlock from '../PinUnlock'
-import { isLocalSessionValid } from '../sessionPolicy'
+import { clearOfflineGrant, storeOfflineGrant } from '../offlineGrant'
+import { createTestOfflineGrant } from '../../test/offlineGrantFixture'
 import { handleTokenRevoked } from '../tokenRevokedFlow'
 import type { User } from '../../types/api'
 
@@ -26,8 +27,11 @@ import type { User } from '../../types/api'
 //   sequences "offer export" before "wipe" - the architecture doc describes the
 //   *behavior* but not a concrete function shape, so this is invented to make the
 //   ordering guarantee independently testable from any UI.
-// - `isLocalSessionValid`'s exact-instant boundary is treated as expired (a session is
-//   valid strictly before its `sessionValidUntil`), matching common expiry semantics.
+// - S16/SEC-18: the plain `sessionValidUntil` date is gone. Offline rendering of a
+//   cached user is now gated on `verifyOfflineGrant` (see `offlineGrant.test.ts` for its
+//   own unit coverage) - these boot tests seed a real signed grant via
+//   `createTestOfflineGrant` to exercise the happy path, and a dedicated block below
+//   covers the fail-closed case where no valid grant is present.
 
 vi.mock('../../utils/axiosInstance', () => ({
     default: {
@@ -67,11 +71,12 @@ describe('offline boot: cached user rendering', () => {
         )
     }
 
-    beforeEach(() => {
-        localStorage.setItem('token', 'stale-token')
+    beforeEach(async () => {
         setCachedUser(mockUser)
+        await storeOfflineGrant(await createTestOfflineGrant(mockUser._id))
         setOnline(false)
         vi.mocked(axiosInstance.get).mockRejectedValue(new Error('Network Error'))
+        vi.mocked(axiosInstance.post).mockRejectedValue(new Error('Network Error'))
     })
 
     it('renders the cached user immediately instead of hanging on a spinner', async () => {
@@ -106,6 +111,48 @@ describe('offline boot: cached user rendering', () => {
 
     it('getCachedUser returns what was cached via setCachedUser', () => {
         expect(getCachedUser()).toEqual(mockUser)
+    })
+})
+
+describe('offline boot: fails closed without a valid offline grant', () => {
+    const DashboardProbe = () => {
+        const { isInitializing, isAuthenticated } = useUser()
+        if (isInitializing) return <div data-testid="init">Initializing</div>
+        return <div data-testid="dashboard">{isAuthenticated ? 'authenticated' : 'no-auth'}</div>
+    }
+
+    beforeEach(() => {
+        setCachedUser(mockUser)
+        setOnline(false)
+        vi.mocked(axiosInstance.get).mockRejectedValue(new Error('Network Error'))
+        vi.mocked(axiosInstance.post).mockRejectedValue(new Error('Network Error'))
+    })
+
+    it('does not authenticate from a cached user when no offline grant was ever stored', async () => {
+        clearOfflineGrant()
+
+        renderWithProviders(<DashboardProbe />, { withWorkspace: false })
+
+        await waitFor(() => expect(screen.queryByTestId('init')).not.toBeInTheDocument())
+        expect(screen.getByTestId('dashboard')).toHaveTextContent('no-auth')
+    })
+
+    it('does not authenticate from a cached user when the stored grant has expired', async () => {
+        await storeOfflineGrant(await createTestOfflineGrant(mockUser._id, { expiresInSeconds: -60 }))
+
+        renderWithProviders(<DashboardProbe />, { withWorkspace: false })
+
+        await waitFor(() => expect(screen.queryByTestId('init')).not.toBeInTheDocument())
+        expect(screen.getByTestId('dashboard')).toHaveTextContent('no-auth')
+    })
+
+    it('does not authenticate from a cached user when the stored grant belongs to a different user', async () => {
+        await storeOfflineGrant(await createTestOfflineGrant('someone-else'))
+
+        renderWithProviders(<DashboardProbe />, { withWorkspace: false })
+
+        await waitFor(() => expect(screen.queryByTestId('init')).not.toBeInTheDocument())
+        expect(screen.getByTestId('dashboard')).toHaveTextContent('no-auth')
     })
 })
 
@@ -173,7 +220,6 @@ describe('logout while offline', () => {
     }
 
     beforeEach(() => {
-        localStorage.setItem('token', 'tok')
         setOnline(false)
         vi.mocked(axiosInstance.get).mockResolvedValue({ success: true, data: mockUser })
         vi.mocked(axiosInstance.post).mockRejectedValue(new Error('Network Error'))
@@ -232,23 +278,6 @@ describe('TOKEN_REVOKED on reconnect', () => {
     })
 })
 
-describe('sessionPolicy: isLocalSessionValid', () => {
-    it('is valid when sessionValidUntil is in the future', () => {
-        const now = new Date('2026-08-19T12:00:00.000Z')
-        expect(isLocalSessionValid('2026-08-20T00:00:00.000Z', now)).toBe(true)
-    })
-
-    it('is invalid once sessionValidUntil has passed', () => {
-        const now = new Date('2026-08-19T12:00:00.000Z')
-        expect(isLocalSessionValid('2026-08-01T00:00:00.000Z', now)).toBe(false)
-    })
-
-    it('is invalid when there is no stored session', () => {
-        expect(isLocalSessionValid(null)).toBe(false)
-    })
-
-    it('treats the exact expiry instant as no longer valid', () => {
-        const now = new Date('2026-08-19T12:00:00.000Z')
-        expect(isLocalSessionValid(now.toISOString(), now)).toBe(false)
-    })
-})
+// Offline-grant expiry/tamper/wrong-user coverage lives in `offlineGrant.test.ts` next to the
+// module itself (S16, SEC-18) - superseded the old `sessionPolicy: isLocalSessionValid` block
+// that tested a plain, forgeable expiry date.

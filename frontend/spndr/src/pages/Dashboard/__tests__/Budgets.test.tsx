@@ -119,16 +119,17 @@ const seedBudgetWithProgress = async () => {
 
 beforeEach(() => {
     resetLocalDbForTests()
-    localStorage.setItem('token', 'test-token')
-    // Only `GET /auth/user` (restoreSession) and `GET /workspaces` (WorkspaceProvider) fire in the
-    // local-first branch - everything else is read from the local store. Route by URL so the
-    // workspace list gets an array, not the user payload.
-    vi.mocked(axiosInstance.get).mockImplementation(async (url: string) => {
-        if (url === API_PATHS.AUTH.USER) {
-            return { success: true, data: mockUser }
+    // `POST /auth/refresh` (restoreSession, S16/SEC-18 - the access token lives in memory only
+    // and is restored via the httpOnly refresh cookie, not a stored token) and `GET /workspaces`
+    // (WorkspaceProvider) fire in the local-first branch - everything else is read from the
+    // local store.
+    vi.mocked(axiosInstance.post).mockImplementation(async (url: string) => {
+        if (url === API_PATHS.AUTH.REFRESH) {
+            return { success: true, data: { token: 'test-token', user: mockUser, offlineGrant: 'unused-online' } }
         }
         return { success: true, data: [] }
     })
+    vi.mocked(axiosInstance.get).mockResolvedValue({ success: true, data: [] })
 })
 
 describe('Budgets page (local-first)', () => {

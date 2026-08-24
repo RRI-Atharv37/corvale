@@ -44,9 +44,9 @@ const Login = () => {
                 password,
             })
 
-            const { token, user } = parseAuthPayload(response)
-            setAuthSession({ token, user })
-            updateUser(user)
+            const payload = parseAuthPayload(response)
+            setAuthSession(payload)
+            updateUser(payload.user)
             toast.success('Welcome back!')
             navigate('/dashboard')
         } catch (err) {

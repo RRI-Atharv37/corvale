@@ -1,7 +1,8 @@
 import { resetLocalData } from '../sync/syncEngine'
 import { setCachedUser } from './cachedUser'
-import { clearSessionValidUntil } from './sessionPolicy'
+import { clearOfflineGrant } from './offlineGrant'
 import { clearLocalEncryptionKey, clearPin } from './pinStorage'
+import { setAccessToken } from '../utils/tokenStore'
 
 /**
  * Full local wipe: the local SQLite store (data + outbox + conflicts + checkpoint, via
@@ -21,7 +22,7 @@ export const wipeLocalData = async (): Promise<void> => {
         // Local DB unavailable (e.g. local-first disabled in this build) - nothing there to wipe.
     }
     setCachedUser(null)
-    clearSessionValidUntil()
+    clearOfflineGrant()
     clearPin()
-    localStorage.removeItem('token')
+    setAccessToken(null)
 }

@@ -7,6 +7,20 @@
     <meta name="description" content="spndr — Stop guessing. Start knowing. Personal finance for students and young adults who are tired of balance shock." />
     <meta name="theme-color" content="#14121c" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!--
+      Strict CSP for the web app (S16, SEC-18) - a second line of defense against injected
+      script even if something upstream got past output-encoding. `connect-src` uses
+      VITE_API_ORIGIN (scheme+host+port only, no path - unlike VITE_API_URL, which includes
+      `/api/v1`) so it matches every path CSP's connect-src actually needs to allow, not just
+      one of them: XHR/fetch calls under the API base path, and the bare-origin reachability
+      probe in `src/offline/reachability.ts`.
+      `frame-ancestors` has no effect via a <meta> tag (CSP spec) - a real deployment must also
+      send it (or X-Frame-Options) as an HTTP response header at the hosting/reverse-proxy layer.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' %VITE_API_ORIGIN%; base-uri 'self'; form-action 'self'; object-src 'none'"
+    />
     <title>spndr — Know where every dollar went</title>
   </head>
   <body>

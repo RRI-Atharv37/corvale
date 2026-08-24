@@ -4,6 +4,8 @@ import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent } fr
 import Categories from '../Categories'
 import axiosInstance from '../../../utils/axiosInstance'
 import { setCachedUser } from '../../../offline/cachedUser'
+import { storeOfflineGrant } from '../../../offline/offlineGrant'
+import { createTestOfflineGrant } from '../../../test/offlineGrantFixture'
 import { getLocalDb, resetLocalDbForTests } from '../../../db/localDbInstance'
 import { Repository } from '../../../db/repositories/Repository'
 import type { LocalCategory } from '../../../domain/types'
@@ -60,11 +62,11 @@ const seedCategories = async () => {
     ])
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     vi.stubEnv('VITE_LOCAL_FIRST', 'true')
     resetLocalDbForTests()
-    localStorage.setItem('token', 'stale-token')
     setCachedUser(mockUser)
+    await storeOfflineGrant(await createTestOfflineGrant(mockUser._id))
     Object.defineProperty(navigator, 'onLine', { value: false, writable: true, configurable: true })
     vi.mocked(axiosInstance.get).mockRejectedValue(new Error('Network Error'))
 })

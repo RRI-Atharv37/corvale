@@ -1,6 +1,12 @@
 import { getRefreshCookieSameSite } from './tokenUtils'
 
-const REQUIRED_ENV_VARS = ['MONGO_URI', 'JWT_SECRET', 'JWT_EXPIRY', 'CLIENT_URL'] as const
+const REQUIRED_ENV_VARS = [
+    'MONGO_URI',
+    'JWT_SECRET',
+    'JWT_EXPIRY',
+    'CLIENT_URL',
+    'OFFLINE_GRANT_PRIVATE_KEY',
+] as const
 
 /**
  * Fails startup loudly instead of degrading silently (SEC-12): an unset JWT_EXPIRY

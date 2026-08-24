@@ -11,6 +11,7 @@ import {
     setRefreshTokenCookie,
     clearRefreshTokenCookie,
 } from '../utils/tokenUtils'
+import { generateOfflineGrant } from '../utils/offlineGrantUtils'
 import {
     createRefreshToken,
     revokeRefreshToken,
@@ -59,6 +60,7 @@ const issueAuthSession = async (user: IUser, res: Response) => {
     return {
         token: accessToken,
         user: toPublicUser(user),
+        offlineGrant: generateOfflineGrant(user._id.toString()),
     }
 }
 
@@ -148,6 +150,7 @@ export const refreshAccessToken = asyncHandler(async (req: AuthRequest, res: Res
     handleResponses(res, 200, {
         token: accessToken,
         user: toPublicUser(user),
+        offlineGrant: generateOfflineGrant(user._id.toString()),
     })
 })
 

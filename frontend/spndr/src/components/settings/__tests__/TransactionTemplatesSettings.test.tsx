@@ -4,6 +4,8 @@ import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent } fr
 import TransactionTemplatesSettings from '../TransactionTemplatesSettings'
 import axiosInstance from '../../../utils/axiosInstance'
 import { setCachedUser } from '../../../offline/cachedUser'
+import { storeOfflineGrant } from '../../../offline/offlineGrant'
+import { createTestOfflineGrant } from '../../../test/offlineGrantFixture'
 import { getLocalDb, resetLocalDbForTests } from '../../../db/localDbInstance'
 import { Repository } from '../../../db/repositories/Repository'
 import type { LocalAccount, LocalCategory, LocalTransactionTemplate } from '../../../domain/types'
@@ -86,11 +88,11 @@ const seedFixtures = async () => {
     return db
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     vi.stubEnv('VITE_LOCAL_FIRST', 'true')
     resetLocalDbForTests()
-    localStorage.setItem('token', 'stale-token')
     setCachedUser(mockUser)
+    await storeOfflineGrant(await createTestOfflineGrant(mockUser._id))
     setOnline(false)
     vi.mocked(axiosInstance.get).mockRejectedValue(new Error('Network Error'))
 })

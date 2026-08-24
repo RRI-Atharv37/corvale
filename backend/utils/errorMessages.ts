@@ -28,6 +28,7 @@ export const ERROR_MESSAGES = {
     },
     GENERAL: {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
+        OFFLINE_GRANT_KEY_MISSING: 'OFFLINE_GRANT_PRIVATE_KEY is not defined in environment variables',
         UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
         ROUTE_NOT_FOUND: 'Route not found',
         UNSAFE_REQUEST_BODY: 'Request body contains invalid characters',

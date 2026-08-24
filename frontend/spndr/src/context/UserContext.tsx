@@ -6,12 +6,8 @@ import { unwrapApiData } from '../utils/apiHelpers'
 import { getApiErrorMessage } from '../utils/apiError'
 import { resetPreferredCurrency, resetDateFormat, setDateFormat, setPreferredCurrency } from '../utils/format'
 import { getCachedUser, setCachedUser } from '../offline/cachedUser'
-import {
-    clearSessionValidUntil,
-    getSessionValidUntil,
-    isLocalSessionValid,
-    setSessionValidUntil,
-} from '../offline/sessionPolicy'
+import { setAccessToken } from '../utils/tokenStore'
+import { clearOfflineGrant, getStoredOfflineGrant, storeOfflineGrant, verifyOfflineGrant } from '../offline/offlineGrant'
 import { isNetworkError } from '../offline/reachability'
 import { wipeLocalData } from '../offline/wipeLocalData'
 import { exportUnsyncedOps } from '../offline/exportUnsyncedOps'
@@ -54,8 +50,8 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
     const clearUser = useCallback(() => {
         applyUser(null)
-        localStorage.removeItem('token')
-        clearSessionValidUntil()
+        setAccessToken(null)
+        clearOfflineGrant()
     }, [applyUser])
 
     const updateUser = useCallback(
@@ -92,31 +88,28 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }, [clearUser])
 
     const restoreSession = useCallback(async () => {
-        const token = localStorage.getItem('token')
-
-        if (!token) {
-            setIsInitializing(false)
-            return
-        }
-
+        // The access token lives in memory only (S16, SEC-18) and is gone after a reload, so
+        // boot always goes through the httpOnly refresh cookie rather than checking for a
+        // stored token first. The response carries a fresh token, the user, and a rolled-forward
+        // offline grant in one round trip.
         try {
-            const response = await axiosInstance.get<ApiResponse<User>>(API_PATHS.AUTH.USER)
-            const userData = unwrapApiData(response)
-            applyUser(userData)
-            setSessionValidUntil()
+            const response = await axiosInstance.post<ApiResponse<AuthPayload>>(API_PATHS.AUTH.REFRESH)
+            const payload = parseAuthPayload(response)
+            setAccessToken(payload.token)
+            applyUser(payload.user)
+            storeOfflineGrant(payload.offlineGrant)
         } catch (error) {
             // A network failure (no server response reached us) is not proof the session is
-            // invalid - it just means we can't check. Fall back to the last-known cached user
-            // rather than logging the user out, as long as the local session window (set at
-            // login, independent of the 15m/7d JWT lifetimes) hasn't run out. A genuine auth
-            // rejection (401 with a response) is not a network failure and still clears the
-            // session normally.
+            // invalid - it just means we can't check. Fall back to the last-known cached user,
+            // but only when the signed offline grant actually verifies for that cached user -
+            // unlike the old plain expiry date, there is no default-allow path here. A genuine
+            // auth rejection (401 with a response, e.g. no/expired refresh cookie) is not a
+            // network failure and still clears the session normally.
             const offline = !navigator.onLine || isNetworkError(error)
             const cached = offline ? getCachedUser() : null
-            const validUntil = getSessionValidUntil()
-            const cachedSessionUsable = validUntil === null || isLocalSessionValid(validUntil)
+            const grantValid = cached ? await verifyOfflineGrant(getStoredOfflineGrant(), cached._id) : false
 
-            if (cached && cachedSessionUsable) {
+            if (cached && grantValid) {
                 applyUser(cached)
             } else {
                 clearUser()
@@ -184,8 +177,8 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 export default UserProvider
 
 export const setAuthSession = (payload: AuthPayload): void => {
-    localStorage.setItem('token', payload.token)
-    setSessionValidUntil()
+    setAccessToken(payload.token)
+    storeOfflineGrant(payload.offlineGrant)
 }
 
 export const parseAuthPayload = (response: ApiResponse<AuthPayload> | AuthPayload): AuthPayload => {

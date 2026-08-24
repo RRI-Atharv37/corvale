@@ -54,6 +54,7 @@ export interface NotificationListPayload {
 export interface AuthPayload {
     token: string
     user: User
+    offlineGrant?: string
 }
 
 export type WorkspaceRole = 'owner' | 'editor' | 'viewer'

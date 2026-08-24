@@ -10,7 +10,6 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const { user, isAuthenticated, isInitializing } = useUser()
     const location = useLocation()
-    const token = localStorage.getItem('token')
 
     if (isInitializing) {
         return (
@@ -20,7 +19,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         )
     }
 
-    if (!token || !isAuthenticated) {
+    if (!isAuthenticated) {
         return <Navigate to="/" replace state={{ from: location.pathname }} />
     }
 

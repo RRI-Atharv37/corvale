@@ -1,6 +1,8 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
 import { BASE_URL } from './apiPaths'
 import { TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
+import { getAccessToken, setAccessToken } from './tokenStore'
+import { storeOfflineGrant } from '../offline/offlineGrant'
 
 const client = axios.create({
     baseURL: BASE_URL,
@@ -73,7 +75,7 @@ client.interceptors.request.use(
             return Promise.reject(new Error('Workspace changes require an internet connection - you are offline.'))
         }
 
-        const token = localStorage.getItem('token')
+        const token = getAccessToken()
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
         }
@@ -122,18 +124,20 @@ client.interceptors.response.use(
                     { withCredentials: true }
                 )
                 const newToken = refreshResponse.data?.data?.token as string | undefined
+                const newOfflineGrant = refreshResponse.data?.data?.offlineGrant as string | undefined
 
                 if (!newToken) {
                     throw new Error('Refresh response missing token')
                 }
 
-                localStorage.setItem('token', newToken)
+                setAccessToken(newToken)
+                storeOfflineGrant(newOfflineGrant)
                 processRefreshQueue(newToken)
                 originalRequest.headers.Authorization = `Bearer ${newToken}`
                 return client(originalRequest)
             } catch (refreshError) {
                 processRefreshQueue(null)
-                localStorage.removeItem('token')
+                setAccessToken(null)
                 notifyTokenRevoked(message)
                 return Promise.reject(refreshError)
             } finally {
@@ -142,7 +146,7 @@ client.interceptors.response.use(
         }
 
         if (status === 401 && !isAuthMutationRoute(originalRequest?.url)) {
-            localStorage.removeItem('token')
+            setAccessToken(null)
             notifyTokenRevoked(message)
         }
 
