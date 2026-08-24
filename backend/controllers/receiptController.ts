@@ -16,6 +16,7 @@ import {
     serializeReceipt,
     validateReceiptOwnership,
 } from '../utils/receiptUtils'
+import { detectReceiptSignature } from '../utils/fileSignature'
 import {
     getReceiptSignedDownloadUrl,
     isObjectStorageConfigured,
@@ -41,6 +42,15 @@ export const uploadReceipt = asyncHandler(async (req: AuthRequest, res: Response
         throw error
     }
 
+    // Sniff the actual bytes rather than trusting the client-declared Content-Type (S14/SEC-15):
+    // a mismatch is indistinguishable from a spoofed declaration at the API boundary, so both
+    // are rejected the same way as an unsupported type.
+    const detectedMimeType = detectReceiptSignature(fs.readFileSync(filePath))
+    if (!detectedMimeType || detectedMimeType !== req.file.mimetype) {
+        deleteReceiptFile(userId, req.file.filename)
+        throw new CustomError(ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE, 400)
+    }
+
     try {
         await scanUploadedFile(filePath)
     } catch (error) {
@@ -50,7 +60,7 @@ export const uploadReceipt = asyncHandler(async (req: AuthRequest, res: Response
 
     if (isObjectStorageConfigured()) {
         const key = receiptObjectKey(userId, req.file.filename)
-        await putReceiptObject(key, filePath, req.file.mimetype)
+        await putReceiptObject(key, filePath, detectedMimeType)
         // Object storage is now the only copy - the local disk write was only ever staging
         // for the virus scan and the upload, so a redeploy can no longer lose it (SEC-23).
         deleteReceiptFile(userId, req.file.filename)
@@ -60,7 +70,7 @@ export const uploadReceipt = asyncHandler(async (req: AuthRequest, res: Response
         userId,
         originalFilename: req.file.originalname,
         storedFilename: req.file.filename,
-        mimeType: req.file.mimetype,
+        mimeType: detectedMimeType,
         size: req.file.size,
     })
 
@@ -75,6 +85,11 @@ export const getReceiptFile = asyncHandler(async (req: AuthRequest, res: Respons
 
     const receipt = await validateReceiptOwnership(receiptId, userId)
 
+    // Independent of any global Helmet configuration (S14/SEC-15): a receipt whose bytes are
+    // sniffed as something other than its declared type must still not be MIME-sniffed by the
+    // browser into rendering as that type.
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+
     if (isObjectStorageConfigured()) {
         const key = receiptObjectKey(userId, receipt.storedFilename)
         const signedUrl = await getReceiptSignedDownloadUrl(key)
@@ -88,10 +103,13 @@ export const getReceiptFile = asyncHandler(async (req: AuthRequest, res: Respons
         throw new CustomError(ERROR_MESSAGES.RECEIPT.FILE_NOT_FOUND, 404)
     }
 
+    // PDFs render inline in the browser's own PDF engine from the API origin otherwise;
+    // images stay inline for the existing preview UI.
+    const disposition = receipt.mimeType === 'application/pdf' ? 'attachment' : 'inline'
     res.setHeader('Content-Type', receipt.mimeType)
     res.setHeader(
         'Content-Disposition',
-        `inline; filename="${encodeURIComponent(receipt.originalFilename)}"`
+        `${disposition}; filename="${encodeURIComponent(receipt.originalFilename)}"`
     )
     res.sendFile(filePath)
 })

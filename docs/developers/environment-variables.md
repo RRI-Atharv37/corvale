@@ -36,6 +36,9 @@ Create a `.env` file in the `backend/` folder.
 | `CLAMAV_PORT` | No | `3310` | ClamAV daemon port |
 | `CLAMAV_TIMEOUT_MS` | No | `30000` (30 sec) | ClamAV scan connection timeout |
 | `VIRUS_SCAN_FAIL_CLOSED` | No | `true` | Reject uploads when a scan errors out (not the same as an infected result). Already fail-closed unless explicitly set to the literal string `false` |
+| `BACKUP_MAX_UNCOMPRESSED_BYTES` | No | `209715200` (200 MB) | Cap on a restored backup zip's total declared uncompressed size, checked against the archive's central directory before any entry is inflated |
+| `BACKUP_MAX_ZIP_ENTRIES` | No | `10000` | Cap on the number of entries in a restored backup zip |
+| `BACKUP_MAX_COMPRESSION_RATIO` | No | `100` | Cap on any single entry's uncompressed-to-compressed size ratio in a restored backup zip |
 | `RECEIPT_STORAGE_DRIVER` | No | unset (local disk) | Set to `s3` to store receipts in an S3-compatible bucket instead of `uploads/receipts/` on local disk. Required for any hosted deployment — local disk is ephemeral and not shared between instances |
 | `RECEIPT_S3_BUCKET` | Only if driver is `s3` | - | Bucket name receipts are stored in |
 | `RECEIPT_S3_REGION` | No | `us-east-1` | Bucket region |

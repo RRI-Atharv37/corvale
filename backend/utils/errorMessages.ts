@@ -161,6 +161,10 @@ export const ERROR_MESSAGES = {
         FILE_TOO_LARGE: 'Backup file exceeds the 10 MB size limit',
         FILE_REQUIRED: 'Backup file is required',
         BROKEN_REFERENCE: 'Backup contains a broken reference and cannot be restored',
+        ARCHIVE_TOO_MANY_ENTRIES: 'Backup archive contains too many entries',
+        ARCHIVE_UNCOMPRESSED_TOO_LARGE: 'Backup archive is too large once uncompressed',
+        ARCHIVE_SUSPICIOUS_RATIO:
+            'Backup archive contains an entry with a suspicious compression ratio',
     },
     RECONCILIATION: {
         INVALID_CLEARED_STATUS: 'Invalid clearedStatus',
