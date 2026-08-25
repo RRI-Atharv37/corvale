@@ -86,12 +86,25 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # GitHub Actions doesn't allow the `secrets` context inside step `if:` conditions (only
+      # `env`/`steps`/etc are permitted there), so whether each optional certificate secret is
+      # actually set has to be computed here first, as step outputs the later `if:`s can read.
+      - name: Check signing secrets
+        id: signing_secrets
+        shell: bash
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        run: |
+          echo "has-windows-cert=$([ -n "$WINDOWS_CERTIFICATE" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has-apple-cert=$([ -n "$APPLE_CERTIFICATE" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       # D1/SEC-05: only runs once the WINDOWS_CERTIFICATE secret is actually set (a real
       # purchased OV/EV certificate, base64-encoded). Until then the Windows build still
       # produces an installer, just an unsigned one - sign-windows.ps1 skips signing and ships
       # the build unsigned rather than failing it.
       - name: Import Windows signing certificate
-        if: matrix.platform == 'windows-latest' && env.WINDOWS_CERTIFICATE != ''
+        if: matrix.platform == 'windows-latest' && steps.signing_secrets.outputs.has-windows-cert == 'true'
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
@@ -110,7 +123,7 @@ jobs:
       # not just empty, until a real Apple Developer identity exists. Only export them into the
       # job's environment (for the next step to inherit) when the secret is actually non-empty.
       - name: Export Apple signing environment
-        if: matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != ''
+        if: matrix.platform == 'macos-latest' && steps.signing_secrets.outputs.has-apple-cert == 'true'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
