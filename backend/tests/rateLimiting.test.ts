@@ -100,6 +100,44 @@ describe('Dedicated rate limiting on refresh and logout (SEC-26)', () => {
     })
 })
 
+describe('Shared rate-limit store across instances (SEC-26, S18)', () => {
+    beforeAll(() => {
+        process.env.AUTH_RATE_LIMIT_MAX = '3'
+        process.env.AUTH_RATE_LIMIT_WINDOW_MS = '600000'
+    })
+
+    it('a client blocked on one app instance is also blocked on an independently created instance', async () => {
+        // Two createApp() calls stand in for two horizontally-scaled processes: with the old
+        // in-memory store each got its own MemoryStore and neither would ever see the other's
+        // hits, so the effective limit was silently multiplied by the instance count.
+        const instanceA = createApp()
+        const instanceB = createApp()
+
+        for (let i = 0; i < 3; i++) {
+            const res = await request(instanceA).post('/api/v1/auth/refresh')
+            expect(res.status).not.toBe(429)
+        }
+
+        const blockedOnB = await request(instanceB).post('/api/v1/auth/refresh')
+        expect(blockedOnB.status).toBe(429)
+    })
+
+    it('does not let a burst on the refresh/logout limiter consume the register/login budget', async () => {
+        const app = createApp()
+
+        for (let i = 0; i < 3; i++) {
+            await request(app).post('/api/v1/auth/refresh')
+        }
+
+        const res = await request(app).post('/api/v1/auth/login').send({
+            email: 'nobody@example.com',
+            password: 'wrong-password',
+        })
+
+        expect(res.status).not.toBe(429)
+    })
+})
+
 describe('trust proxy configuration (SEC-26)', () => {
     const original = process.env.TRUST_PROXY
 

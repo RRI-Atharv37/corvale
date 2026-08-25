@@ -35,6 +35,7 @@ import exchangeRateRoutes from './routes/exchangeRateRoutes'
 import onboardingRoutes from './routes/onboardingRoutes'
 import { createSyncRoutes } from './routes/syncRoutes'
 import { sanitizeBody } from './middleware/sanitizeBodyMiddleware'
+import { buildCorsOriginAllowlist } from './utils/corsOriginAllowlist'
 import { createGlobalRateLimiter } from './middleware/rateLimitMiddleware'
 import { errorHandler } from './middleware/errorMiddleware'
 import { requestLogger } from './middleware/requestLoggerMiddleware'
@@ -74,10 +75,12 @@ export const createApp = (): express.Application => {
         })
     )
 
+    const corsOriginAllowlist = buildCorsOriginAllowlist(process.env.CLIENT_URL as string)
+
     app.use(
         cors({
             origin: (origin, callback) => {
-                if (!origin || origin === process.env.CLIENT_URL) {
+                if (!origin || corsOriginAllowlist.includes(origin)) {
                     callback(null, true)
                     return
                 }

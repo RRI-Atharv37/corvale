@@ -18,18 +18,18 @@ import {
 
 export const createAuthRoutes = (): express.Router => {
     const router = express.Router()
-    const authRateLimiter = createAuthRateLimiter()
+    const authRateLimiter = createAuthRateLimiter('auth-login-register')
     // Separate instance (not shared with register/login) so a burst of refresh/logout
     // replay attempts can't also lock a legitimate user out of signing in (SEC-26).
-    const sessionRateLimiter = createAuthRateLimiter()
+    const sessionRateLimiter = createAuthRateLimiter('auth-session')
     // Password reset now sends a real email (S7), giving it a real abuse cost — its own
     // instance keeps a reset-spam burst from also locking a legitimate user out of login.
-    const passwordResetRateLimiter = createAuthRateLimiter()
+    const passwordResetRateLimiter = createAuthRateLimiter('auth-password-reset')
     // Same reasoning for email verification (resend/confirm).
-    const verificationRateLimiter = createAuthRateLimiter()
+    const verificationRateLimiter = createAuthRateLimiter('auth-verification')
     // Account deletion re-checks the password like login does, so it gets the same
     // brute-force protection, on its own instance so it can't lock a user out of login.
-    const accountDeletionRateLimiter = createAuthRateLimiter()
+    const accountDeletionRateLimiter = createAuthRateLimiter('auth-account-deletion')
 
     router.post('/register', authRateLimiter, registerUser)
     router.post('/login', authRateLimiter, loginUser)

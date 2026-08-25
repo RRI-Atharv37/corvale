@@ -185,3 +185,22 @@ describe('API hardening — CORS fail-closed (SEC-10)', () => {
         expect(res.headers['access-control-allow-origin']).not.toBe('*')
     })
 })
+
+describe('API hardening — CORS desktop origin allowlist (SEC-10, S17)', () => {
+    it.each(['tauri://localhost', 'http://tauri.localhost'])(
+        'reflects Access-Control-Allow-Origin for the desktop origin %s',
+        async (origin) => {
+            const app = createApp()
+            const res = await request(app).get('/health').set('Origin', origin)
+
+            expect(res.headers['access-control-allow-origin']).toBe(origin)
+        }
+    )
+
+    it('still fails closed for an arbitrary origin once the desktop origins are admitted', async () => {
+        const app = createApp()
+        const res = await request(app).get('/health').set('Origin', 'https://evil.example.com')
+
+        expect(res.headers['access-control-allow-origin']).toBeUndefined()
+    })
+})

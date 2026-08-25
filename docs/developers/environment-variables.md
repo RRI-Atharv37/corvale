@@ -16,7 +16,7 @@ Create a `.env` file in the `backend/` folder.
 | `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token expiry |
 | `REFRESH_TOKEN_COOKIE_NAME` | No | `spndr_refresh` | httpOnly cookie name for refresh tokens |
 | `REFRESH_COOKIE_SAME_SITE` | No | `lax` | `lax` \| `strict` \| `none` — see [Deployment topology](#deployment-topology) below. `none` is only accepted when `NODE_ENV=production` |
-| `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`) |
+| `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`). The desktop app's origins (`tauri://localhost`, `http://tauri.localhost`) are always admitted alongside it — see `backend/utils/corsOriginAllowlist.ts` |
 | `OFFLINE_GRANT_PRIVATE_KEY` | Yes | - | EC (P-256) private key, PEM-encoded with real newlines replaced by literal `\n`, that signs the client's offline session grant. See [Offline session grant](#offline-session-grant) below |
 | `OFFLINE_GRANT_DAYS` | No | `30` | How many days a client may render its cached data offline before the signed grant expires |
 | `PASSWORD_RESET_EXPIRY_MS` | No | `3600000` (1 hour) | Password reset token lifetime |
@@ -51,6 +51,10 @@ Create a `.env` file in the `backend/` folder.
 | `RECEIPT_STORAGE_QUOTA_BYTES` | No | unset (no quota) | Per-user cap on total receipt bytes, enforced at upload under either storage driver |
 | `SENTRY_DSN` | No | unset (error tracking off) | Sentry (or Sentry-compatible) ingest DSN. When unset, 5xx errors are only written to the structured JSON logs, not reported anywhere external |
 | `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag attached to reported errors, e.g. `production`, `staging` |
+
+All three rate limiters above (auth, sync-push, global) are backed by a MongoDB-stored counter
+(`backend/utils/mongoRateLimitStore.ts`), not per-process memory, so a client's budget is shared
+across every horizontally-scaled instance instead of being multiplied by the instance count.
 
 ### Example backend `.env`
 
