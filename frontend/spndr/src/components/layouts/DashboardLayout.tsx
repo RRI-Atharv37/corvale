@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
     FiHome,
     FiList,
@@ -23,6 +23,7 @@ import {
     FiLayers,
     FiTrendingDown,
     FiCompass,
+    FiDownload,
 } from 'react-icons/fi'
 import OnboardingWizard, { OnboardingWizardHandle } from '../onboarding/OnboardingWizard'
 import PinSetupPrompt from '../onboarding/PinSetupPrompt'
@@ -430,6 +431,14 @@ const DashboardLayout: React.FC = () => {
                     <div>
                         <p className="section-label mb-3">Account</p>
                         <div className="space-y-2">
+                            <Link
+                                to="/download"
+                                onClick={() => setSettingsOpen(false)}
+                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-muted hover:text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <FiDownload size={18} />
+                                Get the desktop app
+                            </Link>
                             <button
                                 type="button"
                                 onClick={handleReplayOnboarding}

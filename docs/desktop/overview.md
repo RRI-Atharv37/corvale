@@ -28,6 +28,7 @@ Both are fully supported - use whichever fits your workflow. The desktop app is 
 
 ## Related pages
 
+- [Getting the Desktop App](./download.md)
 - [Automatic Updates](./auto-updates.md)
 - [Backup and Restore Overview](../backup-restore/overview.md)
 - [Building the Desktop App](../developers/desktop-app.md)

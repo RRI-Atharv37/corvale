@@ -1,4 +1,4 @@
-import React, { lazy } from 'react'
+import React, { lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 
@@ -41,6 +41,7 @@ const Forecast = lazy(() => import('./pages/Dashboard/Forecast'))
 const CalendarPage = lazy(() => import('./pages/Dashboard/CalendarPage'))
 const Subscriptions = lazy(() => import('./pages/Dashboard/Subscriptions'))
 const DebtPayoff = lazy(() => import('./pages/Dashboard/DebtPayoff'))
+const Download = lazy(() => import('./pages/Download'))
 
 const AppRoutes = () => {
     return (
@@ -51,6 +52,14 @@ const AppRoutes = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route
+                path="/download"
+                element={
+                    <Suspense fallback={<LoadingState message="Loading..." />}>
+                        <Download />
+                    </Suspense>
+                }
+            />
 
             <Route
                 element={
