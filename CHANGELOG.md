@@ -12,6 +12,7 @@ and start a fresh `## [Unreleased]` section above it — the release workflow ex
 matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
+## [0.17.0] - 2026-08-25
 
 ### Added
 
