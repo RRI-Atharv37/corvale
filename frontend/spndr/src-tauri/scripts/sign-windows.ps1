@@ -14,9 +14,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# No certificate configured: ship this build unsigned rather than failing the release.
+# Accepted risk for a portfolio/personal deployment (TODO.md D1, docs/desktop/download.md) -
+# add the WINDOWS_CERTIFICATE / WINDOWS_CERTIFICATE_PASSWORD secrets to sign for real.
 if (-not $env:WINDOWS_CERTIFICATE_THUMBPRINT) {
-    Write-Error 'sign-windows.ps1: WINDOWS_CERTIFICATE_THUMBPRINT is not set - this build is unsigned until a real Windows code-signing certificate is configured (TODO.md D1, SEC-05). See docs/developers/desktop-app.md.'
-    exit 1
+    Write-Warning 'sign-windows.ps1: WINDOWS_CERTIFICATE_THUMBPRINT is not set - leaving this build unsigned.'
+    exit 0
 }
 
 $signtool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source

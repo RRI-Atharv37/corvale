@@ -88,8 +88,8 @@ jobs:
 
       # D1/SEC-05: only runs once the WINDOWS_CERTIFICATE secret is actually set (a real
       # purchased OV/EV certificate, base64-encoded). Until then the Windows build still
-      # produces an installer, just an unsigned one - sign-windows.ps1 fails loudly rather than
-      # silently shipping an unsigned binary as if it were signed.
+      # produces an installer, just an unsigned one - sign-windows.ps1 skips signing and ships
+      # the build unsigned rather than failing it.
       - name: Import Windows signing certificate
         if: matrix.platform == 'windows-latest' && env.WINDOWS_CERTIFICATE != ''
         shell: pwsh
@@ -105,6 +105,27 @@ jobs:
           Remove-Item $certPath
           echo "WINDOWS_CERTIFICATE_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
 
+      # D1/SEC-05: tauri-action treats a *defined-but-empty* APPLE_CERTIFICATE as "please sign"
+      # and fails trying to import nothing into the keychain - so these must be genuinely unset,
+      # not just empty, until a real Apple Developer identity exists. Only export them into the
+      # job's environment (for the next step to inherit) when the secret is actually non-empty.
+      - name: Export Apple signing environment
+        if: matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD" >> "$GITHUB_ENV"
+          echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY" >> "$GITHUB_ENV"
+          echo "APPLE_ID=$APPLE_ID" >> "$GITHUB_ENV"
+          echo "APPLE_PASSWORD=$APPLE_PASSWORD" >> "$GITHUB_ENV"
+          echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+
       - name: Build and publish
         uses: tauri-apps/tauri-action@v0
         env:
@@ -112,14 +133,6 @@ jobs:
           # Updater artifact signing - real keypair generated for D1 (see docs/developers/desktop-app.md).
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS signing + notarization - no-ops until a real Apple Developer identity is added,
-          # in which case tauri.conf.json's ad-hoc "-" signingIdentity is overridden by this env var.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: frontend/spndr
           tagName: ${{ github.ref_name }}
