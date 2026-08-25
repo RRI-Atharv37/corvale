@@ -1,5 +1,6 @@
 mod backup;
 mod db;
+mod path_safety;
 
 use db::DbState;
 

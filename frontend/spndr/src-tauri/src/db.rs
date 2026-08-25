@@ -56,9 +56,14 @@ fn to_sql_error(err: impl std::fmt::Display) -> String {
 }
 
 /// Opens (creating if needed) `<app data dir>/<filename>` and stores the connection in managed
-/// state. The path is resolved server-side rather than trusting a JS-supplied absolute path.
+/// state. `filename` is validated by `path_safety::sanitize_db_filename` before being joined onto
+/// the OS-resolved app-data directory (D3, SEC-06) - without it, a JS-supplied `filename` such as
+/// `"../../../../evil.db"` or an absolute/drive path could open a file outside that directory
+/// (`PathBuf::join` neither canonicalizes `..` nor rejects an absolute second component).
 #[tauri::command]
 pub fn db_open(app: AppHandle, state: State<DbState>, filename: String) -> Result<(), String> {
+    crate::path_safety::sanitize_db_filename(&filename)?;
+
     let dir = app.path().app_data_dir().map_err(to_sql_error)?;
     std::fs::create_dir_all(&dir).map_err(to_sql_error)?;
     let path = dir.join(filename);

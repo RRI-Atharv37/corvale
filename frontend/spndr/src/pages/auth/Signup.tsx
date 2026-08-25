@@ -51,7 +51,7 @@ const Signup = () => {
             )
 
             const payload = parseAuthPayload(response)
-            setAuthSession(payload)
+            await setAuthSession(payload)
             updateUser(payload.user)
             toast.success('Account created! Check your email to verify your address.')
             navigate('/dashboard')

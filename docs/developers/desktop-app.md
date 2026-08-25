@@ -9,6 +9,8 @@ The desktop shell lives in `frontend/spndr/src-tauri/` and wraps the existing Vi
 - `src-tauri/src/db.rs` - Rust commands (`db_open`, `db_exec`, `db_select`, `db_set_key`, `db_close`) that implement the same `LocalDb` contract as `frontend/spndr/src/db/SqliteWasmDriver.ts`, backed by `rusqlite` with SQLCipher instead of `@sqlite.org/sqlite-wasm` + OPFS.
 - `frontend/spndr/src/db/TauriSqlDriver.ts` - the TypeScript side of that same contract, calling the Rust commands via `invoke()`.
 - `src-tauri/src/backup.rs` - native "Save As" / "Open" file dialogs for backup export/import.
+- `src-tauri/src/path_safety.rs` - filename validation shared by `db_open` (see [Where the local database lives](#where-the-local-database-lives)).
+- `frontend/spndr/src/db/provisionLocalDb.ts` - one-shot local DB provisioning on first sign-in (see [Sign in once, then offline forever](#sign-in-once-then-offline-forever)).
 - The auto-updater, configured in `tauri.conf.json`'s `plugins.updater` block.
 
 This page is for building and running the desktop shell itself. For day-to-day frontend/backend development, see [Running Locally](../getting-started/running-locally.md).
@@ -41,7 +43,7 @@ All commands run from `frontend/spndr/` (where `package.json`'s `tauri`/`tauri:d
 npm run tauri:dev
 ```
 
-This starts the Vite dev server (`beforeDevCommand` in `tauri.conf.json`) and opens a native window pointed at it, with hot reload for the React side. Rust changes require restarting `tauri:dev`.
+This starts the Vite dev server in `desktop` mode (`beforeDevCommand` in `tauri.conf.json` runs `npm run dev:desktop`, i.e. `vite --mode desktop`) and opens a native window pointed at it, with hot reload for the React side. Rust changes require restarting `tauri:dev`.
 
 For a production build and installers:
 
@@ -49,7 +51,9 @@ For a production build and installers:
 npm run tauri:build
 ```
 
-This runs `npm run build` (the Vite production build) first, then compiles the Rust binary and produces platform installers under `src-tauri/target/release/bundle/` (`.msi`/`.exe` on Windows, `.dmg`/`.app` on macOS, `.deb`/`.rpm`/`.AppImage` on Linux).
+This runs `npm run build:desktop` (`vite build --mode desktop`) first, then compiles the Rust binary and produces platform installers under `src-tauri/target/release/bundle/` (`.msi`/`.exe` on Windows, `.dmg`/`.app` on macOS, `.deb`/`.rpm`/`.AppImage` on Linux).
+
+The `desktop` Vite mode is what turns the local-first engine on for the desktop build without affecting the web build - see [Desktop build overrides](./environment-variables.md#desktop-build-overrides). A plain `npm run dev`/`npm run build` never touches `.env.desktop` and keeps `VITE_LOCAL_FIRST=false`.
 
 ## Smoke-testing a build
 
@@ -66,6 +70,32 @@ Before shipping, confirm the three things Sprint 13.11 exists to deliver:
 - **Windows** - `%APPDATA%\com.spndr.app\spndr.sqlite3`
 - **macOS** - `~/Library/Application Support/com.spndr.app/spndr.sqlite3`
 - **Linux** - `~/.local/share/com.spndr.app/spndr.sqlite3`
+
+The frontend does still pass a `filename` (normally the default `spndr.sqlite3`), so
+`src-tauri/src/path_safety.rs` validates it before it's joined onto that directory - rejecting
+path separators, `..`, drive/UNC markers, and absolute paths - so the resolved file can never
+land outside the app-data directory even if the calling frontend code were compromised.
+
+## Content Security Policy
+
+`tauri.conf.json`'s `app.security.csp` ships a strict policy (no `unsafe-eval`, no wildcard
+sources, `object-src 'none'`) that Tauri injects into the bundled app at build time - it's
+separate from the `<meta>` CSP tag `index.html` carries for the web build. `connect-src` allows
+`https:` rather than one pinned origin, since the backend a self-hosted desktop build talks to
+isn't known at packaging time, but plain `http://` origins are refused. `ipc:` and
+`http://ipc.localhost` are also listed explicitly so `invoke()` calls into the Rust commands
+above keep working.
+
+## Sign in once, then offline forever
+
+The first time someone signs in on a desktop install with local-first enabled, the app pulls a
+full snapshot of their data from `/sync/bootstrap` and seeds every local table from it in one
+transaction (`frontend/spndr/src/db/provisionLocalDb.ts`), rather than waiting for the same data
+to trickle in through the incremental pull loop. That, plus the signed offline session grant
+(see [Offline session grant](./environment-variables.md#offline-session-grant)), is what lets
+the app be used indefinitely afterward with no network at all - the one online sign-in is the
+only time it ever needs the internet. Signing in again on an already-provisioned device is a
+no-op here; the regular sync engine takes over from there.
 
 ## Regenerating icons
 

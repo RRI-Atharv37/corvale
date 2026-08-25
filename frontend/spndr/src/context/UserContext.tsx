@@ -13,6 +13,7 @@ import { wipeLocalData } from '../offline/wipeLocalData'
 import { exportUnsyncedOps } from '../offline/exportUnsyncedOps'
 import { handleTokenRevoked, TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
 import { getSyncStatus } from '../sync/syncEngine'
+import { provisionLocalDb } from '../db/provisionLocalDb'
 
 interface UserContextType {
     user: User | null
@@ -176,9 +177,11 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 export default UserProvider
 
-export const setAuthSession = (payload: AuthPayload): void => {
+/** Called on Login/Signup - the "online sign-in" moment D5's local DB provisioning hooks into. */
+export const setAuthSession = async (payload: AuthPayload): Promise<void> => {
     setAccessToken(payload.token)
     storeOfflineGrant(payload.offlineGrant)
+    await provisionLocalDb()
 }
 
 export const parseAuthPayload = (response: ApiResponse<AuthPayload> | AuthPayload): AuthPayload => {

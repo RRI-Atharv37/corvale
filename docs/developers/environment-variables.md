@@ -90,6 +90,15 @@ VITE_LOCAL_FIRST=false
 VITE_OFFLINE_GRANT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\nMFkwEwYH...\n-----END PUBLIC KEY-----
 ```
 
+### Desktop build overrides
+
+The desktop (Tauri) app runs Vite in a separate `desktop` mode rather than sharing the plain
+web build. `frontend/spndr/.env.desktop` layers on top of the files above and is the only place
+`VITE_LOCAL_FIRST=true` is set — the web build stays `false` until `SEC-01` lands. `npm run
+tauri:dev`/`npm run tauri:build` pick this up automatically (they run `vite --mode desktop` /
+`vite build --mode desktop` under the hood); a plain `npm run dev`/`npm run build` never reads
+`.env.desktop`.
+
 ## Deployment topology
 
 spndr's refresh session relies on an httpOnly cookie, and cookies are topology-sensitive:
