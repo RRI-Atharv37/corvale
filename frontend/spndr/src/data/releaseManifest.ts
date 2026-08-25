@@ -24,10 +24,14 @@ export interface ReleaseManifest {
 const RELEASES_URL = 'https://github.com/RRI-Atharv37/spndr/releases'
 
 // D1 (signing keypair, code-signing cert, notarization) and D8 (tagged releases, changelog,
-// latest.json on GitHub Releases) haven't shipped yet, so there is no real installer, checksum,
-// or download URL to serve. This manifest is shaped like the real thing (mirrors the fields a
-// GitHub Releases / Tauri latest.json response will carry) so that landing D1/D8 is a data change
-// here, not a rewrite of the /download page.
+// latest.json on GitHub Releases) have shipped as infrastructure - .github/workflows/release.yml
+// builds and publishes installers on a version tag - but no release has actually been tagged yet,
+// so there's still no real installer, checksum, or download URL to serve. This manifest is shaped
+// like the real thing (mirrors the fields a GitHub Releases / Tauri latest.json response will
+// carry) so that cutting the first release is a data change here, not a rewrite of the /download
+// page. Windows/macOS OS-level code-signing (the SmartScreen/Gatekeeper trust prompt, distinct
+// from the updater's own signing key) was deliberately not pursued - portfolio/personal
+// deployment, not a product sold at scale. See TODO.md D1 and docs/desktop/download.md.
 export const getReleaseManifest = (): ReleaseManifest => ({
     version: '0.1.0',
     publishedAt: null,

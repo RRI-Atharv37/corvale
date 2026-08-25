@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  prepare:
+    name: Prepare release notes
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      notes: ${{ steps.changelog.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          node .github/scripts/extract-changelog.mjs "${{ steps.version.outputs.value }}" > /tmp/release-notes.md
+          {
+            echo 'notes<<RELEASE_NOTES_EOF'
+            cat /tmp/release-notes.md
+            echo 'RELEASE_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+  publish-tauri:
+    name: Build and publish (${{ matrix.targetName }})
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            targetName: macos-arm64
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+            targetName: macos-x64
+          - platform: ubuntu-22.04
+            args: ''
+            targetName: linux-x64
+          - platform: windows-latest
+            args: ''
+            targetName: windows-x64
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        working-directory: frontend/spndr
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/spndr/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/spndr/src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # D1/SEC-05: only runs once the WINDOWS_CERTIFICATE secret is actually set (a real
+      # purchased OV/EV certificate, base64-encoded). Until then the Windows build still
+      # produces an installer, just an unsigned one - sign-windows.ps1 fails loudly rather than
+      # silently shipping an unsigned binary as if it were signed.
+      - name: Import Windows signing certificate
+        if: matrix.platform == 'windows-latest' && env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $bytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          $certPath = Join-Path $env:RUNNER_TEMP 'spndr-signing.pfx'
+          [IO.File]::WriteAllBytes($certPath, $bytes)
+          $securePassword = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          $cert = Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+          Remove-Item $certPath
+          echo "WINDOWS_CERTIFICATE_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updater artifact signing - real keypair generated for D1 (see docs/developers/desktop-app.md).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS signing + notarization - no-ops until a real Apple Developer identity is added,
+          # in which case tauri.conf.json's ad-hoc "-" signingIdentity is overridden by this env var.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: frontend/spndr
+          tagName: ${{ github.ref_name }}
+          releaseName: 'spndr ${{ github.ref_name }}'
+          releaseBody: ${{ needs.prepare.outputs.notes }}
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      # D1: "published SHA-256 checksums". latest.json (with per-file signatures) is generated
+      # by tauri-action above; this is the plain, human-checkable checksum list for the
+      # installers themselves, published alongside them.
+      - name: Generate SHA-256 checksums
+        run: node src-tauri/scripts/generate-checksums.mjs "src-tauri/checksums-${{ matrix.targetName }}.sha256.txt"
+
+      - name: Upload checksums to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: frontend/spndr/src-tauri/checksums-${{ matrix.targetName }}.sha256.txt
+
+  checksums:
+    name: Combine checksums
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    steps:
+      - name: Combine per-platform checksum files into one release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir checksums
+          gh release download "${{ github.ref_name }}" --repo "${{ github.repository }}" \
+            --pattern 'checksums-*.sha256.txt' --dir checksums
+          cat checksums/*.sha256.txt | sort > checksums.sha256.txt
+          gh release upload "${{ github.ref_name }}" checksums.sha256.txt --repo "${{ github.repository }}" --clobber

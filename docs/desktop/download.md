@@ -18,21 +18,32 @@ Each platform's card shows:
 - The installer format for that platform (`.msi`/`.exe` on Windows, `.dmg` on macOS, `.deb`/`.rpm`/`.AppImage`
   on Linux)
 - The system requirements for running spndr there
-- A download button once a signed build for that platform is published
+- A download button once a build for that platform is published
+- A SHA-256 checksum you can use to verify your download
 
 Below the platform cards, a **highlights** section lists what the current desktop release adds
 over the web app - things like encrypted local storage and offline sign-in.
 
-## Signed builds are still on the way
+## No download link yet
 
-spndr's desktop installers aren't code-signed and notarized yet, so the download page currently
-shows **Coming soon** on every platform card instead of a working download link. Once signed
-builds start shipping, the same cards will switch to real download links along with a published
-SHA-256 checksum for each installer, so you can verify a download matches what spndr actually
-released before you run it.
+The download page currently shows **Coming soon** on every platform card - no build has been
+published yet. In the meantime, the download page links out to the project's releases page, where
+you can watch for the first build to land.
 
-In the meantime, the download page links out to the project's releases page, where you can watch
-for the first signed build to land.
+## About the "unknown publisher" warning
+
+spndr is a personal/portfolio project rather than a commercially distributed product, so its
+installers aren't digitally signed by a Windows or Apple certificate. That means your operating
+system shows a warning the first time you run one:
+
+- **Windows** shows "Windows protected your PC." Click **More info**, then **Run anyway**.
+- **macOS** says the app "cannot be opened because the developer cannot be verified." Right-click
+  (or Control-click) the app, choose **Open**, then confirm in the dialog that appears.
+
+This warning is expected for software that isn't code-signed - it doesn't mean anything is wrong
+with the download. Each release publishes a SHA-256 checksum alongside the installer so you can
+independently confirm the file you downloaded matches what spndr actually released, if you'd like
+extra reassurance before running it.
 
 ## Related pages
 
