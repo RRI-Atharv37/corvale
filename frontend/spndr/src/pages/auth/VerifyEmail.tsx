@@ -22,7 +22,7 @@ const VerifyEmail = () => {
     const token = searchParams.get('token') ?? ''
     const navigate = useNavigate()
     const online = useOnlineStatus()
-    const { isAuthenticated, restoreSession } = useUser()
+    const { isAuthenticated, restoreSession, logout } = useUser()
 
     const [status, setStatus] = useState<Status>(token ? 'confirming' : 'awaiting')
     const [error, setError] = useState<string | null>(null)
@@ -67,6 +67,13 @@ const VerifyEmail = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token])
+
+    const handleBackToSignIn = async () => {
+        if (isAuthenticated) {
+            await logout()
+        }
+        navigate('/login', { replace: true })
+    }
 
     const handleResend = async () => {
         setIsResending(true)
@@ -151,9 +158,19 @@ const VerifyEmail = () => {
                 )}
 
                 <p className="text-[13px] text-fg-muted mt-3">
-                    <Link className="font-medium text-accent hover:text-accent" to="/login">
-                        Back to sign in
-                    </Link>
+                    {isAuthenticated ? (
+                        <button
+                            type="button"
+                            className="font-medium text-accent hover:text-accent"
+                            onClick={handleBackToSignIn}
+                        >
+                            Back to sign in
+                        </button>
+                    ) : (
+                        <Link className="font-medium text-accent hover:text-accent" to="/login">
+                            Back to sign in
+                        </Link>
+                    )}
                 </p>
             </div>
         </AuthLayout>

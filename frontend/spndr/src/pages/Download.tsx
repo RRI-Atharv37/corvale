@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiCheckCircle, FiClock, FiDownload } from 'react-icons/fi'
+import { FiCheckCircle, FiChevronDown, FiClock, FiDownload } from 'react-icons/fi'
 import BrandLogo from '../components/ui/BrandLogo'
 import { detectPlatform, type DesktopPlatformId } from '../utils/platformDetect'
-import { getReleaseManifest, type PlatformRelease } from '../data/releaseManifest'
+import { getReleaseManifest, type PlatformRelease, type ReleaseAsset } from '../data/releaseManifest'
 
 const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
 
@@ -13,55 +13,132 @@ const platformIcon: Record<DesktopPlatformId, string> = {
     linux: '🐧',
 }
 
+const formatSize = (sizeBytes: number | null): string | null =>
+    sizeBytes === null ? null : `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+
+const AlternateAssetRow: React.FC<{ asset: ReleaseAsset }> = ({ asset }) => {
+    const size = formatSize(asset.sizeBytes)
+    const details = (
+        <div className="min-w-0">
+            <p className="text-sm font-medium text-text-primary">
+                {asset.label}
+                {size && <span className="text-text-muted"> ({size})</span>}
+            </p>
+            {asset.sha256 && (
+                <p className="mt-0.5 truncate font-mono text-[11px] text-text-muted" title={asset.sha256}>
+                    SHA-256: {asset.sha256}
+                </p>
+            )}
+        </div>
+    )
+
+    return (
+        <li className="py-2">
+            {asset.url ? (
+                <a
+                    href={asset.url}
+                    className="flex items-center justify-between gap-3 hover:text-accent"
+                >
+                    {details}
+                    <FiDownload size={14} className="shrink-0" />
+                </a>
+            ) : (
+                <div className="flex items-center justify-between gap-3">
+                    {details}
+                    <span className="shrink-0 text-xs text-text-muted">Coming soon</span>
+                </div>
+            )}
+        </li>
+    )
+}
+
 const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean }> = ({
     platform,
     recommended,
-}) => (
-    <article
-        className={`glass-card card-elevated flex flex-col rounded-xl ${
-            recommended ? 'border-accent/40 ring-1 ring-accent/30' : ''
-        }`}
-    >
-        {recommended && (
-            <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/25 bg-accent-subtle px-3 py-1 text-xs font-medium text-accent-dim">
-                <FiCheckCircle size={12} />
-                Recommended for your device
-            </span>
-        )}
-        <div className="flex items-center gap-3">
-            <span className="text-2xl" aria-hidden="true">
-                {platformIcon[platform.id]}
-            </span>
-            <div>
-                <h3 className="font-display text-lg font-semibold text-text-primary">{platform.label}</h3>
-                <p className="text-xs text-text-muted">{platform.fileLabel}</p>
+}) => {
+    const [showAllFormats, setShowAllFormats] = useState(false)
+    const primarySize = formatSize(platform.primary.sizeBytes)
+
+    return (
+        <article
+            className={`glass-card card-elevated flex flex-col rounded-xl ${
+                recommended ? 'border-accent/40 ring-1 ring-accent/30' : ''
+            }`}
+        >
+            {recommended && (
+                <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/25 bg-accent-subtle px-3 py-1 text-xs font-medium text-accent-dim">
+                    <FiCheckCircle size={12} />
+                    Recommended for your device
+                </span>
+            )}
+            <div className="flex items-center gap-3">
+                <span className="text-2xl" aria-hidden="true">
+                    {platformIcon[platform.id]}
+                </span>
+                <div>
+                    <h3 className="font-display text-lg font-semibold text-text-primary">{platform.label}</h3>
+                    <p className="text-xs text-text-muted">{platform.fileLabel}</p>
+                </div>
             </div>
-        </div>
 
-        <ul className="mt-4 space-y-1.5 text-sm text-text-secondary">
-            {platform.systemRequirements.map((requirement) => (
-                <li key={requirement} className="flex gap-2">
-                    <span className="text-accent shrink-0">→</span>
-                    {requirement}
-                </li>
-            ))}
-        </ul>
+            <ul className="mt-4 space-y-1.5 text-sm text-text-secondary">
+                {platform.systemRequirements.map((requirement) => (
+                    <li key={requirement} className="flex gap-2">
+                        <span className="text-accent shrink-0">→</span>
+                        {requirement}
+                    </li>
+                ))}
+            </ul>
 
-        <div className="mt-6 pt-4 border-t border-border-subtle">
-            {platform.url ? (
-                <a href={platform.url} className="btn-primary w-full text-center inline-flex items-center justify-center gap-2">
-                    <FiDownload size={16} />
-                    Download for {platform.label}
-                </a>
-            ) : (
-                <div className="flex items-center justify-center gap-2 rounded-lg border border-border-subtle px-4 py-2.5 text-sm font-medium text-text-muted">
-                    <FiClock size={16} />
-                    Coming soon
+            <div className="mt-6 pt-4 border-t border-border-subtle">
+                {platform.primary.url ? (
+                    <a
+                        href={platform.primary.url}
+                        className="btn-primary w-full text-center inline-flex items-center justify-center gap-2"
+                    >
+                        <FiDownload size={16} />
+                        Download for {platform.label}
+                        {primarySize && <span className="opacity-80">({primarySize})</span>}
+                    </a>
+                ) : (
+                    <div className="flex items-center justify-center gap-2 rounded-lg border border-border-subtle px-4 py-2.5 text-sm font-medium text-text-muted">
+                        <FiClock size={16} />
+                        Coming soon
+                    </div>
+                )}
+                {platform.primary.sha256 && (
+                    <p className="mt-2 truncate text-center font-mono text-[11px] text-text-muted" title={platform.primary.sha256}>
+                        SHA-256: {platform.primary.sha256}
+                    </p>
+                )}
+            </div>
+
+            {platform.alternates.length > 0 && (
+                <div className="mt-2">
+                    <button
+                        type="button"
+                        onClick={() => setShowAllFormats((open) => !open)}
+                        aria-expanded={showAllFormats}
+                        className="flex w-full items-center justify-center gap-1.5 py-2 text-xs font-medium text-text-muted hover:text-text-secondary"
+                    >
+                        See all formats
+                        <FiChevronDown
+                            size={14}
+                            className={`transition-transform ${showAllFormats ? 'rotate-180' : ''}`}
+                        />
+                    </button>
+                    {showAllFormats && (
+                        <ul className="divide-y divide-border-subtle border-t border-border-subtle">
+                            {platform.alternates.map((asset) => (
+                                <AlternateAssetRow key={asset.label} asset={asset} />
+                            ))}
+                        </ul>
+                    )}
                 </div>
             )}
-        </div>
-    </article>
-)
+        </article>
+    )
+}
 
 const Download: React.FC = () => {
     const manifest = useMemo(() => getReleaseManifest(), [])

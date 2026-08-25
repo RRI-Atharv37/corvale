@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { probeReachability } from '../offline/reachability'
 
 const DEFAULT_PROBE_INTERVAL_MS = 30000
+
+/** A single slow/dropped probe (dev server restart, a brief network hiccup) shouldn't flip the
+ * whole app into "offline" mode - require this many consecutive failures before reporting
+ * offline, while any successful probe or a native `online` event clears it immediately. */
+const CONSECUTIVE_FAILURES_BEFORE_OFFLINE = 2
 
 /**
  * Online/offline state driven by `navigator.onLine` + its events for instant feedback, plus a
@@ -10,15 +15,33 @@ const DEFAULT_PROBE_INTERVAL_MS = 30000
  */
 export const useOnlineStatus = (probeIntervalMs: number = DEFAULT_PROBE_INTERVAL_MS): boolean => {
     const [online, setOnline] = useState<boolean>(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+    const consecutiveFailures = useRef(0)
 
     useEffect(() => {
-        const handleOnline = () => setOnline(true)
-        const handleOffline = () => setOnline(false)
+        const handleOnline = () => {
+            consecutiveFailures.current = 0
+            setOnline(true)
+        }
+        const handleOffline = () => {
+            consecutiveFailures.current = CONSECUTIVE_FAILURES_BEFORE_OFFLINE
+            setOnline(false)
+        }
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
 
         const interval = setInterval(() => {
-            void probeReachability().then(setOnline)
+            void probeReachability().then((reachable) => {
+                if (reachable) {
+                    consecutiveFailures.current = 0
+                    setOnline(true)
+                    return
+                }
+
+                consecutiveFailures.current += 1
+                if (consecutiveFailures.current >= CONSECUTIVE_FAILURES_BEFORE_OFFLINE) {
+                    setOnline(false)
+                }
+            })
         }, probeIntervalMs)
 
         return () => {

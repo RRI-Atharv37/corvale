@@ -15,20 +15,27 @@ sit alongside it if you're downloading for a different machine.
 
 Each platform's card shows:
 
-- The installer format for that platform (`.msi`/`.exe` on Windows, `.dmg` on macOS, `.deb`/`.rpm`/`.AppImage`
-  on Linux)
 - The system requirements for running spndr there
-- A download button once a build for that platform is published
+- A download button for the recommended installer format on that platform (`.msi` on Windows,
+  an Apple Silicon `.dmg` on macOS, `.deb` on Linux), along with its file size
 - A SHA-256 checksum you can use to verify your download
+- A **see all formats** toggle that reveals the other installer formats built for that platform,
+  each with its own download link, file size, and checksum
 
-Below the platform cards, a **highlights** section lists what the current desktop release adds
-over the web app - things like encrypted local storage and offline sign-in.
+## Choosing a format
 
-## No download link yet
+Every desktop build ships more than one installer per platform, since not everyone wants the same
+packaging:
 
-The download page currently shows **Coming soon** on every platform card - no build has been
-published yet. In the meantime, the download page links out to the project's releases page, where
-you can watch for the first build to land.
+- **Windows** - `.msi` is the recommended installer; a plain `.exe` is also available
+- **macOS** - the Apple Silicon `.dmg` is recommended for current Macs; an Intel `.dmg` is
+  available for older hardware
+- **Linux** - `.deb` is the recommended package; `.rpm` and a portable `.AppImage` are also
+  available
+
+If you're not sure which one you need, the recommended download is the right choice for almost
+everyone. Open **see all formats** on your platform's card only if you specifically need one of
+the alternatives.
 
 ## About the "unknown publisher" warning
 
