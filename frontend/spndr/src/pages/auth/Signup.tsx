@@ -12,11 +12,15 @@ import { getApiErrorMessage } from '../../utils/apiError'
 import toast from 'react-hot-toast'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 import OfflineNotice from '../../components/ui/OfflineNotice'
+import Captcha from '../../components/Captcha'
+
+const captchaEnabled = import.meta.env.VITE_CAPTCHA_ENABLED === 'true'
 
 const Signup = () => {
     const [fullName, setFullName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [captchaToken, setCaptchaToken] = useState('')
     const [error, setError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const navigate = useNavigate()
@@ -41,13 +45,18 @@ const Signup = () => {
             return
         }
 
+        if (captchaEnabled && !captchaToken) {
+            setError('Please complete the CAPTCHA.')
+            return
+        }
+
         setError('')
         setIsSubmitting(true)
 
         try {
             const response = await axiosInstance.post<ApiResponse<AuthPayload>>(
                 API_PATHS.AUTH.REGISTER,
-                { fullName, email, password }
+                { fullName, email, password, ...(captchaEnabled ? { captchaToken } : {}) }
             )
 
             const payload = parseAuthPayload(response)
@@ -56,6 +65,7 @@ const Signup = () => {
             toast.success('Account created! Check your email to verify your address.')
             navigate('/dashboard')
         } catch (err) {
+            if (captchaEnabled) setCaptchaToken('')
             const message = getApiErrorMessage(err, 'An error occurred. Please try again.')
             setError(message)
             toast.error(message)
@@ -98,10 +108,18 @@ const Signup = () => {
                         disabled={isSubmitting}
                     />
 
+                    {captchaEnabled && (
+                        <Captcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
+                    )}
+
                     {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
                     {!online && <OfflineNotice message="You are offline. Sign up requires a connection." />}
 
-                    <button type="submit" className="btn-primary" disabled={isSubmitting || !online}>
+                    <button
+                        type="submit"
+                        className="btn-primary"
+                        disabled={isSubmitting || !online || (captchaEnabled && !captchaToken)}
+                    >
                         {isSubmitting ? 'Creating account...' : 'Sign up'}
                     </button>
 

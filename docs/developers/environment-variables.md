@@ -51,6 +51,8 @@ Create a `.env` file in the `backend/` folder.
 | `RECEIPT_STORAGE_QUOTA_BYTES` | No | unset (no quota) | Per-user cap on total receipt bytes, enforced at upload under either storage driver |
 | `SENTRY_DSN` | No | unset (error tracking off) | Sentry (or Sentry-compatible) ingest DSN. When unset, 5xx errors are only written to the structured JSON logs, not reported anywhere external |
 | `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag attached to reported errors, e.g. `production`, `staging` |
+| `CAPTCHA_ENABLED` | No | `false` | Require a valid CAPTCHA token (`captchaToken` in the request body) on `POST /auth/register`. Off by default, same as ClamAV/SMTP |
+| `CAPTCHA_SECRET_KEY` | Only if `CAPTCHA_ENABLED=true` | - | Server-side secret used to verify the token against the hCaptcha `siteverify` endpoint |
 
 All three rate limiters above (auth, sync-push, global) are backed by a MongoDB-stored counter
 (`backend/utils/mongoRateLimitStore.ts`), not per-process memory, so a client's budget is shared
@@ -79,6 +81,8 @@ Create a `.env` file in the `frontend/spndr/` folder (copy from `.env.example`).
 | `VITE_DOCS_URL` | No | `http://localhost:5174` | URL the "Docs" link in the dashboard header opens |
 | `VITE_LOCAL_FIRST` | No | `false` | Enables the offline local-first sync engine, its settings UI, and local-store reads/writes on dashboard pages |
 | `VITE_OFFLINE_GRANT_PUBLIC_KEY` | Yes | - | EC (P-256) public key, PEM-encoded with real newlines replaced by literal `\n`, matching the backend's `OFFLINE_GRANT_PRIVATE_KEY`. Without it, offline rendering of cached data fails closed — see [Offline session grant](#offline-session-grant) below |
+| `VITE_CAPTCHA_ENABLED` | No | `false` | Renders the hCaptcha widget on Signup and sends `captchaToken` on register. Must match the backend's `CAPTCHA_ENABLED` — this only controls the UI; the backend is what enforces it. Also widens the CSP (`script-src`/`style-src`/`connect-src`/`frame-src`) to admit hCaptcha's origins; unset leaves the CSP byte-for-byte unchanged |
+| `VITE_CAPTCHA_SITE_KEY` | Only if `VITE_CAPTCHA_ENABLED=true` | - | hCaptcha *site* key (public). Pairs with the backend's `CAPTCHA_SECRET_KEY` |
 
 ### Example frontend `.env`
 

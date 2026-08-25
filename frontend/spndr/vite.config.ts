@@ -1,12 +1,43 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+/**
+ * hCaptcha (L9 abuse controls) needs script/frame/connect origins the strict CSP in
+ * index.html (S16/SEC-18) doesn't admit by default. Only widen the policy when the build
+ * actually opts in via VITE_CAPTCHA_ENABLED - every other deployment (the default) keeps
+ * today's CSP byte-for-byte. Matched string replacement rather than a templating var because
+ * this needs to add sources to several existing directives plus one new directive
+ * (frame-src), not substitute a single value.
+ */
+const captchaCspPlugin = (): Plugin => ({
+    name: 'spndr-captcha-csp',
+    transformIndexHtml: (html) =>
+        html
+            .replace("script-src 'self';", "script-src 'self' https://js.hcaptcha.com;")
+            .replace(
+                "style-src 'self' 'unsafe-inline';",
+                "style-src 'self' 'unsafe-inline' https://newassets.hcaptcha.com;"
+            )
+            .replace(
+                /connect-src 'self'[^;]*;/,
+                (match) => `${match.slice(0, -1)} https://hcaptcha.com https://newassets.hcaptcha.com;`
+            )
+            .replace(
+                "base-uri 'self';",
+                "frame-src https://newassets.hcaptcha.com; base-uri 'self';"
+            ),
+})
+
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, process.cwd(), '')
+    const captchaEnabled = env.VITE_CAPTCHA_ENABLED === 'true'
+
+    return {
   // Tauri-recommended dev-server settings (https://v2.tauri.app/start/frontend/vite/):
   // `clearScreen: false` keeps Cargo's compiler output visible instead of Vite wiping it, and
   // `strictPort: true` stops Vite from silently moving to another port if 5173 is busy - which
@@ -27,6 +58,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    ...(captchaEnabled ? [captchaCspPlugin()] : []),
     VitePWA({
       // Custom sw.ts (src/sw.ts) instead of generateSW: needed for our own `sync` event
       // handler (Sprint 13.8 background sync) alongside Workbox's precache/navigateFallback.
@@ -91,4 +123,5 @@ export default defineConfig({
       },
     },
   },
+  }
 })

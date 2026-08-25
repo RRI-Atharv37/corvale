@@ -7,7 +7,7 @@ import RateLimitCounter from '../models/RateLimitCounter'
  * Without this, each process keeps its own counter and scaling out silently multiplies
  * the effective limit by the instance count.
  *
- * `prefix` namespaces keys per logical limiter (e.g. "auth-login-register", "global") so
+ * `prefix` namespaces keys per logical limiter (e.g. "auth-login", "global") so
  * limiters that key on the same client (typically an IP) don't share a counter with each
  * other — mirroring how separate `MemoryStore` instances never did before this change.
  *

@@ -18,7 +18,10 @@ import {
 
 export const createAuthRoutes = (): express.Router => {
     const router = express.Router()
-    const authRateLimiter = createAuthRateLimiter('auth-login-register')
+    const authRateLimiter = createAuthRateLimiter('auth-login')
+    // Own instance so a bulk-registration burst can't also lock a legitimate user out of
+    // login, and vice versa (SEC-26/L9).
+    const registerRateLimiter = createAuthRateLimiter('auth-register')
     // Separate instance (not shared with register/login) so a burst of refresh/logout
     // replay attempts can't also lock a legitimate user out of signing in (SEC-26).
     const sessionRateLimiter = createAuthRateLimiter('auth-session')
@@ -31,7 +34,7 @@ export const createAuthRoutes = (): express.Router => {
     // brute-force protection, on its own instance so it can't lock a user out of login.
     const accountDeletionRateLimiter = createAuthRateLimiter('auth-account-deletion')
 
-    router.post('/register', authRateLimiter, registerUser)
+    router.post('/register', registerRateLimiter, registerUser)
     router.post('/login', authRateLimiter, loginUser)
     router.post('/refresh', sessionRateLimiter, refreshAccessToken)
     router.post('/logout', sessionRateLimiter, logoutUser)

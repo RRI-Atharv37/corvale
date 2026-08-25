@@ -21,6 +21,7 @@ export const ERROR_MESSAGES = {
         EMAIL_VERIFICATION_SENT: 'Verification email sent. Please check your inbox',
         EMAIL_VERIFICATION_INVALID: 'Invalid or expired email verification token',
         EMAIL_ALREADY_VERIFIED: 'Email address is already verified',
+        CAPTCHA_FAILED: 'CAPTCHA verification failed, please try again',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',

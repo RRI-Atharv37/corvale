@@ -37,6 +37,7 @@ import { parseNotificationPreferences } from '../utils/notificationUtils'
 import { parseDateFormat, parsePageSize } from '../utils/userPreferencesUtils'
 import { normalizeEmail } from '../utils/emailUtils'
 import { validatePassword } from '../utils/passwordPolicy'
+import { verifyCaptcha } from '../utils/captchaService'
 import { assertAccountDeletionAllowed, deleteUserAccountCascade } from '../utils/accountDeletionUtils'
 
 const toPublicUser = (user: IUser) => ({
@@ -73,6 +74,11 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
 
     const normalizedEmail = normalizeEmail(email)
     const validatedPassword = validatePassword(password)
+
+    const captchaOk = await verifyCaptcha(req.body.captchaToken)
+    if (!captchaOk) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.CAPTCHA_FAILED, 400)
+    }
 
     const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
