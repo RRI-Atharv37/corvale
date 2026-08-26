@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
+    "postbuild": "node scripts/linkDistNodeModules.js",
     "start": "node ../dist/backend/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
