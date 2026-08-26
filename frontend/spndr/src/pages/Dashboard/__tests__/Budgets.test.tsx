@@ -197,4 +197,56 @@ describe('Budgets page (local-first)', () => {
         expect(budget).not.toBeNull()
         expect(budget?.isArchived).toBe(true)
     })
+
+    // T4: gap-fill - the suite above covers create, archive, and progress rendering, but not the
+    // edit flow or a client-validation error path.
+    it('edits an existing budget through the form and persists the new amount to the local store', async () => {
+        const db = await seedBudgetWithProgress()
+        const user = userEvent.setup()
+
+        renderWithProviders(<Budgets />)
+
+        await waitFor(() => expect(screen.getByText('Food budget')).toBeInTheDocument())
+
+        await user.click(screen.getByRole('button', { name: 'Edit budget' }))
+        const dialog = await screen.findByRole('dialog', { name: 'Edit budget' })
+
+        const amountInput = within(dialog).getByPlaceholderText('500.00')
+        await user.clear(amountInput)
+        await user.type(amountInput, '150')
+
+        const form = dialog.querySelector('form')
+        if (!form) throw new Error('Edit budget form not found')
+        fireEvent.submit(form)
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+        const updated = await budgetsRepo.findById(db, 'budget1')
+        expect(updated?.amount).toBe(15000) // stored in minor units
+    })
+
+    it('rejects a non-positive amount client-side and leaves the budget unchanged', async () => {
+        const db = await seedBudgetWithProgress()
+        const user = userEvent.setup()
+
+        renderWithProviders(<Budgets />)
+
+        await waitFor(() => expect(screen.getByText('Food budget')).toBeInTheDocument())
+
+        await user.click(screen.getByRole('button', { name: 'Edit budget' }))
+        const dialog = await screen.findByRole('dialog', { name: 'Edit budget' })
+
+        const amountInput = within(dialog).getByPlaceholderText('500.00')
+        await user.clear(amountInput)
+
+        const form = dialog.querySelector('form')
+        if (!form) throw new Error('Edit budget form not found')
+        fireEvent.submit(form)
+
+        // `buildPayload` throws before any API/store call - the modal stays open and the stored
+        // budget amount is untouched.
+        expect(screen.getByRole('dialog', { name: 'Edit budget' })).toBeInTheDocument()
+        const unchanged = await budgetsRepo.findById(db, 'budget1')
+        expect(unchanged?.amount).toBe(100000)
+    })
 })

@@ -197,6 +197,29 @@ describe('Transactions (local-first)', () => {
         expect(screen.getByText('Paycheck')).toBeInTheDocument()
     })
 
+    // X7 (Gate G3): the type-filter tabs style the active tab with classes only - no aria-pressed -
+    // so a screen-reader user can't tell which filter is currently applied. Acceptance spec for X7.
+    it('exposes the active type-filter tab via aria-pressed', async () => {
+        await seedAccountsAndCategories()
+        await seedTransaction({ _id: 'tx-expense', title: 'Groceries', type: 'expense' })
+        const user = userEvent.setup()
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getByText('Groceries')).toBeInTheDocument())
+
+        const typeTabRow = document.querySelector('.card .flex.flex-wrap.gap-2') as HTMLElement
+        const allTab = within(typeTabRow).getByRole('button', { name: 'All' })
+        const incomeTab = within(typeTabRow).getByRole('button', { name: 'Income' })
+
+        expect(allTab).toHaveAttribute('aria-pressed', 'true')
+        expect(incomeTab).toHaveAttribute('aria-pressed', 'false')
+
+        await user.click(incomeTab)
+
+        expect(incomeTab).toHaveAttribute('aria-pressed', 'true')
+        expect(allTab).toHaveAttribute('aria-pressed', 'false')
+    })
+
     it('creates a plain expense through the local store and recomputes the account balance', async () => {
         await seedAccountsAndCategories()
         const user = userEvent.setup()
@@ -305,5 +328,79 @@ describe('Transactions (local-first)', () => {
         // (fixture) opening balance since no other transactions remain.
         expect(checkingAccount?.currentBalance).toBe(1000)
         expect(savingsAccount?.currentBalance).toBe(500)
+    })
+
+    // T4: gap-fill - the suite above covers create (plain + transfer) and bulk delete, but not a
+    // single-row edit or a single-row delete, and no client-validation error path.
+    it('edits an existing transaction through the local store and recomputes the account balance', async () => {
+        await seedAccountsAndCategories()
+        const txId = await seedTransaction({ title: 'Groceries', amount: 1500 })
+        const user = userEvent.setup()
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getByText('Groceries')).toBeInTheDocument())
+
+        await user.click(screen.getByRole('button', { name: 'Edit transaction' }))
+        const dialog = await screen.findByRole('dialog', { name: 'Edit transaction' })
+
+        const titleInput = within(dialog).getByPlaceholderText('Groceries, rent, etc.')
+        await user.clear(titleInput)
+        await user.type(titleInput, 'Weekly shop')
+
+        const amountInput = within(dialog).getByPlaceholderText('0.00')
+        await user.clear(amountInput)
+        await user.type(amountInput, '20')
+
+        fireEvent.submit(dialog.querySelector('form') as HTMLFormElement)
+
+        await waitFor(() => expect(screen.getByText('Weekly shop')).toBeInTheDocument())
+        expect(screen.queryByText('Groceries')).not.toBeInTheDocument()
+
+        const db = await getLocalDb()
+        const updated = await transactionsRepo.findById(db, txId)
+        expect(updated?.title).toBe('Weekly shop')
+        expect(updated?.amount).toBe(2000)
+
+        const account = await accountsRepo.findById(db, CHECKING_ID)
+        expect(account?.currentBalance).toBe(980)
+    })
+
+    it('deletes a single transaction via the row action and reverses the account balance', async () => {
+        await seedAccountsAndCategories()
+        await seedTransaction({ _id: 'tx-only', title: 'One-off charge', amount: 3000 })
+        const user = userEvent.setup()
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getByText('One-off charge')).toBeInTheDocument())
+
+        await user.click(screen.getByRole('button', { name: 'Delete transaction' }))
+        const dialog = await screen.findByRole('dialog', { name: 'Delete transaction' })
+        await user.click(within(dialog).getByRole('button', { name: /^delete$/i }))
+
+        await waitFor(() => expect(screen.queryByText('One-off charge')).not.toBeInTheDocument())
+
+        const db = await getLocalDb()
+        expect(await transactionsRepo.findById(db, 'tx-only')).toBeNull()
+        const account = await accountsRepo.findById(db, CHECKING_ID)
+        expect(account?.currentBalance).toBe(1000)
+    })
+
+    it('blocks submit and writes nothing when required fields are missing', async () => {
+        await seedAccountsAndCategories()
+        const user = userEvent.setup()
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getAllByRole('button', { name: /^expense$/i }).length).toBeGreaterThan(0))
+
+        await user.click(screen.getAllByRole('button', { name: /^expense$/i })[0])
+        const dialog = await screen.findByRole('dialog', { name: /add expense/i })
+
+        // Title and amount are left blank - client validation should block submit before any
+        // local-store write happens.
+        fireEvent.submit(dialog.querySelector('form') as HTMLFormElement)
+
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        const db = await getLocalDb()
+        expect(await transactionsRepo.list(db)).toHaveLength(0)
     })
 })
