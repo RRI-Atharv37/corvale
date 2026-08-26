@@ -1,6 +1,6 @@
 [package]
 name = "spndr"
-version = "0.17.0"
+version = "1.0.0"
 description = "spndr desktop shell — personal finance tracker"
 authors = ["spndr"]
 edition = "2021"
