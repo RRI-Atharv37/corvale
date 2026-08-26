@@ -18,6 +18,7 @@ import {
     chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
+    summarizeChartSeries,
     yAxisTick,
 } from './chartTheme'
 
@@ -37,6 +38,11 @@ const ThisMonthChart: React.FC<ThisMonthChartProps> = ({ data, groupBy, periodSt
     const totalIncome = data.reduce((sum, point) => sum + point.income, 0)
     const totalExpense = data.reduce((sum, point) => sum + point.expense, 0)
     const net = totalIncome - totalExpense
+
+    const summary = `This month. ${summarizeChartSeries(chartData, [
+        { key: 'income', label: 'Income' },
+        { key: 'expense', label: 'Expenses' },
+    ])}`
 
     return (
         <div className="card">
@@ -58,7 +64,7 @@ const ThisMonthChart: React.FC<ThisMonthChartProps> = ({ data, groupBy, periodSt
                     <p className="stat-pill__value">{formatCurrency(net)}</p>
                 </div>
             </div>
-            <div className="h-56 mt-4">
+            <div className="h-56 mt-4" role="img" aria-label={summary}>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={chartMargin}>
                         <defs>

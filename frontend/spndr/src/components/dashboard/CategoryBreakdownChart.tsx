@@ -33,11 +33,15 @@ const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ data })
         )
     }
 
+    const summary = `Category breakdown: ${chartData
+        .map((entry) => `${entry.name} ${formatCurrency(entry.value)}`)
+        .join(', ')}`
+
     return (
         <div className="card">
             <h3 className="text-sm font-medium text-fg">Category breakdown</h3>
             <p className="text-xs text-fg-muted mt-1">Spending by category for the selected period</p>
-            <div className="h-80 mt-4">
+            <div className="h-80 mt-4" role="img" aria-label={summary}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie

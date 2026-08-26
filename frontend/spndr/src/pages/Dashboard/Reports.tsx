@@ -228,7 +228,7 @@ const Reports = () => {
     return (
         <div>
             <PageHeader
-                title="Reports"
+                title="Reports & Analytics"
                 description="Advanced analytics, trends, and exportable financial reports"
             />
 

@@ -18,6 +18,7 @@ import {
     chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
+    summarizeChartSeries,
     yAxisTick,
 } from './chartTheme'
 
@@ -32,11 +33,13 @@ const IncomeOverTimeChart: React.FC<IncomeOverTimeChartProps> = ({ data, groupBy
         label: formatPeriodLabel(point.period, groupBy),
     }))
 
+    const summary = `Income over time. ${summarizeChartSeries(chartData, [{ key: 'income', label: 'Income' }])}`
+
     return (
         <div className="card">
             <h3 className="text-sm font-medium text-fg">Income over time</h3>
             <p className="text-xs text-fg-muted mt-1">Posted income by period</p>
-            <div className="h-72 mt-4">
+            <div className="h-72 mt-4" role="img" aria-label={summary}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={chartMargin}>
                         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />

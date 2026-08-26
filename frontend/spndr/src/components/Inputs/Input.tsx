@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useId, useState } from 'react'
 import { FaRegEye, FaRegEyeSlash } from 'react-icons/fa6'
 
 interface InputProps {
@@ -13,13 +13,15 @@ interface InputProps {
 const Input: React.FC<InputProps> = ({ value, onChange, placeholder, label, type, disabled }) => {
     const [showPassword, setShowPassword] = useState(false)
     const toggleShowPassword = () => setShowPassword((prev) => !prev)
+    const inputId = useId()
 
     return (
         <div>
-            <label className="text-[13px] text-fg-secondary">{label}</label>
+            <label htmlFor={inputId} className="text-[13px] text-fg-secondary">{label}</label>
 
             <div className="input-box">
                 <input
+                    id={inputId}
                     type={type === 'password' ? (showPassword ? 'text' : 'password') : type}
                     placeholder={placeholder}
                     className="w-full bg-transparent outline-none placeholder:text-fg-muted"
@@ -29,21 +31,18 @@ const Input: React.FC<InputProps> = ({ value, onChange, placeholder, label, type
                 />
 
                 {type === 'password' && (
-                    <>
+                    <button
+                        type="button"
+                        onClick={toggleShowPassword}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="shrink-0 bg-transparent border-0 p-0"
+                    >
                         {showPassword ? (
-                            <FaRegEye
-                                size={20}
-                                className="text-accent cursor-pointer shrink-0"
-                                onClick={toggleShowPassword}
-                            />
+                            <FaRegEye size={20} className="text-accent" />
                         ) : (
-                            <FaRegEyeSlash
-                                size={20}
-                                className="text-fg-muted cursor-pointer shrink-0"
-                                onClick={toggleShowPassword}
-                            />
+                            <FaRegEyeSlash size={20} className="text-fg-muted" />
                         )}
-                    </>
+                    </button>
                 )}
             </div>
         </div>

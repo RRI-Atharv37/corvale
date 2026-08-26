@@ -19,6 +19,7 @@ import {
     chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
+    summarizeChartSeries,
     yAxisTick,
 } from './chartTheme'
 
@@ -51,6 +52,12 @@ const NetWorthChart: React.FC<NetWorthChartProps> = ({ series, currentBalances, 
             : []),
     ]
 
+    const summary = `Net worth trend. ${summarizeChartSeries(chartData, [
+        { key: 'netWorth', label: 'Net worth' },
+        { key: 'cumulativeIncome', label: 'Cumulative income' },
+        { key: 'cumulativeExpense', label: 'Cumulative expenses' },
+    ])}`
+
     const pillClass = (pill: (typeof balanceItems)[number]['pill']) => {
         const map = {
             income: 'stat-pill--income',
@@ -78,7 +85,7 @@ const NetWorthChart: React.FC<NetWorthChartProps> = ({ series, currentBalances, 
                 ))}
             </div>
 
-            <div className="h-56 mt-4">
+            <div className="h-56 mt-4" role="img" aria-label={summary}>
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={{ ...chartMargin, bottom: 4 }}>
                         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />

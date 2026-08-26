@@ -750,6 +750,7 @@ const Transactions = () => {
                             key={tab.value || 'all'}
                             type="button"
                             onClick={() => setTypeFilterWithUrl(tab.value)}
+                            aria-pressed={typeFilter === tab.value}
                             className={[
                                 'px-3 py-1.5 text-sm rounded-lg border transition-colors',
                                 typeFilter === tab.value

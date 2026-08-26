@@ -55,3 +55,13 @@ describe('DashboardLayout settings panel', () => {
         expect(link).toHaveAttribute('href', '/download')
     })
 })
+
+describe('DashboardLayout navigation', () => {
+    it('labels the /reports nav link "Reports & Analytics" so it reads as the analytics page', async () => {
+        renderWithProviders(<DashboardLayout />)
+        await waitFor(() => expect(screen.getByText('Jamie Rivera')).toBeInTheDocument())
+
+        const link = screen.getByRole('link', { name: 'Reports & Analytics' })
+        expect(link).toHaveAttribute('href', '/reports')
+    })
+})

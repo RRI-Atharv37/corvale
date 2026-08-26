@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useId } from 'react'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -37,6 +37,7 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     accountsData,
 }) => {
     const { activeWorkspaceId } = useWorkspace()
+    const selectId = useId()
 
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
         try {
@@ -59,8 +60,8 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     if (isLoading) {
         return (
             <div>
-                <label className="text-[13px] text-fg-secondary">{label}</label>
-                <p className="text-xs text-fg-muted mt-2">Loading accounts...</p>
+                <label htmlFor={selectId} className="text-[13px] text-fg-secondary">{label}</label>
+                <p role="status" aria-live="polite" className="text-xs text-fg-muted mt-2">Loading accounts...</p>
             </div>
         )
     }
@@ -68,7 +69,7 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     if (loadError) {
         return (
             <div>
-                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <label htmlFor={selectId} className="text-[13px] text-fg-secondary">{label}</label>
                 <p className="text-xs text-expense mt-2">{loadError}</p>
             </div>
         )
@@ -77,7 +78,7 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
     if (!accounts || accounts.length === 0) {
         return (
             <div>
-                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <label htmlFor={selectId} className="text-[13px] text-fg-secondary">{label}</label>
                 <p className="text-xs text-warning mt-2">
                     No accounts yet. Create one on the Accounts page first.
                 </p>
@@ -89,12 +90,13 @@ const AccountPicker: React.FC<AccountPickerProps> = ({
 
     return (
         <div>
-            <label className="text-[13px] text-fg-secondary">
+            <label htmlFor={selectId} className="text-[13px] text-fg-secondary">
                 {label}
                 {required && <span className="text-expense ml-0.5">*</span>}
             </label>
             <div className="input-box mb-0 mt-1">
                 <select
+                    id={selectId}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}

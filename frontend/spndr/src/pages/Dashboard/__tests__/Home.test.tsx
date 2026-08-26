@@ -121,4 +121,12 @@ describe('Home (local-first dashboard summary)', () => {
             expect(screen.getByText('Total Income').closest('.stat-card')).toHaveTextContent('$750.00')
         )
     })
+
+    it('labels the quick link to /reports "Reports & Analytics" so it does not read as a separate charts page', async () => {
+        renderWithProviders(<Home />, { route: '/dashboard' })
+
+        await waitFor(() => expect(screen.getByText('Total Income')).toBeInTheDocument())
+        const link = screen.getByRole('link', { name: /reports & analytics/i })
+        expect(link).toHaveAttribute('href', '/reports')
+    })
 })

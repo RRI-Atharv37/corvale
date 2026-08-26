@@ -211,9 +211,16 @@ export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: 
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
 
-    const { preferredCurrency, dateFormat, pageSize, timezone, notificationPreferences } = req.body
+    const { fullName, preferredCurrency, dateFormat, pageSize, timezone, notificationPreferences } = req.body
 
     let preferredCurrencyChanged = false
+
+    if (fullName !== undefined) {
+        if (typeof fullName !== 'string' || !fullName.trim()) {
+            throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_FULL_NAME, 400)
+        }
+        user.fullName = fullName.trim()
+    }
 
     if (preferredCurrency !== undefined) {
         const nextCurrency = parseSupportedCurrency(preferredCurrency)
@@ -231,7 +238,7 @@ export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: 
 
     if (timezone !== undefined) {
         if (typeof timezone !== 'string' || !timezone.trim() || !isValidTimezone(timezone.trim())) {
-            throw new CustomError('Invalid timezone', 400)
+            throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_TIMEZONE, 400)
         }
         user.timezone = timezone.trim()
     }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -31,6 +31,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
     const [dropdownOpen, setDropdownOpen] = useState(false)
     const [creating, setCreating] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
+    const inputId = useId()
 
     const fetchTags = useCallback(async (): Promise<Tag[]> => {
         try {
@@ -145,8 +146,8 @@ const TagPicker: React.FC<TagPickerProps> = ({
     if (isLoading) {
         return (
             <div>
-                <label className="text-[13px] text-fg-secondary">{label}</label>
-                <p className="text-xs text-fg-muted mt-2">Loading tags...</p>
+                <label htmlFor={inputId} className="text-[13px] text-fg-secondary">{label}</label>
+                <p role="status" aria-live="polite" className="text-xs text-fg-muted mt-2">Loading tags...</p>
             </div>
         )
     }
@@ -154,7 +155,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
     if (loadError) {
         return (
             <div>
-                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <label htmlFor={inputId} className="text-[13px] text-fg-secondary">{label}</label>
                 <p className="text-xs text-expense mt-2">{loadError}</p>
             </div>
         )
@@ -162,7 +163,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
 
     return (
         <div ref={containerRef}>
-            <label className="text-[13px] text-fg-secondary">{label}</label>
+            <label htmlFor={inputId} className="text-[13px] text-fg-secondary">{label}</label>
             <div
                 className={[
                     'input-box mb-0 mt-1 min-h-[42px] flex flex-wrap items-center gap-1.5 px-2 py-1.5',
@@ -178,6 +179,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
                     />
                 ))}
                 <input
+                    id={inputId}
                     type="text"
                     value={inputValue}
                     onChange={(e) => {

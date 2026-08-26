@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useId } from 'react'
 
 interface FormFieldProps {
     label: string
@@ -24,28 +24,32 @@ const FormField: React.FC<FormFieldProps> = ({
     min,
     max,
     step,
-}) => (
-    <div>
-        <label className="text-[13px] text-fg-secondary">
-            {label}
-            {required && <span className="text-expense ml-0.5">*</span>}
-        </label>
-        <div className="input-box mb-0 mt-1">
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                required={required}
-                disabled={disabled}
-                min={min}
-                max={max}
-                step={step}
-                className="w-full bg-transparent outline-none placeholder:text-fg-muted"
-            />
+}) => {
+    const inputId = useId()
+    return (
+        <div>
+            <label htmlFor={inputId} className="text-[13px] text-fg-secondary">
+                {label}
+                {required && <span className="text-expense ml-0.5">*</span>}
+            </label>
+            <div className="input-box mb-0 mt-1">
+                <input
+                    id={inputId}
+                    type={type}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    required={required}
+                    disabled={disabled}
+                    min={min}
+                    max={max}
+                    step={step}
+                    className="w-full bg-transparent outline-none placeholder:text-fg-muted"
+                />
+            </div>
         </div>
-    </div>
-)
+    )
+}
 
 interface TextAreaFieldProps {
     label: string
@@ -63,20 +67,24 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
     placeholder,
     disabled,
     rows = 3,
-}) => (
-    <div>
-        <label className="text-[13px] text-fg-secondary">{label}</label>
-        <div className="input-box mb-0 mt-1 items-start">
-            <textarea
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                disabled={disabled}
-                rows={rows}
-                className="w-full bg-transparent outline-none placeholder:text-fg-muted resize-none"
-            />
+}) => {
+    const textareaId = useId()
+    return (
+        <div>
+            <label htmlFor={textareaId} className="text-[13px] text-fg-secondary">{label}</label>
+            <div className="input-box mb-0 mt-1 items-start">
+                <textarea
+                    id={textareaId}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    rows={rows}
+                    className="w-full bg-transparent outline-none placeholder:text-fg-muted resize-none"
+                />
+            </div>
         </div>
-    </div>
-)
+    )
+}
 
 export default FormField

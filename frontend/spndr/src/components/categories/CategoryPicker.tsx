@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useId, useMemo } from 'react'
 import { CategoryIcon } from '../../utils/categoryIcons'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import axiosInstance from '../../utils/axiosInstance'
@@ -47,6 +47,8 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
     disabled,
     categoriesData,
 }) => {
+    const selectId = useId()
+
     const fetchCategories = useCallback(async (): Promise<CategoriesResponse> => {
         try {
             const response = await axiosInstance.get<ApiResponse<CategoriesResponse>>(
@@ -76,8 +78,8 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
     if (isLoading) {
         return (
             <div>
-                <label className="text-[13px] text-fg-secondary">{label}</label>
-                <p className="text-xs text-fg-muted mt-2">Loading categories...</p>
+                <label htmlFor={selectId} className="text-[13px] text-fg-secondary">{label}</label>
+                <p role="status" aria-live="polite" className="text-xs text-fg-muted mt-2">Loading categories...</p>
             </div>
         )
     }
@@ -85,7 +87,7 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
     if (loadError) {
         return (
             <div>
-                <label className="text-[13px] text-fg-secondary">{label}</label>
+                <label htmlFor={selectId} className="text-[13px] text-fg-secondary">{label}</label>
                 <p className="text-xs text-expense mt-2">{loadError}</p>
             </div>
         )
@@ -95,12 +97,13 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
 
     return (
         <div>
-            <label className="text-[13px] text-fg-secondary">
+            <label htmlFor={selectId} className="text-[13px] text-fg-secondary">
                 {label}
                 {required && <span className="text-expense ml-0.5">*</span>}
             </label>
             <div className="input-box mb-0 mt-1">
                 <select
+                    id={selectId}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}

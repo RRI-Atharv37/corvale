@@ -48,6 +48,7 @@ import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import NotificationCenter from '../notifications/NotificationCenter'
 import LoadingState from '../ui/LoadingState'
+import ProfileSettings from '../settings/ProfileSettings'
 import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
 import BackupRestoreSettings from '../settings/BackupRestoreSettings'
 import DeleteAccountSettings from '../settings/DeleteAccountSettings'
@@ -71,7 +72,7 @@ const navItems: NavItem[] = [
     { to: '/accounts', label: 'Accounts', icon: <FiCreditCard size={18} /> },
     { to: '/budgets', label: 'Budgets', icon: <FiPieChart size={18} /> },
     { to: '/categories', label: 'Categories', icon: <FiGrid size={18} /> },
-    { to: '/reports', label: 'Reports', icon: <FiBarChart2 size={18} /> },
+    { to: '/reports', label: 'Reports & Analytics', icon: <FiBarChart2 size={18} /> },
     { to: '/calendar', label: 'Calendar', icon: <FiClock size={18} /> },
     { to: '/tags', label: 'Tags', icon: <FiTag size={18} /> },
     { to: '/recurring', label: 'Recurring', icon: <FiCalendar size={18} /> },
@@ -345,6 +346,8 @@ const DashboardLayout: React.FC = () => {
 
             <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" size="md">
                 <div className="space-y-6">
+                    <ProfileSettings />
+
                     <div>
                         <p className="section-label mb-3">Preferences</p>
                         <CurrencySelect

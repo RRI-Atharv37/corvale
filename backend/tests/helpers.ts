@@ -118,6 +118,17 @@ export async function createPostedTransaction(
     })
 }
 
+/**
+ * `updatedAt` has millisecond precision, and sync staleness detection compares it as an exact
+ * string (`isStaleGeneric` in syncController.ts). A "stale baseUpdatedAt" test captures a doc's
+ * `updatedAt`, then mutates and re-saves it - on a fast machine those two writes can land in the
+ * same millisecond, so the "changed out from under the client" save produces an `updatedAt`
+ * identical to the captured baseline and the conflict goes undetected (flaky "applied" instead of
+ * "conflict"). Call this between the capture and the mutating save to force a new millisecond.
+ */
+export const ensureTimestampAdvances = (): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, 5))
+
 export async function seedUserDirectly(overrides: Partial<TestUser> = {}): Promise<RegisteredUser> {
     const userData = { ...defaultTestUser, ...overrides }
     const user = await User.create({ ...userData, isEmailVerified: true })

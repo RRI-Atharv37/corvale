@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { XAxisProps, YAxisProps } from 'recharts'
-import { getCurrencySymbol } from '../../utils/format'
+import { formatCurrency, getCurrencySymbol } from '../../utils/format'
 
 export const CHART_COLORS = {
     income: '#4ade80',
@@ -77,6 +77,41 @@ export const formatPeriodLabel = (period: string, groupBy: 'day' | 'week' | 'mon
 
     const date = new Date(`${period}T12:00:00`)
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+export interface ChartSeriesDef {
+    key: string
+    label: string
+}
+
+/**
+ * Builds a plain-text accessible summary of a time-series chart's data, for use as the
+ * `aria-label` on a `role="img"` wrapper - screen readers get no information from the underlying
+ * SVG, so this is the text alternative. Points beyond MAX_POINTS collapse to a per-series total
+ * (an aria-label enumerating a full year of daily data would be unusably long).
+ */
+export const summarizeChartSeries = (
+    data: Record<string, unknown>[],
+    series: ChartSeriesDef[],
+    labelKey = 'label'
+): string => {
+    if (data.length === 0) return 'No data for this period.'
+
+    const MAX_POINTS = 24
+    if (data.length > MAX_POINTS) {
+        const totals = series.map((s) => {
+            const total = data.reduce((sum, point) => sum + (Number(point[s.key]) || 0), 0)
+            return `${s.label} total ${formatCurrency(total)}`
+        })
+        return `${data.length} periods from ${String(data[0][labelKey])} to ${String(data[data.length - 1][labelKey])}. ${totals.join(', ')}.`
+    }
+
+    return data
+        .map((point) => {
+            const parts = series.map((s) => `${s.label} ${formatCurrency(Number(point[s.key]) || 0)}`)
+            return `${String(point[labelKey])}: ${parts.join(', ')}`
+        })
+        .join('; ')
 }
 
 export const formatChartCurrency = (value: number): string => {

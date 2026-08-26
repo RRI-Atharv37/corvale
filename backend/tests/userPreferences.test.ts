@@ -155,4 +155,53 @@ describe('User preferences', () => {
 
         expect(badPageSize.status).toBe(400)
     })
+
+    it('updates full name and timezone', async () => {
+        const { token } = await registerUser(app, {
+            email: 'profile-update@example.com',
+        })
+
+        const updateRes = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ fullName: 'New Name', timezone: 'America/New_York' })
+
+        expect(updateRes.status).toBe(200)
+        expect(updateRes.body.data.fullName).toBe('New Name')
+        expect(updateRes.body.data.timezone).toBe('America/New_York')
+    })
+
+    it('trims whitespace around a full name update', async () => {
+        const { token } = await registerUser(app, {
+            email: 'profile-trim@example.com',
+        })
+
+        const updateRes = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ fullName: '  Spaced Name  ' })
+
+        expect(updateRes.status).toBe(200)
+        expect(updateRes.body.data.fullName).toBe('Spaced Name')
+    })
+
+    it('rejects an empty full name and an invalid timezone', async () => {
+        const { token } = await registerUser(app, {
+            email: 'invalid-profile-update@example.com',
+        })
+
+        const badName = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ fullName: '   ' })
+
+        expect(badName.status).toBe(400)
+
+        const badTimezone = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ timezone: 'Not/AZone' })
+
+        expect(badTimezone.status).toBe(400)
+    })
 })

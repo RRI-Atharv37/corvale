@@ -20,6 +20,7 @@ import {
     chartTooltipProps,
     formatChartCurrency,
     formatPeriodLabel,
+    summarizeChartSeries,
     yAxisTick,
 } from './chartTheme'
 
@@ -34,11 +35,17 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, groupBy }) => {
         label: formatPeriodLabel(point.period, groupBy),
     }))
 
+    const summary = `Cash flow. ${summarizeChartSeries(chartData, [
+        { key: 'income', label: 'Income' },
+        { key: 'expense', label: 'Spending' },
+        { key: 'net', label: 'Net savings' },
+    ])}`
+
     return (
         <div className="card">
             <h3 className="text-sm font-medium text-fg">Cash flow</h3>
             <p className="text-xs text-fg-muted mt-1">Income, spending, and net savings by period</p>
-            <div className="h-80 mt-4">
+            <div className="h-80 mt-4" role="img" aria-label={summary}>
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={chartMargin}>
                         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
