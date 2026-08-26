@@ -15,10 +15,10 @@
     "isolatedModules": true,
     "noEmit": false, 
     "jsx": "react-jsx",
-    "outDir": "../dist/backend",
-    "rootDir": ".",
+    "outDir": "../dist",
+    "rootDir": "..",
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "../shared/src/**/*.ts"],
   "exclude": ["node_modules", "dist", "../dist", "tests", "vitest.config.ts"]
 }
 

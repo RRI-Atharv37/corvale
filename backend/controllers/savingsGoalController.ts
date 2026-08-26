@@ -25,6 +25,8 @@ import {
 import {
     getUserId,
     handleResponses,
+    isDuplicateKeyError,
+    resolveClientObjectId,
     validateRequiredFields,
 } from '../utils/sharedUtils'
 import {
@@ -103,17 +105,27 @@ export const createSavingsGoal = asyncHandler(async (req: AuthRequest, res: Resp
     }
 
     const autoContribution = parseAutoContributionFromBody(req.body)
+    const clientId = resolveClientObjectId(req.body._id)
 
-    const goal = await SavingsGoal.create({
-        userId,
-        workspaceId,
-        name: String(req.body.name).trim(),
-        targetAmount,
-        currency,
-        targetDate: targetDate ?? null,
-        accountId: accountObjectId ?? null,
-        autoContribution: autoContribution ?? { enabled: false, amount: 0, interval: 'monthly' },
-    })
+    let goal
+    try {
+        goal = await SavingsGoal.create({
+            ...(clientId ? { _id: clientId } : {}),
+            userId,
+            workspaceId,
+            name: String(req.body.name).trim(),
+            targetAmount,
+            currency,
+            targetDate: targetDate ?? null,
+            accountId: accountObjectId ?? null,
+            autoContribution: autoContribution ?? { enabled: false, amount: 0, interval: 'monthly' },
+        })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            throw new CustomError('A savings goal with this id already exists', 400)
+        }
+        throw error
+    }
 
     const serialized = await serializeSavingsGoal(goal, timezone)
     handleResponses(res, 201, serialized)

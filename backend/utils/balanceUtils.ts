@@ -1,38 +1,59 @@
-import Income from '../models/Income'
-import Expense from '../models/Expense'
 import Saver from '../models/Saver'
-import Account, { AccountType } from '../models/Account'
+import Account from '../models/Account'
+import Transaction from '../models/Transaction'
 import { toObjectId } from './sharedUtils'
 import { buildScopedListFilter } from './workspaceUtils'
-import { convertAmount } from './exchangeRateUtils'
+import {
+    AccountLike,
+    AccountTotals,
+    computeAccountTotalsPure,
+    computeUserBalancesPure,
+    CurrencyConversionOptions,
+    UserBalanceSummary,
+} from '../../shared/src/balances'
+import { fromMinorUnits, roundMoney } from '../../shared/src/money'
 
-export const roundMoney = (amount: number): number =>
-    Math.round((amount + Number.EPSILON) * 100) / 100
+export { roundMoney }
+export type { AccountTotals, UserBalanceSummary, CurrencyConversionOptions }
 
-const ASSET_ACCOUNT_TYPES: AccountType[] = ['checking', 'cash', 'savings']
-const LIQUID_ACCOUNT_TYPES: AccountType[] = ['checking', 'cash']
+const toAccountsLike = (
+    accounts: Array<{ type: AccountLike['type']; currentBalance: number; currency: string; isArchived: boolean }>
+): AccountLike[] =>
+    accounts.map((account) => ({
+        type: account.type,
+        currentBalance: account.currentBalance,
+        currency: account.currency,
+        isArchived: account.isArchived,
+    }))
 
-export interface AccountTotals {
-    totalAccountBalance: number
-    liquidBalance: number
-    accountCount: number
+const POSTED_LEDGER_FILTER = {
+    status: 'posted' as const,
+    splitTransactionId: null,
 }
 
-export interface UserBalanceSummary {
-    totalIncome: number
-    totalExpenses: number
-    saverBalance: number
-    spendableBalance: number
-    netWorth: number
-    totalAccountBalance: number
-    liquidBalance: number
-    accountCount: number
-    balanceSource: 'accounts' | 'legacy'
-}
+/**
+ * Lifetime posted income/expense totals sourced from the unified
+ * `Transaction` collection (BUG-01) — mirrors the exclusions
+ * `sumPostedTransactionsByType` (dashboardUtils.ts) applies for the
+ * period-scoped dashboard summary (posted only, split children excluded,
+ * transfers excluded via the `type` match), just without a date bound.
+ */
+const sumLifetimePostedTransactionsByType = async (
+    userId: string,
+    type: 'income' | 'expense'
+): Promise<number> => {
+    const result = await Transaction.aggregate([
+        {
+            $match: {
+                ...buildScopedListFilter(userId, null),
+                type,
+                ...POSTED_LEDGER_FILTER,
+            },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+    ])
 
-export interface CurrencyConversionOptions {
-    preferredCurrency: string
-    exchangeRates: Record<string, number>
+    return fromMinorUnits(result[0]?.total ?? 0)
 }
 
 /**
@@ -50,35 +71,7 @@ export const computeAccountTotals = async (
         isArchived: false,
     })
 
-    let assetTotal = 0
-    let creditTotal = 0
-    let liquidBalance = 0
-
-    for (const account of accounts) {
-        const rawBalance = roundMoney(account.currentBalance)
-        const balance = conversion
-            ? roundMoney(
-                  convertAmount(rawBalance, account.currency, conversion.preferredCurrency, conversion.exchangeRates)
-                      .convertedAmount
-              )
-            : rawBalance
-
-        if (account.type === 'credit') {
-            creditTotal = roundMoney(creditTotal + balance)
-        } else if (ASSET_ACCOUNT_TYPES.includes(account.type)) {
-            assetTotal = roundMoney(assetTotal + balance)
-        }
-
-        if (LIQUID_ACCOUNT_TYPES.includes(account.type)) {
-            liquidBalance = roundMoney(liquidBalance + balance)
-        }
-    }
-
-    return {
-        totalAccountBalance: roundMoney(assetTotal - creditTotal),
-        liquidBalance,
-        accountCount: accounts.length,
-    }
+    return computeAccountTotalsPure(toAccountsLike(accounts), conversion)
 }
 
 export const computeUserBalances = async (
@@ -86,70 +79,35 @@ export const computeUserBalances = async (
     workspaceId?: string | null,
     conversion?: CurrencyConversionOptions
 ): Promise<UserBalanceSummary> => {
-    const accountTotals = await computeAccountTotals(userId, workspaceId, conversion)
+    const accounts = await Account.find({
+        ...buildScopedListFilter(userId, workspaceId ?? null),
+        isArchived: false,
+    })
+    const accountsLike = toAccountsLike(accounts)
 
     if (workspaceId) {
-        const netWorth = accountTotals.totalAccountBalance
-        return {
-            totalIncome: 0,
-            totalExpenses: 0,
-            saverBalance: 0,
-            spendableBalance: accountTotals.liquidBalance,
-            netWorth,
-            totalAccountBalance: accountTotals.totalAccountBalance,
-            liquidBalance: accountTotals.liquidBalance,
-            accountCount: accountTotals.accountCount,
-            balanceSource: 'accounts',
-        }
+        return computeUserBalancesPure({
+            accounts: accountsLike,
+            totalIncomeMajor: 0,
+            totalExpensesMajor: 0,
+            saverBalanceMajor: 0,
+            workspaceId,
+            conversion,
+        })
     }
 
-    const objectId = toObjectId(userId)
-
-    const [incomeAgg, expenseAgg, saver] = await Promise.all([
-        Income.aggregate([
-            { $match: { userId: objectId } },
-            { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]),
-        Expense.aggregate([
-            { $match: { userId: objectId } },
-            { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]),
-        Saver.findOne({ userId: objectId }),
+    const [totalIncomeMajor, totalExpensesMajor, saver] = await Promise.all([
+        sumLifetimePostedTransactionsByType(userId, 'income'),
+        sumLifetimePostedTransactionsByType(userId, 'expense'),
+        Saver.findOne({ userId: toObjectId(userId) }),
     ])
 
-    const totalIncome = roundMoney(incomeAgg[0]?.total ?? 0)
-    const totalExpenses = roundMoney(expenseAgg[0]?.total ?? 0)
-    const saverBalance = roundMoney(saver?.saverAmount ?? 0)
-
-    if (accountTotals.accountCount > 0) {
-        const netWorth = accountTotals.totalAccountBalance
-        const spendableBalance = roundMoney(Math.max(0, accountTotals.liquidBalance - saverBalance))
-
-        return {
-            totalIncome,
-            totalExpenses,
-            saverBalance,
-            spendableBalance,
-            netWorth,
-            totalAccountBalance: accountTotals.totalAccountBalance,
-            liquidBalance: accountTotals.liquidBalance,
-            accountCount: accountTotals.accountCount,
-            balanceSource: 'accounts',
-        }
-    }
-
-    const netWorth = roundMoney(totalIncome - totalExpenses)
-    const spendableBalance = roundMoney(Math.max(0, netWorth - saverBalance))
-
-    return {
-        totalIncome,
-        totalExpenses,
-        saverBalance,
-        spendableBalance,
-        netWorth,
-        totalAccountBalance: 0,
-        liquidBalance: 0,
-        accountCount: 0,
-        balanceSource: 'legacy',
-    }
+    return computeUserBalancesPure({
+        accounts: accountsLike,
+        totalIncomeMajor,
+        totalExpensesMajor,
+        saverBalanceMajor: saver?.saverAmount ?? 0,
+        workspaceId: null,
+        conversion,
+    })
 }

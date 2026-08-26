@@ -1,45 +1,26 @@
-import React, { useCallback, useState } from 'react'
+import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoBan, IoPlay } from 'react-icons/io5'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import StatCard from '../../components/ui/StatCard'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
-import { buildWorkspaceQueryParams } from '../../utils/workspaceScope'
-import type { ApiResponse, SubscriptionsResponse } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
+import { useSubscriptionsData } from './hooks/useSubscriptionsData'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency, formatDisplayDate } from '../../utils/format'
 import { INTERVAL_LABELS } from '../../utils/recurringUtils'
 
 const Subscriptions: React.FC = () => {
-    const { activeWorkspaceId, activeWorkspace, isPersonal, canEdit } = useWorkspace()
+    const { activeWorkspace, isPersonal, canEdit } = useWorkspace()
     const [togglingId, setTogglingId] = useState<string | null>(null)
 
-    const fetchSubscriptions = useCallback(async (): Promise<SubscriptionsResponse> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<SubscriptionsResponse>>(
-                API_PATHS.SUBSCRIPTIONS.GET_ALL,
-                { params: buildWorkspaceQueryParams(activeWorkspaceId) }
-            )
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load subscriptions'))
-        }
-    }, [activeWorkspaceId])
-
-    const { data, loading, error, refetch } = useAsyncData(fetchSubscriptions, [fetchSubscriptions])
+    const { data, loading, error, refetch, toggleCancelled: toggleCancelledData } = useSubscriptionsData()
 
     const toggleCancelled = async (ruleId: string, isCancelled: boolean) => {
         setTogglingId(ruleId)
         try {
-            await axiosInstance.put(API_PATHS.RECURRING_RULES.UPDATE(ruleId), {
-                isCancelled: !isCancelled,
-            })
+            await toggleCancelledData(ruleId, isCancelled)
             toast.success(isCancelled ? 'Subscription reactivated' : 'Subscription cancelled')
             await refetch()
         } catch (err) {

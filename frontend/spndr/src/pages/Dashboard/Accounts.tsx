@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoAdd, IoInformationCircleOutline, IoPencil, IoStar, IoStarOutline, IoSwapVertical, IoTrash } from 'react-icons/io5'
 import ReconciliationModal from '../../components/accounts/ReconciliationModal'
@@ -8,20 +8,18 @@ import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { usePageSize } from '../../hooks/usePaginatedList'
-import type { Account, AccountEditFormData, AccountFormData, AccountType, ApiResponse } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import type { Account, AccountEditFormData, AccountFormData, AccountType } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
 import { DEFAULT_CURRENCY, formatCurrencyLabel } from '../../utils/currencies'
 import CurrencySelect from '../../components/Inputs/CurrencySelect'
+import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import { useUser } from '../../hooks/useUser'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
-import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
+import { useAccountsData } from './hooks/useAccountsData'
 
 const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
     { value: 'checking', label: 'Checking' },
@@ -91,7 +89,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 
 const Accounts = () => {
     const { user } = useUser()
-    const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
+    const { canEdit, isPersonal, activeWorkspace } = useWorkspace()
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
     const pageSize = usePageSize()
     const [createOpen, setCreateOpen] = useState(false)
@@ -105,18 +103,24 @@ const Accounts = () => {
     const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
     const [reconcilingAccount, setReconcilingAccount] = useState<Account | null>(null)
 
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
-                params: buildWorkspaceQueryParams(activeWorkspaceId),
-            })
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load accounts'))
-        }
-    }, [activeWorkspaceId])
+    // Reconciliation (ReconciliationSession creation, cleared-status updates) stays a plain REST
+    // flow unconditionally, even when VITE_LOCAL_FIRST is on - it's a whole separate session-based
+    // feature (Sprint 12.1) with server-computed statement-vs-book comparison, out of scope for
+    // local-first this sprint, same as SavingsGoals' contribute/pause/resume/complete and Recurring's
+    // draft actions. Gated on connectivity here rather than left silently broken while offline.
+    const online = useOnlineStatus()
+    const reconciliationBlocked = isLocalFirstEnabled() && !online
 
-    const { data: accounts, loading, error, refetch } = useAsyncData(fetchAccounts, [fetchAccounts])
+    const {
+        accounts,
+        loading,
+        error,
+        refetch,
+        createAccount,
+        updateAccount,
+        archiveAccount,
+        setDefaultAccount,
+    } = useAccountsData()
 
     const openCreate = () => {
         setCreateForm(emptyCreateForm(preferredCurrency))
@@ -175,18 +179,16 @@ const Accounts = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.post(API_PATHS.ACCOUNTS.CREATE, {
+            await createAccount({
                 name: createForm.name.trim(),
                 type: createForm.type,
                 currency: createForm.currency,
                 openingBalance,
                 interestRate,
                 minimumPayment,
-                ...buildWorkspaceBodyFields(activeWorkspaceId),
             })
             toast.success('Account created')
             closeCreate()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to create account'))
         } finally {
@@ -219,7 +221,7 @@ const Accounts = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.put(API_PATHS.ACCOUNTS.UPDATE(editingAccount._id), {
+            await updateAccount(editingAccount, {
                 name: editForm.name.trim(),
                 type: editForm.type,
                 interestRate,
@@ -227,7 +229,6 @@ const Accounts = () => {
             })
             toast.success('Account updated')
             closeEdit()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to update account'))
         } finally {
@@ -240,9 +241,8 @@ const Accounts = () => {
 
         setSettingDefaultId(account._id)
         try {
-            await axiosInstance.put(API_PATHS.ACCOUNTS.UPDATE(account._id), { isDefault: true })
+            await setDefaultAccount(account)
             toast.success(`"${account.name}" is now your default account`)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to set default account'))
         } finally {
@@ -255,10 +255,9 @@ const Accounts = () => {
 
         setArchiving(true)
         try {
-            await axiosInstance.delete(API_PATHS.ACCOUNTS.DELETE(archiveTarget._id))
+            await archiveAccount(archiveTarget)
             toast.success('Account archived')
             setArchiveTarget(null)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to archive account'))
         } finally {
@@ -374,9 +373,10 @@ const Accounts = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => setReconcilingAccount(account)}
-                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors"
+                                                disabled={reconciliationBlocked}
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors disabled:opacity-50"
                                                 aria-label="Reconcile account"
-                                                title="Reconcile"
+                                                title={reconciliationBlocked ? 'Requires an internet connection' : 'Reconcile'}
                                             >
                                                 <IoSwapVertical size={16} />
                                             </button>

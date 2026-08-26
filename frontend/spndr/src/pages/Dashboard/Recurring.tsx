@@ -22,25 +22,25 @@ import FormField from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
 import TagPicker from '../../components/tags/TagPicker'
 import AccountPicker from '../../components/accounts/AccountPicker'
-import CurrencySelect from '../../components/inputs/CurrencySelect'
+import CurrencySelect from '../../components/Inputs/CurrencySelect'
 import RecurringCalendar from '../../components/recurring/RecurringCalendar'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
+import OfflineNotice from '../../components/ui/OfflineNotice'
 import { usePageSize } from '../../hooks/usePaginatedList'
 import { useUser } from '../../hooks/useUser'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import { useRecurringData, type RecurringRuleInput } from './hooks/useRecurringData'
+import { useRecurringDrafts } from './hooks/useRecurringDrafts'
+import { useAccountsData } from './hooks/useAccountsData'
+import { useCategoriesData } from './hooks/useCategoriesData'
+import { useTagsData } from './hooks/useTagsData'
 import type {
-    Account,
-    ApiResponse,
     CategoriesResponse,
     RecurringRule,
     RecurringRuleFormData,
     RecurringRuleType,
     RecurringInterval,
-    Tag,
     Transaction,
 } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency, formatDisplayDate, getCurrentMonthYear, toDateInputValue } from '../../utils/format'
 import { CategoryIcon } from '../../utils/categoryIcons'
@@ -140,6 +140,7 @@ const Recurring = () => {
     const preferredCurrency = user?.preferredCurrency ?? DEFAULT_CURRENCY
     const pageSize = usePageSize()
 
+    const online = useOnlineStatus()
     const [view, setView] = useState<RecurringView>('rules')
     const [ruleListView, setRuleListView] = useState<RuleListView>('active')
     const [createOpen, setCreateOpen] = useState(false)
@@ -149,82 +150,36 @@ const Recurring = () => {
     const [submitting, setSubmitting] = useState(false)
     const [archiveTarget, setArchiveTarget] = useState<RecurringRule | null>(null)
     const [archiving, setArchiving] = useState(false)
-    const [drafts, setDrafts] = useState<Transaction[]>([])
-    const [draftsLoading, setDraftsLoading] = useState(false)
-    const [draftsError, setDraftsError] = useState<string | null>(null)
-    const [generatingDrafts, setGeneratingDrafts] = useState(false)
-    const [draftActionId, setDraftActionId] = useState<string | null>(null)
     const [selectedDraft, setSelectedDraft] = useState<Transaction | null>(null)
     const { year: initialYear, month: initialMonth } = getCurrentMonthYear()
     const [calendarYear, setCalendarYear] = useState(initialYear)
     const [calendarMonth, setCalendarMonth] = useState(initialMonth)
 
-    const fetchRules = useCallback(async (): Promise<RecurringRule[]> => {
+    const { rules, loading, error, refetch, createRule, updateRule, archiveRule, toggleRuleActive } =
+        useRecurringData()
+    const { categories } = useCategoriesData()
+    const { accounts } = useAccountsData()
+    const { tags, refetch: refetchTags } = useTagsData()
+    const {
+        drafts,
+        draftsLoading,
+        draftsError,
+        generatingDrafts,
+        draftActionId,
+        fetchDrafts,
+        generateAndRefreshDrafts,
+        confirmDraft,
+        dismissDraft,
+    } = useRecurringDrafts(refetch)
+
+    const handleGenerateDrafts = useCallback(async () => {
         try {
-            const response = await axiosInstance.get<ApiResponse<RecurringRule[]>>(
-                API_PATHS.RECURRING_RULES.GET_ALL,
-                {
-                    params: {
-                        includeArchived: ruleListView === 'archived' ? 'true' : 'false',
-                    },
-                }
-            )
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load recurring rules'))
-        }
-    }, [ruleListView])
-
-    const fetchCategories = useCallback(async (): Promise<CategoriesResponse> => {
-        const response = await axiosInstance.get<ApiResponse<CategoriesResponse>>(
-            API_PATHS.CATEGORIES.GET_ALL
-        )
-        return unwrapApiData(response)
-    }, [])
-
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL)
-        return unwrapApiData(response).filter((account) => !account.isArchived)
-    }, [])
-
-    const fetchTags = useCallback(async (): Promise<Tag[]> => {
-        const response = await axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL)
-        return unwrapApiData(response)
-    }, [])
-
-    const { data: rules, loading, error, refetch } = useAsyncData(fetchRules, [fetchRules])
-    const { data: categories } = useAsyncData(fetchCategories, [fetchCategories])
-    const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
-    const { data: tags, refetch: refetchTags } = useAsyncData(fetchTags, [fetchTags])
-
-    const fetchDrafts = useCallback(async () => {
-        setDraftsLoading(true)
-        setDraftsError(null)
-        try {
-            const response = await axiosInstance.get<ApiResponse<Transaction[]>>(
-                API_PATHS.RECURRING_RULES.GET_DRAFTS
-            )
-            setDrafts(unwrapApiData(response))
-        } catch (err) {
-            setDraftsError(getApiErrorMessage(err, 'Failed to load drafts'))
-        } finally {
-            setDraftsLoading(false)
-        }
-    }, [])
-
-    const generateAndRefreshDrafts = useCallback(async () => {
-        setGeneratingDrafts(true)
-        try {
-            await axiosInstance.post(API_PATHS.RECURRING_RULES.GENERATE_DRAFTS)
-            await fetchDrafts()
-            await refetch()
+            await generateAndRefreshDrafts()
             toast.success('Drafts synced')
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to generate drafts'))
-        } finally {
-            setGeneratingDrafts(false)
         }
-    }, [fetchDrafts, refetch])
+    }, [generateAndRefreshDrafts])
 
     useEffect(() => {
         void fetchDrafts()
@@ -232,9 +187,10 @@ const Recurring = () => {
 
     useEffect(() => {
         if (view === 'drafts') {
-            void generateAndRefreshDrafts()
+            void handleGenerateDrafts()
         }
-    }, [view, generateAndRefreshDrafts])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [view])
 
     const displayedRules = useMemo(() => {
         if (!rules) return []
@@ -281,7 +237,7 @@ const Recurring = () => {
         setForm(emptyForm(preferredCurrency))
     }
 
-    const buildPayload = (formData: RecurringRuleFormData) => {
+    const buildPayload = (formData: RecurringRuleFormData): RecurringRuleInput => {
         const amount = Number(formData.amount)
         if (isNaN(amount) || amount <= 0) {
             throw new Error('Amount must be a positive number')
@@ -299,7 +255,7 @@ const Recurring = () => {
             }
         }
 
-        const payload: Record<string, unknown> = {
+        return {
             title: formData.title.trim(),
             type: formData.type,
             amount,
@@ -307,18 +263,13 @@ const Recurring = () => {
             accountId: formData.accountId,
             categoryId: formData.categoryId,
             interval: formData.interval,
+            customIntervalDays: formData.interval === 'custom' ? Number(formData.customIntervalDays) : undefined,
             nextDueDate: formData.nextDueDate,
             description: formData.description.trim() || undefined,
             paymentMethod: formData.paymentMethod.trim() || undefined,
             tags: formData.tags,
             isActive: formData.isActive,
         }
-
-        if (formData.interval === 'custom') {
-            payload.customIntervalDays = Number(formData.customIntervalDays)
-        }
-
-        return payload
     }
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -326,10 +277,9 @@ const Recurring = () => {
         setSubmitting(true)
         try {
             const payload = buildPayload(form)
-            await axiosInstance.post(API_PATHS.RECURRING_RULES.CREATE, payload)
+            await createRule(payload)
             toast.success('Recurring rule created')
             closeCreate()
-            await refetch()
         } catch (err) {
             toast.error(
                 getApiErrorMessage(err, err instanceof Error ? err.message : 'Failed to create rule')
@@ -346,10 +296,9 @@ const Recurring = () => {
         setSubmitting(true)
         try {
             const payload = buildPayload(form)
-            await axiosInstance.put(API_PATHS.RECURRING_RULES.UPDATE(editingRule._id), payload)
+            await updateRule(editingRule, payload)
             toast.success('Recurring rule updated')
             closeEdit()
-            await refetch()
         } catch (err) {
             toast.error(
                 getApiErrorMessage(err, err instanceof Error ? err.message : 'Failed to update rule')
@@ -364,10 +313,9 @@ const Recurring = () => {
 
         setArchiving(true)
         try {
-            await axiosInstance.delete(API_PATHS.RECURRING_RULES.DELETE(archiveTarget._id))
+            await archiveRule(archiveTarget)
             toast.success('Recurring rule archived')
             setArchiveTarget(null)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to archive rule'))
         } finally {
@@ -375,43 +323,32 @@ const Recurring = () => {
         }
     }
 
-    const toggleRuleActive = async (rule: RecurringRule) => {
+    const handleToggleRuleActive = async (rule: RecurringRule) => {
         try {
-            await axiosInstance.put(API_PATHS.RECURRING_RULES.UPDATE(rule._id), {
-                isActive: !rule.isActive,
-            })
+            await toggleRuleActive(rule)
             toast.success(rule.isActive ? 'Rule paused' : 'Rule resumed')
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to update rule'))
         }
     }
 
     const handleConfirmDraft = async (draft: Transaction) => {
-        setDraftActionId(draft._id)
         try {
-            await axiosInstance.post(API_PATHS.RECURRING_RULES.CONFIRM_DRAFT(draft._id))
+            await confirmDraft(draft)
             toast.success('Draft confirmed and posted')
             setSelectedDraft(null)
-            await fetchDrafts()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to confirm draft'))
-        } finally {
-            setDraftActionId(null)
         }
     }
 
     const handleDismissDraft = async (draft: Transaction) => {
-        setDraftActionId(draft._id)
         try {
-            await axiosInstance.post(API_PATHS.RECURRING_RULES.DISMISS_DRAFT(draft._id))
+            await dismissDraft(draft)
             toast.success('Draft dismissed')
             setSelectedDraft(null)
-            await fetchDrafts()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to dismiss draft'))
-        } finally {
-            setDraftActionId(null)
         }
     }
 
@@ -576,8 +513,9 @@ const Recurring = () => {
                     ) : view === 'drafts' ? (
                         <button
                             type="button"
-                            onClick={() => void generateAndRefreshDrafts()}
-                            disabled={generatingDrafts}
+                            onClick={() => void handleGenerateDrafts()}
+                            disabled={generatingDrafts || !online}
+                            title={online ? undefined : 'Draft sync requires a connection'}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50"
                         >
                             <IoRefresh size={16} className={generatingDrafts ? 'animate-spin' : ''} />
@@ -586,6 +524,10 @@ const Recurring = () => {
                     ) : undefined
                 }
             />
+
+            {(view === 'drafts' || view === 'calendar') && !online && (
+                <OfflineNotice message="You are offline. Draft sync, confirm, and dismiss require a connection." />
+            )}
 
             <div className="flex flex-wrap gap-2 mb-6">
                 <button
@@ -747,7 +689,7 @@ const Recurring = () => {
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         <button
                                                             type="button"
-                                                            onClick={() => void toggleRuleActive(rule)}
+                                                            onClick={() => void handleToggleRuleActive(rule)}
                                                             className="p-1.5 text-fg-muted hover:text-warning transition-colors"
                                                             aria-label={
                                                                 rule.isActive ? 'Pause rule' : 'Resume rule'
@@ -799,14 +741,14 @@ const Recurring = () => {
                     loadingMessage="Loading draft inbox..."
                     emptyTitle="No pending drafts"
                     emptyDescription="When recurring rules are due, drafts appear here for review before posting."
-                    onRetry={() => void generateAndRefreshDrafts()}
+                    onRetry={() => void handleGenerateDrafts()}
                 >
                     {(items) => (
                         <PaginatedCardList items={items} pageSize={pageSize}>
                             {(paginatedItems) => (
                         <div className="space-y-4">
                             {paginatedItems.map((draft) => {
-                                const isActing = draftActionId === draft._id
+                                const isActing = draftActionId === draft._id || !online
                                 return (
                                     <div
                                         key={draft._id}
@@ -953,16 +895,16 @@ const Recurring = () => {
                 open={selectedDraft !== null}
                 onClose={() => setSelectedDraft(null)}
                 onConfirm={() => {
-                    if (selectedDraft) void handleConfirmDraft(selectedDraft)
+                    if (selectedDraft && online) void handleConfirmDraft(selectedDraft)
                 }}
                 title="Confirm draft"
                 message={
                     selectedDraft
-                        ? `Post "${selectedDraft.title}" for ${formatCurrency(selectedDraft.amount, selectedDraft.currency)} on ${formatDisplayDate(selectedDraft.date)}?`
+                        ? `Post "${selectedDraft.title}" for ${formatCurrency(selectedDraft.amount, selectedDraft.currency)} on ${formatDisplayDate(selectedDraft.date)}?${online ? '' : ' You are offline - reconnect to confirm.'}`
                         : ''
                 }
                 confirmLabel="Confirm & post"
-                loading={draftActionId === selectedDraft?._id}
+                loading={draftActionId === selectedDraft?._id || !online}
             />
         </div>
     )

@@ -1,9 +1,12 @@
 import fs from 'fs'
 import path from 'path'
 
+import { Types } from 'mongoose'
+
 import Receipt, { IReceipt } from '../models/Receipt'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
+import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from './receiptStorage'
 import { validateOwnership } from './sharedUtils'
 
 export const RECEIPT_MAX_SIZE_BYTES = 5 * 1024 * 1024
@@ -67,12 +70,50 @@ export const deleteReceiptFile = (userId: string, storedFilename: string): void 
 }
 
 export const deleteReceiptRecord = async (receipt: IReceipt, userId: string): Promise<void> => {
-    deleteReceiptFile(userId, receipt.storedFilename)
-    await Receipt.deleteOne({ _id: receipt._id })
+    if (isObjectStorageConfigured()) {
+        await deleteReceiptObject(receiptObjectKey(userId, receipt.storedFilename))
+    } else {
+        deleteReceiptFile(userId, receipt.storedFilename)
+    }
+    receipt.deletedAt = new Date()
+    await receipt.save()
 }
 
 export const assertAllowedReceiptMimeType = (mimeType: string): void => {
     if (!RECEIPT_ALLOWED_MIME_TYPES.includes(mimeType as ReceiptMimeType)) {
         throw new CustomError(ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE, 400)
+    }
+}
+
+/**
+ * Sum of the caller's own non-deleted receipt sizes. Soft-deleted receipts are excluded
+ * automatically by `softDeletePlugin`'s aggregate hook (SEC-23 quota).
+ */
+export const getUserReceiptStorageUsageBytes = async (userId: string): Promise<number> => {
+    const result = await Receipt.aggregate([
+        { $match: { userId: new Types.ObjectId(userId) } },
+        { $group: { _id: null, total: { $sum: '$size' } } },
+    ])
+    return result[0]?.total ?? 0
+}
+
+/**
+ * Per-user storage quota (L3/SEC-23), applies under either storage driver. No-op when
+ * RECEIPT_STORAGE_QUOTA_BYTES is unset.
+ */
+export const assertWithinReceiptStorageQuota = async (
+    userId: string,
+    incomingSizeBytes: number
+): Promise<void> => {
+    const quotaBytes = process.env.RECEIPT_STORAGE_QUOTA_BYTES
+    if (!quotaBytes) {
+        return
+    }
+
+    const quota = Number(quotaBytes)
+    const currentUsage = await getUserReceiptStorageUsageBytes(userId)
+
+    if (currentUsage + incomingSizeBytes > quota) {
+        throw new CustomError(ERROR_MESSAGES.RECEIPT.STORAGE_QUOTA_EXCEEDED, 400)
     }
 }

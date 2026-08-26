@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link } from 'react-router-dom'
-import Input from '../../components/inputs/Input'
+import Input from '../../components/Inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -9,6 +9,8 @@ import type { ApiResponse } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import toast from 'react-hot-toast'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import OfflineNotice from '../../components/ui/OfflineNotice'
 
 interface PasswordResetRequestResponse {
     message: string
@@ -19,6 +21,7 @@ const ForgotPassword = () => {
     const [error, setError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitted, setSubmitted] = useState(false)
+    const online = useOnlineStatus()
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -81,8 +84,9 @@ const ForgotPassword = () => {
                         />
 
                         {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
+                        {!online && <OfflineNotice />}
 
-                        <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                        <button type="submit" className="btn-primary" disabled={isSubmitting || !online}>
                             {isSubmitting ? 'Sending...' : 'Send reset link'}
                         </button>
 

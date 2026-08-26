@@ -15,6 +15,8 @@ import {
 import {
     getUserId,
     handleResponses,
+    isDuplicateKeyError,
+    resolveClientObjectId,
     validateRequiredFields,
 } from '../utils/sharedUtils'
 
@@ -51,8 +53,17 @@ export const createTag = asyncHandler(async (req: AuthRequest, res: Response) =>
 
     const existingCount = await Tag.countDocuments({ userId })
     const color = req.body.color?.trim() || pickDefaultTagColor(existingCount)
+    const clientId = resolveClientObjectId(req.body._id)
 
-    const tag = await Tag.create({ userId, name, color })
+    let tag
+    try {
+        tag = await Tag.create({ ...(clientId ? { _id: clientId } : {}), userId, name, color })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            throw new CustomError('A tag with this id already exists', 400)
+        }
+        throw error
+    }
 
     handleResponses(res, 201, tag)
 })
@@ -124,7 +135,8 @@ export const deleteTag = asyncHandler(async (req: AuthRequest, res: Response) =>
     validateRequiredFields({ tagId }, ['tagId'])
 
     const tag = await validateUserTag(tagId, userId)
-    await tag.deleteOne()
+    tag.deletedAt = new Date()
+    await tag.save()
 
     handleResponses(res, 200, { message: 'Tag deleted successfully' })
 })

@@ -1,51 +1,52 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { IoChevronDown, IoFlashOutline } from 'react-icons/io5'
+import { fromMinorUnits, toMinorUnits } from '@shared/money'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { useWorkspace } from '../../hooks/useWorkspace'
-import type { Account, ApiResponse, Transaction, TransactionTemplate } from '../../types/api'
+import { useUser } from '../../hooks/useUser'
+import { useTransactionTemplatesData } from '../settings/hooks/useTransactionTemplatesData'
+import { useAccountsData } from '../../pages/Dashboard/hooks/useAccountsData'
+import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
+import { getLocalDb } from '../../db/localDbInstance'
+import { tableInvalidationBus } from '../../db/invalidation/tableInvalidationBus'
+import { Repository } from '../../db/repositories/Repository'
+import { generateLocalObjectId } from '../../db/generateLocalId'
+import { recomputeLocalAccountBalance } from '../../domain/accountBalances'
+import type { ApiResponse, Transaction, TransactionTemplate } from '../../types/api'
+import type { LocalAccount, LocalTransaction } from '../../domain/types'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
-import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
+import { buildWorkspaceBodyFields } from '../../utils/workspaceScope'
 
 interface QuickAddDropdownProps {
     onApplied?: (transaction: Transaction) => void
     className?: string
 }
 
+/** `LocalTransaction` (domain/types.ts) has no `currency` field yet - it round-trips fine through
+ * the JSON `data` blob (Repository stores the full doc), this just widens the local type so this
+ * component can write it without touching shared infra (mirrors `useAccountsData.ts`'s
+ * `LocalAccountRecord` pattern for the same kind of gap). */
+type LocalTransactionRecord = LocalTransaction & { currency: string }
+
+const transactionsRepo = new Repository<LocalTransactionRecord>('transactions')
+const accountsRepo = new Repository<LocalAccount>('accounts')
+
 const QuickAddDropdown: React.FC<QuickAddDropdownProps> = ({ onApplied, className = '' }) => {
     const { activeWorkspaceId, canEdit } = useWorkspace()
+    const { user } = useUser()
     const [open, setOpen] = useState(false)
     const [applyingId, setApplyingId] = useState<string | null>(null)
     const panelRef = useRef<HTMLDivElement>(null)
 
-    const fetchTemplates = useCallback(async (): Promise<TransactionTemplate[]> => {
-        const response = await axiosInstance.get<ApiResponse<TransactionTemplate[]>>(
-            API_PATHS.TRANSACTION_TEMPLATES.GET_ALL
-        )
-        return unwrapApiData(response)
-    }, [])
-
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
-            params: buildWorkspaceQueryParams(activeWorkspaceId),
-        })
-        return unwrapApiData(response)
-    }, [activeWorkspaceId])
-
-    const {
-        data: templates,
-        loading: templatesLoading,
-        refetch: refetchTemplates,
-    } = useAsyncData(fetchTemplates, [fetchTemplates])
-
-    const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
+    const { templates, loading: templatesLoading, refetch: refetchTemplates } = useTransactionTemplatesData()
+    const { accounts } = useAccountsData()
 
     const availableAccountIds = useMemo(
-        () => new Set((accounts ?? []).filter((account) => !account.isArchived).map((account) => account._id)),
+        () => new Set((accounts ?? []).map((account) => account._id)),
         [accounts]
     )
 
@@ -67,14 +68,91 @@ const QuickAddDropdown: React.FC<QuickAddDropdownProps> = ({ onApplied, classNam
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [open])
 
+    /**
+     * Mirrors `applyTransactionTemplate` in `backend/controllers/transactionTemplateController.ts`:
+     * a straight `Transaction` create from the template's fields, posted immediately, no
+     * categorization-rule pass (the server doesn't run one for template-apply either). Balance
+     * update goes through `recomputeLocalAccountBalance` (Sprint 13.5) rather than an incremental
+     * delta, matching how every other local write settles account balances.
+     */
+    const applyTemplateLocally = async (template: TransactionTemplate): Promise<Transaction> => {
+        if (!user) throw new Error('Not authenticated')
+        const db = await getLocalDb()
+        const account = await accountsRepo.findById(db, template.accountId)
+        if (!account) throw new Error('Account not found locally')
+
+        const now = new Date().toISOString()
+        const record: LocalTransactionRecord = {
+            _id: generateLocalObjectId(),
+            updatedAt: now,
+            userId: user._id,
+            workspaceId: activeWorkspaceId ?? null,
+            accountId: template.accountId,
+            categoryId: template.categoryId,
+            type: template.type,
+            status: 'posted',
+            // `template.amount` is major units here (`useTransactionTemplatesData`'s `toTemplateView`
+            // already applied `fromMinorUnits` for display) - convert back to the local `transactions`
+            // table's minor-unit convention, which `recomputeLocalAccountBalance`'s `getBalanceDeltaMajor`
+            // (`@shared/money`) requires.
+            amount: toMinorUnits(template.amount),
+            currency: account.currency,
+            title: template.name,
+            description: template.description,
+            date: now,
+            clearedStatus: 'pending',
+            tags: template.tags,
+            splitTransactionId: null,
+        }
+
+        await db.transaction(async (tx) => {
+            await transactionsRepo.create(tx, record)
+        })
+        tableInvalidationBus.publish('transactions')
+
+        const balance = await recomputeLocalAccountBalance(db, template.accountId)
+        const updatedAccount: LocalAccount = { ...account, currentBalance: balance }
+        await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
+            JSON.stringify(updatedAccount),
+            balance,
+            new Date().toISOString(),
+            template.accountId,
+        ])
+        tableInvalidationBus.publish('accounts')
+
+        return {
+            _id: record._id,
+            userId: record.userId,
+            workspaceId: record.workspaceId,
+            accountId: record.accountId,
+            categoryId: record.categoryId,
+            type: record.type,
+            status: record.status,
+            // Back to major units for the return value - callers expect the same REST-shaped
+            // `Transaction.amount` convention this component's server branch produces.
+            amount: fromMinorUnits(record.amount),
+            currency: record.currency,
+            title: record.title,
+            description: record.description,
+            date: record.date,
+            clearedStatus: record.clearedStatus ?? 'pending',
+            tags: record.tags,
+            splitTransactionId: record.splitTransactionId,
+            updatedAt: record.updatedAt,
+        }
+    }
+
     const handleApply = async (template: TransactionTemplate) => {
         setApplyingId(template._id)
         try {
-            const response = await axiosInstance.post<ApiResponse<Transaction>>(
-                API_PATHS.TRANSACTION_TEMPLATES.APPLY(template._id),
-                buildWorkspaceBodyFields(activeWorkspaceId)
-            )
-            const transaction = unwrapApiData(response)
+            const transaction = isLocalFirstEnabled()
+                ? await applyTemplateLocally(template)
+                : unwrapApiData(
+                      await axiosInstance.post<ApiResponse<Transaction>>(
+                          API_PATHS.TRANSACTION_TEMPLATES.APPLY(template._id),
+                          buildWorkspaceBodyFields(activeWorkspaceId)
+                      )
+                  )
             toast.success(`Added ${template.name}`)
             setOpen(false)
             onApplied?.(transaction)

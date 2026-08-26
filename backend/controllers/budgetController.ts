@@ -21,6 +21,8 @@ import {
 import {
     getUserId,
     handleResponses,
+    isDuplicateKeyError,
+    resolveClientObjectId,
     validateRequiredFields,
 } from '../utils/sharedUtils'
 import {
@@ -109,20 +111,30 @@ export const createBudget = asyncHandler(async (req: AuthRequest, res: Response)
     }
 
     const currency = parseOptionalSupportedCurrency(req.body.currency)
+    const clientId = resolveClientObjectId(req.body._id)
 
-    const budget = await Budget.create({
-        userId,
-        workspaceId,
-        name: typeof req.body.name === 'string' ? req.body.name.trim() || undefined : undefined,
-        periodType,
-        periodStart,
-        periodEnd,
-        categoryId: categoryId ?? null,
-        amount: amountMinor,
-        currency,
-        rollover: req.body.rollover === true,
-        accountIds: validatedAccountIds,
-    })
+    let budget
+    try {
+        budget = await Budget.create({
+            ...(clientId ? { _id: clientId } : {}),
+            userId,
+            workspaceId,
+            name: typeof req.body.name === 'string' ? req.body.name.trim() || undefined : undefined,
+            periodType,
+            periodStart,
+            periodEnd,
+            categoryId: categoryId ?? null,
+            amount: amountMinor,
+            currency,
+            rollover: req.body.rollover === true,
+            accountIds: validatedAccountIds,
+        })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            throw new CustomError('A budget with this id already exists', 400)
+        }
+        throw error
+    }
 
     const serialized = await attachProgressToBudget(budget)
     handleResponses(res, 201, serialized)

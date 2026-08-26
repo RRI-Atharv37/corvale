@@ -53,9 +53,24 @@ const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         try {
             const list = await fetchWorkspaces()
             setWorkspaces(list)
+
+            // Only a successful fetch made while actually online is authoritative enough to
+            // evict the stored active workspace. A fetch that failed, or one that "succeeded"
+            // with an empty list while offline (e.g. a stale local-first cache), must never be
+            // read as "the user is no longer a member" - that's a network/offline symptom, not
+            // a membership fact (Sprint 13.7 fix).
+            const isAuthoritative = typeof navigator === 'undefined' || navigator.onLine
+            if (isAuthoritative) {
+                setActiveWorkspaceIdState((current) => {
+                    if (!current || list.some((workspace) => workspace._id === current)) {
+                        return current
+                    }
+                    setStoredActiveWorkspaceId(null)
+                    return null
+                })
+            }
         } catch (err) {
             setError(getApiErrorMessage(err, 'Failed to load workspaces'))
-            setWorkspaces([])
         } finally {
             setLoading(false)
         }
@@ -64,15 +79,6 @@ const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     useEffect(() => {
         void refetchWorkspaces()
     }, [refetchWorkspaces])
-
-    useEffect(() => {
-        if (!activeWorkspaceId) return
-        const stillMember = workspaces.some((workspace) => workspace._id === activeWorkspaceId)
-        if (!stillMember) {
-            setActiveWorkspaceIdState(null)
-            setStoredActiveWorkspaceId(null)
-        }
-    }, [activeWorkspaceId, workspaces])
 
     const setActiveWorkspace = useCallback((workspaceId: string | null) => {
         setActiveWorkspaceIdState(workspaceId)

@@ -13,6 +13,9 @@ const Landing: React.FC = () => {
                 <div className="glass-nav mx-auto flex max-w-5xl items-center justify-between rounded-full px-4 py-2.5 sm:px-6">
                     <BrandLogo size="sm" showTagline={false} />
                     <nav className="flex items-center gap-1 sm:gap-2">
+                        <Link to="/download" className="btn-ghost py-2 px-3 hidden sm:inline-flex">
+                            Download app
+                        </Link>
                         <Link to="/login" className="btn-ghost py-2 px-3">
                             Log in
                         </Link>
@@ -54,6 +57,13 @@ const Landing: React.FC = () => {
 
                                 <p className="mt-6 text-xs text-text-muted-bright">
                                     Free to start · No credit card · Built for irregular income
+                                </p>
+
+                                <p className="mt-3 text-xs text-text-muted-bright">
+                                    Prefer an installed app?{' '}
+                                    <Link to="/download" className="font-semibold text-accent hover:underline">
+                                        Get the desktop app
+                                    </Link>
                                 </p>
                             </div>
 
@@ -251,6 +261,12 @@ const Landing: React.FC = () => {
                     <p className="font-display text-base sm:text-lg font-semibold text-text-secondary tracking-wide">
                         {BRAND.tagline}
                     </p>
+                    <Link
+                        to="/download"
+                        className="text-sm font-semibold text-gradient-accent hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
+                    >
+                        Download the desktop app
+                    </Link>
                     <p className="text-sm text-text-secondary">
                         Made by{' '}
                         <a

@@ -1,4 +1,5 @@
 import React, { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import BrandLogo from '../ui/BrandLogo'
 import LedgerPulse from '../ui/LedgerPulse'
 
@@ -19,6 +20,13 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
                 <div className="card-elevated p-6 sm:p-8">
                     {children}
                 </div>
+
+                <p className="mt-6 text-center text-xs text-text-muted-bright">
+                    Prefer an installed app?{' '}
+                    <Link to="/download" className="font-semibold text-accent hover:underline">
+                        Get the desktop app
+                    </Link>
+                </p>
             </div>
         </div>
     )

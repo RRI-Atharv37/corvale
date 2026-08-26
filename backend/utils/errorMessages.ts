@@ -8,11 +8,20 @@ export const ERROR_MESSAGES = {
         TOKEN_REVOKED: 'Not authorized, session revoked',
         REFRESH_TOKEN_INVALID: 'Invalid or expired refresh token',
         REFRESH_TOKEN_MISSING: 'Refresh token not found',
+        REFRESH_TOKEN_REUSED: 'You were signed out for security because a session was reused',
         NOT_AUTHORIZED: 'Not authorized to perform this action',
         TOO_MANY_REQUESTS: 'Too many authentication attempts, please try again later',
         PASSWORD_RESET_EMAIL_SENT: 'If an account exists for that email, a password reset link has been sent',
         PASSWORD_RESET_INVALID: 'Invalid or expired password reset token',
-        PASSWORD_TOO_SHORT: 'Password must be at least 8 characters',
+        PASSWORD_TOO_SHORT: 'Password must be at least 12 characters',
+        PASSWORD_TOO_LONG: 'Password must not exceed 72 bytes',
+        INVALID_PASSWORD_TYPE: 'Password must be a string',
+        INVALID_EMAIL: 'Please provide a valid email address',
+        EMAIL_NOT_VERIFIED: 'Please verify your email address to continue',
+        EMAIL_VERIFICATION_SENT: 'Verification email sent. Please check your inbox',
+        EMAIL_VERIFICATION_INVALID: 'Invalid or expired email verification token',
+        EMAIL_ALREADY_VERIFIED: 'Email address is already verified',
+        CAPTCHA_FAILED: 'CAPTCHA verification failed, please try again',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',
@@ -20,7 +29,10 @@ export const ERROR_MESSAGES = {
     },
     GENERAL: {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
+        OFFLINE_GRANT_KEY_MISSING: 'OFFLINE_GRANT_PRIVATE_KEY is not defined in environment variables',
         UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
+        ROUTE_NOT_FOUND: 'Route not found',
+        UNSAFE_REQUEST_BODY: 'Request body contains invalid characters',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',
@@ -99,6 +111,7 @@ export const ERROR_MESSAGES = {
         FILE_TOO_LARGE: 'Receipt file exceeds the 5 MB size limit',
         VIRUS_DETECTED: 'Receipt file failed security scan',
         VIRUS_SCAN_FAILED: 'Receipt upload temporarily unavailable; try again later',
+        STORAGE_QUOTA_EXCEEDED: 'This upload would exceed your receipt storage quota',
     },
     BUDGET: {
         BUDGET_NOT_FOUND: 'Budget not found',
@@ -150,6 +163,10 @@ export const ERROR_MESSAGES = {
         FILE_TOO_LARGE: 'Backup file exceeds the 10 MB size limit',
         FILE_REQUIRED: 'Backup file is required',
         BROKEN_REFERENCE: 'Backup contains a broken reference and cannot be restored',
+        ARCHIVE_TOO_MANY_ENTRIES: 'Backup archive contains too many entries',
+        ARCHIVE_UNCOMPRESSED_TOO_LARGE: 'Backup archive is too large once uncompressed',
+        ARCHIVE_SUSPICIOUS_RATIO:
+            'Backup archive contains an entry with a suspicious compression ratio',
     },
     RECONCILIATION: {
         INVALID_CLEARED_STATUS: 'Invalid clearedStatus',
@@ -178,5 +195,7 @@ export const ERROR_MESSAGES = {
         INVITE_NOT_PENDING: 'This invitation is no longer pending',
         INVITE_ALREADY_PENDING: 'An invitation is already pending for this user',
         CANNOT_INVITE_SELF: 'You cannot invite yourself to a workspace',
+        SOLE_OWNER_HAS_MEMBERS:
+            'Transfer ownership or remove the other members of your workspace(s) before deleting your account',
     },
 }

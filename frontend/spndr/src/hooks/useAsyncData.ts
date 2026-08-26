@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getApiErrorMessage } from '../utils/apiError'
-import {
-    PREFERRED_CURRENCY_CHANGED_EVENT,
-    DATE_FORMAT_CHANGED_EVENT,
-    EXCHANGE_RATES_CHANGED_EVENT,
-} from '../utils/format'
+import { PREFS_CHANGED_TABLE } from '../utils/format'
+import { tableInvalidationBus } from '../db/invalidation/tableInvalidationBus'
 
 interface AsyncState<T> {
     data: T | null
@@ -47,18 +44,9 @@ export const useAsyncData = <T>(
     }, [refetch])
 
     useEffect(() => {
-        const handlePreferencesChange = () => {
+        return tableInvalidationBus.subscribe(PREFS_CHANGED_TABLE, () => {
             void refetch()
-        }
-
-        window.addEventListener(PREFERRED_CURRENCY_CHANGED_EVENT, handlePreferencesChange)
-        window.addEventListener(DATE_FORMAT_CHANGED_EVENT, handlePreferencesChange)
-        window.addEventListener(EXCHANGE_RATES_CHANGED_EVENT, handlePreferencesChange)
-        return () => {
-            window.removeEventListener(PREFERRED_CURRENCY_CHANGED_EVENT, handlePreferencesChange)
-            window.removeEventListener(DATE_FORMAT_CHANGED_EVENT, handlePreferencesChange)
-            window.removeEventListener(EXCHANGE_RATES_CHANGED_EVENT, handlePreferencesChange)
-        }
+        })
     }, [refetch])
 
     return { ...state, refetch }

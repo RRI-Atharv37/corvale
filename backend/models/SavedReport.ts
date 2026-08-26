@@ -1,6 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
 import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+import { applySoftDelete } from '../utils/applySoftDelete'
 
 import {
     CUSTOM_REPORT_CHART_TYPES,
@@ -32,6 +33,7 @@ export interface ISavedReport extends Document {
     workspaceId?: Types.ObjectId | null
     name: string
     config: ISavedReportConfig
+    deletedAt?: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -62,8 +64,11 @@ const SavedReportSchema = new Schema<ISavedReport>(
 )
 
 SavedReportSchema.index({ userId: 1, updatedAt: -1 })
+SavedReportSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+SavedReportSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
 
 applyRowLevelSecurity(SavedReportSchema, { supportsWorkspace: true })
+applySoftDelete(SavedReportSchema)
 
 const SavedReport: Model<ISavedReport> = mongoose.model<ISavedReport>(
     'SavedReport',

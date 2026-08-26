@@ -32,7 +32,7 @@ import type {
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatCurrency, toDateInputValue } from '../../utils/format'
+import { formatCurrency } from '../../utils/format'
 import {
     axisTick,
     barChartTooltipProps,

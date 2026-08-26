@@ -10,10 +10,17 @@ const archiver = require('archiver') as (
     format: string,
     options?: { zlib?: { level?: number } }
 ) => { pipe: (dest: PassThrough) => void; append: (source: string | Buffer, opts: { name: string }) => void; file: (source: string, opts: { name: string }) => void; finalize: () => Promise<void> }
+interface ZipEntry {
+    getData: () => Buffer
+    isDirectory: boolean
+    entryName: string
+    header: { size: number; compressedSize: number }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const AdmZip = require('adm-zip') as new (buffer: Buffer) => {
-    getEntry: (name: string) => { getData: () => Buffer; isDirectory: boolean; entryName: string } | null
-    getEntries: () => { getData: () => Buffer; isDirectory: boolean; entryName: string }[]
+    getEntry: (name: string) => ZipEntry | null
+    getEntries: () => ZipEntry[]
 }
 
 import Account from '../models/Account'
@@ -35,6 +42,15 @@ import { buildScopedListFilter } from './workspaceUtils'
 export const BACKUP_VERSION = 1 as const
 export const BACKUP_MAX_JSON_BYTES = 10 * 1024 * 1024
 export const BACKUP_MAX_ZIP_BYTES = 50 * 1024 * 1024
+
+// Read fresh on every call (not cached at module load) so tests can override via process.env,
+// mirroring the pattern in middleware/rateLimitMiddleware.ts's createAuthRateLimiter.
+const getBackupMaxUncompressedBytes = (): number =>
+    Number(process.env.BACKUP_MAX_UNCOMPRESSED_BYTES) || 200 * 1024 * 1024
+const getBackupMaxZipEntries = (): number =>
+    Number(process.env.BACKUP_MAX_ZIP_ENTRIES) || 10_000
+const getBackupMaxCompressionRatio = (): number =>
+    Number(process.env.BACKUP_MAX_COMPRESSION_RATIO) || 100
 
 export interface BackupScope {
     workspaceId: string | null
@@ -779,11 +795,40 @@ export const extractBackupFromUpload = (
         }
 
         const zip = new AdmZip(buffer)
+        const entries = zip.getEntries()
+
+        // Bound entry count, declared uncompressed size, and per-entry compression ratio from
+        // the central directory alone, before calling getData() on anything (S15/SEC-16) - a
+        // small, highly-compressible zip must be rejected without ever being inflated.
+        if (entries.length > getBackupMaxZipEntries()) {
+            throw new CustomError(ERROR_MESSAGES.BACKUP.ARCHIVE_TOO_MANY_ENTRIES, 400)
+        }
+
+        const maxUncompressedBytes = getBackupMaxUncompressedBytes()
+        const maxCompressionRatio = getBackupMaxCompressionRatio()
+        let totalUncompressedBytes = 0
+
+        for (const entry of entries) {
+            if (entry.isDirectory) {
+                continue
+            }
+
+            totalUncompressedBytes += entry.header.size
+            if (totalUncompressedBytes > maxUncompressedBytes) {
+                throw new CustomError(ERROR_MESSAGES.BACKUP.ARCHIVE_UNCOMPRESSED_TOO_LARGE, 400)
+            }
+
+            if (
+                entry.header.compressedSize > 0 &&
+                entry.header.size / entry.header.compressedSize > maxCompressionRatio
+            ) {
+                throw new CustomError(ERROR_MESSAGES.BACKUP.ARCHIVE_SUSPICIOUS_RATIO, 400)
+            }
+        }
+
         const jsonEntry =
             zip.getEntry('spndr-backup.json') ??
-            zip
-                .getEntries()
-                .find((entry) => entry.entryName.endsWith('spndr-backup.json') && !entry.isDirectory)
+            entries.find((entry) => entry.entryName.endsWith('spndr-backup.json') && !entry.isDirectory)
 
         if (!jsonEntry) {
             throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
@@ -799,7 +844,7 @@ export const extractBackupFromUpload = (
         const payload = parseBackupPayload(parsed)
         const receiptFiles = new Map<string, Buffer>()
 
-        for (const entry of zip.getEntries()) {
+        for (const entry of entries) {
             if (entry.isDirectory || !entry.entryName.startsWith('receipts/')) {
                 continue
             }

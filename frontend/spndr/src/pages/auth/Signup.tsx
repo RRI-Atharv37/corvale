@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link, useNavigate } from 'react-router-dom'
-import Input from '../../components/inputs/Input'
+import Input from '../../components/Inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -10,15 +10,22 @@ import { useUser } from '../../hooks/useUser'
 import type { ApiResponse, AuthPayload } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
 import toast from 'react-hot-toast'
+import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import OfflineNotice from '../../components/ui/OfflineNotice'
+import Captcha from '../../components/Captcha'
+
+const captchaEnabled = import.meta.env.VITE_CAPTCHA_ENABLED === 'true'
 
 const Signup = () => {
     const [fullName, setFullName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [captchaToken, setCaptchaToken] = useState('')
     const [error, setError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const navigate = useNavigate()
     const { updateUser } = useUser()
+    const online = useOnlineStatus()
 
     const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -38,21 +45,27 @@ const Signup = () => {
             return
         }
 
+        if (captchaEnabled && !captchaToken) {
+            setError('Please complete the CAPTCHA.')
+            return
+        }
+
         setError('')
         setIsSubmitting(true)
 
         try {
             const response = await axiosInstance.post<ApiResponse<AuthPayload>>(
                 API_PATHS.AUTH.REGISTER,
-                { fullName, email, password }
+                { fullName, email, password, ...(captchaEnabled ? { captchaToken } : {}) }
             )
 
-            const { token, user } = parseAuthPayload(response)
-            setAuthSession({ token, user })
-            updateUser(user)
-            toast.success('Account created successfully!')
+            const payload = parseAuthPayload(response)
+            await setAuthSession(payload)
+            updateUser(payload.user)
+            toast.success('Account created! Check your email to verify your address.')
             navigate('/dashboard')
         } catch (err) {
+            if (captchaEnabled) setCaptchaToken('')
             const message = getApiErrorMessage(err, 'An error occurred. Please try again.')
             setError(message)
             toast.error(message)
@@ -90,14 +103,23 @@ const Signup = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         label="Password"
-                        placeholder="Minimum 8 characters"
+                        placeholder="Minimum 12 characters"
                         type="password"
                         disabled={isSubmitting}
                     />
 
-                    {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
+                    {captchaEnabled && (
+                        <Captcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
+                    )}
 
-                    <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                    {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
+                    {!online && <OfflineNotice message="You are offline. Sign up requires a connection." />}
+
+                    <button
+                        type="submit"
+                        className="btn-primary"
+                        disabled={isSubmitting || !online || (captchaEnabled && !captchaToken)}
+                    >
                         {isSubmitting ? 'Creating account...' : 'Sign up'}
                     </button>
 

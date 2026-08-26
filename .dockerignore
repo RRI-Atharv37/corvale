@@ -1,0 +1,23 @@
+# Applies to both the backend's and frontend's Docker build contexts (repository root — see
+# backend/Dockerfile, frontend/spndr/Dockerfile, and docker-compose.yml). Keeps the build
+# context small and avoids leaking local secrets; both Dockerfiles COPY only the specific
+# subdirectories they need (backend/+shared/, frontend/spndr/+shared/), so excluding the other
+# app's directory here is not required for correctness — only node_modules/dist/.env are.
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.env
+**/.env
+**/.env.local
+**/.env.desktop
+**/.env.test
+uploads
+backend/uploads
+docs/node_modules
+docs/.vitepress/cache
+docs/.vitepress/dist
+frontend/spndr/src-tauri/target
+.claude
+*.md

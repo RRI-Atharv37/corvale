@@ -29,10 +29,6 @@ export const isRlsActive = (): boolean => {
     return rlsStorage.getStore() !== undefined
 }
 
-export const bypassRls = <T>(fn: () => T | Promise<T>): T | Promise<T> => {
-    return fn()
-}
-
 const isObjectIdLike = (value: unknown): boolean => {
     if (value instanceof Types.ObjectId) {
         return true

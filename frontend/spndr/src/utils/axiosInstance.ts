@@ -1,5 +1,8 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
 import { BASE_URL } from './apiPaths'
+import { TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
+import { getAccessToken, setAccessToken } from './tokenStore'
+import { storeOfflineGrant } from '../offline/offlineGrant'
 
 const client = axios.create({
     baseURL: BASE_URL,
@@ -13,6 +16,24 @@ const client = axios.create({
 
 interface RetryableRequest extends InternalAxiosRequestConfig {
     _retry?: boolean
+}
+
+const WRITE_METHODS = new Set(['post', 'put', 'patch', 'delete'])
+
+/** Workspace-scoped writes are attached via `buildWorkspaceBodyFields`/`buildWorkspaceQueryParams`
+ * (`utils/workspaceScope.ts`) as a plain `workspaceId` body field or query param - never on
+ * `FormData` bodies (receipt upload has no workspace scoping of its own). */
+const isWorkspaceScopedWrite = (config: InternalAxiosRequestConfig): boolean => {
+    const method = config.method?.toLowerCase()
+    if (!method || !WRITE_METHODS.has(method)) return false
+
+    const bodyWorkspaceId =
+        config.data && typeof config.data === 'object' && !(config.data instanceof FormData)
+            ? (config.data as Record<string, unknown>).workspaceId
+            : undefined
+    const paramsWorkspaceId = (config.params as Record<string, unknown> | undefined)?.workspaceId
+
+    return Boolean(bodyWorkspaceId || paramsWorkspaceId)
 }
 
 let isRefreshing = false
@@ -38,9 +59,23 @@ const shouldAttemptRefresh = (message: unknown): boolean => {
     return message.includes('expired') || message.includes('revoked')
 }
 
+/** Distinct from `shouldAttemptRefresh`'s broader `.includes('revoked')` match - this only fires the offline-recovery flow (`tokenRevokedFlow.ts`) for the backend's exact `TOKEN_REVOKED` message, not any expiry-adjacent wording. */
+const isTokenRevokedMessage = (message: unknown): boolean =>
+    typeof message === 'string' && message.toLowerCase().includes('session revoked')
+
+const notifyTokenRevoked = (message: unknown): void => {
+    if (isTokenRevokedMessage(message) && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(TOKEN_REVOKED_EVENT))
+    }
+}
+
 client.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token')
+        if (typeof navigator !== 'undefined' && !navigator.onLine && isWorkspaceScopedWrite(config)) {
+            return Promise.reject(new Error('Workspace changes require an internet connection - you are offline.'))
+        }
+
+        const token = getAccessToken()
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
         }
@@ -89,18 +124,21 @@ client.interceptors.response.use(
                     { withCredentials: true }
                 )
                 const newToken = refreshResponse.data?.data?.token as string | undefined
+                const newOfflineGrant = refreshResponse.data?.data?.offlineGrant as string | undefined
 
                 if (!newToken) {
                     throw new Error('Refresh response missing token')
                 }
 
-                localStorage.setItem('token', newToken)
+                setAccessToken(newToken)
+                storeOfflineGrant(newOfflineGrant)
                 processRefreshQueue(newToken)
                 originalRequest.headers.Authorization = `Bearer ${newToken}`
                 return client(originalRequest)
             } catch (refreshError) {
                 processRefreshQueue(null)
-                localStorage.removeItem('token')
+                setAccessToken(null)
+                notifyTokenRevoked(message)
                 return Promise.reject(refreshError)
             } finally {
                 isRefreshing = false
@@ -108,7 +146,8 @@ client.interceptors.response.use(
         }
 
         if (status === 401 && !isAuthMutationRoute(originalRequest?.url)) {
-            localStorage.removeItem('token')
+            setAccessToken(null)
+            notifyTokenRevoked(message)
         }
 
         return Promise.reject(error)

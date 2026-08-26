@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+/* Self-hosted fonts (latin subset) - see Sprint 13.8: previously loaded from the Google Fonts CDN in index.html */
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/ibm-plex-mono-400.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/fonts/ibm-plex-mono-500.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/fonts/plus-jakarta-sans-variable.woff2') format('woff2');
+}
+
 @theme {
     /* ── Page & surfaces (purple-tinted, slightly brighter than pure black) ── */
     --color-page: #14121c;

@@ -11,6 +11,7 @@ import {
     setRefreshTokenCookie,
     clearRefreshTokenCookie,
 } from '../utils/tokenUtils'
+import { generateOfflineGrant } from '../utils/offlineGrantUtils'
 import {
     createRefreshToken,
     revokeRefreshToken,
@@ -23,10 +24,21 @@ import {
     logPasswordResetLink,
     resetPasswordWithToken,
 } from '../utils/passwordResetUtils'
+import {
+    buildEmailVerificationUrl,
+    createEmailVerificationForUser,
+    logEmailVerificationLink,
+    verifyEmailWithToken,
+} from '../utils/emailVerificationUtils'
+import { isSmtpConfigured, sendPasswordResetEmail, sendEmailVerificationEmail } from '../utils/mailService'
 import { parseSupportedCurrency, syncUserCurrencyData } from '../utils/currencyUtils'
 import { isValidTimezone } from '../utils/timezoneUtils'
 import { parseNotificationPreferences } from '../utils/notificationUtils'
 import { parseDateFormat, parsePageSize } from '../utils/userPreferencesUtils'
+import { normalizeEmail } from '../utils/emailUtils'
+import { validatePassword } from '../utils/passwordPolicy'
+import { verifyCaptcha } from '../utils/captchaService'
+import { assertAccountDeletionAllowed, deleteUserAccountCascade } from '../utils/accountDeletionUtils'
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
@@ -38,6 +50,7 @@ const toPublicUser = (user: IUser) => ({
     pageSize: user.pageSize,
     notificationPreferences: user.notificationPreferences,
     exchangeRates: user.exchangeRates,
+    isEmailVerified: user.isEmailVerified,
 })
 
 const issueAuthSession = async (user: IUser, res: Response) => {
@@ -48,6 +61,7 @@ const issueAuthSession = async (user: IUser, res: Response) => {
     return {
         token: accessToken,
         user: toPublicUser(user),
+        offlineGrant: generateOfflineGrant(user._id.toString()),
     }
 }
 
@@ -58,16 +72,38 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    if (password.length < 8) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.PASSWORD_TOO_SHORT, 400)
+    const normalizedEmail = normalizeEmail(email)
+    const validatedPassword = validatePassword(password)
+
+    const captchaOk = await verifyCaptcha(req.body.captchaToken)
+    if (!captchaOk) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.CAPTCHA_FAILED, 400)
     }
 
-    const userExists = await User.findOne({ email })
+    const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
         throw new CustomError(ERROR_MESSAGES.USER.USER_ALREADY_EXISTS, 400)
     }
 
-    const user = (await User.create({ fullName, email, password })) as IUser
+    const user = (await User.create({
+        fullName,
+        email: normalizedEmail,
+        password: validatedPassword,
+    })) as IUser
+
+    const verificationToken = await createEmailVerificationForUser(user)
+    const verificationUrl = buildEmailVerificationUrl(verificationToken)
+
+    if (isSmtpConfigured()) {
+        try {
+            await sendEmailVerificationEmail(normalizedEmail, verificationUrl)
+        } catch (error) {
+            console.error('[email-verification] failed to send email:', error)
+        }
+    } else {
+        logEmailVerificationLink(normalizedEmail, verificationUrl)
+    }
+
     const payload = await issueAuthSession(user, res)
 
     handleResponses(res, 201, payload)
@@ -80,7 +116,13 @@ export const loginUser = asyncHandler(async (req: AuthRequest, res: Response): P
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    const user = (await User.findOne({ email })) as IUser | null
+    if (typeof password !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
+    }
+
+    const normalizedEmail = normalizeEmail(email)
+
+    const user = (await User.findOne({ email: normalizedEmail })) as IUser | null
     if (!user) {
         throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
     }
@@ -114,6 +156,7 @@ export const refreshAccessToken = asyncHandler(async (req: AuthRequest, res: Res
     handleResponses(res, 200, {
         token: accessToken,
         user: toPublicUser(user),
+        offlineGrant: generateOfflineGrant(user._id.toString()),
     })
 })
 
@@ -150,13 +193,13 @@ export const logoutAllSessions = asyncHandler(async (req: AuthRequest, res: Resp
 export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.user?._id
 
-    const user = (await User.findById(userId).select('-password')) as IUser | null
+    const user = (await User.findById(userId)) as IUser | null
 
     if (!user) {
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
 
-    handleResponses(res, 200, user)
+    handleResponses(res, 200, toPublicUser(user))
 })
 
 export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
@@ -226,11 +269,22 @@ export const requestPasswordReset = asyncHandler(async (req: AuthRequest, res: R
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    const resetToken = await createPasswordResetForUser(email)
+    const normalizedEmail = normalizeEmail(email)
+
+    const resetToken = await createPasswordResetForUser(normalizedEmail)
 
     if (resetToken) {
         const resetUrl = buildPasswordResetUrl(resetToken)
-        logPasswordResetLink(email, resetUrl)
+
+        if (isSmtpConfigured()) {
+            try {
+                await sendPasswordResetEmail(normalizedEmail, resetUrl)
+            } catch (error) {
+                console.error('[password-reset] failed to send email:', error)
+            }
+        } else {
+            logPasswordResetLink(normalizedEmail, resetUrl)
+        }
     }
 
     handleResponses(res, 200, {
@@ -245,12 +299,10 @@ export const confirmPasswordReset = asyncHandler(async (req: AuthRequest, res: R
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
 
-    if (password.length < 8) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.PASSWORD_TOO_SHORT, 400)
-    }
+    const validatedPassword = validatePassword(password)
 
     try {
-        await resetPasswordWithToken(token, password)
+        await resetPasswordWithToken(token, validatedPassword)
     } catch (error) {
         if (error instanceof CustomError) {
             throw error
@@ -259,4 +311,75 @@ export const confirmPasswordReset = asyncHandler(async (req: AuthRequest, res: R
     }
 
     handleResponses(res, 200, { message: 'Password reset successfully' })
+})
+
+export const confirmEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const { token } = req.body
+
+    if (!token) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
+    }
+
+    await verifyEmailWithToken(token)
+
+    handleResponses(res, 200, { message: 'Email verified successfully' })
+})
+
+export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?._id.toString()
+    if (!userId) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 401)
+    }
+
+    const { password } = req.body
+    if (!password || typeof password !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
+    }
+
+    // req.user comes from authenticateRequest, which loads the user with `.select('-password')` -
+    // re-fetch with the password field to verify it, same as loginUser.
+    const user = (await User.findById(userId)) as IUser | null
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
+    }
+
+    const isMatch = await user.comparePassword(password)
+    if (!isMatch) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
+    }
+
+    await assertAccountDeletionAllowed(userId)
+    await deleteUserAccountCascade(userId)
+
+    clearRefreshTokenCookie(res)
+    handleResponses(res, 200, { message: 'Account deleted successfully' })
+})
+
+export const resendEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?._id
+    const user = (await User.findById(userId)) as IUser | null
+
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
+    }
+
+    if (user.isEmailVerified) {
+        handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED })
+        return
+    }
+
+    const verificationToken = await createEmailVerificationForUser(user)
+    const verificationUrl = buildEmailVerificationUrl(verificationToken)
+
+    if (isSmtpConfigured()) {
+        try {
+            await sendEmailVerificationEmail(user.email, verificationUrl)
+        } catch (error) {
+            console.error('[email-verification] failed to send email:', error)
+        }
+    } else {
+        logEmailVerificationLink(user.email, verificationUrl)
+    }
+
+    handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_SENT })
 })

@@ -12,8 +12,20 @@ import {
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from './moneyUtils'
-import { endOfDayInTimezone, startOfDayInTimezone } from './timezoneUtils'
+import { endOfDayInTimezone } from './timezoneUtils'
 import { assertAccountMatchesWorkspace, assertWorkspaceMembership } from './workspaceUtils'
+import {
+    computeAverageMonthlyContributionPure,
+    computeMonthsRemaining,
+    computeProjectedCompletionDatePure,
+    computeRequiredMonthlyContributionPure,
+    ContributionLike,
+    GoalLike,
+    isAutoContributionDuePure,
+} from '../../shared/src/savingsGoals'
+
+export { computeMonthsRemaining }
+export const computeRequiredMonthlyContribution = computeRequiredMonthlyContributionPure
 
 export interface SavingsGoalProgress {
     currentAmount: number
@@ -144,59 +156,17 @@ export const validateAccountForGoal = async (
     return account._id
 }
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000
-
-const diffCalendarMonths = (from: Date, to: Date): number => {
-    const fromYear = from.getUTCFullYear()
-    const fromMonth = from.getUTCMonth()
-    const toYear = to.getUTCFullYear()
-    const toMonth = to.getUTCMonth()
-    return (toYear - fromYear) * 12 + (toMonth - fromMonth)
-}
-
-const addMonthsUtc = (date: Date, months: number): Date => {
-    const result = new Date(date)
-    result.setUTCMonth(result.getUTCMonth() + months)
-    return result
-}
-
-const formatDateOnly = (date: Date): string => {
-    return date.toISOString().slice(0, 10)
-}
-
-export const computeMonthsRemaining = (targetDate: Date | null | undefined, now: Date): number | null => {
-    if (!targetDate) {
-        return null
-    }
-    if (targetDate.getTime() <= now.getTime()) {
-        return 0
-    }
-    const months = diffCalendarMonths(now, targetDate)
-    return Math.max(1, months === 0 ? 1 : months)
-}
-
-export const computeRequiredMonthlyContribution = (
-    targetAmountMinor: number,
-    currentAmountMinor: number,
-    targetDate: Date | null | undefined,
-    now: Date = new Date()
-): number | null => {
-    const remainingMinor = Math.max(0, targetAmountMinor - currentAmountMinor)
-    if (remainingMinor === 0) {
-        return 0
-    }
-
-    const monthsRemaining = computeMonthsRemaining(targetDate, now)
-    if (monthsRemaining === null) {
-        return null
-    }
-    if (monthsRemaining === 0) {
-        return fromMinorUnits(remainingMinor)
-    }
-
-    const monthlyMinor = Math.ceil(remainingMinor / monthsRemaining)
-    return fromMinorUnits(monthlyMinor)
-}
+const toGoalLike = (goal: ISavingsGoal): GoalLike => ({
+    targetAmount: goal.targetAmount,
+    currentAmount: goal.currentAmount,
+    targetDate: goal.targetDate ?? null,
+    status: goal.status,
+    autoContribution: {
+        enabled: goal.autoContribution.enabled,
+        amount: goal.autoContribution.amount,
+        interval: goal.autoContribution.interval,
+    },
+})
 
 export const computeAverageMonthlyContribution = async (
     goalId: Types.ObjectId,
@@ -206,48 +176,27 @@ export const computeAverageMonthlyContribution = async (
     const contributions = await SavingsGoalContribution.find({ goalId, userId }).sort({
         contributedAt: 1,
     })
-    if (contributions.length === 0) {
-        return null
-    }
-
-    const totalMinor = contributions.reduce((sum, entry) => sum + entry.amount, 0)
-    const firstAt = contributions[0].contributedAt
-    const monthsElapsed = Math.max(1, diffCalendarMonths(firstAt, now) + 1)
-    const avgMinor = Math.ceil(totalMinor / monthsElapsed)
-    return fromMinorUnits(avgMinor)
+    const contributionsLike: ContributionLike[] = contributions.map((entry) => ({
+        amount: entry.amount,
+        contributedAt: entry.contributedAt,
+    }))
+    return computeAverageMonthlyContributionPure(contributionsLike, now)
 }
 
 export const computeProjectedCompletionDate = async (
     goal: ISavingsGoal,
     now: Date = new Date()
 ): Promise<string | null> => {
-    const remainingMinor = Math.max(0, goal.targetAmount - goal.currentAmount)
-    if (remainingMinor === 0) {
-        return formatDateOnly(now)
-    }
+    const contributions = await SavingsGoalContribution.find({
+        goalId: goal._id,
+        userId: goal.userId,
+    }).sort({ contributedAt: 1 })
+    const contributionsLike: ContributionLike[] = contributions.map((entry) => ({
+        amount: entry.amount,
+        contributedAt: entry.contributedAt,
+    }))
 
-    let monthlyMinor: number | null = null
-
-    if (goal.autoContribution.enabled && goal.autoContribution.amount > 0) {
-        monthlyMinor = goal.autoContribution.amount
-    } else {
-        const avgMajor = await computeAverageMonthlyContribution(
-            goal._id,
-            goal.userId.toString(),
-            now
-        )
-        if (avgMajor !== null) {
-            monthlyMinor = Math.round(avgMajor * 100)
-        }
-    }
-
-    if (!monthlyMinor || monthlyMinor <= 0) {
-        return null
-    }
-
-    const monthsNeeded = Math.ceil(remainingMinor / monthlyMinor)
-    const projected = addMonthsUtc(now, monthsNeeded)
-    return formatDateOnly(projected)
+    return computeProjectedCompletionDatePure(toGoalLike(goal), contributionsLike, now)
 }
 
 export const computeSavingsGoalProgress = async (
@@ -285,38 +234,7 @@ export const isAutoContributionDue = (
     autoContribution: IAutoContribution,
     timezone: string,
     now: Date = new Date()
-): boolean => {
-    if (!autoContribution.enabled || autoContribution.amount <= 0) {
-        return false
-    }
-
-    if (!autoContribution.lastContributedAt) {
-        return true
-    }
-
-    const last = autoContribution.lastContributedAt
-
-    if (autoContribution.interval === 'weekly') {
-        return now.getTime() - last.getTime() >= 7 * MS_PER_DAY
-    }
-
-    const todayStr = formatDateOnly(now)
-    const currentMonthStart = startOfDayInTimezone(
-        `${todayStr.slice(0, 7)}-01`,
-        timezone
-    )
-
-    if (autoContribution.dayOfMonth) {
-        const day = Math.min(autoContribution.dayOfMonth, 28)
-        const dueStr = `${todayStr.slice(0, 7)}-${String(day).padStart(2, '0')}`
-        const dueDate = startOfDayInTimezone(dueStr, timezone)
-        if (now.getTime() < dueDate.getTime()) {
-            return false
-        }
-    }
-
-    return last.getTime() < currentMonthStart.getTime()
-}
+): boolean => isAutoContributionDuePure(autoContribution, timezone, now)
 
 export const serializeAutoContribution = (
     autoContribution: IAutoContribution,

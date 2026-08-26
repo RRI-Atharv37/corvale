@@ -6,6 +6,7 @@ export interface IRefreshToken extends Document {
     _id: Types.ObjectId
     userId: Types.ObjectId
     tokenHash: string
+    familyId: Types.ObjectId
     expiresAt: Date
     revokedAt?: Date | null
 }
@@ -14,6 +15,7 @@ const refreshTokenSchema = new Schema<IRefreshToken>(
     {
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
         tokenHash: { type: String, required: true, unique: true },
+        familyId: { type: Schema.Types.ObjectId, required: true, index: true },
         expiresAt: { type: Date, required: true },
         revokedAt: { type: Date, default: null },
     },
@@ -22,6 +24,7 @@ const refreshTokenSchema = new Schema<IRefreshToken>(
 
 refreshTokenSchema.index({ userId: 1, revokedAt: 1 })
 refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+refreshTokenSchema.index({ familyId: 1, revokedAt: 1 })
 
 applyRowLevelSecurity(refreshTokenSchema)
 

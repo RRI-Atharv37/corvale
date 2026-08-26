@@ -15,22 +15,19 @@ import AccountPicker from '../../components/accounts/AccountPicker'
 import ReceiptAttachments from '../../components/transactions/ReceiptAttachments'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { usePageSize } from '../../hooks/usePaginatedList'
+import { useUser } from '../../hooks/useUser'
+import { useAccountsData } from './hooks/useAccountsData'
+import { useCategoriesData } from './hooks/useCategoriesData'
+import { useTagsData } from './hooks/useTagsData'
+import { useTransactionsData, type SortField, type SortOrder, type TypeFilter } from './hooks/useTransactionsData'
 import type {
-    Account,
     ApiResponse,
-    BulkCategoryResponse,
-    BulkDeleteResponse,
-    CategoriesResponse,
-    PaginatedTransactions,
     Receipt,
     SplitLineFormData,
-    Tag,
     Transaction,
     TransactionFormData,
     TransactionType,
-    TransferCreateResponse,
     TransferFormData,
 } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
@@ -50,17 +47,6 @@ import {
     type ExportFormat,
     type TransactionExportType,
 } from '../../utils/downloadExport'
-
-type TypeFilter = '' | 'income' | 'expense' | 'transfer'
-type SortField = 'date' | 'amount' | 'category'
-type SortOrder = 'asc' | 'desc'
-type FetchMode = 'list' | 'search' | 'filter'
-
-interface TransactionsPageData {
-    items: Transaction[]
-    meta: PaginatedTransactions['meta'] | null
-    mode: FetchMode
-}
 
 const emptySplitLine = (): SplitLineFormData => ({ categoryId: '', amount: '' })
 
@@ -109,6 +95,7 @@ const transactionUserLabel = (type: TransactionType, name: string): string => {
 
 const Transactions = () => {
     const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
+    const { user } = useUser()
     const [searchParams, setSearchParams] = useSearchParams()
     const pageSize = usePageSize()
 
@@ -151,23 +138,22 @@ const Transactions = () => {
     const [exporting, setExporting] = useState(false)
     const [advancedOpen, setAdvancedOpen] = useState(false)
 
-    const fetchLookups = useCallback(async () => {
-        const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
-        const [accountsRes, categoriesRes, tagsRes] = await Promise.all([
-            axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
-                params: workspaceParams,
-            }),
-            axiosInstance.get<ApiResponse<CategoriesResponse>>(API_PATHS.CATEGORIES.GET_ALL),
-            axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL),
-        ])
-        return {
-            accounts: unwrapApiData(accountsRes),
-            categories: unwrapApiData(categoriesRes),
-            tags: unwrapApiData(tagsRes),
-        }
-    }, [activeWorkspaceId])
+    const accountsData = useAccountsData()
+    const categoriesData = useCategoriesData()
+    const tagsData = useTagsData()
 
-    const { data: lookups, refetch: refetchLookups } = useAsyncData(fetchLookups, [fetchLookups])
+    const lookups = useMemo(() => {
+        if (!accountsData.accounts || !categoriesData.categories || !tagsData.tags) return null
+        return {
+            accounts: accountsData.accounts,
+            categories: categoriesData.categories,
+            tags: tagsData.tags,
+        }
+    }, [accountsData.accounts, categoriesData.categories, tagsData.tags])
+
+    const refetchLookups = useCallback(async () => {
+        await Promise.all([accountsData.refetch(), categoriesData.refetch(), tagsData.refetch()])
+    }, [accountsData, categoriesData, tagsData])
 
     const categoryNameById = useMemo(() => {
         const map = new Map<string, string>()
@@ -228,46 +214,24 @@ const Transactions = () => {
         setSelectedIds([])
     }, [pageSize, activeWorkspaceId, tagFilter])
 
-    const fetchTransactions = useCallback(async (): Promise<TransactionsPageData> => {
-        try {
-            const workspaceParams = buildWorkspaceQueryParams(activeWorkspaceId)
-            const sharedParams: Record<string, string> = {
-                sortBy,
-                sortOrder,
-                ...workspaceParams,
-            }
-            if (typeFilter) sharedParams.type = typeFilter
-            if (tagFilter.length > 0) sharedParams.tags = tagFilter.join(',')
-
-            if (searchQuery.trim()) {
-                const response = await axiosInstance.get<ApiResponse<Transaction[]>>(
-                    API_PATHS.TRANSACTIONS.SEARCH,
-                    { params: { keyword: searchQuery.trim(), ...sharedParams } }
-                )
-                return { items: unwrapApiData(response), meta: null, mode: 'search' }
-            }
-
-            if (dateFilterActive && startDate && endDate) {
-                const response = await axiosInstance.get<ApiResponse<Transaction[]>>(
-                    API_PATHS.TRANSACTIONS.FILTER,
-                    { params: { startDate, endDate, ...sharedParams } }
-                )
-                return { items: unwrapApiData(response), meta: null, mode: 'filter' }
-            }
-
-            const response = await axiosInstance.get<ApiResponse<PaginatedTransactions>>(
-                API_PATHS.TRANSACTIONS.GET_ALL,
-                { params: { page, limit: pageSize, ...sharedParams } }
-            )
-            const payload = unwrapApiData(response)
-            return { items: payload.data, meta: payload.meta, mode: 'list' }
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load transactions'))
-        }
-    }, [
+    const {
+        data,
+        loading,
+        error,
+        refetch,
+        onPageChange,
+        createTransaction,
+        updateTransaction,
+        deleteTransaction,
+        createTransfer,
+        bulkDeleteTransactions,
+        bulkChangeCategory,
+    } = useTransactionsData({
         page,
+        setPage,
         pageSize,
         typeFilter,
+        tagFilter,
         searchQuery,
         dateFilterActive,
         startDate,
@@ -275,10 +239,8 @@ const Transactions = () => {
         sortBy,
         sortOrder,
         activeWorkspaceId,
-        tagFilter,
-    ])
-
-    const { data, loading, error, refetch } = useAsyncData(fetchTransactions, [fetchTransactions])
+        timezone: user?.timezone ?? 'UTC',
+    })
 
     const openCreate = (type: 'income' | 'expense' = typeFilter === 'income' ? 'income' : 'expense') => {
         setEditingId(null)
@@ -483,20 +445,21 @@ const Transactions = () => {
         setSubmitting(true)
         try {
             if (editingId) {
-                await axiosInstance.put(API_PATHS.TRANSACTIONS.UPDATE(editingId), payload)
+                await updateTransaction(editingId, payload)
                 toast.success('Transaction updated')
             } else {
-                const response = await axiosInstance.post<ApiResponse<Transaction>>(
-                    API_PATHS.TRANSACTIONS.CREATE,
-                    payload
-                )
-                const created = unwrapApiData(response)
+                const created = await createTransaction(payload)
 
-                if (pendingReceiptFiles.length > 0) {
+                if (created && pendingReceiptFiles.length > 0) {
                     for (const file of pendingReceiptFiles) {
                         const receipt = await uploadReceipt(file)
                         await attachReceiptToTransaction(created._id, receipt._id)
                     }
+                } else if (!created && pendingReceiptFiles.length > 0) {
+                    // Receipts are server-only (Sprint 13.10 scope) and need the created
+                    // transaction's server id; a locally created transaction has no such id until
+                    // it syncs, so pending receipt uploads are skipped for local-first creates.
+                    toast('Receipts will need to be attached after this transaction syncs.')
                 }
 
                 toast.success(
@@ -537,18 +500,15 @@ const Transactions = () => {
 
         setTransferSubmitting(true)
         try {
-            await axiosInstance.post<ApiResponse<TransferCreateResponse>>(
-                API_PATHS.TRANSACTIONS.TRANSFER,
-                {
-                    title: transferForm.title.trim(),
-                    amount: Number(transferForm.amount),
-                    date: transferForm.date,
-                    fromAccountId: transferForm.fromAccountId,
-                    toAccountId: transferForm.toAccountId,
-                    description: transferForm.description.trim() || undefined,
-                    ...buildWorkspaceBodyFields(activeWorkspaceId),
-                }
-            )
+            await createTransfer({
+                title: transferForm.title.trim(),
+                amount: Number(transferForm.amount),
+                date: transferForm.date,
+                fromAccountId: transferForm.fromAccountId,
+                toAccountId: transferForm.toAccountId,
+                description: transferForm.description.trim() || undefined,
+                ...buildWorkspaceBodyFields(activeWorkspaceId),
+            })
             toast.success('Transfer completed')
             closeTransfer()
             setPage(1)
@@ -589,7 +549,7 @@ const Transactions = () => {
 
         setDeleting(true)
         try {
-            await axiosInstance.delete(API_PATHS.TRANSACTIONS.DELETE(deleteTarget._id))
+            await deleteTransaction(deleteTarget)
             toast.success('Transaction deleted')
             setDeleteTarget(null)
             setSelectedIds((current) => current.filter((id) => id !== deleteTarget._id))
@@ -630,11 +590,7 @@ const Transactions = () => {
 
         setBulkSubmitting(true)
         try {
-            const response = await axiosInstance.post<ApiResponse<BulkDeleteResponse>>(
-                API_PATHS.TRANSACTIONS.BULK_DELETE,
-                { transactionIds: selectedIds }
-            )
-            const result = unwrapApiData(response)
+            const result = await bulkDeleteTransactions(selectedIds)
             toast.success(result.message)
             setBulkDeleteOpen(false)
             setSelectedIds([])
@@ -656,11 +612,7 @@ const Transactions = () => {
 
         setBulkSubmitting(true)
         try {
-            const response = await axiosInstance.patch<ApiResponse<BulkCategoryResponse>>(
-                API_PATHS.TRANSACTIONS.BULK_CATEGORY,
-                { transactionIds: selectedIds, categoryId: bulkCategoryId }
-            )
-            const result = unwrapApiData(response)
+            const result = await bulkChangeCategory(selectedIds, bulkCategoryId)
             toast.success(result.message)
             setBulkCategoryOpen(false)
             setBulkCategoryId('')
@@ -1162,7 +1114,7 @@ const Transactions = () => {
                                 page={result.meta.pageNumber}
                                 totalPages={result.meta.totalPages}
                                 totalItems={result.meta.totalTransactions ?? result.items.length}
-                                onPageChange={setPage}
+                                onPageChange={onPageChange}
                             />
                         )}
                     </>

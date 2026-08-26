@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { IoAlertCircle, IoArrowDown, IoArrowUp, IoSwapHorizontal } from 'react-icons/io5'
 import {
     CartesianGrid,
@@ -12,15 +12,10 @@ import {
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import StatCard from '../../components/ui/StatCard'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
-import { buildWorkspaceQueryParams } from '../../utils/workspaceScope'
-import type { Account, ApiResponse, ForecastAccount, ForecastResponse } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
-import { getApiErrorMessage } from '../../utils/apiError'
+import { useForecastData } from './hooks/useForecastData'
+import type { ForecastAccount } from '../../types/api'
 import { formatCurrency, formatDisplayDate } from '../../utils/format'
 import {
     axisTick,
@@ -165,35 +160,11 @@ const AccountForecastCard: React.FC<AccountForecastCardProps> = ({ account }) =>
 }
 
 const Forecast: React.FC = () => {
-    const { activeWorkspaceId, activeWorkspace, isPersonal } = useWorkspace()
+    const { activeWorkspace, isPersonal } = useWorkspace()
     const [days, setDays] = useState<(typeof DAYS_OPTIONS)[number]>(30)
     const [accountId, setAccountId] = useState<string>('')
 
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {
-            params: buildWorkspaceQueryParams(activeWorkspaceId),
-        })
-        return unwrapApiData(response).filter((account) => !account.isArchived)
-    }, [activeWorkspaceId])
-
-    const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
-
-    const fetchForecast = useCallback(async (): Promise<ForecastResponse> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<ForecastResponse>>(API_PATHS.FORECAST.GET, {
-                params: {
-                    days,
-                    ...(accountId ? { accountId } : {}),
-                    ...buildWorkspaceQueryParams(activeWorkspaceId),
-                },
-            })
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load forecast'))
-        }
-    }, [days, accountId, activeWorkspaceId])
-
-    const { data: forecast, loading, error, refetch } = useAsyncData(fetchForecast, [fetchForecast])
+    const { accounts, forecast, loading, error, refetch } = useForecastData(days, accountId)
 
     return (
         <div>

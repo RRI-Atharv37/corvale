@@ -1,9 +1,16 @@
 import { DEFAULT_CURRENCY } from './currencies'
 import { DEFAULT_DATE_FORMAT, type DateFormat } from './userPreferences'
+import { tableInvalidationBus } from '../db/invalidation/tableInvalidationBus'
 
-export const PREFERRED_CURRENCY_CHANGED_EVENT = 'spndr:preferred-currency-changed'
-export const DATE_FORMAT_CHANGED_EVENT = 'spndr:date-format-changed'
-export const EXCHANGE_RATES_CHANGED_EVENT = 'spndr:exchange-rates-changed'
+/**
+ * Pseudo-table key on `tableInvalidationBus` (see `db/invalidation/tableInvalidationBus.ts`)
+ * for preferred-currency / date-format / exchange-rate changes. Replaces the
+ * `window` CustomEvent bus this module used to dispatch (Sprint 13.9) - both
+ * `useAsyncData` and `useLocalQuery` subscribe to it the same way they
+ * subscribe to any real table, so every data-fetching hook gets preference
+ * refresh behavior for free regardless of which store it reads from.
+ */
+export const PREFS_CHANGED_TABLE = '_prefs'
 
 let activePreferredCurrency: string = DEFAULT_CURRENCY
 let activeDateFormat: DateFormat = DEFAULT_DATE_FORMAT
@@ -11,7 +18,7 @@ let activeDateFormat: DateFormat = DEFAULT_DATE_FORMAT
 export const setPreferredCurrency = (currency: string): void => {
     if (currency === activePreferredCurrency) return
     activePreferredCurrency = currency
-    window.dispatchEvent(new CustomEvent(PREFERRED_CURRENCY_CHANGED_EVENT))
+    tableInvalidationBus.publish(PREFS_CHANGED_TABLE)
 }
 
 export const resetPreferredCurrency = (): void => {
@@ -23,7 +30,7 @@ export const getPreferredCurrency = (): string => activePreferredCurrency
 export const setDateFormat = (format: DateFormat): void => {
     if (format === activeDateFormat) return
     activeDateFormat = format
-    window.dispatchEvent(new CustomEvent(DATE_FORMAT_CHANGED_EVENT))
+    tableInvalidationBus.publish(PREFS_CHANGED_TABLE)
 }
 
 export const resetDateFormat = (): void => {
@@ -34,7 +41,7 @@ export const getDateFormat = (): DateFormat => activeDateFormat
 
 /** Notifies data consumers (e.g. accounts, dashboard) that saved exchange rates changed, so converted balances refresh without a page reload. */
 export const notifyExchangeRatesChanged = (): void => {
-    window.dispatchEvent(new CustomEvent(EXCHANGE_RATES_CHANGED_EVENT))
+    tableInvalidationBus.publish(PREFS_CHANGED_TABLE)
 }
 
 const getUtcDateParts = (date: string | Date) => {

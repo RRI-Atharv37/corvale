@@ -17,14 +17,9 @@ import type {
 } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency, formatDisplayDate } from '../../utils/format'
-import {
-    commitImport,
-    IMPORT_ACCEPT,
-    parseImportFile,
-    previewImport,
-    validateImportFile,
-} from '../../utils/importApi'
+import { IMPORT_ACCEPT, validateImportFile } from '../../utils/importApi'
 import { buildWorkspaceBodyFields } from '../../utils/workspaceScope'
+import { useImportTransactionsData } from './hooks/useImportTransactionsData'
 
 type WizardStep = 'upload' | 'mapping' | 'account' | 'preview' | 'done'
 
@@ -49,6 +44,7 @@ const ImportTransactions = () => {
     const navigate = useNavigate()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
+    const { parseImportFile, previewImport, commitImport } = useImportTransactionsData()
 
     const [step, setStep] = useState<WizardStep>('upload')
     const [selectedFile, setSelectedFile] = useState<File | null>(null)

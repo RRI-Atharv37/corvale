@@ -6,70 +6,57 @@ import RecurringRule, { IRecurringRule } from '../models/RecurringRule'
 import SavingsGoal, { ISavingsGoal } from '../models/SavingsGoal'
 import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
-import { projectRecurringOccurrences } from '../utils/forecastUtils'
-import { fromMinorUnits } from '../utils/moneyUtils'
 import { getUserId, handleResponses, validateRequiredFields } from '../utils/sharedUtils'
 import { DEFAULT_TIMEZONE, resolveDateRange } from '../utils/timezoneUtils'
 import { assertWorkspaceMembership, buildScopedListFilter, parseOptionalWorkspaceId } from '../utils/workspaceUtils'
+import {
+    buildBudgetEvent as sharedBuildBudgetEvent,
+    buildGoalEvent as sharedBuildGoalEvent,
+    buildRecurringEvents as sharedBuildRecurringEvents,
+} from '../../shared/src/calendar'
+import type { CalendarEvent, CalendarEventType } from '../../shared/src/calendar'
 
-export type CalendarEventType = 'recurring' | 'budget_end' | 'goal_deadline'
-
-export interface CalendarEvent {
-    id: string
-    type: CalendarEventType
-    date: string
-    title: string
-    amount?: number
-    refId: string
-    accountId?: string
-    categoryId?: string
-}
-
-const formatDateOnly = (date: Date): string => date.toISOString().slice(0, 10)
+export type { CalendarEvent, CalendarEventType }
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
 }
 
 const buildRecurringEvents = (rule: IRecurringRule, rangeStart: Date, rangeEnd: Date): CalendarEvent[] => {
-    const occurrences = projectRecurringOccurrences(rule, rangeStart, rangeEnd)
-    return occurrences.map((date) => {
-        const dateStr = formatDateOnly(date)
-        return {
-            id: `recurring-${rule._id.toString()}-${dateStr}`,
-            type: 'recurring',
-            date: dateStr,
+    return sharedBuildRecurringEvents(
+        {
+            id: rule._id.toString(),
             title: rule.title,
-            amount: fromMinorUnits(rule.amount),
-            refId: rule._id.toString(),
+            amount: rule.amount,
             accountId: rule.accountId.toString(),
             categoryId: rule.categoryId.toString(),
-        }
-    })
+            nextDueDate: rule.nextDueDate,
+            interval: rule.interval,
+            customIntervalDays: rule.customIntervalDays,
+        },
+        rangeStart,
+        rangeEnd
+    )
 }
 
 const buildBudgetEvent = (budget: IBudget): CalendarEvent => {
-    return {
-        id: `budget-${budget._id.toString()}`,
-        type: 'budget_end',
-        date: formatDateOnly(budget.periodEnd),
-        title: budget.name || 'Budget period end',
-        amount: fromMinorUnits(budget.amount),
-        refId: budget._id.toString(),
+    return sharedBuildBudgetEvent({
+        id: budget._id.toString(),
+        name: budget.name,
+        amount: budget.amount,
+        periodEnd: budget.periodEnd,
         categoryId: budget.categoryId ? budget.categoryId.toString() : undefined,
-    }
+    })
 }
 
 const buildGoalEvent = (goal: ISavingsGoal): CalendarEvent => {
-    return {
-        id: `goal-${goal._id.toString()}`,
-        type: 'goal_deadline',
-        date: formatDateOnly(goal.targetDate as Date),
-        title: goal.name,
-        amount: fromMinorUnits(goal.targetAmount),
-        refId: goal._id.toString(),
+    return sharedBuildGoalEvent({
+        id: goal._id.toString(),
+        name: goal.name,
+        targetAmount: goal.targetAmount,
+        targetDate: goal.targetDate as Date,
         accountId: goal.accountId ? goal.accountId.toString() : undefined,
-    }
+    })
 }
 
 export const getCalendar = asyncHandler(async (req: AuthRequest, res: Response) => {

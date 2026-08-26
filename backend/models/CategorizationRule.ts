@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applySoftDelete } from '../utils/applySoftDelete'
+
 export const CATEGORIZATION_MATCH_TYPES = [
     'description_contains',
     'description_equals',
@@ -21,6 +23,7 @@ export interface ICategorizationRule extends Document {
     tags?: string[]
     priority: number
     isActive: boolean
+    deletedAt?: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -43,6 +46,9 @@ const CategorizationRuleSchema = new Schema<ICategorizationRule>(
 )
 
 CategorizationRuleSchema.index({ userId: 1, priority: -1, isActive: 1 })
+CategorizationRuleSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+
+applySoftDelete(CategorizationRuleSchema)
 
 const CategorizationRule: Model<ICategorizationRule> = mongoose.model<ICategorizationRule>(
     'CategorizationRule',

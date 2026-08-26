@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-desktop
+.env
+.env.local
+.env.desktop
+.env.test
+src-tauri/target

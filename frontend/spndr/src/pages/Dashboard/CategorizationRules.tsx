@@ -17,21 +17,17 @@ import FormField from '../../components/forms/FormField'
 import CategoryPicker from '../../components/categories/CategoryPicker'
 import TagPicker from '../../components/tags/TagPicker'
 import TagChip from '../../components/tags/TagChip'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
+import { useCategorizationRulesData, type CategorizationRuleInput } from './hooks/useCategorizationRulesData'
+import { useAccountsData } from './hooks/useAccountsData'
+import { useCategoriesData } from './hooks/useCategoriesData'
+import { useTagsData } from './hooks/useTagsData'
 import type {
     Account,
-    ApiResponse,
-    CategoriesResponse,
     CategorizationMatchType,
     CategorizationRule,
-    CategorizationRuleBulkApplyResult,
     CategorizationRuleFormData,
     CategorizationRuleTestResult,
-    Tag,
 } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency } from '../../utils/format'
 
@@ -137,8 +133,8 @@ const SelectField: React.FC<SelectFieldProps> = ({
     </div>
 )
 
-const buildPayload = (form: CategorizationRuleFormData) => {
-    const payload: Record<string, unknown> = {
+const buildPayload = (form: CategorizationRuleFormData): CategorizationRuleInput => {
+    const payload: CategorizationRuleInput = {
         name: form.name.trim(),
         matchType: form.matchType,
         categoryId: form.categoryId,
@@ -182,38 +178,21 @@ const CategorizationRules = () => {
         accountId: '',
     })
 
-    const fetchRules = useCallback(async (): Promise<CategorizationRule[]> => {
-        try {
-            const response = await axiosInstance.get<ApiResponse<CategorizationRule[]>>(
-                API_PATHS.CATEGORIZATION_RULES.GET_ALL
-            )
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load categorization rules'))
-        }
-    }, [])
-
-    const fetchCategories = useCallback(async (): Promise<CategoriesResponse> => {
-        const response = await axiosInstance.get<ApiResponse<CategoriesResponse>>(
-            API_PATHS.CATEGORIES.GET_ALL
-        )
-        return unwrapApiData(response)
-    }, [])
-
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL)
-        return unwrapApiData(response)
-    }, [])
-
-    const fetchTags = useCallback(async (): Promise<Tag[]> => {
-        const response = await axiosInstance.get<ApiResponse<Tag[]>>(API_PATHS.TAGS.GET_ALL)
-        return unwrapApiData(response)
-    }, [])
-
-    const { data: rules, loading, error, refetch } = useAsyncData(fetchRules, [fetchRules])
-    const { data: categories } = useAsyncData(fetchCategories, [fetchCategories])
-    const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
-    const { data: tags } = useAsyncData(fetchTags, [fetchTags])
+    const {
+        rules,
+        loading,
+        error,
+        refetch,
+        createRule,
+        updateRule,
+        deleteRule,
+        toggleRuleActive: toggleRuleActiveRemote,
+        bulkApply,
+        testRule,
+    } = useCategorizationRulesData()
+    const { categories } = useCategoriesData()
+    const { accounts } = useAccountsData()
+    const { tags } = useTagsData()
 
     const resolveCategoryName = useCallback(
         (categoryId: string): string => {
@@ -289,13 +268,9 @@ const CategorizationRules = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.post(
-                API_PATHS.CATEGORIZATION_RULES.CREATE,
-                buildPayload(createForm)
-            )
+            await createRule(buildPayload(createForm))
             toast.success('Rule created')
             closeCreate()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to create rule'))
         } finally {
@@ -315,13 +290,9 @@ const CategorizationRules = () => {
 
         setSubmitting(true)
         try {
-            await axiosInstance.put(
-                API_PATHS.CATEGORIZATION_RULES.UPDATE(editingRule._id),
-                buildPayload(editForm)
-            )
+            await updateRule(editingRule, buildPayload(editForm))
             toast.success('Rule updated')
             closeEdit()
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to update rule'))
         } finally {
@@ -334,10 +305,9 @@ const CategorizationRules = () => {
 
         setDeleting(true)
         try {
-            await axiosInstance.delete(API_PATHS.CATEGORIZATION_RULES.DELETE(deleteTarget._id))
+            await deleteRule(deleteTarget)
             toast.success('Rule deleted')
             setDeleteTarget(null)
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to delete rule'))
         } finally {
@@ -348,10 +318,7 @@ const CategorizationRules = () => {
     const handleBulkApply = async () => {
         setBulkApplying(true)
         try {
-            const response = await axiosInstance.post<
-                ApiResponse<CategorizationRuleBulkApplyResult>
-            >(API_PATHS.CATEGORIZATION_RULES.BULK_APPLY)
-            const result = unwrapApiData(response)
+            const result = await bulkApply()
             toast.success(result.message)
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to apply rules'))
@@ -371,16 +338,14 @@ const CategorizationRules = () => {
         setTesting(true)
         setTestResult(null)
         try {
-            const response = await axiosInstance.post<ApiResponse<CategorizationRuleTestResult>>(
-                API_PATHS.CATEGORIZATION_RULES.TEST,
-                {
-                    title: testForm.title.trim(),
-                    description: testForm.description.trim() || undefined,
-                    amount: Number(testForm.amount),
-                    accountId: testForm.accountId,
-                }
-            )
-            setTestResult(unwrapApiData(response))
+            const result = await testRule({
+                title: testForm.title.trim(),
+                description: testForm.description.trim() || undefined,
+                amount: Number(testForm.amount),
+                accountId: testForm.accountId,
+                type: 'expense',
+            })
+            setTestResult(result)
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to test rules'))
         } finally {
@@ -390,11 +355,8 @@ const CategorizationRules = () => {
 
     const toggleRuleActive = async (rule: CategorizationRule) => {
         try {
-            await axiosInstance.put(API_PATHS.CATEGORIZATION_RULES.UPDATE(rule._id), {
-                isActive: !rule.isActive,
-            })
+            await toggleRuleActiveRemote(rule)
             toast.success(rule.isActive ? 'Rule paused' : 'Rule activated')
-            await refetch()
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to update rule'))
         }

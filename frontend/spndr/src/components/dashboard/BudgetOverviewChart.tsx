@@ -9,7 +9,6 @@ import {
     CHART_COLORS,
     chartMargin,
     formatChartCurrency,
-    yAxisTick,
 } from './chartTheme'
 
 interface BudgetOverviewChartProps {

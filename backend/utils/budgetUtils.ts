@@ -9,18 +9,14 @@ import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from './moneyUtils'
 import { isMasterCategory } from './categorySeed'
 import {
-    endOfDayInTimezone,
-    resolveDateRange,
-    startOfDayInTimezone,
-} from './timezoneUtils'
+    BudgetProgress,
+    computeBudgetProgress,
+    resolveCustomPeriod as sharedResolveCustomPeriod,
+    resolveMonthlyPeriod as sharedResolveMonthlyPeriod,
+} from '../../shared/src/budget'
 
-export interface BudgetProgress {
-    spent: number
-    remaining: number
-    percentUsed: number
-    isOverBudget: boolean
-    budgetAmount: number
-}
+export type { BudgetProgress }
+export { computeBudgetProgress }
 
 export interface SerializedBudget {
     _id: Types.ObjectId
@@ -53,12 +49,6 @@ export const parseBudgetAmount = (value: unknown): number => {
     }
 }
 
-const padMonth = (month: number): string => String(month).padStart(2, '0')
-
-const lastDayOfMonth = (year: number, month: number): number => {
-    return new Date(Date.UTC(year, month, 0)).getUTCDate()
-}
-
 export const resolveMonthlyPeriod = (
     year: number,
     month: number,
@@ -71,14 +61,7 @@ export const resolveMonthlyPeriod = (
         throw new CustomError('Invalid month for monthly budget; must be 1–12', 400)
     }
 
-    const startDateStr = `${year}-${padMonth(month)}-01`
-    const endDay = lastDayOfMonth(year, month)
-    const endDateStr = `${year}-${padMonth(month)}-${String(endDay).padStart(2, '0')}`
-
-    return {
-        periodStart: startOfDayInTimezone(startDateStr, timezone),
-        periodEnd: endOfDayInTimezone(endDateStr, timezone),
-    }
+    return sharedResolveMonthlyPeriod(year, month, timezone)
 }
 
 export const resolveCustomPeriod = (
@@ -87,8 +70,7 @@ export const resolveCustomPeriod = (
     timezone: string
 ): { periodStart: Date; periodEnd: Date } => {
     try {
-        const range = resolveDateRange(periodStart, periodEnd, timezone)
-        return { periodStart: range.start, periodEnd: range.end }
+        return sharedResolveCustomPeriod(periodStart, periodEnd, timezone)
     } catch {
         throw new CustomError(
             'Invalid custom period; use YYYY-MM-DD dates with start on or before end',
@@ -215,27 +197,6 @@ export const computeBudgetSpentMinor = async (budget: IBudget): Promise<number> 
     ])
 
     return result[0]?.total ?? 0
-}
-
-export const computeBudgetProgress = (
-    budgetAmountMinor: number,
-    spentMinor: number
-): BudgetProgress => {
-    const budgetAmount = fromMinorUnits(budgetAmountMinor)
-    const spent = fromMinorUnits(spentMinor)
-    const remaining = Math.round((budgetAmount - spent + Number.EPSILON) * 100) / 100
-    const percentUsed =
-        budgetAmountMinor > 0
-            ? Math.round((spentMinor / budgetAmountMinor) * 10000) / 100
-            : 0
-
-    return {
-        spent,
-        remaining,
-        percentUsed,
-        isOverBudget: spentMinor > budgetAmountMinor,
-        budgetAmount,
-    }
 }
 
 export const serializeBudget = (

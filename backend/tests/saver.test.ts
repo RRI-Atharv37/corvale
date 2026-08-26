@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import app from '../app'
-import { authHeader, createTestIncome, registerUser } from './helpers'
+import { authHeader, createPostedTransaction, registerUser } from './helpers'
 
 describe('Saver', () => {
     it('adds saver amount using percentage calculation', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 1000)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 1000)
 
         const res = await request(app)
             .post('/api/v1/saver/add')
@@ -21,8 +21,8 @@ describe('Saver', () => {
     })
 
     it('adds saver amount using custom amount', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 1000)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 1000)
 
         const res = await request(app)
             .post('/api/v1/saver/add')
@@ -36,8 +36,8 @@ describe('Saver', () => {
     })
 
     it('rejects withdraw when insufficient funds', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 100)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 100)
 
         await request(app)
             .post('/api/v1/saver/add')
@@ -55,8 +55,8 @@ describe('Saver', () => {
     })
 
     it('rejects deposit exceeding server-derived spendable balance', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 100)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 100)
 
         const res = await request(app)
             .post('/api/v1/saver/add')
@@ -68,8 +68,8 @@ describe('Saver', () => {
     })
 
     it('ignores client-supplied remainingBalance and uses server totals', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 100)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 100)
 
         const res = await request(app)
             .post('/api/v1/saver/add')
@@ -81,8 +81,8 @@ describe('Saver', () => {
     })
 
     it('returns derived balance summary from details endpoint', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 1000)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 1000)
 
         await request(app)
             .post('/api/v1/saver/add')

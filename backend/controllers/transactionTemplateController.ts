@@ -23,6 +23,7 @@ import {
     validateAccountForTransaction,
     validateRequiredFields,
 } from '../utils/transactionUtils'
+import { isDuplicateKeyError, resolveClientObjectId } from '../utils/sharedUtils'
 import {
     assertAccountMatchesWorkspace,
     assertWorkspaceMembership,
@@ -61,17 +62,27 @@ export const createTransactionTemplate = asyncHandler(async (req: AuthRequest, r
     const categoryId = String(req.body.categoryId)
 
     await validateTemplateReferences(userId, accountId, categoryId)
+    const clientId = resolveClientObjectId(req.body._id)
 
-    const template = await TransactionTemplate.create({
-        userId,
-        name,
-        type,
-        amount,
-        accountId,
-        categoryId,
-        tags: parseTemplateTags(req.body.tags),
-        description: req.body.description?.trim() || undefined,
-    })
+    let template
+    try {
+        template = await TransactionTemplate.create({
+            ...(clientId ? { _id: clientId } : {}),
+            userId,
+            name,
+            type,
+            amount,
+            accountId,
+            categoryId,
+            tags: parseTemplateTags(req.body.tags),
+            description: req.body.description?.trim() || undefined,
+        })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            throw new CustomError('A transaction template with this id already exists', 400)
+        }
+        throw error
+    }
 
     handleResponses(res, 201, serializeTransactionTemplate(template))
 })
@@ -158,7 +169,8 @@ export const deleteTransactionTemplate = asyncHandler(async (req: AuthRequest, r
     validateRequiredFields({ templateId }, ['templateId'])
 
     const template = await validateUserTemplate(templateId, userId)
-    await template.deleteOne()
+    template.deletedAt = new Date()
+    await template.save()
 
     handleResponses(res, 200, { message: 'Transaction template deleted successfully' })
 })

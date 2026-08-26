@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
     IoAdd,
@@ -18,23 +18,19 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import PaginatedCardList from '../../components/ui/PaginatedCardList'
 import FormField from '../../components/forms/FormField'
 import SavingsGoalProgressBar from '../../components/savingsGoals/SavingsGoalProgressBar'
-import CurrencySelect from '../../components/inputs/CurrencySelect'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import { useAsyncData } from '../../hooks/useAsyncData'
+import CurrencySelect from '../../components/Inputs/CurrencySelect'
+import OfflineNotice from '../../components/ui/OfflineNotice'
 import { usePageSize } from '../../hooks/usePaginatedList'
 import { useUser } from '../../hooks/useUser'
+import { useSavingsGoalsData, type SavingsGoalPayload } from './hooks/useSavingsGoalsData'
+import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import type {
-    Account,
-    ApiResponse,
     AutoContributionInterval,
-    ContributeResponse,
     SavingsGoal,
     SavingsGoalContribution,
     SavingsGoalFormData,
     SavingsGoalStatus,
 } from '../../types/api'
-import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import {
     formatContributionDate,
@@ -151,32 +147,30 @@ const SavingsGoals = () => {
     const [contributions, setContributions] = useState<SavingsGoalContribution[]>([])
     const [historyLoading, setHistoryLoading] = useState(false)
 
-    const fetchGoals = useCallback(async (): Promise<SavingsGoal[]> => {
-        try {
-            const params: Record<string, string> = {}
-            if (view === 'archived') {
-                params.includeArchived = 'true'
-                params.status = 'archived'
-            } else if (view === 'completed') {
-                params.status = 'completed'
-            }
-            const response = await axiosInstance.get<ApiResponse<SavingsGoal[]>>(
-                API_PATHS.SAVINGS_GOALS.GET_ALL,
-                { params }
-            )
-            return unwrapApiData(response)
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load savings goals'))
-        }
-    }, [view])
+    const {
+        goals,
+        loading,
+        error,
+        refetch,
+        accounts,
+        online,
+        createGoal,
+        updateGoal,
+        archiveGoal,
+        fetchContributionHistory,
+        contribute,
+        processAutoContribution,
+        pause,
+        resume,
+        complete,
+    } = useSavingsGoalsData(view)
 
-    const fetchAccounts = useCallback(async (): Promise<Account[]> => {
-        const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL)
-        return unwrapApiData(response).filter((account) => !account.isArchived)
-    }, [])
-
-    const { data: goals, loading, error, refetch } = useAsyncData(fetchGoals, [fetchGoals])
-    const { data: accounts } = useAsyncData(fetchAccounts, [fetchAccounts])
+    // The five server-computed actions (contribute/auto-contribute/pause/resume/complete) stay
+    // plain REST calls even when `VITE_LOCAL_FIRST` is on (see useSavingsGoalsData.ts), so they
+    // need connectivity - gated here rather than in the hook's flag-off branch so the server-only
+    // build keeps its original behavior (those buttons were never disabled by network status).
+    const localFirst = isLocalFirstEnabled()
+    const actionsBlocked = localFirst && !online
 
     const displayedGoals = useMemo(() => {
         if (!goals) return []
@@ -195,18 +189,19 @@ const SavingsGoals = () => {
         return account?.name ?? 'Linked account'
     }
 
-    const buildPayload = (formData: SavingsGoalFormData) => {
+    const buildPayload = (formData: SavingsGoalFormData): SavingsGoalPayload => {
         const targetAmount = Number(formData.targetAmount)
         if (isNaN(targetAmount) || targetAmount <= 0) {
             throw new Error('Target amount must be a positive number')
         }
 
-        const payload: Record<string, unknown> = {
+        const payload: SavingsGoalPayload = {
             name: formData.name.trim(),
             targetAmount,
             currency: formData.currency,
             targetDate: formData.targetDate || null,
             accountId: formData.accountId || null,
+            autoContribution: { enabled: false, amount: 0, interval: 'monthly' },
         }
 
         if (formData.autoContributionEnabled) {
@@ -223,8 +218,6 @@ const SavingsGoals = () => {
                         ? Number(formData.autoContributionDayOfMonth)
                         : undefined,
             }
-        } else {
-            payload.autoContribution = { enabled: false, amount: 0, interval: 'monthly' }
         }
 
         return payload
@@ -271,10 +264,7 @@ const SavingsGoals = () => {
         setHistoryOpen(true)
         setHistoryLoading(true)
         try {
-            const response = await axiosInstance.get<ApiResponse<SavingsGoalContribution[]>>(
-                API_PATHS.SAVINGS_GOALS.CONTRIBUTIONS(goal._id)
-            )
-            setContributions(unwrapApiData(response))
+            setContributions(await fetchContributionHistory(goal._id))
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Failed to load contribution history'))
             setContributions([])
@@ -294,7 +284,7 @@ const SavingsGoals = () => {
         setSubmitting(true)
         try {
             const payload = buildPayload(form)
-            await axiosInstance.post(API_PATHS.SAVINGS_GOALS.CREATE, payload)
+            await createGoal(payload)
             toast.success('Savings goal created')
             closeCreate()
             await refetch()
@@ -314,7 +304,7 @@ const SavingsGoals = () => {
         setSubmitting(true)
         try {
             const payload = buildPayload(form)
-            await axiosInstance.put(API_PATHS.SAVINGS_GOALS.UPDATE(editingGoal._id), payload)
+            await updateGoal(editingGoal, payload)
             toast.success('Savings goal updated')
             closeEdit()
             await refetch()
@@ -339,10 +329,7 @@ const SavingsGoals = () => {
 
         setContributing(true)
         try {
-            await axiosInstance.post<ApiResponse<ContributeResponse['data']>>(
-                API_PATHS.SAVINGS_GOALS.CONTRIBUTE(actionGoal._id),
-                { amount, note: contributeNote.trim() || undefined }
-            )
+            await contribute(actionGoal, amount, contributeNote.trim() || undefined)
             toast.success('Contribution recorded')
             closeContribute()
             await refetch()
@@ -356,7 +343,7 @@ const SavingsGoals = () => {
     const handleAutoContribute = async (goal: SavingsGoal) => {
         setAutoContributing(true)
         try {
-            await axiosInstance.post(API_PATHS.SAVINGS_GOALS.AUTO_CONTRIBUTE(goal._id))
+            await processAutoContribution(goal)
             toast.success('Automatic contribution processed')
             await refetch()
         } catch (err) {
@@ -372,13 +359,13 @@ const SavingsGoals = () => {
         setActionLoading(true)
         try {
             if (confirmAction === 'archive') {
-                await axiosInstance.delete(API_PATHS.SAVINGS_GOALS.DELETE(actionGoal._id))
+                await archiveGoal(actionGoal)
                 toast.success('Savings goal archived')
             } else if (confirmAction === 'complete') {
-                await axiosInstance.post(API_PATHS.SAVINGS_GOALS.COMPLETE(actionGoal._id))
+                await complete(actionGoal)
                 toast.success('Savings goal marked complete')
             } else if (confirmAction === 'pause') {
-                await axiosInstance.post(API_PATHS.SAVINGS_GOALS.PAUSE(actionGoal._id))
+                await pause(actionGoal)
                 toast.success('Savings goal paused')
             }
             setConfirmAction(null)
@@ -394,7 +381,7 @@ const SavingsGoals = () => {
     const handleResume = async (goal: SavingsGoal) => {
         setActionLoading(true)
         try {
-            await axiosInstance.post(API_PATHS.SAVINGS_GOALS.RESUME(goal._id))
+            await resume(goal)
             toast.success('Savings goal resumed')
             await refetch()
         } catch (err) {
@@ -670,9 +657,10 @@ const SavingsGoals = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => openContribute(goal)}
-                                                        className="p-1.5 text-fg-muted hover:text-accent transition-colors"
+                                                        disabled={actionsBlocked}
+                                                        className="p-1.5 text-fg-muted hover:text-accent transition-colors disabled:opacity-50"
                                                         aria-label="Add contribution"
-                                                        title="Add contribution"
+                                                        title={actionsBlocked ? 'Requires an internet connection' : 'Add contribution'}
                                                     >
                                                         <IoCash size={16} />
                                                     </button>
@@ -683,10 +671,10 @@ const SavingsGoals = () => {
                                                         <button
                                                             type="button"
                                                             onClick={() => void handleAutoContribute(goal)}
-                                                            disabled={autoContributing}
+                                                            disabled={autoContributing || actionsBlocked}
                                                             className="p-1.5 text-fg-muted hover:text-violet-400 transition-colors disabled:opacity-50"
                                                             aria-label="Process auto contribution"
-                                                            title="Process auto contribution"
+                                                            title={actionsBlocked ? 'Requires an internet connection' : 'Process auto contribution'}
                                                         >
                                                             <IoRefresh size={16} />
                                                         </button>
@@ -715,9 +703,10 @@ const SavingsGoals = () => {
                                                             setActionGoal(goal)
                                                             setConfirmAction('pause')
                                                         }}
-                                                        className="p-1.5 text-fg-muted hover:text-warning transition-colors"
+                                                        disabled={actionsBlocked}
+                                                        className="p-1.5 text-fg-muted hover:text-warning transition-colors disabled:opacity-50"
                                                         aria-label="Pause goal"
-                                                        title="Pause"
+                                                        title={actionsBlocked ? 'Requires an internet connection' : 'Pause'}
                                                     >
                                                         <IoPause size={16} />
                                                     </button>
@@ -726,10 +715,10 @@ const SavingsGoals = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => void handleResume(goal)}
-                                                        disabled={actionLoading}
+                                                        disabled={actionLoading || actionsBlocked}
                                                         className="p-1.5 text-fg-muted hover:text-accent transition-colors disabled:opacity-50"
                                                         aria-label="Resume goal"
-                                                        title="Resume"
+                                                        title={actionsBlocked ? 'Requires an internet connection' : 'Resume'}
                                                     >
                                                         <IoPlay size={16} />
                                                     </button>
@@ -741,9 +730,10 @@ const SavingsGoals = () => {
                                                             setActionGoal(goal)
                                                             setConfirmAction('complete')
                                                         }}
-                                                        className="p-1.5 text-fg-muted hover:text-income transition-colors"
+                                                        disabled={actionsBlocked}
+                                                        className="p-1.5 text-fg-muted hover:text-income transition-colors disabled:opacity-50"
                                                         aria-label="Mark complete"
-                                                        title="Mark complete"
+                                                        title={actionsBlocked ? 'Requires an internet connection' : 'Mark complete'}
                                                     >
                                                         <IoCheckmarkCircle size={16} />
                                                     </button>
@@ -774,6 +764,10 @@ const SavingsGoals = () => {
                                             </button>
                                         )}
                                     </div>
+
+                                    {actionsBlocked && view === 'active' && (
+                                        <OfflineNotice message="Contribution, pause, resume and complete actions require an internet connection." />
+                                    )}
 
                                     {progress ? (
                                         <>
@@ -852,6 +846,7 @@ const SavingsGoals = () => {
                             Contributing to <span className="text-fg">{actionGoal.name}</span>
                         </p>
                     )}
+                    {actionsBlocked && <OfflineNotice message="Adding a contribution requires an internet connection." />}
                     <FormField
                         label="Amount"
                         type="number"
@@ -881,7 +876,7 @@ const SavingsGoals = () => {
                         </button>
                         <button
                             type="submit"
-                            disabled={contributing}
+                            disabled={contributing || actionsBlocked}
                             className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
                         >
                             {contributing ? 'Saving...' : 'Add contribution'}

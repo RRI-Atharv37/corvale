@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import app from '../app'
-import { authHeader, createTestIncome, registerUser } from './helpers'
+import { authHeader, createPostedTransaction, registerUser } from './helpers'
 
 async function createTestAccount(
     token: string,
@@ -25,8 +25,8 @@ async function createTestAccount(
 
 describe('Account-primary balances', () => {
     it('uses legacy formulas when user has no accounts', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 1000)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 1000)
 
         const res = await request(app)
             .get('/api/v1/saver/details')
@@ -44,8 +44,8 @@ describe('Account-primary balances', () => {
     })
 
     it('derives net worth and spendable from account balances when accounts exist', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 5000)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 5000)
         await createTestAccount(token, { name: 'Checking', type: 'checking', openingBalance: 3000 })
         await createTestAccount(token, { name: 'Savings', type: 'savings', openingBalance: 2000 })
 
@@ -86,8 +86,8 @@ describe('Account-primary balances', () => {
     })
 
     it('limits saver deposits to account-based spendable balance, not income totals', async () => {
-        const { token } = await registerUser(app)
-        await createTestIncome(app, token, 10000)
+        const { token, userId } = await registerUser(app)
+        await createPostedTransaction(userId, 'income', 10000)
         await createTestAccount(token, { name: 'Checking', type: 'checking', openingBalance: 500 })
 
         const res = await request(app)

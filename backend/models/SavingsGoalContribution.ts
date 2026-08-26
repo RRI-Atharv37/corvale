@@ -31,6 +31,7 @@ const SavingsGoalContributionSchema = new Schema<ISavingsGoalContribution>(
 
 SavingsGoalContributionSchema.index({ goalId: 1, contributedAt: -1 })
 SavingsGoalContributionSchema.index({ userId: 1, goalId: 1, contributedAt: -1 })
+SavingsGoalContributionSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 
 applyRowLevelSecurity(SavingsGoalContributionSchema)
 

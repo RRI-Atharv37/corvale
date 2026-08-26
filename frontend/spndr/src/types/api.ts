@@ -17,6 +17,7 @@ export interface User {
     pageSize?: number
     notificationPreferences?: NotificationPreferences
     exchangeRates?: Record<string, number>
+    isEmailVerified?: boolean
 }
 
 export type ExchangeRateMap = Record<string, number>
@@ -53,6 +54,7 @@ export interface NotificationListPayload {
 export interface AuthPayload {
     token: string
     user: User
+    offlineGrant?: string
 }
 
 export type WorkspaceRole = 'owner' | 'editor' | 'viewer'

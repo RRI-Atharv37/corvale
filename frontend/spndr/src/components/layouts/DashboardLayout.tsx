@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import React, { Suspense, useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
     FiHome,
     FiList,
@@ -23,8 +23,11 @@ import {
     FiLayers,
     FiTrendingDown,
     FiCompass,
+    FiDownload,
 } from 'react-icons/fi'
 import OnboardingWizard, { OnboardingWizardHandle } from '../onboarding/OnboardingWizard'
+import PinSetupPrompt from '../onboarding/PinSetupPrompt'
+import PinSettings from '../settings/PinSettings'
 import WorkspaceSwitcher from '../workspaces/WorkspaceSwitcher'
 import { useUser } from '../../hooks/useUser'
 import toast from 'react-hot-toast'
@@ -44,11 +47,17 @@ import type { ApiResponse, User } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
 import NotificationCenter from '../notifications/NotificationCenter'
+import LoadingState from '../ui/LoadingState'
 import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
 import BackupRestoreSettings from '../settings/BackupRestoreSettings'
+import DeleteAccountSettings from '../settings/DeleteAccountSettings'
 import ExchangeRatesSettings from '../settings/ExchangeRatesSettings'
+import SyncSettings from '../settings/SyncSettings'
+import SyncStatusBadge from '../sync/SyncStatusBadge'
+import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
+import { startSyncEngine, syncNow } from '../../sync/syncEngine'
 
-const DOCS_URL = 'http://localhost:5174'
+const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
 
 interface NavItem {
     to: string
@@ -92,6 +101,13 @@ const DashboardLayout: React.FC = () => {
     const [savingNotifications, setSavingNotifications] = useState(false)
     const [savingDisplay, setSavingDisplay] = useState(false)
     const onboardingRef = useRef<OnboardingWizardHandle>(null)
+
+    useEffect(() => {
+        if (!isLocalFirstEnabled()) return
+        const stop = startSyncEngine()
+        void syncNow()
+        return stop
+    }, [])
 
     const handleReplayOnboarding = () => {
         setSettingsOpen(false)
@@ -306,6 +322,7 @@ const DashboardLayout: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                        {isLocalFirstEnabled() && <SyncStatusBadge />}
                         <NotificationCenter />
                         <a
                             href={DOCS_URL}
@@ -320,7 +337,9 @@ const DashboardLayout: React.FC = () => {
                 </header>
 
                 <main className="px-4 py-6 lg:px-8 lg:py-8 max-w-6xl">
-                    <Outlet />
+                    <Suspense fallback={<LoadingState message="Loading page..." />}>
+                        <Outlet />
+                    </Suspense>
                 </main>
             </div>
 
@@ -406,10 +425,20 @@ const DashboardLayout: React.FC = () => {
                     <TransactionTemplatesSettings />
                     <ExchangeRatesSettings />
                     <BackupRestoreSettings />
+                    {isLocalFirstEnabled() && <SyncSettings />}
+                    {isLocalFirstEnabled() && <PinSettings />}
 
                     <div>
                         <p className="section-label mb-3">Account</p>
                         <div className="space-y-2">
+                            <Link
+                                to="/download"
+                                onClick={() => setSettingsOpen(false)}
+                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-muted hover:text-accent hover:bg-accent-subtle transition-colors"
+                            >
+                                <FiDownload size={18} />
+                                Get the desktop app
+                            </Link>
                             <button
                                 type="button"
                                 onClick={handleReplayOnboarding}
@@ -436,10 +465,13 @@ const DashboardLayout: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    <DeleteAccountSettings />
                 </div>
             </Modal>
 
             <OnboardingWizard ref={onboardingRef} />
+            <PinSetupPrompt />
         </div>
     )
 }

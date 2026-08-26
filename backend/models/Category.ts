@@ -10,6 +10,8 @@ export interface ICategory extends Document {
     isDefault: boolean
     isArchived: boolean
     sortOrder: number
+    createdAt: Date
+    updatedAt: Date
 }
 
 const CategorySchema = new Schema<ICategory>(
@@ -40,6 +42,7 @@ CategorySchema.index(
     { unique: true, partialFilterExpression: { isArchived: false, userId: { $type: 'objectId' } } }
 )
 CategorySchema.index({ userId: 1, name: 1 }, { unique: true, partialFilterExpression: { userId: null } })
+CategorySchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 
 const Category: Model<ICategory> = mongoose.model<ICategory>('Category', CategorySchema)
 export default Category
