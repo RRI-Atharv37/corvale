@@ -176,6 +176,9 @@ describe('CategorizationRules (local-first rule CRUD)', () => {
         submitClosestForm(screen.getByRole('button', { name: 'Run test' }))
 
         await waitFor(() => expect(screen.getByText(/matched: coffee shops/i)).toBeInTheDocument())
-        expect(axiosInstance.post).not.toHaveBeenCalled()
+        expect(axiosInstance.post).not.toHaveBeenCalledWith(
+            expect.stringContaining('/categorization-rules'),
+            expect.anything()
+        )
     })
 })

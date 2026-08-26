@@ -88,7 +88,7 @@ describe('offline boot: cached user rendering', () => {
         )
 
         await waitFor(() => {
-            expect(screen.queryByTestId('init')).not.toBeInTheDocument()
+            expect(screen.getByTestId('dashboard')).toBeInTheDocument()
         })
 
         expect(screen.getByTestId('dashboard')).toHaveTextContent(`Welcome ${mockUser.fullName}`)
