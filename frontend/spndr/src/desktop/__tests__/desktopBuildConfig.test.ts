@@ -40,7 +40,11 @@ describe('Desktop build sets VITE_LOCAL_FIRST=true (D4)', () => {
 
     it('the plain web env files still default VITE_LOCAL_FIRST to false', () => {
         expect(readSource('.env.example')).toMatch(/^VITE_LOCAL_FIRST=false$/m)
-        expect(readSource('.env')).toMatch(/^VITE_LOCAL_FIRST=false$/m)
+
+        // .env is gitignored (local-only) and won't exist in a fresh checkout such as CI.
+        if (fs.existsSync(resolve(frontendRoot, '.env'))) {
+            expect(readSource('.env')).toMatch(/^VITE_LOCAL_FIRST=false$/m)
+        }
     })
 
     it('plain web scripts (dev/build) are untouched and do not force desktop mode', () => {

@@ -12,8 +12,11 @@ import { isMasterCategory, ensureMasterCategoriesSeeded } from './categorySeed'
 import { roundMoney } from './balanceUtils'
 import {
     getBalanceDeltaMajor,
+    getBalanceDeltaMinor,
     getTransferInDeltaMajor,
+    getTransferInDeltaMinor,
     getTransferOutDeltaMajor,
+    getTransferOutDeltaMinor,
 } from '../../shared/src/money'
 import { assertWorkspaceMembership, validateResourceAccess } from './workspaceUtils'
 import { WorkspaceRole } from '../models/Workspace'
@@ -205,16 +208,43 @@ export const validateSplitInputs = (splits: SplitInput[], parentAmountMinor: num
     return normalized
 }
 
+/**
+ * Adds a signed delta to an account's currentBalance, branching on
+ * balanceUnit (Sprint C5): integer minor-unit math for a migrated account,
+ * the pre-existing major-unit float math (with roundMoney) otherwise.
+ */
+const addDeltaToBalance = (
+    account: IAccount,
+    amountMinor: number,
+    sign: 1 | -1,
+    deltaMinorFn: (amountMinor: number, accountType: IAccount['type']) => number,
+    deltaMajorFn: (amountMinor: number, accountType: IAccount['type']) => number
+): number => {
+    if (account.balanceUnit === 'minor') {
+        return account.currentBalance + sign * deltaMinorFn(amountMinor, account.type)
+    }
+    return roundMoney(account.currentBalance + sign * deltaMajorFn(amountMinor, account.type))
+}
+
 export const applyTransferToAccounts = async (
     fromAccount: IAccount,
     toAccount: IAccount,
     amountMinor: number
 ): Promise<void> => {
-    const fromDelta = getTransferOutDeltaMajor(amountMinor, fromAccount.type)
-    const toDelta = getTransferInDeltaMajor(amountMinor, toAccount.type)
-
-    fromAccount.currentBalance = roundMoney(fromAccount.currentBalance + fromDelta)
-    toAccount.currentBalance = roundMoney(toAccount.currentBalance + toDelta)
+    fromAccount.currentBalance = addDeltaToBalance(
+        fromAccount,
+        amountMinor,
+        1,
+        getTransferOutDeltaMinor,
+        getTransferOutDeltaMajor
+    )
+    toAccount.currentBalance = addDeltaToBalance(
+        toAccount,
+        amountMinor,
+        1,
+        getTransferInDeltaMinor,
+        getTransferInDeltaMajor
+    )
 
     await fromAccount.save()
     await toAccount.save()
@@ -225,11 +255,20 @@ export const reverseTransferOnAccounts = async (
     toAccount: IAccount,
     amountMinor: number
 ): Promise<void> => {
-    const fromDelta = getTransferOutDeltaMajor(amountMinor, fromAccount.type)
-    const toDelta = getTransferInDeltaMajor(amountMinor, toAccount.type)
-
-    fromAccount.currentBalance = roundMoney(fromAccount.currentBalance - fromDelta)
-    toAccount.currentBalance = roundMoney(toAccount.currentBalance - toDelta)
+    fromAccount.currentBalance = addDeltaToBalance(
+        fromAccount,
+        amountMinor,
+        -1,
+        getTransferOutDeltaMinor,
+        getTransferOutDeltaMajor
+    )
+    toAccount.currentBalance = addDeltaToBalance(
+        toAccount,
+        amountMinor,
+        -1,
+        getTransferInDeltaMinor,
+        getTransferInDeltaMajor
+    )
 
     await fromAccount.save()
     await toAccount.save()
@@ -303,8 +342,10 @@ export const applyTransactionToAccount = async (
     type: TransactionType,
     amountMinor: number
 ): Promise<void> => {
-    const delta = getBalanceDeltaMajor(type, amountMinor, account.type)
-    account.currentBalance = roundMoney(account.currentBalance + delta)
+    account.currentBalance =
+        account.balanceUnit === 'minor'
+            ? account.currentBalance + getBalanceDeltaMinor(type, amountMinor, account.type)
+            : roundMoney(account.currentBalance + getBalanceDeltaMajor(type, amountMinor, account.type))
     await account.save()
 }
 
@@ -313,8 +354,10 @@ export const reverseTransactionOnAccount = async (
     type: TransactionType,
     amountMinor: number
 ): Promise<void> => {
-    const delta = getBalanceDeltaMajor(type, amountMinor, account.type)
-    account.currentBalance = roundMoney(account.currentBalance - delta)
+    account.currentBalance =
+        account.balanceUnit === 'minor'
+            ? account.currentBalance - getBalanceDeltaMinor(type, amountMinor, account.type)
+            : roundMoney(account.currentBalance - getBalanceDeltaMajor(type, amountMinor, account.type))
     await account.save()
 }
 

@@ -25,6 +25,8 @@
     "migrate:transactions:dry-run": "ts-node scripts/migrateIncomeExpenseToTransactions.ts --dry-run",
     "migrate:email-verification": "ts-node scripts/backfillEmailVerification.ts",
     "migrate:email-verification:dry-run": "ts-node scripts/backfillEmailVerification.ts --dry-run",
+    "migrate:account-balances": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts",
+    "migrate:account-balances:dry-run": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts --dry-run",
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts"
   },
   "dependencies": {

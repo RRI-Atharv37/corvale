@@ -510,6 +510,10 @@ export const restoreUserBackup = async (
             name: record.name,
             type: record.type,
             currency: record.currency,
+            // balanceUnit round-trips whatever unit the exported account was actually stored
+            // in (Sprint C5) — a backup predating that field has none, so it correctly
+            // defaults to 'major', matching what a pre-migration account's raw numbers mean.
+            balanceUnit: record.balanceUnit === 'minor' ? 'minor' : 'major',
             openingBalance: record.openingBalance ?? 0,
             currentBalance: record.currentBalance ?? record.openingBalance ?? 0,
             isDefault: false,

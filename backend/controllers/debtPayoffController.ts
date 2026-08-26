@@ -37,9 +37,16 @@ const buildDebtInput = (account: IAccount): DebtInput => {
         )
     }
 
+    // account.currentBalance is already minor units for a migrated (balanceUnit: 'minor')
+    // account (Sprint C5) — converting it again here would double-scale by 100x.
+    const balanceMinor =
+        account.balanceUnit === 'minor'
+            ? Math.abs(account.currentBalance)
+            : toMinorUnits(Math.abs(account.currentBalance))
+
     return {
         accountId: account._id.toString(),
-        balanceMinor: toMinorUnits(Math.abs(account.currentBalance)),
+        balanceMinor,
         interestRate: account.interestRate,
         minimumPaymentMinor: toMinorUnits(account.minimumPayment),
     }

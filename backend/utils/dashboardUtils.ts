@@ -420,7 +420,9 @@ export const computeNetWorthTrend = async (
     let credit = 0
 
     for (const account of accounts) {
-        const balance = roundMoney(account.currentBalance)
+        const balance = roundMoney(
+            account.balanceUnit === 'minor' ? fromMinorUnits(account.currentBalance) : account.currentBalance
+        )
         if (account.type === 'credit') {
             credit = roundMoney(credit + balance)
         } else if (account.type === 'savings') {

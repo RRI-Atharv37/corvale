@@ -130,7 +130,9 @@ const projectAccountForecast = async (
 
     changes.sort((a, b) => a.date.localeCompare(b.date))
 
-    let runningBalance = account.currentBalance
+    const startingBalance =
+        account.balanceUnit === 'minor' ? fromMinorUnits(account.currentBalance) : account.currentBalance
+    let runningBalance = startingBalance
     const lowBalanceWarnings: LowBalanceWarning[] = []
 
     for (const change of changes) {
@@ -144,7 +146,7 @@ const projectAccountForecast = async (
         accountId: account._id.toString(),
         accountName: account.name,
         currency: account.currency,
-        startingBalance: account.currentBalance,
+        startingBalance,
         projectedEndingBalance: runningBalance,
         projectedChanges: changes,
         lowBalanceWarnings,
