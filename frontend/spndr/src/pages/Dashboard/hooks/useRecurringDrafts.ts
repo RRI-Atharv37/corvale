@@ -12,9 +12,11 @@ export interface UseRecurringDraftsResult {
     draftsLoading: boolean
     draftsError: string | null
     generatingDrafts: boolean
+    generatingRuleId: string | null
     draftActionId: string | null
     fetchDrafts: () => Promise<void>
     generateAndRefreshDrafts: () => Promise<void>
+    generateDraftsForRule: (ruleId: string) => Promise<void>
     confirmDraft: (draft: Transaction) => Promise<void>
     dismissDraft: (draft: Transaction) => Promise<void>
 }
@@ -35,6 +37,7 @@ export const useRecurringDrafts = (onRulesChanged?: () => Promise<void>): UseRec
     const [draftsLoading, setDraftsLoading] = useState(false)
     const [draftsError, setDraftsError] = useState<string | null>(null)
     const [generatingDrafts, setGeneratingDrafts] = useState(false)
+    const [generatingRuleId, setGeneratingRuleId] = useState<string | null>(null)
     const [draftActionId, setDraftActionId] = useState<string | null>(null)
 
     const fetchDrafts = useCallback(async () => {
@@ -63,6 +66,23 @@ export const useRecurringDrafts = (onRulesChanged?: () => Promise<void>): UseRec
             setGeneratingDrafts(false)
         }
     }, [fetchDrafts, onRulesChanged])
+
+    const generateDraftsForRule = useCallback(
+        async (ruleId: string) => {
+            setGeneratingRuleId(ruleId)
+            try {
+                await axiosInstance.post(API_PATHS.RECURRING_RULES.GENERATE_DRAFTS_FOR_RULE(ruleId))
+                if (isLocalFirstEnabled()) {
+                    await syncNow()
+                }
+                await fetchDrafts()
+                await onRulesChanged?.()
+            } finally {
+                setGeneratingRuleId(null)
+            }
+        },
+        [fetchDrafts, onRulesChanged]
+    )
 
     const confirmDraft = useCallback(
         async (draft: Transaction) => {
@@ -101,9 +121,11 @@ export const useRecurringDrafts = (onRulesChanged?: () => Promise<void>): UseRec
         draftsLoading,
         draftsError,
         generatingDrafts,
+        generatingRuleId,
         draftActionId,
         fetchDrafts,
         generateAndRefreshDrafts,
+        generateDraftsForRule,
         confirmDraft,
         dismissDraft,
     }

@@ -52,11 +52,14 @@ export interface TransactionsPageData {
     mode: FetchMode
 }
 
+export type StatusFilter = '' | 'posted' | 'draft'
+
 export interface UseTransactionsDataParams {
     page: number
     setPage: (page: number) => void
     pageSize: number
     typeFilter: TypeFilter
+    statusFilter: StatusFilter
     tagFilter: string[]
     searchQuery: string
     dateFilterActive: boolean
@@ -83,6 +86,7 @@ export interface UseTransactionsDataResult {
     createTransaction: (payload: Record<string, unknown>) => Promise<Transaction | null>
     updateTransaction: (transactionId: string, payload: Record<string, unknown>) => Promise<void>
     deleteTransaction: (transaction: Transaction) => Promise<void>
+    duplicateTransaction: (transaction: Transaction) => Promise<Transaction | null>
     createTransfer: (payload: Record<string, unknown>) => Promise<void>
     bulkDeleteTransactions: (transactionIds: string[]) => Promise<{ message: string }>
     bulkChangeCategory: (transactionIds: string[], categoryId: string) => Promise<{ message: string }>
@@ -155,6 +159,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
         setPage,
         pageSize,
         typeFilter,
+        statusFilter,
         tagFilter,
         searchQuery,
         dateFilterActive,
@@ -181,6 +186,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
                 ...workspaceParams,
             }
             if (typeFilter) sharedParams.type = typeFilter
+            if (statusFilter) sharedParams.status = statusFilter
             if (tagFilter.length > 0) sharedParams.tags = tagFilter.join(',')
 
             if (searchQuery.trim()) {
@@ -213,6 +219,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
         page,
         pageSize,
         typeFilter,
+        statusFilter,
         searchQuery,
         dateFilterActive,
         startDate,
@@ -231,6 +238,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
         async (db: LocalDb): Promise<LocalTransactionRecord[]> => {
             const filters: TransactionListFilters = {}
             if (typeFilter) filters.type = typeFilter
+            if (statusFilter) filters.status = statusFilter
             if (tagFilter.length > 0) filters.tags = tagFilter
 
             let transactions: LocalTransaction[]
@@ -251,7 +259,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
 
             return scoped.map((tx) => ({ ...tx, currency: currencyByAccountId.get(tx.accountId) ?? 'USD' }))
         },
-        [typeFilter, tagFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder, timezone, activeWorkspaceId]
+        [typeFilter, statusFilter, tagFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder, timezone, activeWorkspaceId]
     )
 
     const localQuery = useLocalQuery<LocalTransactionRecord[]>('transactions', localListFetcher)
@@ -266,6 +274,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
     }, [
         localFirst,
         typeFilter,
+        statusFilter,
         tagFilter,
         searchQuery,
         dateFilterActive,
@@ -479,6 +488,41 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
         tableInvalidationBus.publish('accounts')
     }, [])
 
+    /** Mirrors the server's `duplicateTransaction` controller: same editability/split-parent
+     * rejections (`assertEditableTransaction` + the split-children check), same field carry-over
+     * (`duplicateTransactionFields`) with a fresh date, same balance side effect. */
+    const duplicateTransactionLocal = useCallback(async (transaction: Transaction): Promise<Transaction | null> => {
+        const db = await getLocalDb()
+
+        const created = await db.transaction(async (tx): Promise<LocalTransaction> => {
+            const existing = await transactionsRepo.findById(tx, transaction._id)
+            if (!existing) throw new Error('Transaction not found')
+            if (existing.type === 'transfer') throw new Error('Transfer duplication is not available')
+            if (existing.splitTransactionId) throw new Error('Split lines cannot be duplicated directly')
+
+            const all = await transactionsRepo.list(tx)
+            const hasSplitChildren = all.some((candidate) => candidate.splitTransactionId === existing._id)
+            if (hasSplitChildren) throw new Error('Split transactions cannot be duplicated directly')
+
+            const nowIso = new Date().toISOString()
+            const duplicate: LocalTransaction = {
+                ...existing,
+                _id: generateLocalObjectId(),
+                date: nowIso,
+                createdAt: nowIso,
+                updatedAt: nowIso,
+            }
+
+            await transactionsRepo.create(tx, duplicate)
+            await persistAccountBalance(tx, duplicate.accountId)
+            return duplicate
+        })
+
+        tableInvalidationBus.publish('transactions')
+        tableInvalidationBus.publish('accounts')
+        return toApiTransaction({ ...created, currency: transaction.currency }, transaction.currency)
+    }, [])
+
     const createTransferLocal = useCallback(
         async (payload: Record<string, unknown>): Promise<void> => {
             if (!user) throw new Error('Not authenticated')
@@ -596,6 +640,12 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
             deleteTransaction: async (transaction) => {
                 await axiosInstance.delete(API_PATHS.TRANSACTIONS.DELETE(transaction._id))
             },
+            duplicateTransaction: async (transaction) => {
+                const response = await axiosInstance.post<ApiResponse<Transaction>>(
+                    API_PATHS.TRANSACTIONS.DUPLICATE(transaction._id)
+                )
+                return unwrapApiData(response)
+            },
             createTransfer: async (payload) => {
                 await axiosInstance.post(API_PATHS.TRANSACTIONS.TRANSFER, payload)
             },
@@ -632,6 +682,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
         createTransaction: createTransactionLocal,
         updateTransaction: updateTransactionLocal,
         deleteTransaction: deleteTransactionLocal,
+        duplicateTransaction: duplicateTransactionLocal,
         createTransfer: createTransferLocal,
         bulkDeleteTransactions: bulkDeleteLocal,
         bulkChangeCategory: bulkChangeCategoryLocal,

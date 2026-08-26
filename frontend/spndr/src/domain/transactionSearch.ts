@@ -9,6 +9,7 @@ const categoriesRepo = new Repository<LocalCategory>('categories')
 
 export interface TransactionListFilters {
   type?: 'income' | 'expense' | 'transfer'
+  status?: 'posted' | 'draft'
   clearedStatus?: 'cleared' | 'pending'
   accountId?: string
   tags?: string[]
@@ -22,6 +23,7 @@ const applyListFilters = (transactions: LocalTransaction[], filters: Transaction
   transactions
     .filter((tx) => tx.splitTransactionId === null)
     .filter((tx) => (filters.type ? tx.type === filters.type : true))
+    .filter((tx) => (filters.status ? tx.status === filters.status : true))
     .filter((tx) => (filters.clearedStatus ? tx.clearedStatus === filters.clearedStatus : true))
     .filter((tx) => (filters.accountId ? tx.accountId === filters.accountId : true))
     .filter((tx) =>

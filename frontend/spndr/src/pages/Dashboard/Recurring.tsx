@@ -165,9 +165,11 @@ const Recurring = () => {
         draftsLoading,
         draftsError,
         generatingDrafts,
+        generatingRuleId,
         draftActionId,
         fetchDrafts,
         generateAndRefreshDrafts,
+        generateDraftsForRule,
         confirmDraft,
         dismissDraft,
     } = useRecurringDrafts(refetch)
@@ -180,6 +182,18 @@ const Recurring = () => {
             toast.error(getApiErrorMessage(err, 'Failed to generate drafts'))
         }
     }, [generateAndRefreshDrafts])
+
+    const handleGenerateDraftsForRule = useCallback(
+        async (rule: RecurringRule) => {
+            try {
+                await generateDraftsForRule(rule._id)
+                toast.success('Drafts generated')
+            } catch (err) {
+                toast.error(getApiErrorMessage(err, 'Failed to generate drafts'))
+            }
+        },
+        [generateDraftsForRule]
+    )
 
     useEffect(() => {
         void fetchDrafts()
@@ -702,6 +716,21 @@ const Recurring = () => {
                                                                 <IoPlay size={16} />
                                                             )}
                                                         </button>
+                                                        {rule.isActive && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => void handleGenerateDraftsForRule(rule)}
+                                                                disabled={generatingRuleId === rule._id || !online}
+                                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors disabled:opacity-50"
+                                                                aria-label="Generate drafts for rule"
+                                                                title={online ? 'Generate drafts' : 'Requires a connection'}
+                                                            >
+                                                                <IoRefresh
+                                                                    size={16}
+                                                                    className={generatingRuleId === rule._id ? 'animate-spin' : ''}
+                                                                />
+                                                            </button>
+                                                        )}
                                                         <button
                                                             type="button"
                                                             onClick={() => openEdit(rule)}

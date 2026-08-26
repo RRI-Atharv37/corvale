@@ -186,4 +186,32 @@ describe('Recurring (local-first rule CRUD)', () => {
 
         await waitFor(() => expect(screen.getByText(/you are offline/i)).toBeInTheDocument())
     })
+
+    // X4: per-rule "generate drafts" - draft generation stays server-authoritative (see the file
+    // header note), so this is exercised online against the mocked axios client rather than the
+    // local store.
+    it('disables the per-rule generate-drafts action while offline', async () => {
+        await seedFixtures()
+
+        renderWithProviders(<Recurring />, { route: '/recurring' })
+        await waitFor(() => expect(screen.getByText('Netflix')).toBeInTheDocument())
+
+        expect(screen.getByRole('button', { name: 'Generate drafts for rule' })).toBeDisabled()
+    })
+
+    it('generates drafts for a single rule via the per-rule action when online', async () => {
+        await seedFixtures()
+        setOnline(true)
+        vi.mocked(axiosInstance.post).mockResolvedValue({ data: { success: true, data: [] } })
+        const user = userEvent.setup()
+
+        renderWithProviders(<Recurring />, { route: '/recurring' })
+        await waitFor(() => expect(screen.getByText('Netflix')).toBeInTheDocument())
+
+        await user.click(screen.getByRole('button', { name: 'Generate drafts for rule' }))
+
+        await waitFor(() =>
+            expect(axiosInstance.post).toHaveBeenCalledWith('/recurring-rules/rule-1/generate-drafts')
+        )
+    })
 })

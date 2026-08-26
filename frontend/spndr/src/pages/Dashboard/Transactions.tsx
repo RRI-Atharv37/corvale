@@ -1,6 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { IoAdd, IoDownload, IoPencil, IoSearch, IoSwapHorizontal, IoTrash, IoCloudUploadOutline } from 'react-icons/io5'
+import {
+    IoAdd,
+    IoDownload,
+    IoPencil,
+    IoSearch,
+    IoSwapHorizontal,
+    IoTrash,
+    IoCloudUploadOutline,
+    IoCopyOutline,
+} from 'react-icons/io5'
 import { Link, useSearchParams } from 'react-router-dom'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
@@ -20,7 +29,13 @@ import { useUser } from '../../hooks/useUser'
 import { useAccountsData } from './hooks/useAccountsData'
 import { useCategoriesData } from './hooks/useCategoriesData'
 import { useTagsData } from './hooks/useTagsData'
-import { useTransactionsData, type SortField, type SortOrder, type TypeFilter } from './hooks/useTransactionsData'
+import {
+    useTransactionsData,
+    type SortField,
+    type SortOrder,
+    type StatusFilter,
+    type TypeFilter,
+} from './hooks/useTransactionsData'
 import type {
     ApiResponse,
     Receipt,
@@ -81,6 +96,12 @@ const TYPE_TABS: { value: TypeFilter; label: string }[] = [
     { value: 'transfer', label: 'Transfer' },
 ]
 
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+    { value: '', label: 'All' },
+    { value: 'posted', label: 'Posted' },
+    { value: 'draft', label: 'Draft' },
+]
+
 const SORT_OPTIONS: { value: SortField; label: string }[] = [
     { value: 'date', label: 'Date' },
     { value: 'amount', label: 'Amount' },
@@ -106,6 +127,7 @@ const Transactions = () => {
             ? initialType
             : ''
     )
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('')
     const [searchInput, setSearchInput] = useState('')
     const [searchQuery, setSearchQuery] = useState('')
     const [startDate, setStartDate] = useState('')
@@ -124,6 +146,7 @@ const Transactions = () => {
     const [transferSubmitting, setTransferSubmitting] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
     const [deleting, setDeleting] = useState(false)
+    const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
     const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false)
@@ -223,6 +246,7 @@ const Transactions = () => {
         createTransaction,
         updateTransaction,
         deleteTransaction,
+        duplicateTransaction,
         createTransfer,
         bulkDeleteTransactions,
         bulkChangeCategory,
@@ -231,6 +255,7 @@ const Transactions = () => {
         setPage,
         pageSize,
         typeFilter,
+        statusFilter,
         tagFilter,
         searchQuery,
         dateFilterActive,
@@ -339,6 +364,12 @@ const Transactions = () => {
         setEndDate('')
         setDateFilterActive(false)
         setTagFilter([])
+        setStatusFilter('')
+        setPage(1)
+    }
+
+    const setStatusFilterWithPage = (value: StatusFilter) => {
+        setStatusFilter(value)
         setPage(1)
     }
 
@@ -565,6 +596,19 @@ const Transactions = () => {
         }
     }
 
+    const handleDuplicate = async (transaction: Transaction) => {
+        setDuplicatingId(transaction._id)
+        try {
+            await duplicateTransaction(transaction)
+            toast.success('Transaction duplicated')
+            await refetch()
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, 'Failed to duplicate transaction'))
+        } finally {
+            setDuplicatingId(null)
+        }
+    }
+
     const toggleSelected = (transactionId: string) => {
         setSelectedIds((current) =>
             current.includes(transactionId)
@@ -632,8 +676,8 @@ const Transactions = () => {
         )
     }, [data, selectedIds])
 
-    const hasActiveFilters = Boolean(searchQuery || dateFilterActive || tagFilter.length > 0)
-    const hasAdvancedFilters = Boolean(dateFilterActive || tagFilter.length > 0)
+    const hasActiveFilters = Boolean(searchQuery || dateFilterActive || tagFilter.length > 0 || statusFilter)
+    const hasAdvancedFilters = Boolean(dateFilterActive || tagFilter.length > 0 || statusFilter)
     const hasNonDefaultSort = sortBy !== 'date' || sortOrder !== 'desc'
 
     const amountColor = (type: TransactionType): string => {
@@ -785,6 +829,28 @@ const Transactions = () => {
 
                 {advancedOpen && (
                     <div className="space-y-4 pt-4 border-t border-border-subtle">
+                <div>
+                    <label className="text-[13px] text-fg-secondary">Status</label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {STATUS_OPTIONS.map((opt) => (
+                            <button
+                                key={opt.value || 'all'}
+                                type="button"
+                                onClick={() => setStatusFilterWithPage(opt.value)}
+                                aria-pressed={statusFilter === opt.value}
+                                className={[
+                                    'px-3 py-1.5 text-xs rounded-lg border transition-colors',
+                                    statusFilter === opt.value
+                                        ? 'border-accent/40 bg-accent-subtle text-accent'
+                                        : 'border-border text-fg-muted hover:border-border',
+                                ].join(' ')}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {(lookups?.tags.length ?? 0) > 0 && (
                     <div>
                         <label className="text-[13px] text-fg-secondary">Filter by tags</label>
@@ -1051,6 +1117,11 @@ const Transactions = () => {
                                             >
                                                 {item.type}
                                             </span>
+                                            {item.status === 'draft' && (
+                                                <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border border-warning/30 text-warning">
+                                                    Draft
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-xs text-fg-muted mt-0.5">
                                             {formatDisplayDate(item.date)}
@@ -1093,6 +1164,18 @@ const Transactions = () => {
                                                 aria-label="Edit transaction"
                                             >
                                                 <IoPencil size={16} />
+                                            </button>
+                                        )}
+                                        {canEdit && item.type !== 'transfer' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDuplicate(item)}
+                                                disabled={duplicatingId === item._id}
+                                                className="p-1.5 text-fg-muted hover:text-accent transition-colors disabled:opacity-50"
+                                                aria-label="Duplicate transaction"
+                                                title="Duplicate"
+                                            >
+                                                <IoCopyOutline size={16} />
                                             </button>
                                         )}
                                         {canEdit && (

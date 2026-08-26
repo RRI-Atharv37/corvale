@@ -385,6 +385,77 @@ describe('Transactions (local-first)', () => {
         expect(account?.currentBalance).toBe(1000)
     })
 
+    // X4: draft filter on /transactions - drafts are mixed in with posted transactions by
+    // default (unchanged), but a status filter can narrow the list to just one status, and a
+    // "Draft" badge distinguishes draft rows when both are shown together.
+    it('filters the local list by status and badges draft rows', async () => {
+        await seedAccountsAndCategories()
+        await seedTransaction({ _id: 'tx-posted', title: 'Posted expense', status: 'posted' })
+        await seedTransaction({ _id: 'tx-draft', title: 'Draft expense', status: 'draft' })
+        const user = userEvent.setup()
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getByText('Posted expense')).toBeInTheDocument())
+        expect(screen.getByText('Draft expense')).toBeInTheDocument()
+        expect(screen.getByText('Draft')).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Advanced features' }))
+        await user.click(screen.getByRole('button', { name: 'Draft' }))
+
+        await waitFor(() => expect(screen.queryByText('Posted expense')).not.toBeInTheDocument())
+        expect(screen.getByText('Draft expense')).toBeInTheDocument()
+    })
+
+    // X4: transaction duplicate button.
+    it('duplicates a transaction through the local store and recomputes the account balance', async () => {
+        await seedAccountsAndCategories()
+        await seedTransaction({ _id: 'tx-original', title: 'Coffee run', amount: 500 })
+        const user = userEvent.setup()
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getByText('Coffee run')).toBeInTheDocument())
+
+        await user.click(screen.getByRole('button', { name: 'Duplicate transaction' }))
+
+        await waitFor(() => expect(screen.getAllByText('Coffee run')).toHaveLength(2))
+
+        const db = await getLocalDb()
+        const stored = await transactionsRepo.list(db)
+        expect(stored.filter((tx) => tx.title === 'Coffee run')).toHaveLength(2)
+
+        const account = await accountsRepo.findById(db, CHECKING_ID)
+        expect(account?.currentBalance).toBe(990)
+    })
+
+    it('does not offer duplicate for transfers', async () => {
+        await seedAccountsAndCategories()
+        const db = await getLocalDb()
+        const nowIso2 = new Date().toISOString()
+        await transactionsRepo.upsertFromServer(db, [
+            {
+                _id: 'tx-transfer-out',
+                updatedAt: nowIso2,
+                createdAt: nowIso2,
+                userId: 'user1',
+                accountId: CHECKING_ID,
+                categoryId: OTHER_CATEGORY_ID,
+                type: 'transfer',
+                status: 'posted',
+                amount: 1000,
+                title: 'To savings',
+                date: '2026-01-06T00:00:00.000Z',
+                clearedStatus: 'pending',
+                splitTransactionId: null,
+                transferPairId: 'tx-transfer-in',
+            },
+        ])
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getByText('To savings')).toBeInTheDocument())
+
+        expect(screen.queryByRole('button', { name: 'Duplicate transaction' })).not.toBeInTheDocument()
+    })
+
     it('blocks submit and writes nothing when required fields are missing', async () => {
         await seedAccountsAndCategories()
         const user = userEvent.setup()
