@@ -10,6 +10,7 @@ import VerifyEmail from './pages/auth/VerifyEmail'
 import UserProvider from './context/UserContext'
 import WorkspaceProvider from './context/WorkspaceContext'
 import ProtectedRoute from './routes/ProtectedRoute'
+import GuestRoute from './routes/GuestRoute'
 import DashboardLayout from './components/layouts/DashboardLayout'
 import { useUser } from './hooks/useUser'
 import LoadingState from './components/ui/LoadingState'
@@ -144,28 +145,6 @@ const HomeRoute = () => {
     }
 
     return <Landing />
-}
-
-interface GuestRouteProps {
-    children: React.ReactNode
-}
-
-const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
-    const { isAuthenticated, isInitializing } = useUser()
-
-    if (isInitializing) {
-        return (
-            <div className="min-h-screen bg-page flex items-center justify-center">
-                <LoadingState message="Loading..." />
-            </div>
-        )
-    }
-
-    if (isAuthenticated) {
-        return <Navigate to="/dashboard" replace />
-    }
-
-    return <>{children}</>
 }
 
 export default App

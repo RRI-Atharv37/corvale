@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
 import axiosInstance from '../utils/axiosInstance'
 import { API_PATHS } from '../utils/apiPaths'
 import type { ApiResponse, AuthPayload, User } from '../types/api'
@@ -14,6 +15,7 @@ import { exportUnsyncedOps } from '../offline/exportUnsyncedOps'
 import { handleTokenRevoked, TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
 import { getSyncStatus } from '../sync/syncEngine'
 import { provisionLocalDb } from '../db/provisionLocalDb'
+import { SESSION_EXPIRED_EVENT } from '../utils/sessionEvents'
 
 interface UserContextType {
     user: User | null
@@ -146,6 +148,16 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
         window.addEventListener(TOKEN_REVOKED_EVENT, onTokenRevoked)
         return () => window.removeEventListener(TOKEN_REVOKED_EVENT, onTokenRevoked)
+    }, [clearUser])
+
+    useEffect(() => {
+        const onSessionExpired = () => {
+            clearUser()
+            toast.error('Your session has expired. Please sign in again.')
+        }
+
+        window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired)
+        return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired)
     }, [clearUser])
 
     const value = useMemo(

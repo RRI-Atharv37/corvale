@@ -1,8 +1,10 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { AxiosError } from 'axios'
-import { renderWithProviders, screen, waitFor, userEvent } from '../../../test/test-utils'
+import { MemoryRouter } from 'react-router-dom'
+import { renderWithProviders, render, screen, waitFor, userEvent } from '../../../test/test-utils'
 import Login from '../Login'
+import UserProvider from '../../../context/UserContext'
 import axiosInstance from '../../../utils/axiosInstance'
 import { API_PATHS } from '../../../utils/apiPaths'
 import type { User } from '../../../types/api'
@@ -104,6 +106,31 @@ describe('Login - successful sign-in', () => {
             })
         )
         await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/dashboard'))
+    })
+})
+
+describe('Login - honours state.from (X2/BUG-04)', () => {
+    it('navigates to the originally requested location, including its query string, after signing in', async () => {
+        vi.mocked(axiosInstance.post).mockImplementation(async (url: string) => {
+            if (url === API_PATHS.AUTH.LOGIN) {
+                return { success: true, data: { token: 'test-token', user: mockUser } }
+            }
+            throw new AxiosError('Network Error')
+        })
+        const user = userEvent.setup()
+        render(
+            <MemoryRouter initialEntries={[{ pathname: '/login', state: { from: '/transactions?type=expense' } }]}>
+                <UserProvider>
+                    <Login />
+                </UserProvider>
+            </MemoryRouter>
+        )
+
+        await user.type(screen.getByPlaceholderText('you@example.com'), 'jamie@example.com')
+        await user.type(screen.getByPlaceholderText('Enter your password'), 'hunter2hunter2')
+        await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+        await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/transactions?type=expense'))
     })
 })
 

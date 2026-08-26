@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Input from '../../components/Inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
@@ -19,8 +19,10 @@ const Login = () => {
     const [error, setError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const navigate = useNavigate()
+    const location = useLocation()
     const { updateUser } = useUser()
     const online = useOnlineStatus()
+    const from = (location.state as { from?: string } | null)?.from
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -48,7 +50,7 @@ const Login = () => {
             await setAuthSession(payload)
             updateUser(payload.user)
             toast.success('Welcome back!')
-            navigate('/dashboard')
+            navigate(from || '/dashboard')
         } catch (err) {
             const message = getApiErrorMessage(err, 'An error occurred. Please try again.')
             setError(message)

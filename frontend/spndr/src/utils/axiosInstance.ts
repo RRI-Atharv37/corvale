@@ -3,6 +3,7 @@ import { BASE_URL } from './apiPaths'
 import { TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
 import { getAccessToken, setAccessToken } from './tokenStore'
 import { storeOfflineGrant } from '../offline/offlineGrant'
+import { SESSION_EXPIRED_EVENT } from './sessionEvents'
 
 const client = axios.create({
     baseURL: BASE_URL,
@@ -66,6 +67,13 @@ const isTokenRevokedMessage = (message: unknown): boolean =>
 const notifyTokenRevoked = (message: unknown): void => {
     if (isTokenRevokedMessage(message) && typeof window !== 'undefined') {
         window.dispatchEvent(new Event(TOKEN_REVOKED_EVENT))
+    }
+}
+
+/** Fires for every session-ending 401, unlike `notifyTokenRevoked`'s narrower message match - see `SESSION_EXPIRED_EVENT`. */
+const notifySessionExpired = (): void => {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
     }
 }
 
@@ -139,6 +147,7 @@ client.interceptors.response.use(
                 processRefreshQueue(null)
                 setAccessToken(null)
                 notifyTokenRevoked(message)
+                notifySessionExpired()
                 return Promise.reject(refreshError)
             } finally {
                 isRefreshing = false
@@ -148,6 +157,7 @@ client.interceptors.response.use(
         if (status === 401 && !isAuthMutationRoute(originalRequest?.url)) {
             setAccessToken(null)
             notifyTokenRevoked(message)
+            notifySessionExpired()
         }
 
         return Promise.reject(error)
