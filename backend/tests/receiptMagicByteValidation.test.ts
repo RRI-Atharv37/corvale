@@ -8,7 +8,7 @@ import { authHeader, registerUser } from './helpers'
 import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
 
 /**
- * G2 acceptance spec (TODO.md T2 -> S14, SEC-15).
+ * Acceptance spec for receipt magic-byte validation (S14, SEC-15).
  *
  * Today `middleware/receiptUploadMiddleware.ts`'s `fileFilter` only checks `file.mimetype`,
  * which multer reads verbatim from the attacker-controlled multipart part header, and

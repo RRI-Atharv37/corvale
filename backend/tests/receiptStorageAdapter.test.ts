@@ -9,7 +9,7 @@ import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
 import { isObjectStorageConfigured, setReceiptObjectStorage } from '../utils/receiptStorage'
 
 /**
- * G1 acceptance spec (TODO.md T1 -> L3, SEC-23).
+ * Acceptance spec for receipts on object storage (L3, SEC-23).
  *
  * Today every receipt lands on local disk under `uploads/receipts/<userId>/` (see
  * `utils/receiptUtils.ts`), unencrypted, un-quota'd, and gone on the next deploy of any

@@ -225,11 +225,11 @@ export const createTransactionForUser = async (
 }
 
 /**
- * Delete-transaction logic for POST /sync/push (Sprint 13.2).
+ * Delete-transaction logic for POST /sync/push.
  *
  * Unlike the REST DELETE endpoint's deleteTransactionForUser, this does NOT
- * incrementally reverse the account balance. Per ROADMAP.md's Phase 13
- * design ("Account balance ... never a syncable field ... out-of-order
+ * incrementally reverse the account balance. Per the "Account balance" architecture
+ * decision ("... never a syncable field ... out-of-order
  * offline replay would drift silently with no way to heal it"), an
  * offline-originated delete can arrive out of order relative to other
  * offline mutations, so incremental reversal here is unsafe — this only

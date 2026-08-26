@@ -5,7 +5,7 @@ import User from '../models/User'
 import { setCaptchaVerifier } from '../utils/captchaService'
 
 /**
- * G2 acceptance spec (TODO.md T2 -> L9 second half).
+ * Acceptance spec for signup abuse controls (L9 second half).
  *
  * L9's email-verification core (register hard-blocks unverified accounts via `protect`) was
  * pulled forward and shipped alongside S7 — see `emailVerification.test.ts`. What remains open

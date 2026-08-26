@@ -45,8 +45,8 @@ const findOtherMasterCategoryId = async (db: LocalDb): Promise<string> => {
 
 /**
  * Recomputes one account's balance from scratch and persists it directly (never through
- * `Repository.update`/the outbox - balance is derived, not a syncable field, per ROADMAP.md's
- * "Account balance" decision). Mirrors the single-account persistence half of
+ * `Repository.update`/the outbox - balance is derived, not a syncable field, per the "Account
+ * balance" architecture decision). Mirrors the single-account persistence half of
  * `domain/accountBalances.ts`'s `recomputeAllLocalAccountBalances`.
  */
 const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<void> => {
@@ -69,7 +69,7 @@ const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<vo
  * cross-linked `LocalTransaction` rows (`transferPairId` on each, both `type: 'transfer'`), filed
  * under the shared "Other" category, same-currency requirement between the two accounts. Both
  * accounts' balances are recomputed from scratch in the same SQLite transaction as the writes - no
- * incremental balance math locally (see ROADMAP.md's "Account balance" design decision). The
+ * incremental balance math locally (see the "Account balance" architecture decision). The
  * outbound leg is created with an earlier `createdAt` than the inbound leg so
  * `domain/accountBalances.ts`'s creation-order heuristic resolves direction correctly.
  */

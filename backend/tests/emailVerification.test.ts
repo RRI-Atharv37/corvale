@@ -9,8 +9,8 @@ import { backfillEmailVerification } from '../utils/backfillEmailVerification'
 import { createEmailVerificationForUser } from '../utils/emailVerificationUtils'
 
 /**
- * Email verification (pulled forward from ROADMAP.md's G2-gated L9, built alongside S7
- * since both need the mail-sending module in utils/mailService.ts).
+ * Email verification (pulled forward from L9's G2 scope, built alongside S7 since both need
+ * the mail-sending module in utils/mailService.ts).
  *
  * Hard-block model: a freshly-registered user can still log in, but every route behind the
  * `protect` middleware (everything except a small allowlist on `authenticateOnly`) rejects

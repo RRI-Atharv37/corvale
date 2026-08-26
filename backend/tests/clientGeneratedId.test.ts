@@ -11,9 +11,9 @@ import SavingsGoal from '../models/SavingsGoal'
 import { registerUser, authHeader, RegisteredUser } from './helpers'
 
 /**
- * Sprint 13.0 acceptance spec for client-generated `_id` acceptance on
- * every create endpoint (Sprint 13.2). Contract (ROADMAP.md "Identity"
- * row): the client may generate its own 24-hex ObjectId offline and the
+ * Acceptance spec for client-generated `_id` acceptance on every create endpoint.
+ * Contract (the "Identity" architecture decision): the client may generate its own
+ * 24-hex ObjectId offline and the
  * server must accept it verbatim on create, so the record is
  * creatable/referenceable before the server has ever seen it (no
  * backup-restore-style FK remapping needed once sync lands). An `_id`

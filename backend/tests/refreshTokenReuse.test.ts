@@ -7,7 +7,7 @@ import { authHeader, registerUser } from './helpers'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 
 /**
- * G1 acceptance spec (TODO.md T1 -> S11, SEC-20).
+ * Acceptance spec for refresh-token reuse detection (S11, SEC-20).
  *
  * Today `rotateRefreshToken` (`backend/utils/refreshTokenService.ts`) rotates correctly on a
  * fresh token but treats replay of an already-rotated (revoked) token exactly like any other

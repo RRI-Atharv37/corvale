@@ -7,9 +7,8 @@ import Transaction from '../models/Transaction'
 import { registerUser, authHeader, RegisteredUser } from './helpers'
 
 /**
- * Sprint 13.0 acceptance spec for the not-yet-built `/api/v1/sync` surface
- * (Sprint 13.3). Contract assumed here (see ROADMAP.md "Phase 13 design
- * decisions" + TODO.md Sprint 13.3):
+ * Acceptance spec for the `/api/v1/sync` surface. Contract assumed here (see the
+ * "Phase 13 design decisions" architecture notes):
  *
  *   GET  /api/v1/sync/bootstrap?workspaceId=
  *     -> { success, data: { checkpoint, accounts, transactions, categories,

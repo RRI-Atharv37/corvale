@@ -7,7 +7,7 @@ import { authHeader, seedUserDirectly } from './helpers'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 
 /**
- * G0 acceptance spec (TODO.md T0 -> C3, BUG-03, SEC-14 folded in as S6).
+ * Acceptance spec for bulk-delete atomicity (C3, BUG-03, SEC-14 folded in as S6).
  *
  * `bulkDeleteTransactions` (transactionController.ts) currently loops over
  * `transactionIds` and deletes each one immediately, throwing the instant it
@@ -19,7 +19,7 @@ import { ERROR_MESSAGES } from '../utils/errorMessages'
  * currently 404s for "doesn't exist" but lets a separate
  * `validateResourceAccess` call 403 for "exists but isn't yours") must
  * collapse into a single uniform 404 for both cases, scoped to this
- * endpoint (S6) — see BUG-03 / SEC-14 in SECURITY.md and BUGS.md.
+ * endpoint (S6) — see BUG-03 / SEC-14.
  */
 
 async function createTestAccount(token: string, openingBalance = 500, name = 'Checking') {

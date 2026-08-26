@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * G2 acceptance spec (TODO.md T2 -> D1, SEC-05).
+ * Acceptance spec for the desktop signing keypair and checksums (D1, SEC-05).
  *
  * `src-tauri/tauri.conf.json` today ships `plugins.updater.pubkey` as the literal placeholder
  * `"REPLACE_WITH_KEY_FROM_TAURI_SIGNER_GENERATE"` with the updater `active: true` and pointed at

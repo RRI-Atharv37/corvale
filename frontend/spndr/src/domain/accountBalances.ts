@@ -69,9 +69,8 @@ export const recomputeLocalAccountBalance = async (db: LocalDb, accountId: strin
  * result back into `accounts.currentBalance` (promoted column + `data`
  * blob), without touching `updatedAt` (server-authoritative, used for sync
  * ordering) or the dirty/sync-state columns (balance is a derived value,
- * never itself pushed through the outbox — see ROADMAP.md "Account
- * balance" decision). Intended to run after every sync pull; Sprint 13.6
- * wires the actual call site once the pull loop exists.
+ * never itself pushed through the outbox — see the "Account balance"
+ * architecture decision).
  */
 export const recomputeAllLocalAccountBalances = async (db: LocalDb): Promise<Map<string, number>> => {
   const [accounts, transactions] = await Promise.all([accountsRepo.list(db), transactionsRepo.list(db)])

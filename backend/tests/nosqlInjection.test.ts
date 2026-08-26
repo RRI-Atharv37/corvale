@@ -4,7 +4,7 @@ import { createApp } from '../app'
 import { registerUser } from './helpers'
 
 /**
- * G0 acceptance spec (TODO.md S2, SEC-09).
+ * Acceptance spec for NoSQL injection sanitization (S2, SEC-09).
  *
  * Contract assumed here:
  *   - A global body-sanitization middleware rejects (400, not silent-strip) any

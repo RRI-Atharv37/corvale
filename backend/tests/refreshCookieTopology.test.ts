@@ -3,7 +3,7 @@ import request from 'supertest'
 import { createApp } from '../app'
 
 /**
- * G1 acceptance spec (TODO.md S13, SEC-11).
+ * Acceptance spec for cross-origin refresh-cookie topology (S13, SEC-11).
  *
  * Today `setRefreshTokenCookie`/`clearRefreshTokenCookie` (`backend/utils/tokenUtils.ts`)
  * hardcode `sameSite: 'lax'`. That is the right choice for spndr's pinned deployment

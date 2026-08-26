@@ -80,6 +80,11 @@ TransactionSchema.index({ userId: 1, accountId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, tags: 1 })
 TransactionSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 TransactionSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
+// Mirrors the userId-scoped report indexes above: report/dashboard aggregations run the same
+// {type, date-range} and {date-range}-only filters against workspaceId when a workspace is
+// active (see workspaceUtils.buildScopedListFilter), and had no compound index to use.
+TransactionSchema.index({ workspaceId: 1, type: 1, date: -1 })
+TransactionSchema.index({ workspaceId: 1, date: -1 })
 
 applyRowLevelSecurity(TransactionSchema, { supportsWorkspace: true })
 applySoftDelete(TransactionSchema)

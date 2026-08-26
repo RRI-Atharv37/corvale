@@ -5,7 +5,7 @@ import { authHeader, registerUser } from './helpers'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 
 /**
- * G0 acceptance spec (TODO.md T0 -> S4, SEC-26).
+ * Acceptance spec for global rate limiting (S4, SEC-26).
  *
  * Contract assumed here:
  *   - A global limiter (`createGlobalRateLimiter`, new env vars

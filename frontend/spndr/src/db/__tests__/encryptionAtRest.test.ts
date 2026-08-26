@@ -8,7 +8,7 @@ import type { LocalDb } from '../LocalDb'
 import type { LocalTransaction } from '../../domain/types'
 
 /**
- * G1 acceptance spec (TODO.md T1 -> S8, SEC-01).
+ * Acceptance spec for browser local-DB encryption (S8, SEC-01).
  *
  * SEC-01: the AES-GCM primitives in `db/encryption/deriveKey.ts` (PBKDF2-SHA256, 210k
  * iterations, correct per the audit) are never actually called by anything that writes to the
@@ -17,14 +17,14 @@ import type { LocalTransaction } from '../../domain/types'
  * cleartext OPFS SQLite.
  *
  * Contract assumed here, following SEC-01's option (a) (wire the sensitive columns through the
- * existing primitives) rather than option (b) (swap in a SQLite3MultipleCiphers WASM build,
- * SECURITY.md's longer-term preference but a separate, larger migration of the WASM dependency
- * itself): every syncable table's `data` column - the full server-document JSON blob - is
- * encrypted at rest whenever the driver holds an active key, while the *promoted* columns
- * (`amount`, `date`, `accountId`, `status`, ...) stay plaintext, because those are exactly the
- * columns the local domain/report engine (Sprint 13.5/13.10) filters and `SUM`s on in SQL - the
- * thing SECURITY.md warns per-field encryption must not break. `data` itself is only ever read
- * by `_id` (see `Repository.findById`/`list`), never filtered on, so encrypting the whole blob
+ * existing primitives) rather than option (b) (swap in a SQLite3MultipleCiphers WASM build - a
+ * longer-term preference but a separate, larger migration of the WASM dependency itself): every
+ * syncable table's `data` column - the full server-document JSON blob - is encrypted at rest
+ * whenever the driver holds an active key, while the *promoted* columns (`amount`, `date`,
+ * `accountId`, `status`, ...) stay plaintext, because those are exactly the columns the local
+ * domain/report engine filters and `SUM`s on in SQL - the thing per-field encryption must not
+ * break. `data` itself is only ever read by `_id` (see `Repository.findById`/`list`), never
+ * filtered on, so encrypting the whole blob
  * costs nothing there while closing the actual finding: titles, descriptions, notes, and tags -
  * the human-readable financial detail - no longer sit in cleartext.
  *

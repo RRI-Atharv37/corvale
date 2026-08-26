@@ -11,10 +11,11 @@ import { Repository } from '../../../db/repositories/Repository'
 import type { LocalAccount, LocalCategory, LocalRecurringRule } from '../../../domain/types'
 import type { User } from '../../../types/api'
 
-// Sprint 13.9: proves Recurring.tsx's rule CRUD (create/update/archive/toggle-active) reads and
+// Proves Recurring.tsx's rule CRUD (create/update/archive/toggle-active) reads and
 // writes through the local SQLite store when VITE_LOCAL_FIRST is on, while draft
-// generation/confirm/dismiss stay server-only per ROADMAP.md's "Server-authoritative" decision -
-// tested here via the offline-disabled state, since drafts have no local fallback to assert against.
+// generation/confirm/dismiss stay server-only per the "Server-authoritative" architecture
+// decision - tested here via the offline-disabled state, since drafts have no local fallback to
+// assert against.
 //
 // Note: form submission is exercised via `fireEvent.submit(form)` rather than clicking the
 // `type="submit"` button - happy-dom (the project's test environment) does not reliably fire the

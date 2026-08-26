@@ -5,7 +5,7 @@ import { createApp } from '../app'
 import { authHeader, registerUser } from './helpers'
 
 /**
- * G0 acceptance spec (TODO.md T0 -> S1, SEC-07/SEC-08/SEC-10/SEC-12/SEC-25).
+ * Acceptance spec for API production hardening (S1, SEC-07/SEC-08/SEC-10/SEC-12/SEC-25).
  *
  * None of this is implemented yet. Contract assumed here:
  *

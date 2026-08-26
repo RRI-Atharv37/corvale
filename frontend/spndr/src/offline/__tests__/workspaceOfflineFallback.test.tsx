@@ -7,7 +7,7 @@ import { fetchWorkspaces } from '../../utils/workspaceApi'
 import { ACTIVE_WORKSPACE_STORAGE_KEY } from '../../utils/workspaceScope'
 import type { User, Workspace } from '../../types/api'
 
-// Pins the fix for the bug flagged in TODO.md Sprint 13.7: WorkspaceContext currently
+// Pins the fix for a bug in WorkspaceContext: it currently
 // clears the stored `activeWorkspaceId` whenever `refetchWorkspaces()` produces a list
 // that doesn't include it - including when that list is empty because the fetch itself
 // failed or ran offline. The correct behavior: only an *authoritative* (online,

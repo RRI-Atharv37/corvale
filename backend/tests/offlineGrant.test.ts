@@ -6,7 +6,7 @@ import { createApp } from '../app'
 import { generateOfflineGrant, getOfflineGrantDays, OFFLINE_GRANT_ALGORITHM } from '../utils/offlineGrantUtils'
 
 /**
- * G2 acceptance spec (TODO.md S16, SEC-18).
+ * Acceptance spec for the server-signed offline session grant (S16, SEC-18).
  *
  * The web client's 30-day "offline session valid until" grant was a plain ISO date string in
  * `localStorage` - a user could extend their own offline access indefinitely by editing it.

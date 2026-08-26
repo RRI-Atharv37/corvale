@@ -4,10 +4,10 @@ import app from '../app'
 import Transaction from '../models/Transaction'
 import Saver from '../models/Saver'
 import Notification from '../models/Notification'
-// softDeletePlugin/SOFT_DELETE_BYPASS do not exist yet; modeled directly on
-// plugins/rowLevelSecurityPlugin.ts + utils/rowLevelSecurity.ts's RLS_BYPASS
-// query-option pattern, applied unconditionally (not gated on an RLS-style
-// AsyncLocalStorage context) since tombstoning must hide rows everywhere.
+// softDeletePlugin/SOFT_DELETE_BYPASS mirror plugins/rowLevelSecurityPlugin.ts +
+// utils/rowLevelSecurity.ts's RLS_BYPASS query-option pattern, but applied
+// unconditionally (not gated on an RLS-style AsyncLocalStorage context) since
+// tombstoning must hide rows everywhere.
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { authHeader, createSecondUser, seedUserDirectly } from './helpers'
 

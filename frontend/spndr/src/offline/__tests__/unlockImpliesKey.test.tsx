@@ -15,7 +15,7 @@ import {
 import PinGate from '../PinGate'
 
 /**
- * G1 acceptance spec (TODO.md T1 -> S10, SEC-03).
+ * Acceptance spec for PIN-gate/key coupling (S10, SEC-03).
  *
  * `PinGate.tsx` today gates purely on `sessionStorage.getItem('spndr_pin_unlocked') === '1'`
  * (`SESSION_UNLOCKED_KEY`). Setting that key from devtools renders the whole dashboard without

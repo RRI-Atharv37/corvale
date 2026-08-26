@@ -13,7 +13,7 @@ import { errorHandler } from '../middleware/errorMiddleware'
 import { CustomError } from '../utils/customError'
 
 /**
- * G1 acceptance spec (TODO.md L4 -- error tracking + structured logging + uptime monitoring).
+ * Acceptance spec for L4 — error tracking + structured logging + uptime monitoring.
  *
  * Contract assumed here, mirroring `mailService.ts`'s injectable-transport seam:
  *

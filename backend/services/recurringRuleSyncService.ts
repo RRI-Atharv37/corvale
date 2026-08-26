@@ -30,11 +30,11 @@ const toMajorAmount = (value: unknown): unknown => (typeof value === 'number' ? 
  * Sprint 13.9: create/update/delete logic for POST /sync/push, mirroring
  * recurringRuleController's createRecurringRule/updateRecurringRule/
  * archiveRecurringRule exactly. generateRecurringDrafts/confirmDraft/
- * dismissDraft stay out of scope and server-authoritative per ROADMAP.md —
- * this only covers the rule's own fields, not draft generation.
+ * dismissDraft stay out of scope and server-authoritative (the "Server-authoritative"
+ * architecture decision) — this only covers the rule's own fields, not draft generation.
  *
- * Like category, the REST createRecurringRule endpoint predates Sprint
- * 13.2's client-generated-`_id` convention — resolveClientObjectId is added
+ * Like category, the REST createRecurringRule endpoint predates the
+ * client-generated-`_id` convention — resolveClientObjectId is added
  * here (not to the REST controller) since a sync create needs it to keep
  * the offline-created local id and the server id in sync.
  */

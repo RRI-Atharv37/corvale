@@ -4,7 +4,7 @@ import { createApp } from '../app'
 import { authHeader } from './helpers'
 
 /**
- * G0 acceptance spec (TODO.md T0 -> S3, SEC-22, BUG-08, BUG-14).
+ * Acceptance spec for password/credential policy hardening (S3, SEC-22, BUG-08, BUG-14).
  *
  * Contract assumed here:
  *   - `User.email` normalizes to lowercase + trimmed on save (schema

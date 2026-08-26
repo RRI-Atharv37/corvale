@@ -5,7 +5,7 @@ import { registerUser } from './helpers'
 import { setMailTransport, sendPasswordResetEmail } from '../utils/mailService'
 
 /**
- * G0 acceptance spec (TODO.md T0 -> S7, "was Phase 14.2").
+ * Acceptance spec for production SMTP password-reset delivery (S7).
  *
  * Production password-reset delivery does not exist yet — today
  * `requestPasswordReset` always calls `logPasswordResetLink`, which prints

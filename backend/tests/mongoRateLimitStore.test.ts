@@ -3,7 +3,7 @@ import { MongoRateLimitStore } from '../utils/mongoRateLimitStore'
 import RateLimitCounter from '../models/RateLimitCounter'
 
 /**
- * G2 acceptance spec (TODO.md S18, SEC-26).
+ * Acceptance spec for the shared-store rate limiter (S18, SEC-26).
  *
  * Unit-level coverage for the express-rate-limit Store implementation backing the shared
  * limiter, independent of the HTTP-level cross-instance test in rateLimiting.test.ts.

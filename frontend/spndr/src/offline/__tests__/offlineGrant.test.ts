@@ -9,7 +9,7 @@ import {
 import { createTestOfflineGrant } from '../../test/offlineGrantFixture'
 
 /**
- * G2 acceptance spec (TODO.md S16, SEC-18).
+ * Acceptance spec for the server-signed offline session grant (S16, SEC-18).
  *
  * Replaces the old plain `spndr_session_valid_until` localStorage date - forgeable by simply
  * writing a future date into it - with a server-signed JWT the client verifies locally against

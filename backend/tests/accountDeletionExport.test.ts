@@ -9,7 +9,7 @@ import RefreshToken from '../models/RefreshToken'
 import { authHeader, registerUser } from './helpers'
 
 /**
- * G1 acceptance spec (TODO.md T1 -> L7).
+ * Acceptance spec for self-service account deletion and data export (L7).
  *
  * Neither self-service account deletion nor a dedicated export entry point exists today.
  * Contract assumed here:

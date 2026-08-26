@@ -8,7 +8,7 @@ import Transaction from '../models/Transaction'
 import { registerUser, authHeader, RegisteredUser } from './helpers'
 
 /**
- * G0 acceptance spec (TODO.md T0 -> C2, SEC-13, BUG-02, BUG-09, BUG-10).
+ * Acceptance spec for sync id-ownership (C2, SEC-13, BUG-02, BUG-09, BUG-10).
  *
  * Three independent gaps in `syncController.ts`'s create-op handling:
  *

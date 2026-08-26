@@ -5,7 +5,7 @@ import { authHeader, registerUser } from './helpers'
 import { escapeCsvValue, buildCsvString } from '../utils/transactionUtils'
 
 /**
- * G2 acceptance spec (TODO.md T2 -> C4, SEC-17, BUG-11).
+ * Acceptance spec for CSV formula-injection neutralization (C4, SEC-17, BUG-11).
  *
  * `backend/utils/transactionUtils.ts:397-402`'s `escapeCsvValue` handles RFC 4180 quoting
  * correctly (`"`, `,`, `\n`) but does nothing about formula injection: a transaction titled

@@ -10,7 +10,7 @@ const AdmZip = require('adm-zip') as new () => {
 }
 
 /**
- * G2 acceptance spec (TODO.md T2 -> S15, SEC-16).
+ * Acceptance spec for zip-bomb protection on backup restore (S15, SEC-16).
  *
  * `backend/utils/backupUtils.ts`'s `extractBackupFromUpload` (:755-814) today only bounds the
  * **compressed** size of an uploaded backup (`BACKUP_MAX_ZIP_BYTES`, 50 MB) before handing the

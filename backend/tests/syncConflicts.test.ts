@@ -8,8 +8,8 @@ import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { registerUser, authHeader, RegisteredUser } from './helpers'
 
 /**
- * Sprint 13.0 acceptance spec for sync conflict detection (Sprint 13.3).
- * Contract (see ROADMAP.md "Conflicts" row):
+ * Acceptance spec for sync conflict detection.
+ * Contract (the "Conflicts" architecture decision):
  *   - Per-document last-write-wins with the SERVER as arbiter.
  *   - An `update`/`delete` op carries `baseUpdatedAt`; if it doesn't match
  *     the server doc's current `updatedAt`, the op comes back

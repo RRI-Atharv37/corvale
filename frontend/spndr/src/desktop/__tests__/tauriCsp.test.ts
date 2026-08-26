@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * G2 acceptance spec (TODO.md D2, SEC-04).
+ * Acceptance spec for the strict Tauri CSP (D2, SEC-04).
  *
  * `src-tauri/tauri.conf.json` shipped with `app.security.csp: null` - Tauri injects no policy of
  * its own into the bundled app, leaving the desktop build's HTML entirely dependent on the plain

@@ -4,7 +4,7 @@ import { resetLocalDbForTests, setLocalDb } from '../../db/localDbInstance'
 import { clearPin, hasPinConfigured, setupPin, verifyStoredPin } from '../pinStorage'
 
 /**
- * G1 acceptance spec (TODO.md T1 -> S9, SEC-02).
+ * Acceptance spec for PIN cost + lockout hardening (S9, SEC-02).
  *
  * `pinStorage.ts` today computes the stored verifier as a single-round `SHA-256(pin:salt)`
  * (`hashPin`) with no attempt counter, no lockout, and no minimum length. Because

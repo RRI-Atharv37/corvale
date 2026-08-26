@@ -20,9 +20,10 @@ export interface UseRecurringDraftsResult {
 }
 
 /**
- * Draft generation/confirm/dismiss stay server-authoritative unconditionally (ROADMAP.md's Phase 13
- * design decisions: "Notifications, recurring draft generation, auto-contribution execution stay
- * pull-only - the client never creates them, so they cannot conflict"). Every REST call here runs
+ * Draft generation/confirm/dismiss stay server-authoritative unconditionally (the
+ * "Server-authoritative" architecture decision: "Notifications, recurring draft generation,
+ * auto-contribution execution stay pull-only - the client never creates them, so they cannot
+ * conflict"). Every REST call here runs
  * regardless of `VITE_LOCAL_FIRST`; when the flag is on, a successful call is followed by `syncNow()`
  * so the local `transactions` mirror picks up the resulting draft/posted-transaction changes via pull
  * (confirming/dismissing a draft mutates a `Transaction` row, which IS a syncable local table).

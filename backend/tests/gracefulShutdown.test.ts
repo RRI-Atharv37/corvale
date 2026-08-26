@@ -10,7 +10,7 @@ import {
 } from '../utils/gracefulShutdown'
 
 /**
- * G1 acceptance spec (TODO.md T1/L8 -> SEC-25's shutdown half).
+ * Acceptance spec for graceful shutdown (L8, SEC-25's shutdown half).
  *
  * S1/T0 already covered SEC-25's health/404 half. What's left, called out explicitly by
  * SEC-25's recommendation: `backend/server.ts` currently calls `process.exit(1)` on any

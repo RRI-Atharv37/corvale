@@ -6,7 +6,7 @@ import Expense from '../models/Expense'
 import { authHeader, registerUser } from './helpers'
 
 /**
- * G0 acceptance spec (TODO.md T0 -> C1, BUG-01).
+ * Acceptance spec for the balance engine's Transaction-sourced totals (C1, BUG-01).
  *
  * `computeUserBalances` (backend/utils/balanceUtils.ts) currently sources
  * `totalIncome`/`totalExpenses` exclusively from the deprecated `Income`/

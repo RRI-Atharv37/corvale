@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * G2 acceptance spec (TODO.md D4).
+ * Acceptance spec for D4 (desktop build sets `VITE_LOCAL_FIRST=true`).
  *
  * Before D4, `tauri.conf.json`'s `beforeDevCommand`/`beforeBuildCommand` ran the exact same
  * `npm run dev` / `npm run build` scripts as a plain web build, so both read the same `.env`

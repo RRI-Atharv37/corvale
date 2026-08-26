@@ -458,8 +458,8 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
 }
 
 /**
- * Per-document last-write-wins with delete-always-wins (ROADMAP.md
- * "Conflicts"): delete never precondition-checks against baseUpdatedAt —
+ * Per-document last-write-wins with delete-always-wins (the "Conflicts" architecture
+ * decision): delete never precondition-checks against baseUpdatedAt —
  * it tombstones unconditionally — while update always enforces it when
  * provided. That combination is what makes a racing update+delete in the
  * same push resolve to "deleted", regardless of which op runs first.

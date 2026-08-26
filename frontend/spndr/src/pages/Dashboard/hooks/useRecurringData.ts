@@ -101,11 +101,11 @@ const buildRestPayload = (input: RecurringRuleInput): Record<string, unknown> =>
 }
 
 /**
- * Data layer for the Recurring dashboard page's rule CRUD (Sprint 13.9). Branches on
+ * Data layer for the Recurring dashboard page's rule CRUD. Branches on
  * `isLocalFirstEnabled()`: the server branch is the page's pre-existing `useAsyncData` + axios
  * code, relocated verbatim; the local branch reads/writes through the local SQLite store via
  * `Repository`/`useLocalQuery`. Draft generation/confirm/dismiss stay out of this hook entirely -
- * see `useRecurringDrafts.ts` - per ROADMAP.md's "Server-authoritative" decision.
+ * see `useRecurringDrafts.ts` - per the "Server-authoritative" architecture decision.
  */
 export const useRecurringData = (): UseRecurringDataResult => {
     const { user } = useUser()
