@@ -59,6 +59,32 @@ Match whatever CI actually runs for the workspace(s) you touched (see
 Keep PRs small and focused — one fix or one small feature per PR. Explain the *why* in the
 description, not just the *what*. Use the PR template's checklist as a guide.
 
+## Licensing of contributions
+
+spndr is licensed under the **GNU AGPL v3.0** (`AGPL-3.0-or-later`) — see [LICENSE](../LICENSE).
+
+**By submitting a pull request, you agree to the following.** Please don't open a PR if you
+are not able to agree to all three:
+
+1. **Your contribution is licensed under `AGPL-3.0-or-later`**, the same licence as the
+   project (inbound = outbound).
+2. **You grant the project maintainer a perpetual, worldwide, non-exclusive, royalty-free,
+   irrevocable licence** to use, reproduce, modify, publish, sublicense and distribute your
+   contribution, **including the right to relicense it under different terms** — among them
+   proprietary or commercial terms. You retain full copyright in your contribution and remain
+   free to use it however you like elsewhere.
+3. **You have the right to grant this.** The contribution is your own original work, or you
+   have permission to submit it (for example, from an employer who would otherwise own it).
+
+**Why point 2 exists.** The project may be offered under a commercial licence alongside the
+AGPL, and app-store distribution requires accepting terms that copyleft alone doesn't permit.
+Both depend on a single party holding the rights to the whole codebase. Without this grant, a
+merged contribution would permanently block those options for the code it touches. This is the
+same arrangement used by dual-licensed projects such as Qt and MySQL.
+
+This is a lightweight contributor agreement, not legal advice. If your employer has an open
+source contribution policy, follow it.
+
 ## Reporting bugs / requesting features
 
 Please use the issue templates rather than a blank issue — they ask for the details needed
