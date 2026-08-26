@@ -13,9 +13,11 @@ import {
     applyTransferToAccounts,
     assertEditableTransaction,
     buildTransactionSort,
+    CSV_HEADERS,
     deleteTransactionForUser,
     duplicateTransactionFields,
     fetchSplitChildren,
+    formatTransactionCsvRow,
     getOtherMasterCategoryId,
     getUserId,
     handleResponses,
@@ -42,6 +44,7 @@ import {
     parseExportFormat,
     parseTransactionExportType,
     sendTransactionExport,
+    streamCsvExport,
 } from '../utils/exportUtils'
 import { validateReceiptOwnership } from '../utils/receiptUtils'
 import { TRANSACTION_TYPES, ITransaction, CLEARED_STATUSES } from '../models/Transaction'
@@ -629,6 +632,31 @@ export const downloadTransactions = asyncHandler(async (req: AuthRequest, res: R
         filter.date = { $gte: dateRange.start, $lte: dateRange.end }
     }
 
+    const format = parseExportFormat(typeof formatParam === 'string' ? formatParam : 'csv')
+
+    if (format === 'csv') {
+        const cursor = Transaction.find(filter)
+            .populate('categoryId', 'name')
+            .sort({ date: -1 })
+            .cursor()
+
+        async function* csvRows() {
+            for await (const transaction of cursor) {
+                const serialized = serializeTransaction(transaction)
+                const categoryName =
+                    typeof transaction.categoryId === 'object' &&
+                    transaction.categoryId !== null &&
+                    'name' in transaction.categoryId
+                        ? String((transaction.categoryId as { name: string }).name)
+                        : ''
+                yield formatTransactionCsvRow(serialized, categoryName)
+            }
+        }
+
+        await streamCsvExport(res, 'transactions', CSV_HEADERS, csvRows())
+        return
+    }
+
     const transactions = await Transaction.find(filter)
         .populate('categoryId', 'name')
         .sort({ date: -1 })
@@ -644,7 +672,6 @@ export const downloadTransactions = asyncHandler(async (req: AuthRequest, res: R
         return buildTransactionExportRecord(serialized, categoryName)
     })
 
-    const format = parseExportFormat(typeof formatParam === 'string' ? formatParam : 'csv')
     const typeLabel =
         exportType ??
         (typeof type === 'string' && type.trim() !== '' ? String(type).trim().toLowerCase() : 'all')

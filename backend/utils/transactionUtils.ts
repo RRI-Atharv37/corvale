@@ -446,8 +446,10 @@ export const escapeCsvValue = (value: string): string => {
     return neutralized
 }
 
+export const buildCsvRow = (row: string[]): string => row.map(escapeCsvValue).join(',')
+
 export const buildCsvString = (rows: string[][]): string => {
-    return rows.map((row) => row.map(escapeCsvValue).join(',')).join('\n')
+    return rows.map(buildCsvRow).join('\n')
 }
 
 export const duplicateTransactionFields = (transaction: ITransaction) => ({

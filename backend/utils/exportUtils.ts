@@ -5,6 +5,7 @@ import { CustomError } from './customError'
 import type { CustomReportResult } from './reportUtils'
 import { customReportToCsv, flattenCustomReport } from './reportUtils'
 import {
+    buildCsvRow,
     buildCsvString,
     CSV_HEADERS,
     formatTransactionCsvRow,
@@ -112,6 +113,32 @@ export const sendExportResponse = (
         default:
             throw new CustomError(`Unsupported export format: ${format}`, 400)
     }
+}
+
+/**
+ * Streams a CSV export row-by-row instead of buffering the full file in memory, so a large date
+ * range doesn't hold every matching transaction (and the whole rendered CSV string) in the
+ * process at once. `rows` is expected to be backed by a DB cursor rather than a pre-loaded array.
+ */
+export const streamCsvExport = async (
+    res: Response,
+    filename: string,
+    headerRow: string[],
+    rows: AsyncIterable<string[]>
+): Promise<void> => {
+    const safeName = sanitizeFilename(filename)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}.csv"`)
+    res.write(buildCsvRow(headerRow) + '\n')
+
+    for await (const row of rows) {
+        if (res.destroyed) {
+            break
+        }
+        res.write(buildCsvRow(row) + '\n')
+    }
+
+    res.end()
 }
 
 const writePdfSectionTitle = (doc: InstanceType<typeof PDFDocument>, title: string): void => {
