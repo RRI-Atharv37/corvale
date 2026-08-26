@@ -52,6 +52,16 @@ export const endOfDayInTimezone = (dateStr: string, timezone: string): Date => {
     return new Date(utcEnd.getTime() - offset)
 }
 
+/** The YYYY-MM-DD calendar date the given instant falls on in the given timezone. */
+export const dateStringInTimezone = (date: Date, timezone: string): string => {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(date)
+}
+
 export const resolveDateRange = (
     startDate: string,
     endDate: string,

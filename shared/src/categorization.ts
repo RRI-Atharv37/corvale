@@ -1,4 +1,5 @@
 import { RecurringInterval } from './types'
+import { dateStringInTimezone, startOfDayInTimezone } from './timezone'
 
 export type CategorizationMatchType =
     | 'description_contains'
@@ -65,49 +66,54 @@ export const matchCategorizationRule = (rule: RuleLike, input: TransactionMatchI
 }
 
 /**
- * Advances a recurring rule's next due date by one interval.
+ * Advances a recurring rule's next due date by one interval, staying on
+ * local midnight in `timezone` for the new date.
  *
- * The `timezone` parameter is reserved for Phase 18.2 (timezone-safe
- * recurring due dates) and is intentionally unused today: the server's
- * equivalent is UTC-calendar-only, so this must stay UTC-only too to keep
- * exact parity until that phase lands.
+ * `current` is expected to already be a local-midnight instant (as produced
+ * by `startOfDayInTimezone`). The interval arithmetic runs on the calendar
+ * date in `timezone`, via a UTC-anchored proxy date, then converts the
+ * result back to a real instant with `startOfDayInTimezone`. Anchoring the
+ * arithmetic in plain UTC (rather than adding milliseconds to the instant
+ * directly) is what keeps a DST transition inside the interval from
+ * shifting the result by the DST delta.
  */
 export const advanceNextDueDate = (
     current: Date,
     interval: RecurringInterval,
     customIntervalDays: number | undefined,
-    _timezone: string
+    timezone: string
 ): Date => {
-    const next = new Date(current)
+    const [year, month, day] = dateStringInTimezone(current, timezone).split('-').map(Number)
+    const anchor = new Date(Date.UTC(year, month - 1, day))
 
     switch (interval) {
         case 'daily':
-            next.setUTCDate(next.getUTCDate() + 1)
+            anchor.setUTCDate(anchor.getUTCDate() + 1)
             break
         case 'weekly':
-            next.setUTCDate(next.getUTCDate() + 7)
+            anchor.setUTCDate(anchor.getUTCDate() + 7)
             break
         case 'biweekly':
-            next.setUTCDate(next.getUTCDate() + 14)
+            anchor.setUTCDate(anchor.getUTCDate() + 14)
             break
         case 'monthly':
-            next.setUTCMonth(next.getUTCMonth() + 1)
+            anchor.setUTCMonth(anchor.getUTCMonth() + 1)
             break
         case 'quarterly':
-            next.setUTCMonth(next.getUTCMonth() + 3)
+            anchor.setUTCMonth(anchor.getUTCMonth() + 3)
             break
         case 'yearly':
-            next.setUTCFullYear(next.getUTCFullYear() + 1)
+            anchor.setUTCFullYear(anchor.getUTCFullYear() + 1)
             break
         case 'custom': {
             const days = customIntervalDays
             if (!days || days < 1) {
                 throw new Error('customIntervalDays is required for custom intervals')
             }
-            next.setUTCDate(next.getUTCDate() + days)
+            anchor.setUTCDate(anchor.getUTCDate() + days)
             break
         }
     }
 
-    return next
+    return startOfDayInTimezone(anchor.toISOString().slice(0, 10), timezone)
 }

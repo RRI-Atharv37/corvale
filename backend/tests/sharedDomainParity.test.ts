@@ -898,7 +898,7 @@ describe('shared/categorization parity', () => {
 
     it('advances the next due date identically across a DST boundary', () => {
         const current = new Date('2026-03-08T00:00:00.000Z')
-        const real = advanceNextDueDate(current, 'daily', undefined)
+        const real = advanceNextDueDate(current, 'daily', undefined, 'America/New_York')
         const shared = sharedAdvanceNextDueDate(current, 'daily', undefined, 'America/New_York')
         expect(shared.getTime()).toBe(real.getTime())
     })
