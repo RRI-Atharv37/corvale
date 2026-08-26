@@ -72,6 +72,14 @@ export interface ReportsData {
     recurringDrafts: Transaction[]
 }
 
+/** Server path only (BUG-05): each field is present when its request succeeded and absent when it
+ * failed - paired with `ReportsSectionErrors` below so the page can render every section that
+ * loaded and show a scoped error only for the one(s) that didn't. The local-first path always
+ * resolves every field (see `fetchLocalReports`), so it never populates section errors. */
+export type PartialReportsData = Partial<ReportsData>
+
+export type ReportsSectionErrors = Partial<Record<keyof ReportsData, string>>
+
 interface PeriodDates {
     startDate: string
     endDate: string
@@ -84,7 +92,8 @@ interface ChartQuery {
 }
 
 interface UseReportsDataResult {
-    data: ReportsData | null
+    data: PartialReportsData | null
+    sectionErrors: ReportsSectionErrors
     loading: boolean
     error: string | null
     refetch: () => Promise<void>
@@ -183,100 +192,172 @@ const fetchSavedReportsResilient = async (): Promise<SavedReport[]> => {
     }
 }
 
+interface ServerReportsResult {
+    data: PartialReportsData
+    sectionErrors: ReportsSectionErrors
+}
+
+type SectionKey = keyof ReportsData
+
+interface ReportSectionRequest {
+    key: SectionKey
+    run: () => Promise<ReportsData[SectionKey]>
+}
+
+/** Each section is its own independent request (BUG-05) - a failure in one is recorded against
+ * its key in `sectionErrors` rather than discarding the other 16 already-successful responses, the
+ * way a single `Promise.all` used to. */
+const buildSectionRequests = (
+    periodParams: ReportPeriodQuery,
+    periodDates: PeriodDates,
+    chartQuery: ChartQuery,
+    thisMonthQuery: ChartQuery
+): ReportSectionRequest[] => [
+    {
+        key: 'averages',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<PeriodAverages>>(API_PATHS.REPORTS.AVERAGES, { params: periodParams })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'largestExpenses',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<LargestExpensesResponse>>(API_PATHS.REPORTS.LARGEST_EXPENSES, {
+                    params: { ...periodParams, limit: 10 },
+                })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'spendingTrends',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<SpendingTrendsResponse>>(API_PATHS.REPORTS.SPENDING_TRENDS, { params: periodParams })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'incomeVsExpense',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<IncomeVsExpenseResponse>>(API_PATHS.REPORTS.INCOME_VS_EXPENSE, {
+                    params: periodParams,
+                })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'savingsRate',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<SavingsRateReport>>(API_PATHS.REPORTS.SAVINGS_RATE, { params: periodParams })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'recurringTotals',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<RecurringTotalsReport>>(API_PATHS.REPORTS.RECURRING_TOTALS, { params: periodParams })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'categoryBreakdown',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<{ breakdown: CategoryBreakdownItem[] }>>(API_PATHS.DASHBOARD.CATEGORY_BREAKDOWN, {
+                    params: { startDate: periodDates.startDate, endDate: periodDates.endDate, type: 'expense' },
+                })
+                .then((res) => unwrapApiData(res).breakdown),
+    },
+    {
+        key: 'budgetAnalysis',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<BudgetAnalysisReport>>(API_PATHS.REPORTS.BUDGET_ANALYSIS, { params: periodParams })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'spendingAnalysis',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<SpendingAnalysisReport>>(API_PATHS.REPORTS.SPENDING_ANALYSIS, { params: periodParams })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'crossoverPoint',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<CrossoverPointReport>>(API_PATHS.REPORTS.CROSSOVER_POINT, { params: periodParams })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'savedReports',
+        run: () => axiosInstance.get<ApiResponse<SavedReport[]>>(API_PATHS.REPORTS.SAVED).then(unwrapApiData),
+    },
+    {
+        key: 'cashFlow',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, { params: chartQuery })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'netWorthTrend',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<NetWorthTrendResponse>>(API_PATHS.DASHBOARD.NET_WORTH_TREND, { params: chartQuery })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'budgetOverview',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<BudgetOverviewResponse>>(API_PATHS.DASHBOARD.BUDGET_OVERVIEW)
+                .then(unwrapApiData),
+    },
+    {
+        key: 'thisMonthCashFlow',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, { params: thisMonthQuery })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'recurringRules',
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<RecurringRule[]>>(API_PATHS.RECURRING_RULES.GET_ALL, {
+                    params: { includeArchived: false },
+                })
+                .then(unwrapApiData),
+    },
+    {
+        key: 'recurringDrafts',
+        run: () => axiosInstance.get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS).then(unwrapApiData),
+    },
+]
+
 const fetchServerReports = async (
     periodParams: ReportPeriodQuery,
     periodDates: PeriodDates,
     chartQuery: ChartQuery,
     thisMonthQuery: ChartQuery
-): Promise<ReportsData> => {
-    try {
-        const [
-            averagesRes,
-            largestRes,
-            trendsRes,
-            comparisonRes,
-            savingsRes,
-            recurringRes,
-            categoryRes,
-            budgetAnalysisRes,
-            spendingAnalysisRes,
-            crossoverRes,
-            savedReportsRes,
-            cashFlowRes,
-            netWorthRes,
-            budgetOverviewRes,
-            thisMonthRes,
-            rulesRes,
-            draftsRes,
-        ] = await Promise.all([
-            axiosInstance.get<ApiResponse<PeriodAverages>>(API_PATHS.REPORTS.AVERAGES, { params: periodParams }),
-            axiosInstance.get<ApiResponse<LargestExpensesResponse>>(API_PATHS.REPORTS.LARGEST_EXPENSES, {
-                params: { ...periodParams, limit: 10 },
-            }),
-            axiosInstance.get<ApiResponse<SpendingTrendsResponse>>(API_PATHS.REPORTS.SPENDING_TRENDS, {
-                params: periodParams,
-            }),
-            axiosInstance.get<ApiResponse<IncomeVsExpenseResponse>>(API_PATHS.REPORTS.INCOME_VS_EXPENSE, {
-                params: periodParams,
-            }),
-            axiosInstance.get<ApiResponse<SavingsRateReport>>(API_PATHS.REPORTS.SAVINGS_RATE, { params: periodParams }),
-            axiosInstance.get<ApiResponse<RecurringTotalsReport>>(API_PATHS.REPORTS.RECURRING_TOTALS, {
-                params: periodParams,
-            }),
-            axiosInstance.get<ApiResponse<{ breakdown: CategoryBreakdownItem[] }>>(
-                API_PATHS.DASHBOARD.CATEGORY_BREAKDOWN,
-                { params: { startDate: periodDates.startDate, endDate: periodDates.endDate, type: 'expense' } }
-            ),
-            axiosInstance.get<ApiResponse<BudgetAnalysisReport>>(API_PATHS.REPORTS.BUDGET_ANALYSIS, {
-                params: periodParams,
-            }),
-            axiosInstance.get<ApiResponse<SpendingAnalysisReport>>(API_PATHS.REPORTS.SPENDING_ANALYSIS, {
-                params: periodParams,
-            }),
-            axiosInstance.get<ApiResponse<CrossoverPointReport>>(API_PATHS.REPORTS.CROSSOVER_POINT, {
-                params: periodParams,
-            }),
-            axiosInstance.get<ApiResponse<SavedReport[]>>(API_PATHS.REPORTS.SAVED),
-            axiosInstance.get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, {
-                params: chartQuery,
-            }),
-            axiosInstance.get<ApiResponse<NetWorthTrendResponse>>(API_PATHS.DASHBOARD.NET_WORTH_TREND, {
-                params: chartQuery,
-            }),
-            axiosInstance.get<ApiResponse<BudgetOverviewResponse>>(API_PATHS.DASHBOARD.BUDGET_OVERVIEW),
-            axiosInstance.get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, {
-                params: thisMonthQuery,
-            }),
-            axiosInstance.get<ApiResponse<RecurringRule[]>>(API_PATHS.RECURRING_RULES.GET_ALL, {
-                params: { includeArchived: false },
-            }),
-            axiosInstance.get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS),
-        ])
+): Promise<ServerReportsResult> => {
+    const requests = buildSectionRequests(periodParams, periodDates, chartQuery, thisMonthQuery)
+    const settled = await Promise.allSettled(requests.map((request) => request.run()))
 
-        const categoryPayload = unwrapApiData(categoryRes)
+    const data: PartialReportsData = {}
+    const sectionErrors: ReportsSectionErrors = {}
 
-        return {
-            averages: unwrapApiData(averagesRes),
-            largestExpenses: unwrapApiData(largestRes),
-            spendingTrends: unwrapApiData(trendsRes),
-            incomeVsExpense: unwrapApiData(comparisonRes),
-            savingsRate: unwrapApiData(savingsRes),
-            recurringTotals: unwrapApiData(recurringRes),
-            categoryBreakdown: categoryPayload.breakdown,
-            budgetAnalysis: unwrapApiData(budgetAnalysisRes),
-            spendingAnalysis: unwrapApiData(spendingAnalysisRes),
-            crossoverPoint: unwrapApiData(crossoverRes),
-            savedReports: unwrapApiData(savedReportsRes),
-            cashFlow: unwrapApiData(cashFlowRes),
-            netWorthTrend: unwrapApiData(netWorthRes),
-            budgetOverview: unwrapApiData(budgetOverviewRes),
-            thisMonthCashFlow: unwrapApiData(thisMonthRes),
-            recurringRules: unwrapApiData(rulesRes),
-            recurringDrafts: unwrapApiData(draftsRes),
+    settled.forEach((result, index) => {
+        const { key } = requests[index]
+        if (result.status === 'fulfilled') {
+            ;(data as Record<SectionKey, unknown>)[key] = result.value
+        } else {
+            sectionErrors[key] = getApiErrorMessage(result.reason, 'Failed to load this section')
         }
-    } catch (error) {
-        throw new Error(getApiErrorMessage(error, 'Failed to load reports'))
-    }
+    })
+
+    return { data, sectionErrors }
 }
 
 const fetchLocalReports = async (
@@ -389,7 +470,7 @@ export const useReportsData = (
         useCallback(
             () =>
                 localFirst
-                    ? Promise.resolve(null as unknown as ReportsData)
+                    ? Promise.resolve({ data: {}, sectionErrors: {} })
                     : fetchServerReports(periodParams, periodDates, chartQuery, thisMonthQuery),
             [localFirst, periodParams, periodDates, chartQuery, thisMonthQuery]
         ),
@@ -415,5 +496,15 @@ export const useReportsData = (
         )
     )
 
-    return localFirst ? localResult : serverResult
+    if (localFirst) {
+        return { ...localResult, sectionErrors: {} }
+    }
+
+    return {
+        data: serverResult.data?.data ?? null,
+        sectionErrors: serverResult.data?.sectionErrors ?? {},
+        loading: serverResult.loading,
+        error: serverResult.error,
+        refetch: serverResult.refetch,
+    }
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { ReactNode, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
     Bar,
@@ -16,6 +16,7 @@ import { IoDownload } from 'react-icons/io5'
 import PageHeader from '../../components/ui/PageHeader'
 import StatCard from '../../components/ui/StatCard'
 import AsyncContent from '../../components/ui/AsyncContent'
+import ErrorState from '../../components/ui/ErrorState'
 import CustomReportBuilder from '../../components/reports/CustomReportBuilder'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -172,7 +173,7 @@ const Reports = () => {
         return { startDate, endDate, groupBy: 'day' as DashboardGroupBy }
     }, [])
 
-    const { data, loading, error, refetch } = useReportsData(
+    const { data, sectionErrors, loading, error, refetch } = useReportsData(
         periodParams,
         periodDates,
         chartQuery,
@@ -306,170 +307,303 @@ const Reports = () => {
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <StatCard
-                                label="Savings rate"
-                                value={`${reports.savingsRate.savingsRate.toFixed(1)}%`}
-                                subtitle={`${formatCurrency(reports.savingsRate.netSavings)} saved`}
-                                accent="income"
-                            />
-                            <StatCard
-                                label={`Avg ${reports.averages.unit === 'day' ? 'daily' : 'monthly'} income`}
-                                value={formatCurrency(reports.averages.averageIncome)}
-                                subtitle={`Across ${reports.averages.unitCount} ${reports.averages.unit}s`}
-                                accent="income"
-                            />
-                            <StatCard
-                                label={`Avg ${reports.averages.unit === 'day' ? 'daily' : 'monthly'} spending`}
-                                value={formatCurrency(reports.averages.averageExpenses)}
-                                subtitle={`Total ${formatCurrency(reports.averages.totalExpenses)}`}
-                                accent="expense"
-                            />
-                            <StatCard
-                                label="Recurring (monthly eq.)"
-                                value={formatCurrency(reports.recurringTotals.totalMonthlyEquivalent)}
-                                subtitle={`${reports.recurringTotals.activeExpenseRules.length} active rules`}
-                                accent="accent"
-                            />
+                            {sectionErrors.savingsRate ? (
+                                <StatCardError label="Savings rate" message={sectionErrors.savingsRate} onRetry={refetch} />
+                            ) : reports.savingsRate ? (
+                                <StatCard
+                                    label="Savings rate"
+                                    value={`${reports.savingsRate.savingsRate.toFixed(1)}%`}
+                                    subtitle={`${formatCurrency(reports.savingsRate.netSavings)} saved`}
+                                    accent="income"
+                                />
+                            ) : null}
+
+                            {sectionErrors.averages ? (
+                                <StatCardError label="Average income" message={sectionErrors.averages} onRetry={refetch} />
+                            ) : reports.averages ? (
+                                <StatCard
+                                    label={`Avg ${reports.averages.unit === 'day' ? 'daily' : 'monthly'} income`}
+                                    value={formatCurrency(reports.averages.averageIncome)}
+                                    subtitle={`Across ${reports.averages.unitCount} ${reports.averages.unit}s`}
+                                    accent="income"
+                                />
+                            ) : null}
+
+                            {sectionErrors.averages ? (
+                                <StatCardError label="Average spending" message={sectionErrors.averages} onRetry={refetch} />
+                            ) : reports.averages ? (
+                                <StatCard
+                                    label={`Avg ${reports.averages.unit === 'day' ? 'daily' : 'monthly'} spending`}
+                                    value={formatCurrency(reports.averages.averageExpenses)}
+                                    subtitle={`Total ${formatCurrency(reports.averages.totalExpenses)}`}
+                                    accent="expense"
+                                />
+                            ) : null}
+
+                            {sectionErrors.recurringTotals ? (
+                                <StatCardError
+                                    label="Recurring (monthly eq.)"
+                                    message={sectionErrors.recurringTotals}
+                                    onRetry={refetch}
+                                />
+                            ) : reports.recurringTotals ? (
+                                <StatCard
+                                    label="Recurring (monthly eq.)"
+                                    value={formatCurrency(reports.recurringTotals.totalMonthlyEquivalent)}
+                                    subtitle={`${reports.recurringTotals.activeExpenseRules.length} active rules`}
+                                    accent="accent"
+                                />
+                            ) : null}
                         </div>
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <ThisMonthChart
-                                data={reports.thisMonthCashFlow.series}
-                                groupBy={reports.thisMonthCashFlow.groupBy}
-                                periodStart={reports.thisMonthCashFlow.periodStart}
-                                periodEnd={reports.thisMonthCashFlow.periodEnd}
-                            />
-                            <NetWorthChart
-                                series={reports.netWorthTrend.series}
-                                currentBalances={reports.netWorthTrend.currentBalances}
-                                balanceSource={reports.netWorthTrend.balanceSource}
-                            />
-                        </div>
-
-                        <CashFlowChart data={reports.cashFlow.series} groupBy={reports.cashFlow.groupBy} />
-
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <IncomeOverTimeChart
-                                data={reports.cashFlow.series}
-                                groupBy={reports.cashFlow.groupBy}
-                            />
-                            <SpendingOverTimeChart
-                                data={reports.cashFlow.series}
-                                groupBy={reports.cashFlow.groupBy}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <IncomeVsExpenseChart data={reports.incomeVsExpense} />
-                            <SpendingTrendsChart data={reports.spendingTrends.trends} />
-                        </div>
-
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <div className="card">
-                                <h3 className="text-sm font-medium text-fg">Largest expenses</h3>
-                                <p className="text-xs text-fg-muted mt-1">Top posted expenses in this period</p>
-                                {reports.largestExpenses.expenses.length === 0 ? (
-                                    <p className="text-sm text-fg-muted mt-6 text-center py-8">
-                                        No expenses in this period.
-                                    </p>
-                                ) : (
-                                    <ul className="mt-4 divide-y divide-slate-800">
-                                        {reports.largestExpenses.expenses.map((expense, index) => (
-                                            <li
-                                                key={expense.transactionId}
-                                                className="py-3 flex items-start justify-between gap-3"
-                                            >
-                                                <div className="min-w-0">
-                                                    <p className="text-sm text-fg truncate">
-                                                        {index + 1}. {expense.title}
-                                                    </p>
-                                                    <p className="text-xs text-fg-muted mt-0.5">
-                                                        {expense.categoryName} ·{' '}
-                                                        {formatContributionDate(expense.date)}
-                                                    </p>
-                                                </div>
-                                                <p className="text-sm font-medium text-expense shrink-0">
-                                                    {formatCurrency(expense.amount, expense.currency)}
-                                                </p>
-                                            </li>
-                                        ))}
-                                    </ul>
+                            <ReportSection
+                                title="This month"
+                                value={reports.thisMonthCashFlow}
+                                error={sectionErrors.thisMonthCashFlow}
+                                onRetry={refetch}
+                                render={(thisMonthCashFlow) => (
+                                    <ThisMonthChart
+                                        data={thisMonthCashFlow.series}
+                                        groupBy={thisMonthCashFlow.groupBy}
+                                        periodStart={thisMonthCashFlow.periodStart}
+                                        periodEnd={thisMonthCashFlow.periodEnd}
+                                    />
                                 )}
-                            </div>
+                            />
+                            <ReportSection
+                                title="Net worth trend"
+                                value={reports.netWorthTrend}
+                                error={sectionErrors.netWorthTrend}
+                                onRetry={refetch}
+                                render={(netWorthTrend) => (
+                                    <NetWorthChart
+                                        series={netWorthTrend.series}
+                                        currentBalances={netWorthTrend.currentBalances}
+                                        balanceSource={netWorthTrend.balanceSource}
+                                    />
+                                )}
+                            />
+                        </div>
 
-                            <div className="card">
-                                <h3 className="text-sm font-medium text-fg">Recurring expense totals</h3>
-                                <p className="text-xs text-fg-muted mt-1">
-                                    Active rules normalized to monthly · posted recurring in period
-                                </p>
-                                <div className="mt-4 grid grid-cols-2 gap-3">
-                                    <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
-                                        <p className="text-xs text-fg-muted">Monthly equivalent</p>
-                                        <p className="text-lg font-semibold text-violet-300 mt-1">
-                                            {formatCurrency(reports.recurringTotals.totalMonthlyEquivalent)}
-                                        </p>
+                        <ReportSection
+                            title="Cash flow"
+                            value={reports.cashFlow}
+                            error={sectionErrors.cashFlow}
+                            onRetry={refetch}
+                            render={(cashFlow) => <CashFlowChart data={cashFlow.series} groupBy={cashFlow.groupBy} />}
+                        />
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <ReportSection
+                                title="Income over time"
+                                value={reports.cashFlow}
+                                error={sectionErrors.cashFlow}
+                                onRetry={refetch}
+                                render={(cashFlow) => (
+                                    <IncomeOverTimeChart data={cashFlow.series} groupBy={cashFlow.groupBy} />
+                                )}
+                            />
+                            <ReportSection
+                                title="Spending over time"
+                                value={reports.cashFlow}
+                                error={sectionErrors.cashFlow}
+                                onRetry={refetch}
+                                render={(cashFlow) => (
+                                    <SpendingOverTimeChart data={cashFlow.series} groupBy={cashFlow.groupBy} />
+                                )}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <ReportSection
+                                title="Income vs expense"
+                                value={reports.incomeVsExpense}
+                                error={sectionErrors.incomeVsExpense}
+                                onRetry={refetch}
+                                render={(incomeVsExpense) => <IncomeVsExpenseChart data={incomeVsExpense} />}
+                            />
+                            <ReportSection
+                                title="Spending trends"
+                                value={reports.spendingTrends}
+                                error={sectionErrors.spendingTrends}
+                                onRetry={refetch}
+                                render={(spendingTrends) => <SpendingTrendsChart data={spendingTrends.trends} />}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <ReportSection
+                                title="Largest expenses"
+                                description="Top posted expenses in this period"
+                                value={reports.largestExpenses}
+                                error={sectionErrors.largestExpenses}
+                                onRetry={refetch}
+                                render={(largestExpenses) => (
+                                    <div className="card">
+                                        <h3 className="text-sm font-medium text-fg">Largest expenses</h3>
+                                        <p className="text-xs text-fg-muted mt-1">Top posted expenses in this period</p>
+                                        {largestExpenses.expenses.length === 0 ? (
+                                            <p className="text-sm text-fg-muted mt-6 text-center py-8">
+                                                No expenses in this period.
+                                            </p>
+                                        ) : (
+                                            <ul className="mt-4 divide-y divide-slate-800">
+                                                {largestExpenses.expenses.map((expense, index) => (
+                                                    <li
+                                                        key={expense.transactionId}
+                                                        className="py-3 flex items-start justify-between gap-3"
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm text-fg truncate">
+                                                                {index + 1}. {expense.title}
+                                                            </p>
+                                                            <p className="text-xs text-fg-muted mt-0.5">
+                                                                {expense.categoryName} ·{' '}
+                                                                {formatContributionDate(expense.date)}
+                                                            </p>
+                                                        </div>
+                                                        <p className="text-sm font-medium text-expense shrink-0">
+                                                            {formatCurrency(expense.amount, expense.currency)}
+                                                        </p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </div>
-                                    <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
-                                        <p className="text-xs text-fg-muted">Posted in period</p>
-                                        <p className="text-lg font-semibold text-expense mt-1">
-                                            {formatCurrency(
-                                                reports.recurringTotals.postedRecurringExpensesInPeriod
-                                            )}
+                                )}
+                            />
+
+                            <ReportSection
+                                title="Recurring expense totals"
+                                description="Active rules normalized to monthly · posted recurring in period"
+                                value={reports.recurringTotals}
+                                error={sectionErrors.recurringTotals}
+                                onRetry={refetch}
+                                render={(recurringTotals) => (
+                                    <div className="card">
+                                        <h3 className="text-sm font-medium text-fg">Recurring expense totals</h3>
+                                        <p className="text-xs text-fg-muted mt-1">
+                                            Active rules normalized to monthly · posted recurring in period
                                         </p>
+                                        <div className="mt-4 grid grid-cols-2 gap-3">
+                                            <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                                                <p className="text-xs text-fg-muted">Monthly equivalent</p>
+                                                <p className="text-lg font-semibold text-violet-300 mt-1">
+                                                    {formatCurrency(recurringTotals.totalMonthlyEquivalent)}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-lg border border-border-subtle bg-surface/50 p-3">
+                                                <p className="text-xs text-fg-muted">Posted in period</p>
+                                                <p className="text-lg font-semibold text-expense mt-1">
+                                                    {formatCurrency(recurringTotals.postedRecurringExpensesInPeriod)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {recurringTotals.activeExpenseRules.length > 0 && (
+                                            <ul className="mt-4 divide-y divide-slate-800">
+                                                {recurringTotals.activeExpenseRules.map((rule) => (
+                                                    <li
+                                                        key={rule.ruleId}
+                                                        className="py-2.5 flex items-center justify-between gap-3"
+                                                    >
+                                                        <div>
+                                                            <p className="text-sm text-fg">{rule.title}</p>
+                                                            <p className="text-xs text-fg-muted capitalize">
+                                                                {rule.interval} · {formatCurrency(rule.amount)}/occurrence
+                                                            </p>
+                                                        </div>
+                                                        <p className="text-sm text-fg-secondary">
+                                                            {formatCurrency(rule.monthlyEquivalent)}/mo
+                                                        </p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </div>
+                                )}
+                            />
+                        </div>
+
+                        <ReportSection
+                            title="Category breakdown"
+                            value={reports.categoryBreakdown}
+                            error={sectionErrors.categoryBreakdown}
+                            onRetry={refetch}
+                            render={(categoryBreakdown) => <CategoryBreakdownChart data={categoryBreakdown} />}
+                        />
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <ReportSection
+                                title="Budget overview"
+                                value={reports.budgetOverview}
+                                error={sectionErrors.budgetOverview}
+                                onRetry={refetch}
+                                render={(budgetOverview) => (
+                                    <BudgetOverviewChart
+                                        budgets={budgetOverview.budgets}
+                                        periodStart={budgetOverview.periodStart}
+                                        periodEnd={budgetOverview.periodEnd}
+                                    />
+                                )}
+                            />
+
+                            {sectionErrors.recurringRules || sectionErrors.recurringDrafts ? (
+                                <div className="card">
+                                    <h3 className="text-sm font-medium text-fg">Calendar</h3>
+                                    <p className="text-xs text-fg-muted mt-1">Recurring bills and upcoming drafts</p>
+                                    <ErrorState
+                                        message={sectionErrors.recurringRules ?? sectionErrors.recurringDrafts}
+                                        onRetry={refetch}
+                                    />
                                 </div>
-                                {reports.recurringTotals.activeExpenseRules.length > 0 && (
-                                    <ul className="mt-4 divide-y divide-slate-800">
-                                        {reports.recurringTotals.activeExpenseRules.map((rule) => (
-                                            <li
-                                                key={rule.ruleId}
-                                                className="py-2.5 flex items-center justify-between gap-3"
-                                            >
-                                                <div>
-                                                    <p className="text-sm text-fg">{rule.title}</p>
-                                                    <p className="text-xs text-fg-muted capitalize">
-                                                        {rule.interval} · {formatCurrency(rule.amount)}/occurrence
-                                                    </p>
-                                                </div>
-                                                <p className="text-sm text-fg-secondary">
-                                                    {formatCurrency(rule.monthlyEquivalent)}/mo
-                                                </p>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                        </div>
-
-                        <CategoryBreakdownChart data={reports.categoryBreakdown} />
-
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <BudgetOverviewChart
-                                budgets={reports.budgetOverview.budgets}
-                                periodStart={reports.budgetOverview.periodStart}
-                                periodEnd={reports.budgetOverview.periodEnd}
-                            />
-                            <DashboardCalendarCard
-                                rules={reports.recurringRules}
-                                drafts={reports.recurringDrafts}
-                            />
+                            ) : reports.recurringRules && reports.recurringDrafts ? (
+                                <DashboardCalendarCard rules={reports.recurringRules} drafts={reports.recurringDrafts} />
+                            ) : null}
                         </div>
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <BudgetAnalysisSection data={reports.budgetAnalysis} />
-                            <CrossoverPointChart data={reports.crossoverPoint} />
+                            <ReportSection
+                                title="Budget analysis"
+                                value={reports.budgetAnalysis}
+                                error={sectionErrors.budgetAnalysis}
+                                onRetry={refetch}
+                                render={(budgetAnalysis) => <BudgetAnalysisSection data={budgetAnalysis} />}
+                            />
+                            <ReportSection
+                                title="Crossover point"
+                                value={reports.crossoverPoint}
+                                error={sectionErrors.crossoverPoint}
+                                onRetry={refetch}
+                                render={(crossoverPoint) => <CrossoverPointChart data={crossoverPoint} />}
+                            />
                         </div>
 
-                        <SpendingAnalysisSection data={reports.spendingAnalysis} />
+                        <ReportSection
+                            title="Spending analysis"
+                            value={reports.spendingAnalysis}
+                            error={sectionErrors.spendingAnalysis}
+                            onRetry={refetch}
+                            render={(spendingAnalysis) => <SpendingAnalysisSection data={spendingAnalysis} />}
+                        />
 
-                        <CustomReportBuilder
-                            periodType={periodType}
-                            reportYear={reportYear}
-                            reportMonth={reportMonth}
-                            startDate={startDate}
-                            endDate={endDate}
-                            savedReports={reports.savedReports}
-                            onSavedReportsChange={() => setSavedReportsKey((key) => key + 1)}
+                        <ReportSection
+                            title="Custom reports"
+                            description="Build visual reports by split, chart type, and date range - save configs to reuse"
+                            value={reports.savedReports}
+                            error={sectionErrors.savedReports}
+                            onRetry={refetch}
+                            render={(savedReports) => (
+                                <CustomReportBuilder
+                                    periodType={periodType}
+                                    reportYear={reportYear}
+                                    reportMonth={reportMonth}
+                                    startDate={startDate}
+                                    endDate={endDate}
+                                    savedReports={savedReports}
+                                    onSavedReportsChange={() => setSavedReportsKey((key) => key + 1)}
+                                />
+                            )}
                         />
 
                         <div className="card">
@@ -530,6 +664,50 @@ const Reports = () => {
         </div>
     )
 }
+
+interface ReportSectionProps<T> {
+    title: string
+    description?: string
+    value: T | undefined
+    error: string | undefined
+    onRetry: () => void
+    render: (value: T) => ReactNode
+}
+
+/** BUG-05: wraps one reports section so a failed request shows a scoped, retryable error in place
+ * of just that section instead of the whole page - `title`/`description` are repeated here rather
+ * than read off the wrapped component so the heading stays put even when `render` never runs. */
+function ReportSection<T>({ title, description, value, error, onRetry, render }: ReportSectionProps<T>): ReactNode {
+    if (error) {
+        return (
+            <div className="card">
+                <h3 className="text-sm font-medium text-fg">{title}</h3>
+                {description && <p className="text-xs text-fg-muted mt-1">{description}</p>}
+                <ErrorState message={error} onRetry={onRetry} />
+            </div>
+        )
+    }
+    if (value === undefined) return null
+    return <>{render(value)}</>
+}
+
+const StatCardError: React.FC<{ label: string; message: string; onRetry: () => void }> = ({
+    label,
+    message,
+    onRetry,
+}) => (
+    <div className="stat-card stat-card--neutral">
+        <p className="stat-card__label">{label}</p>
+        <p className="text-xs text-fg-muted mt-2 line-clamp-2">{message}</p>
+        <button
+            type="button"
+            onClick={onRetry}
+            className="mt-2 text-xs font-medium text-accent hover:underline"
+        >
+            Try again
+        </button>
+    </div>
+)
 
 const IncomeVsExpenseChart: React.FC<{ data: IncomeVsExpenseResponse }> = ({ data }) => {
     const chartData = [
