@@ -296,7 +296,7 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'Released under the Apache 2.0 License.',
+      message: 'Released under the GNU AGPL v3.0 License.',
       copyright: 'Copyright © spndr',
     },
 

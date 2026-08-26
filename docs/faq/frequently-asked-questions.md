@@ -10,7 +10,7 @@ spndr is a personal finance web application for tracking transactions, account b
 
 ### Is spndr free to use?
 
-spndr is open source under the Apache-2.0 License. You can run it locally or deploy it on your own infrastructure at no cost.
+spndr is open source under the GNU AGPL v3.0 License. You can run it locally or deploy it on your own infrastructure at no cost. If you modify it and offer it to others over a network, the AGPL requires you to publish your changes.
 
 ### Do I need to create an account?
 

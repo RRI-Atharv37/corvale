@@ -7,7 +7,7 @@
 
 Built for students and young adults who want clarity over complexity.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
+[![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
@@ -273,7 +273,11 @@ Phases **0–12** are complete with **480 backend tests** across 41 files, zero 
 
 Copyright © 2026 **[Atharv Dewangan](https://github.com/RRI-Atharv37)**
 
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-or-later`).
+
+> **v1.0.0 is the first AGPL release.** Every earlier release — up to and including **v0.17.0**
+> — was published under the Apache License 2.0, and that grant is irrevocable for those
+> versions.
 
 ---
 

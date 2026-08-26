@@ -28,6 +28,21 @@ the launch-gate ladder.
 
 ### Changed
 
+- **Licence changed from Apache-2.0 to the GNU AGPL v3.0 (`AGPL-3.0-or-later`).** spndr stays
+  open source — the AGPL is an OSI-approved licence — and **self-hosting is unaffected**: you can
+  still run it for free, modify it, and deploy it for yourself or your household. The only new
+  obligation is that if you offer a *modified* version to other people over a network, you must
+  publish your changes.
+
+  **v1.0.0 is the first release under the AGPL.** Every earlier release — up to and including
+  **v0.17.0** — was published under Apache-2.0, and that grant is irrevocable: those versions
+  stay usable under Apache-2.0 forever, as does any commit obtained from this repository before
+  the relicense.
+
+  *(Mechanics: `LICENSE` replaced with the canonical AGPL v3 text; `license` fields set in all
+  three workspace `package.json` files; README badge, docs footer and FAQ updated. Copyright
+  ownership verified as 100% beforehand — 124 owner commits, 8 dependabot lockfile bumps. See
+  TODO.md M0b and ROADMAP.md § Licensing.)*
 - Account balances can now be stored in integer minor units (`Account.balanceUnit`), with a
   flag-gated, idempotent migration (`migrate:account-balances`); every balance read/write path is
   minor-units-aware (TODO.md C5)
