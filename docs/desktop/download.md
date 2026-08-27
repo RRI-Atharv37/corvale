@@ -4,7 +4,7 @@ title: Getting the Desktop App
 
 ## Where to download it
 
-Every spndr account has a **Get the desktop app** link in Settings that takes you to the in-app
+Every Corvale account has a **Get the desktop app** link in Settings that takes you to the in-app
 `/download` page. You can also reach it directly, whether or not you're signed in.
 
 The page detects the operating system you're browsing from and marks it **Recommended for your
@@ -15,7 +15,7 @@ sit alongside it if you're downloading for a different machine.
 
 Each platform's card shows:
 
-- The system requirements for running spndr there
+- The system requirements for running Corvale there
 - A download button for the recommended installer format on that platform (`.msi` on Windows,
   an Apple Silicon `.dmg` on macOS, `.deb` on Linux), along with its file size
 - A SHA-256 checksum you can use to verify your download
@@ -39,7 +39,7 @@ the alternatives.
 
 ## About the "unknown publisher" warning
 
-spndr is a personal/portfolio project rather than a commercially distributed product, so its
+Corvale is a personal/portfolio project rather than a commercially distributed product, so its
 installers aren't digitally signed by a Windows or Apple certificate. That means your operating
 system shows a warning the first time you run one:
 
@@ -49,7 +49,7 @@ system shows a warning the first time you run one:
 
 This warning is expected for software that isn't code-signed - it doesn't mean anything is wrong
 with the download. Each release publishes a SHA-256 checksum alongside the installer so you can
-independently confirm the file you downloaded matches what spndr actually released, if you'd like
+independently confirm the file you downloaded matches what Corvale actually released, if you'd like
 extra reassurance before running it.
 
 ## Related pages

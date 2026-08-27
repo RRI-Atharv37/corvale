@@ -47,7 +47,7 @@ When you choose **Custom**, an additional **Custom interval (days)** field appea
 
 ### Next due date
 
-The date spndr uses to generate the first draft. After each draft is generated, spndr advances this date to the next occurrence automatically.
+The date Corvale uses to generate the first draft. After each draft is generated, Corvale advances this date to the next occurrence automatically.
 
 ### Description and payment method (optional)
 

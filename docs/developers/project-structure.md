@@ -42,7 +42,7 @@ spndr/
 │   ├── utils/                Balance engine, transaction helpers, shared utils
 │   ├── scripts/              Migration CLI scripts
 │   └── tests/                Vitest integration and unit tests
-├── frontend/spndr/           React SPA
+├── frontend/corvale/          React SPA
 │   ├── src/
 │   │   ├── App.tsx           Route definitions
 │   │   ├── main.tsx          Entry point

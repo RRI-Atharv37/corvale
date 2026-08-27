@@ -7,7 +7,7 @@ title: Forecast API
 Requires authentication. Projects each of the caller's accounts forward and flags days where the projected balance would go negative.
 
 ::: warning No frontend yet
-This API is implemented and available today, but spndr's web UI does not yet have a page for it. Use it directly if you're building against the API.
+This API is implemented and available today, but Corvale's web UI does not yet have a page for it. Use it directly if you're building against the API.
 :::
 
 ### Query parameters

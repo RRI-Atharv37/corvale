@@ -2,9 +2,9 @@
 title: Authentication Overview
 ---
 
-## How authentication works in spndr
+## How authentication works in Corvale
 
-spndr uses email-and-password authentication with JSON Web Tokens (JWT). When you sign up or sign in, the server validates your credentials and returns a short-lived access token plus a refresh token stored in an httpOnly cookie. The frontend stores the access token and sends it with every protected request.
+Corvale uses email-and-password authentication with JSON Web Tokens (JWT). When you sign up or sign in, the server validates your credentials and returns a short-lived access token plus a refresh token stored in an httpOnly cookie. The frontend stores the access token and sends it with every protected request.
 
 ## What authentication protects
 
@@ -15,11 +15,11 @@ Every feature beyond login, signup, and password reset requires a valid session:
 - Saver deposits and withdrawals
 - Pushover rollovers and history
 
-If your session is missing or cannot be refreshed, spndr redirects you to the login page.
+If your session is missing or cannot be refreshed, Corvale redirects you to the login page.
 
 ## Your account information
 
-Each spndr account stores:
+Each Corvale account stores:
 
 | Field | Description |
 |-------|-------------|
@@ -41,7 +41,7 @@ Login, registration, and password reset endpoints are rate-limited to protect ag
 
 ## Session persistence
 
-spndr stores your access JWT in the browser's local storage and keeps the refresh token in an httpOnly cookie. When you reopen the app, spndr restores your session by validating or refreshing tokens with the server.
+Corvale stores your access JWT in the browser's local storage and keeps the refresh token in an httpOnly cookie. When you reopen the app, Corvale restores your session by validating or refreshing tokens with the server.
 
 ## Related pages
 

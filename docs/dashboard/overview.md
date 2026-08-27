@@ -19,12 +19,12 @@ The summary cards adapt based on whether you have active accounts. See [Summary 
 
 ## How dashboard data loads
 
-When you open the dashboard, spndr fetches data in parallel:
+When you open the dashboard, Corvale fetches data in parallel:
 
 - Transaction counts for income and expense types
 - Your saver balance details (which includes computed totals for net worth and spendable balance)
 
-If any request fails, spndr shows an error state with a **Retry** button.
+If any request fails, Corvale shows an error state with a **Retry** button.
 
 ## Empty state
 

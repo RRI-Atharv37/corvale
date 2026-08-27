@@ -4,7 +4,7 @@ title: Deployment Guide
 
 ## Who this is for
 
-This guide is for self-hosters: anyone running spndr on their own server or home lab, outside
+This guide is for self-hosters: anyone running Corvale on their own server or home lab, outside
 of local development. It covers the Docker Compose stack shipped in the repository root, plus
 the production-specific configuration (HTTPS, backups, virus scanning, receipt storage) that
 [Installation](../getting-started/installation.md) and [Running
@@ -15,7 +15,7 @@ still applies conceptually - jump to [Deploying without Docker](#deploying-witho
 
 ## Deployment topology, in short
 
-spndr's session cookie is `SameSite=Lax` by default, which requires the frontend and API to
+Corvale's session cookie is `SameSite=Lax` by default, which requires the frontend and API to
 share one registrable domain (same-site, though they can live on different ports or
 subdomains). The Docker Compose stack below satisfies this out of the box by exposing the
 frontend on `:8080` and the API on `:5000` of the same host. Read [Deployment
@@ -27,7 +27,7 @@ unrelated domains (for example, a frontend on Vercel calling an API on Render).
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2 (`docker compose`, not
   the older standalone `docker-compose`)
 - A domain name and a reverse proxy if you want HTTPS and a real hostname (see
-  [Putting it behind HTTPS](#putting-it-behind-https)) - not required to try spndr locally
+  [Putting it behind HTTPS](#putting-it-behind-https)) - not required to try Corvale locally
 
 ## Quickstart
 
@@ -82,7 +82,7 @@ curl http://localhost:5000/ready    # {"success":true,"data":{"status":"ready"}}
 |---------|---------------|---------|
 | `mongo` | `mongo:7` | System of record. Data persists in the `mongo-data` volume |
 | `backend` | built from `backend/Dockerfile` | The Express API, compiled with `tsc` and run under Node |
-| `frontend` | built from `frontend/spndr/Dockerfile` | The Vite production build, served as static files by nginx with SPA routing |
+| `frontend` | built from `frontend/corvale/Dockerfile` | The Vite production build, served as static files by nginx with SPA routing |
 | `clamav` | `clamav/clamav:stable` | Optional receipt virus scanning - only started with `--profile clamav` |
 
 The `backend` Dockerfile builds from the repository root (not `backend/` alone) because the
@@ -128,16 +128,16 @@ this with automatic Let's Encrypt certificates and almost no configuration - a `
 the host, outside the Compose stack:
 
 ```
-spndr.example.com {
+corvale.example.com {
     reverse_proxy localhost:8080
 }
 ```
 
 Update the `CLIENT_URL` override under `backend.environment` in `docker-compose.yml` (not
-`backend/.env` - see [Quickstart](#quickstart) above) to `https://spndr.example.com`, and rebuild
+`backend/.env` - see [Quickstart](#quickstart) above) to `https://corvale.example.com`, and rebuild
 the frontend image with `VITE_API_URL`/`VITE_API_ORIGIN` pointing at wherever the API is reachable
 through your proxy (either the same domain under a `/api` path you proxy separately, or a
-subdomain like `api.spndr.example.com` - either keeps the deployment same-site). An nginx or
+subdomain like `api.corvale.example.com` - either keeps the deployment same-site). An nginx or
 Traefik reverse proxy works the same way; the requirement is only that TLS terminates in front of
 both containers and `CLIENT_URL` matches the public frontend URL exactly.
 
@@ -187,14 +187,14 @@ cleanly before relying on it.
 If you'd rather not use Docker, run the same three pieces as standalone processes:
 
 1. Follow [Installation](../getting-started/installation.md) to install dependencies and
-   configure `backend/.env` and `frontend/spndr/.env`.
+   configure `backend/.env` and `frontend/corvale/.env`.
 2. `cd backend && npm run build && npm start` - runs the compiled API under plain Node. Use a
    process manager (`pm2`, `systemd`, a container orchestrator) to keep it running and restart
    it on crash or reboot; nothing in this repository does that for you outside Docker's own
    `restart: unless-stopped`.
-3. `cd frontend/spndr && npm run build` - produces static files in `dist/`. Serve them with any
+3. `cd frontend/corvale && npm run build` - produces static files in `dist/`. Serve them with any
    static file server that supports SPA fallback routing (nginx, Caddy, Netlify, S3 + CloudFront
-   all work) - see `frontend/spndr/nginx.conf` in the repository for a minimal example
+   all work) - see `frontend/corvale/nginx.conf` in the repository for a minimal example
    configuration.
 4. Point both at a MongoDB instance you run or manage yourself, and follow the same environment
    variable, HTTPS, virus-scanning, and receipt-storage guidance above - none of it is

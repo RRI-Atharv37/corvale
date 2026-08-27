@@ -186,7 +186,7 @@ Both fields are optional. Supported currencies are validated server-side.
 
 ## Refresh token cookie
 
-- Cookie name: `spndr_refresh` (override with `REFRESH_TOKEN_COOKIE_NAME`)
+- Cookie name: `corvale_refresh` (override with `REFRESH_TOKEN_COOKIE_NAME`)
 - httpOnly, secure in production, sameSite `lax`
 - Expiry: `JWT_REFRESH_EXPIRY` (default: `7d`)
 - Stored hashed in the `RefreshToken` collection with rotation on each refresh

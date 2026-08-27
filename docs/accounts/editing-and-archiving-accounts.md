@@ -40,7 +40,7 @@ When you archive an account:
 
 ## Empty state
 
-If you have no accounts, spndr shows:
+If you have no accounts, Corvale shows:
 
 - **Title:** No accounts yet
 - **Description:** Create your first account to start tracking balances.

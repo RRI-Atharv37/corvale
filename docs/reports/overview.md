@@ -4,7 +4,7 @@ title: Reports Overview
 
 ## Dig deeper into your spending
 
-The **Reports** page is where spndr's analytics live - charts and breakdowns that go beyond the stat cards on your dashboard Home. Navigate to Reports from the sidebar or go to `/reports`.
+The **Reports** page is where Corvale's analytics live - charts and breakdowns that go beyond the stat cards on your dashboard Home. Navigate to Reports from the sidebar or go to `/reports`.
 
 ## What you'll find
 

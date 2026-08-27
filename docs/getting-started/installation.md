@@ -4,7 +4,7 @@ title: Installation
 
 ## Before you begin
 
-Install spndr on a computer where you can run a local development environment. You need the following tools:
+Install Corvale on a computer where you can run a local development environment. You need the following tools:
 
 | Tool | Minimum version | Purpose |
 |------|-----------------|---------|
@@ -16,7 +16,7 @@ You also need a terminal (Command Prompt, PowerShell, or Terminal) and a code ed
 
 ## Clone the repository
 
-Open a terminal and clone the spndr repository:
+Open a terminal and clone the Corvale repository:
 
 ```bash
 git clone https://github.com/RRI-Atharv37/spndr.git
@@ -37,7 +37,7 @@ npm install
 Open a new terminal tab or window, navigate to the frontend folder, and install packages:
 
 ```bash
-cd frontend/spndr
+cd frontend/corvale
 npm install
 ```
 
@@ -60,7 +60,7 @@ Create a `.env` file inside the `backend/` folder with the following variables:
 
 ```
 PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/spndr
+MONGO_URI=mongodb://127.0.0.1:27017/corvale
 JWT_SECRET=your-secret-key-here
 JWT_EXPIRY=7d
 CLIENT_URL=http://localhost:5173

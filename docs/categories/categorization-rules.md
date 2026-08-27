@@ -8,7 +8,7 @@ title: Auto-Categorization Rules
 
 ## How matching works
 
-Every active rule is checked, in priority order (highest first), against each new transaction. The **first rule that matches wins** - once a match is found, spndr stops checking. Rules never apply to transfers.
+Every active rule is checked, in priority order (highest first), against each new transaction. The **first rule that matches wins** - once a match is found, Corvale stops checking. Rules never apply to transfers.
 
 Rule application on create is automatic and not optional: if a rule matches, it **overwrites** whatever category you picked on the transaction form and merges in the rule's tags.
 
@@ -33,11 +33,11 @@ Rule application on create is automatic and not optional: if a rule matches, it 
 
 ## Testing a rule
 
-Use the **Test rules** panel to enter a sample title, description, amount, and account, then run it against your active rules without creating a transaction. spndr shows which rule matched (if any) and the category and tags it would apply.
+Use the **Test rules** panel to enter a sample title, description, amount, and account, then run it against your active rules without creating a transaction. Corvale shows which rule matched (if any) and the category and tags it would apply.
 
 ## Applying rules to existing transactions
 
-Click **Apply to existing** to re-run every active rule against your existing, already-categorized transactions. spndr only updates a transaction if its category or tags actually change, and reports how many were updated versus left alone.
+Click **Apply to existing** to re-run every active rule against your existing, already-categorized transactions. Corvale only updates a transaction if its category or tags actually change, and reports how many were updated versus left alone.
 
 ## Related pages
 

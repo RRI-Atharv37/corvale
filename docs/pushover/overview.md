@@ -4,7 +4,7 @@ title: Pushover Overview
 
 ## Month-end savings rollover
 
-**Pushover** is spndr's month-end rollover feature. It snapshots your current saver balance into a permanent history record and resets the saver to zero, giving you a clean start for the next period.
+**Pushover** is Corvale's month-end rollover feature. It snapshots your current saver balance into a permanent history record and resets the saver to zero, giving you a clean start for the next period.
 
 Navigate to Pushover from the sidebar or go to `/pushover`.
 
@@ -21,7 +21,7 @@ Pushover helps you:
 
 When you perform a rollover:
 
-1. spndr reads your current saver balance
+1. Corvale reads your current saver balance
 2. Creates a pushover history record with the amount and timestamp
 3. Adds the amount to your cumulative pushover total
 4. Resets your saver balance to **$0.00**

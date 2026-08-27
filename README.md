@@ -1,6 +1,6 @@
 <div align="center">
 
-# spndr
+# Corvale
 
 **Personal finance, simplified**
 **Track transactions, accounts, budgets, savings goals, and more in one place.**
@@ -11,7 +11,7 @@ Built for students and young adults who want clarity over complexity.
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
-<img src="docs/public/screenshots/dashboard-overview.png" alt="spndr dashboard preview" width="900" />
+<img src="docs/public/screenshots/dashboard-overview.png" alt="Corvale dashboard preview" width="900" />
 <br />
 
 [Quick Start](#-quick-start-3-minute-setup) · [Features](#-key-features) · [Screenshots](#-screenshots) · [Documentation](#-documentation)
@@ -175,7 +175,7 @@ cd spndr
 cd backend && npm install
 
 # Frontend (new terminal)
-cd frontend/spndr && npm install
+cd frontend/corvale && npm install
 ```
 
 ### 2 · Configure environment
@@ -184,7 +184,7 @@ cd frontend/spndr && npm install
 
 ```env
 PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/spndr
+MONGO_URI=mongodb://127.0.0.1:27017/corvale
 JWT_SECRET=replace-with-a-long-random-string
 JWT_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
@@ -196,7 +196,7 @@ See [Environment Variables](docs/developers/environment-variables.md) for the fu
 **Frontend** - copy the example file:
 
 ```bash
-cp frontend/spndr/.env.example frontend/spndr/.env
+cp frontend/corvale/.env.example frontend/corvale/.env
 ```
 
 Default `VITE_API_URL` points to `http://localhost:5000/api/v1`.
@@ -207,7 +207,7 @@ Default `VITE_API_URL` points to `http://localhost:5000/api/v1`.
 # Terminal 1 - API (from backend/)
 npm run dev
 
-# Terminal 2 - App (from frontend/spndr/)
+# Terminal 2 - App (from frontend/corvale/)
 npm run dev
 ```
 
@@ -283,7 +283,7 @@ Licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-
 
 <div align="center">
 
-**[⭐ Star this repo](https://github.com/RRI-Atharv37/spndr)** if spndr helps you stay on top of your money.
+**[⭐ Star this repo](https://github.com/RRI-Atharv37/spndr)** if Corvale helps you stay on top of your money.
 
 </div>
 

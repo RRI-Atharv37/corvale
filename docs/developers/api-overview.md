@@ -88,7 +88,7 @@ Legacy `/income` and `/expense` routes return `Deprecation` and `Link` headers p
 
 ## HTTP methods
 
-spndr uses standard REST conventions:
+Corvale uses standard REST conventions:
 
 | Method | Usage |
 |--------|-------|

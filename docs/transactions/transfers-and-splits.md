@@ -4,11 +4,11 @@ title: Transfers and Splits
 
 ## Move money between accounts and split expenses
 
-spndr supports two advanced transaction patterns: **transfers** (moving money between your own accounts) and **splits** (dividing one expense across multiple categories).
+Corvale supports two advanced transaction patterns: **transfers** (moving money between your own accounts) and **splits** (dividing one expense across multiple categories).
 
 ## Transfers
 
-A transfer moves money from one account to another without changing your overall net worth. spndr creates a linked pair of transactions - one outbound from the source account and one inbound to the destination account.
+A transfer moves money from one account to another without changing your overall net worth. Corvale creates a linked pair of transactions - one outbound from the source account and one inbound to the destination account.
 
 ### When to use a transfer
 
@@ -41,7 +41,7 @@ Switch to the **Transfer** type tab to see only transfer entries. Each row repre
 
 ### Deleting a transfer
 
-Deleting a transfer removes both linked legs and restores both account balances. spndr shows a confirmation warning because this action affects two accounts.
+Deleting a transfer removes both linked legs and restores both account balances. Corvale shows a confirmation warning because this action affects two accounts.
 
 ## Split expenses
 
@@ -60,7 +60,7 @@ Use splits when one purchase spans several categories - for example, a grocery r
 5. Ensure the split line amounts **sum to the total** amount.
 6. Click **Save**.
 
-spndr posts the full amount once to the selected account. Split children are linked to the parent but do not appear as separate rows in the main transaction list.
+Corvale posts the full amount once to the selected account. Split children are linked to the parent but do not appear as separate rows in the main transaction list.
 
 ### Split rules
 

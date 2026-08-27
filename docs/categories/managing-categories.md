@@ -18,7 +18,7 @@ You cannot change which master category a sub-category belongs to after creation
 ## Setting a default category
 
 1. Click the **star** icon on a category row, or enable **Set as default** in the edit modal.
-2. spndr clears the previous default and marks the selected category as default.
+2. Corvale clears the previous default and marks the selected category as default.
 
 The default category may pre-select in the transaction Category picker when you create new entries.
 
@@ -37,7 +37,7 @@ Archived categories:
 - Remain linked to existing transactions
 - Lose the default flag if they were default
 
-Archiving is a soft delete. spndr does not permanently remove category records from the database.
+Archiving is a soft delete. Corvale does not permanently remove category records from the database.
 
 ## Master categories are read-only
 

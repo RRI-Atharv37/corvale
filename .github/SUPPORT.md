@@ -1,6 +1,6 @@
 # Support
 
-spndr is a solo-maintained personal/portfolio project — not a hosted service with a support
+Corvale is a solo-maintained personal/portfolio project — not a hosted service with a support
 team, so there's no guaranteed response time. That said, reports and questions are read and
 answered on a best-effort basis.
 

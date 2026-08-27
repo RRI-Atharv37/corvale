@@ -4,7 +4,7 @@ title: Balances Overview
 
 ## Understanding your numbers
 
-spndr tracks several balance metrics that appear on the dashboard, saver page, and pushover page. This section explains what each number means and how they relate to each other.
+Corvale tracks several balance metrics that appear on the dashboard, saver page, and pushover page. This section explains what each number means and how they relate to each other.
 
 ## Key balance metrics
 
@@ -19,7 +19,7 @@ spndr tracks several balance metrics that appear on the dashboard, saver page, a
 
 ## Two calculation modes
 
-spndr uses one of two modes depending on whether you have active accounts:
+Corvale uses one of two modes depending on whether you have active accounts:
 
 ### Legacy mode (no active accounts)
 

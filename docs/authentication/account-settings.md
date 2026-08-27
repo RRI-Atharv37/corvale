@@ -4,7 +4,7 @@ title: Account Settings
 
 ## Preferences and session controls
 
-spndr exposes a **Settings** modal from the sidebar footer. Use it to change your default currency and manage sign-out actions.
+Corvale exposes a **Settings** modal from the sidebar footer. Use it to change your default currency and manage sign-out actions.
 
 ## Open settings
 
@@ -21,7 +21,7 @@ Your **Default currency** preference pre-fills currency fields when you create b
 2. Under **Preferences**, use the **Default currency** dropdown.
 3. Select a supported currency (for example, USD, EUR, GBP).
 
-spndr saves the choice immediately via `PATCH /auth/user`. A success toast confirms the update. Existing records keep their original currency - only new forms default to the updated value.
+Corvale saves the choice immediately via `PATCH /auth/user`. A success toast confirms the update. Existing records keep their original currency - only new forms default to the updated value.
 
 ## Logout
 
@@ -41,7 +41,7 @@ Use this when you finish on a shared or public computer.
 - Revokes all stored refresh tokens
 - Signs you out locally and redirects to login
 
-spndr asks for confirmation before proceeding. Use this if you suspect unauthorized access or want to reset sessions after a password change.
+Corvale asks for confirmation before proceeding. Use this if you suspect unauthorized access or want to reset sessions after a password change.
 
 ## What you cannot change in settings
 

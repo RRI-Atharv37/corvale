@@ -8,7 +8,7 @@ Depositing to the saver sets aside a portion of your spendable balance for savin
 
 ## Two deposit modes
 
-spndr offers two ways to calculate your deposit amount:
+Corvale offers two ways to calculate your deposit amount:
 
 ### Percentage mode (default)
 
@@ -16,7 +16,7 @@ Deposit a percentage of your current spendable balance. The default percentage i
 
 1. On the Saver page, ensure **Percentage** mode is selected.
 2. Enter the percentage (0–100).
-3. spndr shows a preview: "Will add: $X.XX"
+3. Corvale shows a preview: "Will add: $X.XX"
 4. Click **Add to saver**.
 
 The deposit amount is calculated as:
@@ -37,7 +37,7 @@ Deposit a specific dollar amount.
 
 1. Click **Custom amount** to switch modes.
 2. Enter the exact amount you want to deposit.
-3. spndr shows the preview amount.
+3. Corvale shows the preview amount.
 4. Click **Add to saver**.
 
 ## Rules and limits
@@ -49,7 +49,7 @@ Deposit a specific dollar amount.
 
 ## After a successful deposit
 
-spndr:
+Corvale:
 
 - Increases your saver balance by the deposit amount
 - Updates the saver's last-modified date

@@ -4,7 +4,7 @@ title: Quick Links
 
 ## Jump to key features
 
-Below the summary cards on the dashboard, spndr displays quick-link cards. Each card is a clickable link to a major section of the app.
+Below the summary cards on the dashboard, Corvale displays quick-link cards. Each card is a clickable link to a major section of the app.
 
 ## Available quick links
 

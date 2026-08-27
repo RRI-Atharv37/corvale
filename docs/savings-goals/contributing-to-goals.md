@@ -4,7 +4,7 @@ title: Contributing to Goals
 
 ## Record progress toward your target
 
-Contributions increase the **current amount** saved on a goal. spndr tracks each contribution in a history timeline so you can see manual deposits and automatic transfers separately.
+Contributions increase the **current amount** saved on a goal. Corvale tracks each contribution in a history timeline so you can see manual deposits and automatic transfers separately.
 
 ## Manual contributions
 
@@ -15,11 +15,11 @@ Contributions increase the **current amount** saved on a goal. spndr tracks each
 3. Enter a positive **Amount** and an optional **Note**.
 4. Click **Contribute**.
 
-On success, spndr updates the progress bar, refreshes progress metrics, and closes the modal.
+On success, Corvale updates the progress bar, refreshes progress metrics, and closes the modal.
 
 ### Auto-complete
 
-When a contribution brings the current amount to or above the target, spndr marks the goal **Completed** automatically. You can still view it on the **Completed** tab.
+When a contribution brings the current amount to or above the target, Corvale marks the goal **Completed** automatically. You can still view it on the **Completed** tab.
 
 ### Validation
 
@@ -28,7 +28,7 @@ When a contribution brings the current amount to or above the target, spndr mark
 
 ## Automatic contributions
 
-If you enabled automatic contributions when creating or editing a goal, spndr evaluates whether a contribution is due based on:
+If you enabled automatic contributions when creating or editing a goal, Corvale evaluates whether a contribution is due based on:
 
 - The selected interval (weekly or monthly)
 - For monthly intervals, the configured day of month (1–28)
@@ -39,14 +39,14 @@ If you enabled automatic contributions when creating or editing a goal, spndr ev
 When a goal shows an **Auto due** badge:
 
 1. Click the **refresh** icon on the goal card.
-2. spndr records an automatic contribution for the configured amount.
+2. Corvale records an automatic contribution for the configured amount.
 3. Progress updates and the badge clears until the next interval elapses.
 
 Automatic contributions appear in history with an **Automatic** badge.
 
 ### When auto contributions are blocked
 
-spndr rejects automatic contributions when:
+Corvale rejects automatic contributions when:
 
 - Auto contributions are disabled on the goal
 - The interval has not elapsed since the last automatic contribution
@@ -60,7 +60,7 @@ Click the **clock** icon on any goal card to open the contribution timeline. Eac
 - Type badge (**Manual** or **Automatic**)
 - Optional note (for manual contributions)
 
-History loads when you open the modal. If loading fails, spndr shows an error toast and an empty list.
+History loads when you open the modal. If loading fails, Corvale shows an error toast and an empty list.
 
 ## Progress metrics
 

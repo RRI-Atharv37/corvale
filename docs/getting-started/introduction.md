@@ -2,13 +2,13 @@
 title: Introduction
 ---
 
-## What is spndr?
+## What is Corvale?
 
-**spndr** is a personal finance web application that helps you track transactions, account balances, categories, and savings. It is designed for students and young adults who want a straightforward way to understand where their money goes and how much they can safely spend.
+**Corvale** is a personal finance web application that helps you track transactions, account balances, categories, and savings. It is designed for students and young adults who want a straightforward way to understand where their money goes and how much they can safely spend.
 
-## What you can do with spndr
+## What you can do with Corvale
 
-With spndr, you can:
+With Corvale, you can:
 
 - Create a secure account, sign in, and reset your password if you forget it
 - View a dashboard summary of your financial picture at a glance
@@ -20,9 +20,9 @@ With spndr, you can:
 - Move money from your spendable balance into a **Saver** pool
 - Roll over saver funds at month-end with **Pushover** and review your rollover history
 
-## How spndr is organized
+## How Corvale is organized
 
-spndr groups your finances into clear areas:
+Corvale groups your finances into clear areas:
 
 | Area | Purpose |
 |------|---------|
@@ -37,11 +37,11 @@ spndr groups your finances into clear areas:
 
 ## Who this documentation is for
 
-This guide walks you through every feature available in spndr today. If you are setting up the project on your own machine, start with [Installation](../getting-started/installation.md). If you are integrating with the API, see the [Developers](../developers/overview.md) section.
+This guide walks you through every feature available in Corvale today. If you are setting up the project on your own machine, start with [Installation](../getting-started/installation.md). If you are integrating with the API, see the [Developers](../developers/overview.md) section.
 
 ## Next steps
 
-- [Install spndr](../getting-started/installation.md) on your computer
+- [Install Corvale](../getting-started/installation.md) on your computer
 - [Create your account](../authentication/creating-an-account.md) and explore the dashboard
 - [Adding Transactions](../transactions/adding-transactions.md)
 - [Budgets Overview](../budgets/overview.md)

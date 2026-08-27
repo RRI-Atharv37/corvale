@@ -14,7 +14,7 @@ Create a `.env` file in the `backend/` folder.
 | `JWT_EXPIRY` | Yes | - | Access token expiry (e.g., `15m`, `1h`) |
 | `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses, reset-link console logging, and secure-cookie flags |
 | `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token expiry |
-| `REFRESH_TOKEN_COOKIE_NAME` | No | `spndr_refresh` | httpOnly cookie name for refresh tokens |
+| `REFRESH_TOKEN_COOKIE_NAME` | No | `corvale_refresh` | httpOnly cookie name for refresh tokens |
 | `REFRESH_COOKIE_SAME_SITE` | No | `lax` | `lax` \| `strict` \| `none` — see [Deployment topology](#deployment-topology) below. `none` is only accepted when `NODE_ENV=production` |
 | `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`). The desktop app's origins (`tauri://localhost`, `http://tauri.localhost`) are always admitted alongside it — see `backend/utils/corsOriginAllowlist.ts` |
 | `OFFLINE_GRANT_PRIVATE_KEY` | Yes | - | EC (P-256) private key, PEM-encoded with real newlines replaced by literal `\n`, that signs the client's offline session grant. See [Offline session grant](#offline-session-grant) below |
@@ -62,7 +62,7 @@ across every horizontally-scaled instance instead of being multiplied by the ins
 
 ```
 PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/spndr
+MONGO_URI=mongodb://127.0.0.1:27017/corvale
 JWT_SECRET=replace-with-a-long-random-string
 JWT_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
@@ -72,7 +72,7 @@ OFFLINE_GRANT_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIGHAgEA...\n-----END PRI
 
 ## Frontend environment variables
 
-Create a `.env` file in the `frontend/spndr/` folder (copy from `.env.example`).
+Create a `.env` file in the `frontend/corvale/` folder (copy from `.env.example`).
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -97,7 +97,7 @@ VITE_OFFLINE_GRANT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\nMFkwEwYH...\n-----END 
 ### Desktop build overrides
 
 The desktop (Tauri) app runs Vite in a separate `desktop` mode rather than sharing the plain
-web build. `frontend/spndr/.env.desktop` layers on top of the files above and is the only place
+web build. `frontend/corvale/.env.desktop` layers on top of the files above and is the only place
 `VITE_LOCAL_FIRST=true` is set — the web build stays `false` until `SEC-01` lands. `npm run
 tauri:dev`/`npm run tauri:build` pick this up automatically (they run `vite --mode desktop` /
 `vite build --mode desktop` under the hood); a plain `npm run dev`/`npm run build` never reads
@@ -105,9 +105,9 @@ tauri:dev`/`npm run tauri:build` pick this up automatically (they run `vite --mo
 
 ## Deployment topology
 
-spndr's refresh session relies on an httpOnly cookie, and cookies are topology-sensitive:
+Corvale's refresh session relies on an httpOnly cookie, and cookies are topology-sensitive:
 **the pinned, supported deployment is same-site** — the frontend and API sharing one
-registrable domain (e.g. `app.spndr.example` + `api.spndr.example`, or an API reverse-proxied
+registrable domain (e.g. `app.corvale.example` + `api.corvale.example`, or an API reverse-proxied
 under the same origin as the frontend). This is a hard requirement, not a suggestion: with a
 same-site deployment, leave `REFRESH_COOKIE_SAME_SITE` unset and the refresh cookie is sent as
 `SameSite=Lax`, which works correctly.
@@ -128,7 +128,7 @@ than `SameSite=None`.
 
 ## Offline session grant
 
-spndr keeps the access token itself in memory only, never in `localStorage` — a page reload has
+Corvale keeps the access token itself in memory only, never in `localStorage` — a page reload has
 no token to read back, so the app calls `POST /auth/refresh` (backed by the httpOnly refresh
 cookie) on boot to get a fresh one instead. That's the online path.
 
@@ -150,7 +150,7 @@ Paste each file's contents into the matching env var with real newlines replaced
 
 ## Monitoring
 
-spndr exposes two endpoints for operators, with no configuration required:
+Corvale exposes two endpoints for operators, with no configuration required:
 
 - `GET /health` — liveness. Returns `200` as soon as the process is up, without touching
   MongoDB, so it stays fast even if the database is down.

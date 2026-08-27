@@ -4,7 +4,7 @@ title: How Balances Are Calculated
 
 ## The balance engine
 
-spndr computes your balances server-side using a central balance engine. Every time you view the dashboard, saver page, or perform a saver/pushover action, the server recalculates your numbers from live data.
+Corvale computes your balances server-side using a central balance engine. Every time you view the dashboard, saver page, or perform a saver/pushover action, the server recalculates your numbers from live data.
 
 ## Data sources
 
@@ -51,7 +51,7 @@ Accounts mode applies when you have **one or more active accounts**.
 
 ### Account totals
 
-For each active account, spndr classifies the balance:
+For each active account, Corvale classifies the balance:
 
 | Account type | Treatment |
 |--------------|-----------|

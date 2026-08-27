@@ -10,7 +10,7 @@ Recurring rules never post transactions directly. They generate **draft transact
 
 Click **Sync drafts** on the Recurring page to generate drafts for every active rule that has a due date on or before today. You can also generate drafts for a single rule from that rule's row.
 
-spndr generates one draft per missed due date, advancing each rule's schedule as it goes, up to a safety cap per rule so a long-neglected rule doesn't flood your inbox with hundreds of drafts at once. If a draft already exists for a given due date, spndr skips creating a duplicate.
+Corvale generates one draft per missed due date, advancing each rule's schedule as it goes, up to a safety cap per rule so a long-neglected rule doesn't flood your inbox with hundreds of drafts at once. If a draft already exists for a given due date, Corvale skips creating a duplicate.
 
 ## The draft inbox
 
@@ -25,7 +25,7 @@ The calendar view on the Recurring page plots upcoming due dates across your act
 
 ## Bill due reminders
 
-spndr can notify you a few days before a recurring expense is due. See [Notifications Overview](../notifications/overview.md).
+Corvale can notify you a few days before a recurring expense is due. See [Notifications Overview](../notifications/overview.md).
 
 ## Related pages
 

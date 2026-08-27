@@ -4,7 +4,7 @@ title: Receipts and Bulk Actions
 
 ## Attach proof and manage multiple entries at once
 
-spndr lets you attach receipt files to transactions and perform bulk actions on selected rows.
+Corvale lets you attach receipt files to transactions and perform bulk actions on selected rows.
 
 ## Receipt attachments
 
@@ -48,7 +48,7 @@ Select multiple transactions using the checkboxes on the left side of the list. 
 2. Click **Delete selected**.
 3. Confirm in the dialog.
 
-spndr reverses account balance changes for each deleted transaction. When you select both legs of a transfer pair, spndr deduplicates the delete so each pair is removed once.
+Corvale reverses account balance changes for each deleted transaction. When you select both legs of a transfer pair, Corvale deduplicates the delete so each pair is removed once.
 
 ### Bulk category change
 

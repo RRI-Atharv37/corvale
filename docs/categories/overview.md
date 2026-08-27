@@ -10,7 +10,7 @@ Navigate to Categories from the sidebar or go to `/categories`.
 
 ## Master categories
 
-spndr ships with nine built-in master categories. You cannot edit or delete master categories, but you create sub-categories under them:
+Corvale ships with nine built-in master categories. You cannot edit or delete master categories, but you create sub-categories under them:
 
 | Master | Typical use |
 |--------|-------------|

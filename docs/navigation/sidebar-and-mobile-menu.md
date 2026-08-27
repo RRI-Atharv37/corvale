@@ -2,9 +2,9 @@
 title: Sidebar and Mobile Menu
 ---
 
-## Navigating spndr
+## Navigating Corvale
 
-spndr uses a persistent sidebar on desktop and a slide-out menu on mobile. Both provide access to every section of the app.
+Corvale uses a persistent sidebar on desktop and a slide-out menu on mobile. Both provide access to every section of the app.
 
 ## Sidebar navigation items
 
@@ -51,7 +51,7 @@ Logout actions live inside the Settings modal, not as standalone sidebar buttons
 
 ## Branding
 
-The sidebar header displays the **spndr** logo text in cyan with the subtitle "Personal finance".
+The sidebar header displays the **Corvale** logo text in cyan with the subtitle "Personal finance".
 
 ## Authentication pages
 

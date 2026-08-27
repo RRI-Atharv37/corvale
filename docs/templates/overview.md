@@ -4,7 +4,7 @@ title: Templates Overview
 
 ## Add your usual transactions in one click
 
-**Quick-add templates** are saved transaction shapes - amount, account, category, tags, description - for things you log often, like a daily coffee or a weekly grocery run. Instead of filling out the transaction form each time, apply a template and spndr creates the transaction for you.
+**Quick-add templates** are saved transaction shapes - amount, account, category, tags, description - for things you log often, like a daily coffee or a weekly grocery run. Instead of filling out the transaction form each time, apply a template and Corvale creates the transaction for you.
 
 ## Managing templates
 

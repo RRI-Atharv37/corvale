@@ -10,7 +10,7 @@ Navigate to Saver from the sidebar or go to `/saver`.
 
 ## What the saver is
 
-The saver is not a bank account. It is a virtual pool tracked by spndr that sits on top of your spendable balance. When you deposit to the saver, your spendable balance decreases and your saver balance increases.
+The saver is not a bank account. It is a virtual pool tracked by Corvale that sits on top of your spendable balance. When you deposit to the saver, your spendable balance decreases and your saver balance increases.
 
 Each user has exactly one saver document. If you have never deposited, your saver balance is $0.00.
 

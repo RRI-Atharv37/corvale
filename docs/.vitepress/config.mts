@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'spndr',
-  titleTemplate: ':title · spndr',
-  description: 'Personal finance, simplified - documentation for spndr.',
+  title: 'Corvale',
+  titleTemplate: ':title · Corvale',
+  description: 'Personal finance, simplified - documentation for Corvale.',
   cleanUrls: true,
   lastUpdated: true,
 
@@ -11,7 +11,7 @@ export default defineConfig({
 
   themeConfig: {
     logo: '/logo.svg',
-    siteTitle: 'spndr',
+    siteTitle: 'Corvale',
 
     nav: [
       { text: 'Getting Started', link: '/getting-started/introduction' },
@@ -297,7 +297,7 @@ export default defineConfig({
 
     footer: {
       message: 'Released under the GNU AGPL v3.0 License.',
-      copyright: 'Copyright © spndr',
+      copyright: 'Copyright © Corvale',
     },
 
     outline: {

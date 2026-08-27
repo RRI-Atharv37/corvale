@@ -1,10 +1,10 @@
 ---
 layout: home
-title: spndr
+title: Corvale
 titleTemplate: Personal Finance Documentation
 
 hero:
-  name: spndr
+  name: Corvale
   text: Personal finance, simplified
   tagline: Track transactions, accounts, categories, and savings in one place - built for students and young adults.
   actions:

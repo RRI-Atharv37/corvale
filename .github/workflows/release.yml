@@ -111,7 +111,7 @@ jobs:
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           $bytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
-          $certPath = Join-Path $env:RUNNER_TEMP 'spndr-signing.pfx'
+          $certPath = Join-Path $env:RUNNER_TEMP 'corvale-signing.pfx'
           [IO.File]::WriteAllBytes($certPath, $bytes)
           $securePassword = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
           $cert = Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
@@ -149,7 +149,7 @@ jobs:
         with:
           projectPath: frontend/corvale
           tagName: ${{ github.ref_name }}
-          releaseName: 'spndr ${{ github.ref_name }}'
+          releaseName: 'corvale ${{ github.ref_name }}'
           releaseBody: ${{ needs.prepare.outputs.notes }}
           releaseDraft: true
           prerelease: false

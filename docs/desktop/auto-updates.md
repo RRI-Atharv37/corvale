@@ -7,7 +7,7 @@ title: Automatic Updates
 The desktop app checks for a new version each time it starts. If one is available, a prompt appears at the bottom of the window showing the new version number.
 
 1. Click **Install & Restart**.
-2. spndr downloads the update, verifies it's a genuine, signed spndr release, and installs it.
+2. Corvale downloads the update, verifies it's a genuine, signed Corvale release, and installs it.
 3. The app restarts automatically on the new version.
 
 You can keep working and click the prompt later - it doesn't interrupt what you're doing, and dismissing it just hides the prompt until the next launch.

@@ -29,7 +29,7 @@ Your new category appears in the master group and becomes available in the trans
 
 ## Icon and color pickers
 
-spndr provides a preset icon library and color swatches. Icons display next to category names in the Categories list and in the transaction picker.
+Corvale provides a preset icon library and color swatches. Icons display next to category names in the Categories list and in the transaction picker.
 
 Choose colors that help you scan your category list quickly - for example, red tones for Food, blue for Transport.
 

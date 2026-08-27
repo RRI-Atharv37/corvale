@@ -10,14 +10,14 @@ The import wizard guides you through uploading a file and reviewing every row be
 
 1. On the **Transactions** page, click **Import**.
 2. **Upload** - choose a `.csv`, `.ofx`, or `.qfx` file (up to 2 MB).
-3. **Mapping** *(CSV files only)* - confirm which column maps to date, description, amount, and so on. spndr pre-fills its best guess; adjust any dropdown that's wrong. OFX files skip this step since the format is already structured.
+3. **Mapping** *(CSV files only)* - confirm which column maps to date, description, amount, and so on. Corvale pre-fills its best guess; adjust any dropdown that's wrong. OFX files skip this step since the format is already structured.
 4. **Account** - choose which account these transactions belong to, and a default category to apply to rows that don't match a [categorization rule](../categories/categorization-rules.md).
 5. **Preview** - review a summary (total rows, valid rows, duplicates found, income and expense totals) and a row-by-row table.
 6. **Done** - confirm the import to create the transactions.
 
 ## Handling duplicates
 
-spndr compares each row against your existing posted transactions on the chosen account, using the date, amount, and description to detect likely duplicates. Flagged rows show a duplicate action you can set individually or in bulk:
+Corvale compares each row against your existing posted transactions on the chosen account, using the date, amount, and description to detect likely duplicates. Flagged rows show a duplicate action you can set individually or in bulk:
 
 | Action | Result |
 |--------|--------|
@@ -25,7 +25,7 @@ spndr compares each row against your existing posted transactions on the chosen 
 | **Import anyway** | A new transaction is created regardless of the match |
 | **Merge** | The matching existing transaction is updated with the imported row's category, tags, and description instead of creating a new one |
 
-Rows spndr doesn't flag as duplicates default to **Import**.
+Rows Corvale doesn't flag as duplicates default to **Import**.
 
 ## After the import
 

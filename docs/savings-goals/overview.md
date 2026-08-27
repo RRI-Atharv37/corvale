@@ -28,7 +28,7 @@ On the Savings Goals page, you can:
 | **Saver** | Percentage or custom deposits from spendable balance during the month |
 | **Pushover** | Month-end snapshot that archives saver balance and resets the pool |
 
-spndr keeps Saver and Pushover as the monthly discretionary sweep. Savings goals are a separate feature for goal-oriented saving. Depositing to Saver does not automatically update a savings goal unless you record a contribution.
+Corvale keeps Saver and Pushover as the monthly discretionary sweep. Savings goals are a separate feature for goal-oriented saving. Depositing to Saver does not automatically update a savings goal unless you record a contribution.
 
 ## Goal statuses
 

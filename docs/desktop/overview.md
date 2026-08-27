@@ -2,9 +2,9 @@
 title: Desktop App Overview
 ---
 
-## spndr, without a browser tab
+## Corvale, without a browser tab
 
-The spndr desktop app is the same spndr you use online, packaged as a native application for Windows, macOS, and Linux. It's built with [Tauri](https://tauri.app), which wraps the web app in a small native shell instead of a full browser engine, so it stays lightweight.
+The Corvale desktop app is the same Corvale you use online, packaged as a native application for Windows, macOS, and Linux. It's built with [Tauri](https://tauri.app), which wraps the web app in a small native shell instead of a full browser engine, so it stays lightweight.
 
 Everything works the same as the web app - transactions, budgets, savings goals, reports, and offline local-first storage - with a few desktop-specific touches:
 
@@ -20,11 +20,11 @@ Download the installer for your platform from the project's releases page:
 - **macOS** - `.dmg` disk image
 - **Linux** - `.deb`, `.rpm`, or `.AppImage`
 
-Run the installer and launch spndr like any other desktop application. The first launch walks you through the same sign-in and PIN setup as the web app.
+Run the installer and launch Corvale like any other desktop application. The first launch walks you through the same sign-in and PIN setup as the web app.
 
 ## When to use it vs. the web app
 
-Both are fully supported - use whichever fits your workflow. The desktop app is a good fit if you want spndr to feel like a permanent fixture on your machine (a taskbar/dock icon, its own window) or if you prefer backups to go through a native file picker rather than your browser's downloads folder.
+Both are fully supported - use whichever fits your workflow. The desktop app is a good fit if you want Corvale to feel like a permanent fixture on your machine (a taskbar/dock icon, its own window) or if you prefer backups to go through a native file picker rather than your browser's downloads folder.
 
 ## Related pages
 

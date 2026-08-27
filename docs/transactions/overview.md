@@ -4,7 +4,7 @@ title: Transactions Overview
 
 ## One place for income, expenses, and transfers
 
-The **Transactions** page is spndr's unified ledger. Instead of separate Income and Expense pages, you record every money movement here - income you receive, expenses you pay, and transfers between your own accounts.
+The **Transactions** page is Corvale's unified ledger. Instead of separate Income and Expense pages, you record every money movement here - income you receive, expenses you pay, and transfers between your own accounts.
 
 Navigate to Transactions from the sidebar or go to `/transactions`.
 
@@ -38,7 +38,7 @@ Every transaction links to:
 | **Amount** | Dollar value of the entry |
 | **Date** | When the transaction occurred |
 
-When you create, edit, or delete a transaction, spndr updates the linked account balance automatically. This keeps your account totals in sync with your activity.
+When you create, edit, or delete a transaction, Corvale updates the linked account balance automatically. This keeps your account totals in sync with your activity.
 
 ## Type tabs
 
@@ -55,7 +55,7 @@ You can also open a pre-filtered view from the dashboard - for example, `/transa
 
 ## Legacy income and expense pages
 
-Older versions of spndr used separate `/income` and `/expense` routes. Those URLs now redirect to the Transactions page. All new entries should be created on **Transactions**.
+Older versions of Corvale used separate `/income` and `/expense` routes. Those URLs now redirect to the Transactions page. All new entries should be created on **Transactions**.
 
 ## Related pages
 

@@ -4,7 +4,7 @@ title: Data Migration
 
 ## Migrate legacy income and expense data to transactions
 
-If you used spndr before Phase 1c, your income and expense entries may still live in the legacy collections. The migration script copies that data into the unified **Transaction** collection and maps string categories to Category foreign keys.
+If you used Corvale before Phase 1c, your income and expense entries may still live in the legacy collections. The migration script copies that data into the unified **Transaction** collection and maps string categories to Category foreign keys.
 
 ## When to run migration
 
@@ -39,7 +39,7 @@ npm run migrate:transactions
 
 ## Category mapping
 
-During migration, spndr attempts to match legacy category strings to existing sub-categories under the appropriate master. Unmatched strings create new sub-categories or fall back to **Other**.
+During migration, Corvale attempts to match legacy category strings to existing sub-categories under the appropriate master. Unmatched strings create new sub-categories or fall back to **Other**.
 
 ## After migration
 

@@ -14,7 +14,7 @@ Follow these steps to perform a pushover rollover.
 4. Review the confirmation dialog. It shows your current saver balance and explains that the saver will reset to zero.
 5. Click **Roll over** to confirm.
 
-On success, spndr:
+On success, Corvale:
 
 - Creates a history record with the rolled-over amount
 - Resets your saver balance to $0.00
@@ -31,7 +31,7 @@ Review the amount carefully before confirming. The rollover cannot be undone.
 
 ## When to roll over
 
-Pushover is designed for period-end savings snapshots - typically at the end of a month. You choose when to trigger it; spndr does not enforce a schedule.
+Pushover is designed for period-end savings snapshots - typically at the end of a month. You choose when to trigger it; Corvale does not enforce a schedule.
 
 A common workflow:
 

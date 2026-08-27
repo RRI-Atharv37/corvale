@@ -8,7 +8,7 @@ All routes are mounted at `/api/v1/tags` and require authentication.
 
 ## POST /tags
 
-Create a tag. Body: `{ "name": "Trip", "color": "#3b82f6" }`. `color` is optional - spndr assigns a default color if omitted. Tag names are unique per user (case-insensitive).
+Create a tag. Body: `{ "name": "Trip", "color": "#3b82f6" }`. `color` is optional - Corvale assigns a default color if omitted. Tag names are unique per user (case-insensitive).
 
 ## GET /tags
 

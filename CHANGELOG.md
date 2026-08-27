@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to spndr are documented in this file. The format follows
+All notable changes to Corvale are documented in this file. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are tagged `vMAJOR.MINOR.PATCH`
 in git and published via `.github/workflows/release.yml` (TODO.md D8).
 
@@ -28,7 +28,24 @@ the launch-gate ladder.
 
 ### Changed
 
-- **Licence changed from Apache-2.0 to the GNU AGPL v3.0 (`AGPL-3.0-or-later`).** spndr stays
+- **Renamed from spndr to Corvale.** The product, the repository contents, the desktop app, and
+  the docs site are now "Corvale"; "spndr" collided with an unrelated live finance product. What
+  this means in practice:
+  - **You'll be signed out once.** Sign back in normally — no data is affected.
+  - **Old backups and CSV exports still import.** Restore accepts the previous `spndr-backup.json`
+    archive layout, and import still recognizes CSVs exported by older versions (reported as the
+    legacy `spndr_export` format).
+  - **Desktop users get a second install.** The app identifier changed, so the new version
+    installs alongside the old one instead of upgrading it. Launch Corvale once and confirm your
+    data is there, then uninstall the old "spndr" app manually. On first launch the desktop app
+    copies its local database forward from the old location automatically.
+  - **Self-hosters: update your config.** The default MongoDB database name in the examples
+    changed from `spndr` to `corvale`, and the default refresh-token cookie name from
+    `spndr_refresh` to `corvale_refresh`. Your existing data is still in whatever database your
+    `MONGO_URI` currently points at — keep pointing at it, or rename the database deliberately.
+    If `REFRESH_TOKEN_COOKIE_NAME` is set explicitly in your environment, the code default does
+    not override it.
+- **Licence changed from Apache-2.0 to the GNU AGPL v3.0 (`AGPL-3.0-or-later`).** Corvale stays
   open source — the AGPL is an OSI-approved licence — and **self-hosting is unaffected**: you can
   still run it for free, modify it, and deploy it for yourself or your household. The only new
   obligation is that if you offer a *modified* version to other people over a network, you must

@@ -8,7 +8,7 @@ Instead of entering historical transactions by hand, you can import them from a 
 
 ## Supported files
 
-- **CSV** - any comma-separated export, up to 2,000 rows. spndr recognizes a few common layouts automatically (including its own [CSV export](../transactions/overview.md) format) and suggests a column mapping; you can adjust it if the guess is wrong.
+- **CSV** - any comma-separated export, up to 2,000 rows. Corvale recognizes a few common layouts automatically (including its own [CSV export](../transactions/overview.md) format) and suggests a column mapping; you can adjust it if the guess is wrong.
 - **OFX / QFX** - standard bank statement formats. These are parsed automatically with no mapping step needed.
 
 Files are capped at 2 MB.

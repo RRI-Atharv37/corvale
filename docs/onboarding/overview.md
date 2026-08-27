@@ -4,7 +4,7 @@ title: Onboarding Tour
 
 ## Get set up on your first visit
 
-The first time you sign in, spndr walks you through a short onboarding wizard to get your account ready to use. The wizard can appear on any page after you sign in.
+The first time you sign in, Corvale walks you through a short onboarding wizard to get your account ready to use. The wizard can appear on any page after you sign in.
 
 ## The steps
 

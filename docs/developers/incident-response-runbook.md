@@ -4,13 +4,13 @@ title: Incident Response Runbook
 
 ## Scope
 
-This is the operator playbook for a live spndr deployment going wrong — the service is down,
+This is the operator playbook for a live Corvale deployment going wrong — the service is down,
 data looks corrupted, or something is silently computing wrong numbers. It covers detecting an
 incident, deciding how urgently to react, fixing it, and writing it up afterward.
 
-spndr is currently run as a **solo-maintained personal/portfolio deployment**, not hosted for
+Corvale is currently run as a **solo-maintained personal/portfolio deployment**, not hosted for
 other people's real financial data — so "incident response" here means a one-person on-call
-rotation of exactly one person, not a team escalation policy. If you're self-hosting spndr for
+rotation of exactly one person, not a team escalation policy. If you're self-hosting Corvale for
 your own use, this same playbook applies to you as the operator. The mechanics of actually
 recovering data live in the [Backup & Restore Runbook](./backup-restore-runbook.md); this page
 is about the surrounding process — noticing, triaging, communicating, and following up.
@@ -32,7 +32,7 @@ one costs data.
 
 ## Detecting an incident
 
-spndr ships the monitoring hooks described in
+Corvale ships the monitoring hooks described in
 [Environment Variables → Monitoring](./environment-variables.md#monitoring) — this is what
 should actually catch a problem before a user reports one:
 
@@ -78,13 +78,13 @@ don't let it sit for days either.
 
 ## Communication
 
-spndr does not currently host other users' real financial data (see the portfolio-deployment
+Corvale does not currently host other users' real financial data (see the portfolio-deployment
 decision recorded in this repo's planning docs), so there is no user base to page or a status
 page to update. If that ever changes — this deployment starts serving other people's real
 accounts — add a status-page/notification step here before that happens, not after the first
 incident makes it obvious it's missing.
 
-If you're self-hosting spndr for your own household or team, "communication" just means telling
+If you're self-hosting Corvale for your own household or team, "communication" just means telling
 whoever else uses your deployment what happened and when it'll be back, however you'd normally
 reach them.
 

@@ -2,13 +2,13 @@
 title: Creating an Account
 ---
 
-## Sign up for spndr
+## Sign up for Corvale
 
 You need an account before you can track finances. Registration is free and takes less than a minute.
 
 ## Step-by-step registration
 
-1. Open spndr in your browser.
+1. Open Corvale in your browser.
 2. On the login page, click **Sign up** (or navigate directly to `/signup`).
 3. Fill in the registration form:
    - **Full Name** - your display name (required)
@@ -16,7 +16,7 @@ You need an account before you can track finances. Registration is free and take
    - **Password** - your chosen password (required)
 4. Click **Sign up**.
 
-If registration succeeds, spndr:
+If registration succeeds, Corvale:
 
 - Creates your user account in the database
 - Hashes your password securely before storing it
@@ -26,13 +26,13 @@ If registration succeeds, spndr:
 
 ## Validation rules
 
-spndr validates your input before creating an account:
+Corvale validates your input before creating an account:
 
 - All three fields must be filled in
 - The email must be in a valid email format
 - The email must not already belong to an existing user
 
-If any validation fails, spndr shows an error message on the form and does not create the account.
+If any validation fails, Corvale shows an error message on the form and does not create the account.
 
 ## After registration
 
