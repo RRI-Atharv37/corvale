@@ -1,7 +1,8 @@
 import React from 'react'
 import type { ReactElement, ReactNode } from 'react'
-import { render } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import type { RenderOptions } from '@testing-library/react'
+import type { UserEvent } from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import UserProvider from '../context/UserContext'
 import WorkspaceProvider from '../context/WorkspaceContext'
@@ -44,3 +45,23 @@ export const renderWithProviders = (ui: ReactElement, options: RenderWithProvide
 
 export * from '@testing-library/react'
 export { default as userEvent } from '@testing-library/user-event'
+
+/**
+ * Drives the {@link CategoryPicker} combobox (V4): focuses the input, then clicks the option whose
+ * accessible name starts with `optionName` (so `"Food"` matches the master option
+ * `"Food (master category)"`). Pass `scope` (a dialog or form element) when a page renders more than
+ * one picker; it defaults to the whole screen.
+ */
+export async function pickCategory(
+  user: UserEvent,
+  optionName: string,
+  scope?: HTMLElement
+): Promise<void> {
+  const root = scope ? within(scope) : screen
+  const input = root.getByRole('combobox', { name: /categor/i })
+  await user.click(input)
+  const option = await root.findByRole('option', {
+    name: new RegExp('^' + optionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+  })
+  await user.click(option)
+}

@@ -42,7 +42,9 @@ describe('themed scrollbars (V8)', () => {
         const indexCss = readSource('src/index.css')
         expect(indexCss).toContain('--scrollbar-thumb:')
         expect(indexCss).toContain('--scrollbar-track:')
-        expect(indexCss).not.toContain('--color-scrollbar')
+        // No token *declared* in the --color-* namespace (a prose mention of the anti-pattern in a
+        // comment is fine - match only an actual `--color-scrollbar…:` custom-property declaration).
+        expect(indexCss).not.toMatch(/--color-scrollbar[\w-]*\s*:/)
     })
 
     it('gates the ::-webkit-scrollbar fallback behind @supports not (scrollbar-width: thin)', () => {

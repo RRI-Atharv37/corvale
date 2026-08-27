@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent } from '../../../test/test-utils'
+import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent, pickCategory } from '../../../test/test-utils'
 import Recurring from '../Recurring'
 import axiosInstance from '../../../utils/axiosInstance'
 import { setCachedUser } from '../../../offline/cachedUser'
@@ -141,9 +141,9 @@ describe('Recurring (local-first rule CRUD)', () => {
         await user.type(within(dialog).getByPlaceholderText('100.00'), '25')
 
         const comboboxes = within(dialog).getAllByRole('combobox')
-        // Order in `renderFormFields`: Type, Currency, Account, Category, Interval.
+        // Order in `renderFormFields`: Type, Currency, Account, Category (V4 combobox), Interval.
         await user.selectOptions(comboboxes[2], 'acc-1')
-        await user.selectOptions(comboboxes[3], 'cat-1')
+        await pickCategory(user, 'Bills', dialog)
 
         submitClosestForm(within(dialog).getByRole('button', { name: 'Create rule' }))
 

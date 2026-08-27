@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent } from '../../../test/test-utils'
+import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent, pickCategory } from '../../../test/test-utils'
 import TransactionTemplatesSettings from '../TransactionTemplatesSettings'
 import axiosInstance from '../../../utils/axiosInstance'
 import { setCachedUser } from '../../../offline/cachedUser'
@@ -131,9 +131,9 @@ describe('TransactionTemplatesSettings (local-first)', () => {
         await user.type(within(dialog).getByRole('spinbutton'), '2000')
 
         const comboboxes = within(dialog).getAllByRole('combobox')
-        // Order: TypeSelect, AccountPicker, CategoryPicker.
+        // Order: TypeSelect, AccountPicker (native <select>), CategoryPicker (V4 combobox <input>).
         await user.selectOptions(comboboxes[1], 'acc-1')
-        await user.selectOptions(comboboxes[2], 'cat-1')
+        await pickCategory(user, 'Food', dialog)
 
         submitClosestForm(within(dialog).getByRole('button', { name: 'Create template' }))
 

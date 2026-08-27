@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent } from '../../../test/test-utils'
+import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent, pickCategory } from '../../../test/test-utils'
 import Transactions from '../Transactions'
 import axiosInstance from '../../../utils/axiosInstance'
 import { setCachedUser } from '../../../offline/cachedUser'
@@ -236,12 +236,12 @@ describe('Transactions (local-first)', () => {
         await user.clear(within(dialog).getByPlaceholderText('0.00'))
         await user.type(within(dialog).getByPlaceholderText('0.00'), '25')
 
-        // Comboboxes in DOM order for a plain (non-split) create form: Type, Account, Category.
-        // Select both explicitly rather than relying on the account defaulting, since the default
+        // Type and Account are native <select>s; Category is the V4 combobox <input>. Select the
+        // account explicitly rather than relying on the account defaulting, since the default
         // depends on the (async, if slightly slower to settle) accounts lookup having resolved.
         const combos = within(dialog).getAllByRole('combobox')
         await user.selectOptions(combos[1], CHECKING_ID)
-        await user.selectOptions(combos[2], FOOD_CATEGORY_ID)
+        await pickCategory(user, 'Food', dialog)
 
         // `userEvent.click` on the submit button does not reliably dispatch a native `submit`
         // event against the form in this test environment; submit the form directly instead

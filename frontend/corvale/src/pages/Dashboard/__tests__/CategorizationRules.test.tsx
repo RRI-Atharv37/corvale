@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent } from '../../../test/test-utils'
+import { renderWithProviders, screen, waitFor, within, userEvent, fireEvent, pickCategory } from '../../../test/test-utils'
 import CategorizationRules from '../CategorizationRules'
 import axiosInstance from '../../../utils/axiosInstance'
 import { setCachedUser } from '../../../offline/cachedUser'
@@ -131,9 +131,8 @@ describe('CategorizationRules (local-first rule CRUD)', () => {
         await user.type(within(dialog).getByPlaceholderText('e.g. Coffee shops'), 'Rent')
         await user.type(within(dialog).getByPlaceholderText('e.g. Starbucks, Netflix'), 'rent')
 
-        const comboboxes = within(dialog).getAllByRole('combobox')
-        // Order: match type, category (accountOptions only render for match type "account_id").
-        await user.selectOptions(comboboxes[1], 'cat-coffee')
+        // Match type is a native <select>; the category picker is the V4 combobox.
+        await pickCategory(user, 'Coffee', dialog)
 
         submitClosestForm(within(dialog).getByRole('button', { name: 'Create rule' }))
 
