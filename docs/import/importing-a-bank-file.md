@@ -9,7 +9,9 @@ The import wizard guides you through uploading a file and reviewing every row be
 ## Step-by-step
 
 1. On the **Transactions** page, click **Import**.
-2. **Upload** - choose a `.csv`, `.ofx`, or `.qfx` file (up to 2 MB).
+2. **Upload** - choose a `.csv`, `.ofx`, or `.qfx` file (up to 2 MB). If your file
+   uses non-US dates, a currency symbol other than `$`, or a separator other than
+   commas, prepare it first - see [Preparing Your File](./preparing-your-file.md).
 3. **Mapping** *(CSV files only)* - confirm which column maps to date, description, amount, and so on. Corvale pre-fills its best guess; adjust any dropdown that's wrong. OFX files skip this step since the format is already structured.
 4. **Account** - choose which account these transactions belong to, and a default category to apply to rows that don't match a [categorization rule](../categories/categorization-rules.md).
 5. **Preview** - review a summary (total rows, valid rows, duplicates found, income and expense totals) and a row-by-row table.
@@ -34,5 +36,6 @@ The done step shows how many transactions were imported and how many were merged
 ## Related pages
 
 - [Import Overview](./overview.md)
+- [Preparing Your File](./preparing-your-file.md)
 - [Auto-Categorization Rules](../categories/categorization-rules.md)
 - [Managing Transactions](../transactions/managing-transactions.md)

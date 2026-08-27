@@ -107,6 +107,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Overview', link: '/import/overview' },
+          { text: 'Preparing Your File', link: '/import/preparing-your-file' },
           { text: 'Importing a Bank File', link: '/import/importing-a-bank-file' },
         ],
       },
