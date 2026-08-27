@@ -3,6 +3,7 @@ import { runMigrations } from './migrations/runMigrations'
 import { MIGRATIONS } from './migrations/schema'
 import { isLocalFirstEnabled } from '../utils/localFirstFlag'
 import { isTauriRuntime } from '../desktop/isTauri'
+import { migrateLegacyPinKeys } from '../offline/pinStorage'
 
 /**
  * Chooses and installs the real `LocalDb` implementation for this runtime before the app renders
@@ -20,6 +21,10 @@ import { isTauriRuntime } from '../desktop/isTauri'
  * silently did before this function existed.
  */
 export const bootstrapLocalDb = async (): Promise<void> => {
+  // V7.3e: copy any pre-rename `spndr_pin_*` keys forward before anything reads `hasPinConfigured`,
+  // so a PIN set up before the Corvale rename still unlocks the local DB. Idempotent no-op otherwise.
+  migrateLegacyPinKeys()
+
   if (!isLocalFirstEnabled()) return
 
   try {

@@ -70,7 +70,7 @@ export interface BackupEntityCounts {
     receipts: number
 }
 
-export interface SpndrBackupPayload {
+export interface CorvaleBackupPayload {
     version: typeof BACKUP_VERSION
     exportedAt: string
     scope: BackupScope
@@ -186,7 +186,7 @@ const emptyCounts = (): BackupEntityCounts => ({
     receipts: 0,
 })
 
-const buildCounts = (payload: Pick<SpndrBackupPayload, keyof BackupEntityCounts>): BackupEntityCounts => ({
+const buildCounts = (payload: Pick<CorvaleBackupPayload, keyof BackupEntityCounts>): BackupEntityCounts => ({
     accounts: payload.accounts.length,
     categories: payload.categories.length,
     tags: payload.tags.length,
@@ -203,7 +203,7 @@ const buildCounts = (payload: Pick<SpndrBackupPayload, keyof BackupEntityCounts>
 export const exportUserBackup = async (
     userId: string,
     workspaceId: string | null
-): Promise<SpndrBackupPayload> => {
+): Promise<CorvaleBackupPayload> => {
     const scopeFilter = buildScopedListFilter(userId, workspaceId)
 
     const [accounts, budgets, savingsGoals, recurringRules, transactions] = await Promise.all([
@@ -292,7 +292,7 @@ export const exportUserBackup = async (
               }).lean()
             : []
 
-    const payload: SpndrBackupPayload = {
+    const payload: CorvaleBackupPayload = {
         version: BACKUP_VERSION,
         exportedAt: new Date().toISOString(),
         scope: { workspaceId },
@@ -316,12 +316,12 @@ export const exportUserBackup = async (
     return payload
 }
 
-export const parseBackupPayload = (raw: unknown): SpndrBackupPayload => {
+export const parseBackupPayload = (raw: unknown): CorvaleBackupPayload => {
     if (!raw || typeof raw !== 'object') {
         throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
     }
 
-    const backup = raw as Partial<SpndrBackupPayload>
+    const backup = raw as Partial<CorvaleBackupPayload>
 
     if (backup.version !== BACKUP_VERSION) {
         throw new CustomError(ERROR_MESSAGES.BACKUP.UNSUPPORTED_VERSION, 400)
@@ -347,11 +347,11 @@ export const parseBackupPayload = (raw: unknown): SpndrBackupPayload => {
         }
     }
 
-    return backup as SpndrBackupPayload
+    return backup as CorvaleBackupPayload
 }
 
 export const previewBackupRestore = (
-    backup: SpndrBackupPayload,
+    backup: CorvaleBackupPayload,
     targetWorkspaceId: string | null
 ): BackupRestorePreview => {
     const warnings: string[] = []
@@ -448,7 +448,7 @@ const loadMasterCategoryIds = async (): Promise<Set<string>> => {
 
 export const restoreUserBackup = async (
     userId: string,
-    backup: SpndrBackupPayload,
+    backup: CorvaleBackupPayload,
     targetWorkspaceId: string | null,
     receiptFiles?: Map<string, Buffer>
 ): Promise<BackupRestoreResult> => {
@@ -744,13 +744,13 @@ export const restoreUserBackup = async (
 
 export const createBackupZipStream = async (
     userId: string,
-    payload: SpndrBackupPayload
+    payload: CorvaleBackupPayload
 ): Promise<{ stream: PassThrough; filename: string }> => {
     const stream = new PassThrough()
     const archive = archiver('zip', { zlib: { level: 9 } })
     archive.pipe(stream)
 
-    archive.append(JSON.stringify(payload, null, 2), { name: 'spndr-backup.json' })
+    archive.append(JSON.stringify(payload, null, 2), { name: 'corvale-backup.json' })
 
     for (const receipt of payload.receipts) {
         const storedFilename = String(receipt.storedFilename ?? '')
@@ -767,7 +767,7 @@ export const createBackupZipStream = async (
     void archive.finalize()
 
     const scopeLabel = payload.scope.workspaceId ? 'workspace' : 'personal'
-    const filename = `spndr-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}`
+    const filename = `corvale-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}`
 
     return { stream, filename }
 }
@@ -775,7 +775,7 @@ export const createBackupZipStream = async (
 export const extractBackupFromUpload = (
     buffer: Buffer,
     originalFilename: string
-): { payload: SpndrBackupPayload; receiptFiles: Map<string, Buffer> } => {
+): { payload: CorvaleBackupPayload; receiptFiles: Map<string, Buffer> } => {
     const lowerName = originalFilename.toLowerCase()
 
     if (lowerName.endsWith('.json')) {
@@ -830,9 +830,18 @@ export const extractBackupFromUpload = (
             }
         }
 
+        // V7.3b rename-compat: new exports write `corvale-backup.json`, but a ZIP a tester
+        // downloaded before the rename has `spndr-backup.json` — keep reading both for one
+        // release so backups stay the working escape hatch. See ROADMAP's V7 compat matrix.
         const jsonEntry =
+            zip.getEntry('corvale-backup.json') ??
             zip.getEntry('spndr-backup.json') ??
-            entries.find((entry) => entry.entryName.endsWith('spndr-backup.json') && !entry.isDirectory)
+            entries.find(
+                (entry) =>
+                    !entry.isDirectory &&
+                    (entry.entryName.endsWith('corvale-backup.json') ||
+                        entry.entryName.endsWith('spndr-backup.json'))
+            )
 
         if (!jsonEntry) {
             throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)

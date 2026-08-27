@@ -6,7 +6,7 @@ import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { BRAND } from '../../utils/brand'
 
-const PROMPT_SEEN_KEY = 'spndr_pin_prompt_seen'
+const PROMPT_SEEN_KEY = 'corvale_pin_prompt_seen'
 
 // Onboarding's own wizard modal (`OnboardingWizard`) manages its visibility internally and
 // doesn't expose it, so this prompt is staggered behind a short delay instead of reacting to

@@ -1,4 +1,4 @@
-export const ACTIVE_WORKSPACE_STORAGE_KEY = 'spndr_active_workspace_id'
+export const ACTIVE_WORKSPACE_STORAGE_KEY = 'corvale_active_workspace_id'
 
 export const getStoredActiveWorkspaceId = (): string | null => {
     return localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)

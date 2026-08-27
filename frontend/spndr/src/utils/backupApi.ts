@@ -38,7 +38,7 @@ export const exportBackup = async (
         responseType: 'blob',
     })
 
-    const filename = `spndr-backup.${format === 'zip' ? 'zip' : 'json'}`
+    const filename = `corvale-backup.${format === 'zip' ? 'zip' : 'json'}`
     downloadExportBlob(blobData, filename)
 }
 

@@ -17,7 +17,7 @@ import type { BackupEntityCounts, BackupRestorePreview, BackupRestoreResult } fr
 
 /**
  * Local (SQLite) port of `backend/utils/backupUtils.ts` for Sprint 13.10 - generates the exact same
- * `SpndrBackupPayload` JSON shape as the server's `/backup/export` so a file exported on one device
+ * `CorvaleBackupPayload` JSON shape as the server's `/backup/export` (`backend/utils/backupUtils.ts`) so a file exported on one device
  * (local or server) can be restored on the other. Only the syncable-entity tables are covered here;
  * `Receipt` records are never part of the local sync entity set (see `db/repositories/Repository.ts`'s
  * `SyncableTableName`), so `receipts` is always `[]` locally - binary receipts depend on the separate
@@ -34,7 +34,7 @@ export interface LocalBackupScope {
   workspaceId: string | null
 }
 
-export interface SpndrBackupPayload {
+export interface CorvaleBackupPayload {
   version: typeof BACKUP_VERSION
   exportedAt: string
   scope: LocalBackupScope
@@ -108,7 +108,7 @@ const emptyCounts = (): BackupEntityCounts => ({
   receipts: 0,
 })
 
-const buildCounts = (payload: Pick<SpndrBackupPayload, keyof BackupEntityCounts>): BackupEntityCounts => ({
+const buildCounts = (payload: Pick<CorvaleBackupPayload, keyof BackupEntityCounts>): BackupEntityCounts => ({
   accounts: payload.accounts.length,
   categories: payload.categories.length,
   tags: payload.tags.length,
@@ -144,7 +144,7 @@ const scopeFilter = <T extends { workspaceId?: string | null }>(rows: T[], works
  * of `scope.workspaceId`; `accounts`/`transactions`/`budgets`/`savingsGoals`/`recurringRules` are
  * filtered to the requested scope.
  */
-export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): Promise<SpndrBackupPayload> => {
+export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): Promise<CorvaleBackupPayload> => {
   const workspaceId = scope.workspaceId
 
   const [accounts, transactions, budgets, savingsGoals, recurringRules, categories, tags, categorizationRules, transactionTemplates] =
@@ -190,7 +190,7 @@ export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): P
   const referencedMasters = masterCategories.filter((category) => referencedCategoryIds.has(category._id))
   const exportedCategories = [...userCategories, ...referencedMasters]
 
-  const payload: SpndrBackupPayload = {
+  const payload: CorvaleBackupPayload = {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     scope: { workspaceId },
@@ -230,12 +230,12 @@ const REQUIRED_ARRAYS = [
 /** Mirrors `backend/utils/backupUtils.ts`'s `parseBackupPayload` exactly - same version check, same
  * required-array shape check, same error strings (`utils/errorMessages.ts`'s `ERROR_MESSAGES.BACKUP`
  * on the backend has no frontend equivalent, so the literal strings are inlined here). */
-export const parseLocalBackupPayload = (raw: unknown): SpndrBackupPayload => {
+export const parseLocalBackupPayload = (raw: unknown): CorvaleBackupPayload => {
   if (!raw || typeof raw !== 'object') {
-    throw new Error('Backup file is not a valid spndr backup')
+    throw new Error('Backup file is not a valid Corvale backup')
   }
 
-  const backup = raw as Partial<SpndrBackupPayload>
+  const backup = raw as Partial<CorvaleBackupPayload>
 
   if (backup.version !== BACKUP_VERSION) {
     throw new Error('Unsupported backup version')
@@ -243,11 +243,11 @@ export const parseLocalBackupPayload = (raw: unknown): SpndrBackupPayload => {
 
   for (const key of REQUIRED_ARRAYS) {
     if (!Array.isArray(backup[key])) {
-      throw new Error('Backup file is not a valid spndr backup')
+      throw new Error('Backup file is not a valid Corvale backup')
     }
   }
 
-  return backup as SpndrBackupPayload
+  return backup as CorvaleBackupPayload
 }
 
 /**
@@ -259,7 +259,7 @@ export const parseLocalBackupPayload = (raw: unknown): SpndrBackupPayload => {
  */
 export const previewLocalRestore = (
   _db: LocalDb,
-  backup: SpndrBackupPayload,
+  backup: CorvaleBackupPayload,
   targetWorkspaceId: string | null
 ): BackupRestorePreview => {
   const warnings: string[] = []
@@ -327,7 +327,7 @@ const asBoolean = (value: unknown, fallback = false): boolean => (typeof value =
  */
 export const restoreLocalBackup = async (
   db: LocalDb,
-  backup: SpndrBackupPayload,
+  backup: CorvaleBackupPayload,
   options: LocalBackupRestoreOptions
 ): Promise<BackupRestoreResult> => {
   const preview = previewLocalRestore(db, backup, options.targetWorkspaceId)

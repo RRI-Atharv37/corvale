@@ -6,7 +6,7 @@ import {
     parseLocalBackupPayload,
     previewLocalRestore,
     restoreLocalBackup,
-    type SpndrBackupPayload,
+    type CorvaleBackupPayload,
 } from '../../../domain/backup'
 import { downloadExportBlob } from '../../../utils/downloadExport'
 import { useUser } from '../../../hooks/useUser'
@@ -39,7 +39,7 @@ const readFileAsJson = async (file: File): Promise<unknown> => {
     try {
         return JSON.parse(text)
     } catch {
-        throw new Error('Backup file is not a valid spndr backup')
+        throw new Error('Backup file is not a valid Corvale backup')
     }
 }
 
@@ -62,7 +62,7 @@ export const useLocalBackup = (): UseLocalBackupResult => {
         const db = await getLocalDb()
         const payload = await exportLocalBackup(db, { workspaceId: activeWorkspaceId ?? null })
         const scopeLabel = payload.scope.workspaceId ? 'workspace' : 'personal'
-        const filename = `spndr-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`
+        const filename = `corvale-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`
         const json = JSON.stringify(payload, null, 2)
 
         // Desktop shell (Sprint 13.11): a real "Save As" dialog via Rust, since a Tauri webview
@@ -76,7 +76,7 @@ export const useLocalBackup = (): UseLocalBackupResult => {
         downloadExportBlob(blob, filename)
     }, [activeWorkspaceId])
 
-    const parseFile = useCallback(async (file: File): Promise<SpndrBackupPayload> => {
+    const parseFile = useCallback(async (file: File): Promise<CorvaleBackupPayload> => {
         const validationError = validateLocalBackupFile(file)
         if (validationError) {
             throw new Error(validationError)

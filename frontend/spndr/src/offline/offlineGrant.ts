@@ -9,7 +9,7 @@ import { importSPKI, jwtVerify } from 'jose'
  * forward; `UserContext.restoreSession` consults it only when the server can't be reached.
  */
 
-const OFFLINE_GRANT_KEY = 'spndr_offline_grant'
+const OFFLINE_GRANT_KEY = 'corvale_offline_grant'
 const OFFLINE_GRANT_ALGORITHM = 'ES256'
 
 export const storeOfflineGrant = (grant: string | null | undefined): void => {

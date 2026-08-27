@@ -7,4 +7,4 @@
  * offline flow - this one fires alongside it there, and alone for every other session-ending 401
  * (an expired token whose refresh also fails, or any other unrefreshable 401).
  */
-export const SESSION_EXPIRED_EVENT = 'spndr:session-expired'
+export const SESSION_EXPIRED_EVENT = 'corvale:session-expired'

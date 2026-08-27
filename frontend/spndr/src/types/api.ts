@@ -1038,7 +1038,9 @@ export interface SavedReportRunResult {
     result: CustomReportQueryResult
 }
 
-export type ImportFormat = 'generic' | 'chase' | 'spndr_export' | 'ofx'
+// `'spndr_export'` is the pre-rename spelling of `'corvale_export'`, kept valid for one release
+// as a rename-compat shim (V7.3c) — mirrors `shared/src/csvImport.ts`'s `ImportFormat`.
+export type ImportFormat = 'generic' | 'chase' | 'corvale_export' | 'spndr_export' | 'ofx'
 
 export interface ColumnMapping {
     date?: string
