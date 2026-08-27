@@ -3,6 +3,8 @@ import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Disclaimer from '../../components/ui/Disclaimer'
+import { DISCLAIMERS } from '../../utils/disclaimers'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useAsyncData } from '../../hooks/useAsyncData'
@@ -72,6 +74,7 @@ const Pushover = () => {
             <PageHeader
                 title="Pushover"
                 description="Roll your verified saver balance into a month-end snapshot"
+                note={<Disclaimer>{DISCLAIMERS.pushover}</Disclaimer>}
                 actions={
                     <button
                         type="button"

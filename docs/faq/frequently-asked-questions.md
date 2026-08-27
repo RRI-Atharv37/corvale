@@ -80,6 +80,10 @@ Corvale treats savings as set-aside money. Spendable balance only includes check
 
 The **saver** is your active savings pool - money you set aside during the current period. **Pushover** is the month-end action that snapshots your saver balance into history and resets the saver to zero.
 
+### Does the saver move money out of my bank account?
+
+No. Nothing about the saver or pushover moves real money. Adding to the saver creates no transaction and changes no account balance - it only lowers the spendable balance Corvale displays, as a reminder that you have earmarked that amount. A pushover rollover resets the saver to zero, which returns that amount to your displayed spendable balance. Your bank account and net worth never change. See [Saver Overview](../saver/overview.md#what-the-saver-is).
+
 ### Can I undo a pushover rollover?
 
 No. Rollover history records are permanent. Once you roll over, the saver resets to zero and a history entry is created.

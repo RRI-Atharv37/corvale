@@ -18,8 +18,11 @@ On success, Corvale:
 
 - Creates a history record with the rolled-over amount
 - Resets your saver balance to $0.00
+- Raises your **displayed** spendable balance by that amount (the earmark is gone)
 - Shows a success notification with the amount rolled over
 - Refreshes the history list
+
+No money moves and no transaction is created - your bank account and net worth are unchanged.
 
 ## Confirmation dialog
 

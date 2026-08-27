@@ -5,9 +5,17 @@ import { DISCLAIMERS } from '../disclaimers'
 // planner - the strongest "reads as financial guidance" case in the app - says so in as many words.
 
 describe('DISCLAIMERS copy', () => {
-    it('covers every placement from the V2 plan', () => {
+    it('covers every placement from the V2 + V3 plan', () => {
         expect(Object.keys(DISCLAIMERS).sort()).toEqual(
-            ['debtPayoff', 'forecast', 'reportsAverages', 'savingsGoalProjection', 'subscriptions'].sort()
+            [
+                'debtPayoff',
+                'forecast',
+                'pushover',
+                'reportsAverages',
+                'saver',
+                'savingsGoalProjection',
+                'subscriptions',
+            ].sort()
         )
     })
 
@@ -28,5 +36,12 @@ describe('DISCLAIMERS copy', () => {
 
     it('tells the user subscriptions are inferred from patterns', () => {
         expect(DISCLAIMERS.subscriptions.toLowerCase()).toContain('inferred')
+    })
+
+    it('makes clear the saver and pushover move no real money (V3)', () => {
+        expect(DISCLAIMERS.saver.toLowerCase()).toMatch(/moves no money|no transaction/)
+        expect(DISCLAIMERS.saver.toLowerCase()).toContain('bank account')
+        expect(DISCLAIMERS.pushover.toLowerCase()).toContain('bank account')
+        expect(DISCLAIMERS.pushover.toLowerCase()).toMatch(/spendable/)
     })
 })

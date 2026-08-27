@@ -6,6 +6,8 @@ title: Depositing to Saver
 
 Depositing to the saver sets aside a portion of your spendable balance for savings.
 
+Nothing actually moves. A deposit creates no transaction and changes no account balance - your bank account is untouched. Corvale simply records that you have earmarked the amount, which lowers the spendable balance it displays. See [Saver Overview](./overview.md#what-the-saver-is).
+
 ## Two deposit modes
 
 Corvale offers two ways to calculate your deposit amount:
@@ -56,7 +58,7 @@ Corvale:
 - Recalculates and returns your updated balances
 - Shows a success notification
 
-Your spendable balance decreases by the same amount.
+Your **displayed** spendable balance decreases by the same amount. No transaction is recorded and no account balance changes - the decrease is only because spendable balance is shown as your liquid money minus your saver earmark.
 
 ## Related pages
 

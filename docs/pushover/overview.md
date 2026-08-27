@@ -6,6 +6,8 @@ title: Pushover Overview
 
 **Pushover** is Corvale's month-end rollover feature. It snapshots your current saver balance into a permanent history record and resets the saver to zero, giving you a clean start for the next period.
 
+Like everything to do with the saver, a rollover moves no money: no transaction is created, and no account balance changes. Your bank account is untouched.
+
 Navigate to Pushover from the sidebar or go to `/pushover`.
 
 ## Why use pushover
@@ -27,7 +29,7 @@ When you perform a rollover:
 4. Resets your saver balance to **$0.00**
 5. Updates the saver's last-modified date
 
-Your spendable balance and net worth are **not** affected - the money was already set aside in the saver.
+Your **net worth** does not change. Your **displayed spendable balance goes up** by the amount that was in the saver - resetting the earmark to zero returns that amount to spendable, exactly as a full withdrawal would. The difference from a withdrawal is that pushover also writes a permanent history snapshot and adds to your cumulative total.
 
 ## Requirements
 

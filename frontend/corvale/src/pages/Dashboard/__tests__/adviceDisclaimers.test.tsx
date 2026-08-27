@@ -7,9 +7,12 @@ import type { User } from '../../../types/api'
 import Forecast from '../Forecast'
 import DebtPayoff from '../DebtPayoff'
 import Subscriptions from '../Subscriptions'
+import Saver from '../Saver'
+import Pushover from '../Pushover'
 
-// V2: the pages whose core output reads as a prediction or as advice carry a standing, non-dismissible
-// note. Forecast / DebtPayoff / Subscriptions have no other test harness, so this file only pins that
+// V2 / V3: the pages whose core output reads as a prediction or as advice (V2), and the saver /
+// pushover pages that are easy to misread as real money movement (V3), carry a standing,
+// non-dismissible note. None of these pages have another test harness, so this file only pins that
 // the note is present and says the right thing - the header renders before any data loads.
 
 vi.mock('../../../utils/axiosInstance', () => ({
@@ -61,5 +64,23 @@ describe('advice / prediction disclaimers (V2)', () => {
 
         const note = await screen.findByRole('note')
         expect(note).toHaveTextContent(/inferred from recurring transaction patterns/i)
+    })
+})
+
+describe('saver / pushover mechanics disclaimers (V3)', () => {
+    it('Saver says adding to it moves no money and leaves the bank account untouched', async () => {
+        renderWithProviders(<Saver />, { route: '/saver' })
+
+        const note = await screen.findByRole('note')
+        expect(note).toHaveTextContent(/moves no money and creates no transaction/i)
+        expect(note).toHaveTextContent(/bank account is untouched/i)
+    })
+
+    it('Pushover says the rollover returns the amount to displayed spendable, not the bank', async () => {
+        renderWithProviders(<Pushover />, { route: '/pushover' })
+
+        const note = await screen.findByRole('note')
+        expect(note).toHaveTextContent(/returns that amount to your displayed spendable balance/i)
+        expect(note).toHaveTextContent(/nothing enters or leaves your bank account/i)
     })
 })

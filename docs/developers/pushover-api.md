@@ -52,6 +52,8 @@ No request body required.
 |-------|-------------|
 | `pushoverAmount` | Amount rolled over in this action |
 | `pushoverBaseline` | Cumulative total of all rollovers |
+| `spendableBalance` | Recomputed after the reset - rises by `pushoverAmount`, since spendable is derived as liquid balance minus the (now zero) saver earmark |
+| `netWorth` | Unchanged by a rollover - no money moves and no account balance is touched |
 
 ## GET /pushover/history
 

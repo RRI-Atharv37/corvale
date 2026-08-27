@@ -2,6 +2,8 @@ import React, { useCallback, useState } from 'react'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
+import Disclaimer from '../../components/ui/Disclaimer'
+import { DISCLAIMERS } from '../../utils/disclaimers'
 import FormField from '../../components/forms/FormField'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -92,6 +94,7 @@ const Saver = () => {
             <PageHeader
                 title="Saver"
                 description="Move funds from spendable balance into your saver pool"
+                note={<Disclaimer>{DISCLAIMERS.saver}</Disclaimer>}
             />
 
             <AsyncContent
