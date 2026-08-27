@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import * as deriveKeyModule from '../../db/encryption/deriveKey'
 import { resetLocalDbForTests, setLocalDb } from '../../db/localDbInstance'
-import { clearPin, hasPinConfigured, migrateLegacyPinKeys, setupPin, verifyStoredPin } from '../pinStorage'
+import { clearPin, hasPinConfigured, migrateLegacyPinKeys, purgeLocalPinKeys, setupPin, verifyStoredPin } from '../pinStorage'
 
 /**
  * Acceptance spec for PIN cost + lockout hardening (S9, SEC-02).
@@ -288,5 +288,50 @@ describe('PIN key copy-forward on rename (V7.3e rename shim)', () => {
 
         expect(localStorage.getItem('corvale_pin_attempts')).toBe('5')
         expect(localStorage.getItem(LEGACY_PIN_ATTEMPTS_KEY)).toBeNull()
+    })
+})
+
+/**
+ * V6: on a build where local-first is disabled (the web build), a device that once ran a flag-on
+ * build keeps an orphaned salt/verifier/attempts trio in localStorage that no UI can clear
+ * (PinGate/PinSettings are unmounted). `bootstrapLocalDb` calls `purgeLocalPinKeys()` on that
+ * path. It must recognise BOTH the current `corvale_pin_*` names and the pre-rename `spndr_pin_*`
+ * ones, since the affected population is exactly the pre-rename devices.
+ */
+describe('purgeLocalPinKeys (V6 orphaned-PIN cleanup on flag-off builds)', () => {
+    afterEach(() => {
+        localStorage.clear()
+    })
+
+    it('removes the current and legacy salt/verifier/attempts keys', () => {
+        localStorage.clear()
+        localStorage.setItem(PIN_SALT_KEY, 'salt')
+        localStorage.setItem(PIN_VERIFIER_KEY, 'verifier')
+        localStorage.setItem('corvale_pin_attempts', '2')
+        localStorage.setItem(LEGACY_PIN_SALT_KEY, 'legacy-salt')
+        localStorage.setItem(LEGACY_PIN_VERIFIER_KEY, 'legacy-verifier')
+        localStorage.setItem(LEGACY_PIN_ATTEMPTS_KEY, '4')
+
+        purgeLocalPinKeys()
+
+        for (const key of [
+            PIN_SALT_KEY,
+            PIN_VERIFIER_KEY,
+            'corvale_pin_attempts',
+            LEGACY_PIN_SALT_KEY,
+            LEGACY_PIN_VERIFIER_KEY,
+            LEGACY_PIN_ATTEMPTS_KEY,
+        ]) {
+            expect(localStorage.getItem(key)).toBeNull()
+        }
+        expect(hasPinConfigured()).toBe(false)
+    })
+
+    it('leaves unrelated localStorage keys alone and is a no-op on a device that never set a PIN', () => {
+        localStorage.clear()
+        localStorage.setItem('corvale_something_else', 'keep me')
+
+        expect(() => purgeLocalPinKeys()).not.toThrow()
+        expect(localStorage.getItem('corvale_something_else')).toBe('keep me')
     })
 })

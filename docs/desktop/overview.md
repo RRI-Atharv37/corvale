@@ -6,9 +6,9 @@ title: Desktop App Overview
 
 The Corvale desktop app is the same Corvale you use online, packaged as a native application for Windows, macOS, and Linux. It's built with [Tauri](https://tauri.app), which wraps the web app in a small native shell instead of a full browser engine, so it stays lightweight.
 
-Everything works the same as the web app - transactions, budgets, savings goals, reports, and offline local-first storage - with a few desktop-specific touches:
+The features work the same as the web app - transactions, budgets, savings goals, reports - with a few desktop-specific touches. The biggest one is genuine offline use: unlike the web app, the desktop app keeps a full local copy of your data and works with no connection.
 
-- **Native SQLite storage.** Your local, offline copy of your data is stored in a real SQLite database on disk (encrypted with SQLCipher), rather than in browser storage.
+- **Native SQLite storage.** Your local copy of your data is stored in a real SQLite database on disk (encrypted with SQLCipher), rather than in browser storage.
 - **A real "Save As" dialog for backups.** Exporting a backup opens your operating system's native file-save window instead of triggering a browser download.
 - **Automatic updates.** The app checks for new versions and offers to install them without a manual re-download.
 
@@ -20,7 +20,7 @@ Download the installer for your platform from the project's releases page:
 - **macOS** - `.dmg` disk image
 - **Linux** - `.deb`, `.rpm`, or `.AppImage`
 
-Run the installer and launch Corvale like any other desktop application. The first launch walks you through the same sign-in and PIN setup as the web app.
+Run the installer and launch Corvale like any other desktop application. The first launch asks you to sign in once while you're online, so it can download your data into the local database. After that, the app offers to set up a **PIN** that unlocks your local data on later launches - this is a desktop feature; the web app has no PIN. You can skip the PIN and set one later from **Settings**.
 
 ## When to use it vs. the web app
 

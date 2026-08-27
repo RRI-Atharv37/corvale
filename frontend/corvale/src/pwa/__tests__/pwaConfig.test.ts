@@ -124,4 +124,14 @@ describe('PWA config (Sprint 13.8)', () => {
         const layoutSource = readSource('src/components/layouts/DashboardLayout.tsx')
         expect(layoutSource).toContain('import.meta.env.VITE_DOCS_URL')
     })
+
+    /**
+     * V6: the web build runs `VITE_LOCAL_FIRST=false`, so the "offlineReady" toast must not claim
+     * the app "works offline" - that's true only of the shell, not the data. It should promise a
+     * load without a connection, nothing more.
+     */
+    it('UpdatePrompt does not claim the (web) app "works offline"', () => {
+        const promptSource = readSource('src/pwa/UpdatePrompt.tsx')
+        expect(promptSource).not.toMatch(/ready to work offline|works? offline/i)
+    })
 })

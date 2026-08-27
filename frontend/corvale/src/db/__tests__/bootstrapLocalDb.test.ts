@@ -44,6 +44,38 @@ describe('bootstrapLocalDb', () => {
     expect(wasmCreate).not.toHaveBeenCalled()
   })
 
+  it('purges orphaned PIN keys (both name sets) when local-first is disabled (V6)', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(false)
+    localStorage.setItem('corvale_pin_salt', 'salt')
+    localStorage.setItem('corvale_pin_verifier', 'verifier')
+    localStorage.setItem('corvale_pin_attempts', '3')
+    localStorage.setItem('spndr_pin_salt', 'legacy-salt')
+    localStorage.setItem('spndr_pin_verifier', 'legacy-verifier')
+
+    await bootstrapLocalDb()
+
+    for (const key of [
+      'corvale_pin_salt',
+      'corvale_pin_verifier',
+      'corvale_pin_attempts',
+      'spndr_pin_salt',
+      'spndr_pin_verifier',
+    ]) {
+      expect(localStorage.getItem(key)).toBeNull()
+    }
+  })
+
+  it('does NOT purge a configured PIN when local-first is enabled', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isTauriRuntime).mockReturnValue(false)
+    wasmCreate.mockResolvedValue(fakeDb())
+    localStorage.setItem('corvale_pin_verifier', 'verifier')
+
+    await bootstrapLocalDb()
+
+    expect(localStorage.getItem('corvale_pin_verifier')).toBe('verifier')
+  })
+
   it('creates and installs a TauriSqlDriver under the Tauri runtime', async () => {
     vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
     vi.mocked(isTauriRuntime).mockReturnValue(true)

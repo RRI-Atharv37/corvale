@@ -8,6 +8,11 @@ import { BRAND } from '../utils/brand'
  * tracks: a new version waiting to activate ("needRefresh" - `registerType: 'prompt'` in
  * vite.config.ts means we must ask, not auto-reload out from under the user mid-edit) and the
  * first-install precache finishing ("offlineReady").
+ *
+ * This is the web-only prompt (`App.tsx` renders `DesktopUpdatePrompt` under Tauri instead), and
+ * the web build runs with `VITE_LOCAL_FIRST=false` - so "offlineReady" means the app *shell* is
+ * cached and will open without a connection, NOT that your data is available offline. The copy
+ * below is worded for that (V6): it promises a load, not a working offline session.
  */
 const UpdatePrompt: React.FC = () => {
     const {
@@ -31,7 +36,9 @@ const UpdatePrompt: React.FC = () => {
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-xl max-w-[calc(100vw-2rem)]">
             <FiDownloadCloud size={18} className="shrink-0 text-accent" />
             <p className="text-sm text-fg">
-                {needRefresh ? `A new version of ${BRAND.name} is available.` : `${BRAND.name} is ready to work offline.`}
+                {needRefresh
+                    ? `A new version of ${BRAND.name} is available.`
+                    : `${BRAND.name} is installed and will open even without a connection.`}
             </p>
             {needRefresh && (
                 <button

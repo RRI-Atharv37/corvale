@@ -98,10 +98,13 @@ VITE_OFFLINE_GRANT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\nMFkwEwYH...\n-----END 
 
 The desktop (Tauri) app runs Vite in a separate `desktop` mode rather than sharing the plain
 web build. `frontend/corvale/.env.desktop` layers on top of the files above and is the only place
-`VITE_LOCAL_FIRST=true` is set — the web build stays `false` until `SEC-01` lands. `npm run
-tauri:dev`/`npm run tauri:build` pick this up automatically (they run `vite --mode desktop` /
-`vite build --mode desktop` under the hood); a plain `npm run dev`/`npm run build` never reads
-`.env.desktop`.
+`VITE_LOCAL_FIRST=true` is set. The web build deliberately stays `false` — offline data is a
+desktop feature by design. The desktop app stores its local copy in a SQLCipher-encrypted
+database on disk; on the web the local store is browser storage, so the web app keeps the server
+as the single source of truth rather than shipping a partly-offline experience. `npm run
+tauri:dev`/`npm run tauri:build` pick `.env.desktop` up automatically (they run `vite --mode
+desktop` / `vite build --mode desktop` under the hood); a plain `npm run dev`/`npm run build`
+never reads it.
 
 ## Deployment topology
 

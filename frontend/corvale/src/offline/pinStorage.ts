@@ -52,6 +52,33 @@ export const migrateLegacyPinKeys = (): void => {
     }
 }
 
+/**
+ * Removes every PIN-related `localStorage` key, under **both** the current `corvale_pin_*` names
+ * and the pre-rename `spndr_pin_*` ones. Called from `bootstrapLocalDb` on a build where
+ * local-first is disabled (the web build - `VITE_LOCAL_FIRST=false`).
+ *
+ * Why it's needed (V6): a device that once ran a flag-on build and set a PIN, then loads a
+ * flag-off build, keeps an orphaned salt/verifier/attempts trio in `localStorage` pointing at an
+ * encrypted local DB that's now unreachable. `PinGate` and `PinSettings` are both unmounted when
+ * the flag is off, so nothing in the UI can ever clear it. The affected population is exactly the
+ * pre-rename devices, which is why both name sets are purged, not just the current one.
+ *
+ * Idempotent; a no-op on a device that never set a PIN.
+ */
+export const purgeLocalPinKeys = (): void => {
+    const keys = [
+        PIN_SALT_KEY,
+        PIN_VERIFIER_KEY,
+        PIN_ATTEMPTS_KEY,
+        LEGACY_PIN_SALT_KEY,
+        LEGACY_PIN_VERIFIER_KEY,
+        LEGACY_PIN_ATTEMPTS_KEY,
+    ]
+    for (const key of keys) {
+        localStorage.removeItem(key)
+    }
+}
+
 // Two separate duck-type surfaces, deliberately not merged into one. `TauriSqlDriver` only
 // implements `setEncryptionKey` (the passphrase never leaves Rust - SQLCipher itself is the
 // gate, per `EncryptionCapableDb.ts`'s comment), so requiring `hasEncryptionKey`/
