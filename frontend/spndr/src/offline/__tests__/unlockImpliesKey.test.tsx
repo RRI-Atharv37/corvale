@@ -17,7 +17,7 @@ import PinGate from '../PinGate'
 /**
  * Acceptance spec for PIN-gate/key coupling (S10, SEC-03).
  *
- * `PinGate.tsx` today gates purely on `sessionStorage.getItem('spndr_pin_unlocked') === '1'`
+ * `PinGate.tsx` today gates purely on `sessionStorage.getItem('corvale_pin_unlocked') === '1'`
  * (`SESSION_UNLOCKED_KEY`). Setting that key from devtools renders the whole dashboard without
  * ever entering a PIN. Combined with SEC-01 the PIN currently provides no confidentiality on web
  * at all; even once SEC-01/SEC-02 land, a storage-sentinel gate stays bypassable independent of
@@ -69,7 +69,7 @@ class FakeEncryptableDb {
     async close(): Promise<void> {}
 }
 
-const SESSION_UNLOCKED_KEY = 'spndr_pin_unlocked'
+const SESSION_UNLOCKED_KEY = 'corvale_pin_unlocked'
 const PIN = '284915'
 
 const renderGate = () =>

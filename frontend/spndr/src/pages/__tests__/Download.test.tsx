@@ -27,10 +27,10 @@ const availableManifest: ReleaseManifest = {
     version: '0.17.0',
     publishedAt: '2026-08-25T20:31:20Z',
     available: true,
-    releaseNotesUrl: 'https://github.com/RRI-Atharv37/spndr/releases/tag/v0.17.0',
+    releaseNotesUrl: 'https://github.com/RRI-Atharv37/corvale/releases/tag/v0.17.0',
     highlights: [
         'Native SQLite storage, encrypted at rest with SQLCipher',
-        'Sign in once, then use spndr fully offline',
+        'Sign in once, then use Corvale fully offline',
         'Automatic updates, verified against a signed release before install',
     ],
     platforms: [
@@ -39,26 +39,26 @@ const availableManifest: ReleaseManifest = {
             label: 'Windows',
             fileLabel: '.msi installer',
             systemRequirements: ['Windows 10 or later (64-bit)', 'WebView2 runtime'],
-            primary: asset('.msi installer', 'https://example.com/spndr_x64_en-US.msi', 'aaa111', 7827456),
-            alternates: [asset('.exe installer', 'https://example.com/spndr_x64-setup.exe', 'bbb222', 5811999)],
+            primary: asset('.msi installer', 'https://example.com/corvale_x64_en-US.msi', 'aaa111', 7827456),
+            alternates: [asset('.exe installer', 'https://example.com/corvale_x64-setup.exe', 'bbb222', 5811999)],
         },
         {
             id: 'macos',
             label: 'macOS',
             fileLabel: '.dmg disk image (Apple Silicon)',
             systemRequirements: ['macOS 12 Monterey or later', 'Apple Silicon or Intel'],
-            primary: asset('Apple Silicon (.dmg)', 'https://example.com/spndr_aarch64.dmg', 'ccc333', 8088151),
-            alternates: [asset('Intel (.dmg)', 'https://example.com/spndr_x64.dmg', 'ddd444', 8190126)],
+            primary: asset('Apple Silicon (.dmg)', 'https://example.com/corvale_aarch64.dmg', 'ccc333', 8088151),
+            alternates: [asset('Intel (.dmg)', 'https://example.com/corvale_x64.dmg', 'ddd444', 8190126)],
         },
         {
             id: 'linux',
             label: 'Linux',
             fileLabel: '.deb package',
             systemRequirements: ['webkit2gtk 4.1 and libayatana-appindicator3'],
-            primary: asset('.deb package', 'https://example.com/spndr_amd64.deb', 'eee555', 8467760),
+            primary: asset('.deb package', 'https://example.com/corvale_amd64.deb', 'eee555', 8467760),
             alternates: [
-                asset('.rpm package', 'https://example.com/spndr.x86_64.rpm', 'fff666', 8467532),
-                asset('.AppImage', 'https://example.com/spndr_amd64.AppImage', 'ggg777', 85588472),
+                asset('.rpm package', 'https://example.com/corvale.x86_64.rpm', 'fff666', 8467532),
+                asset('.AppImage', 'https://example.com/corvale_amd64.AppImage', 'ggg777', 85588472),
             ],
         },
     ],
@@ -113,7 +113,7 @@ describe('Download page', () => {
         renderWithProviders(<Download />, { withUser: false, withWorkspace: false })
 
         const windowsLink = screen.getByRole('link', { name: /download for windows/i })
-        expect(windowsLink).toHaveAttribute('href', 'https://example.com/spndr_x64_en-US.msi')
+        expect(windowsLink).toHaveAttribute('href', 'https://example.com/corvale_x64_en-US.msi')
         expect(screen.getByText(/aaa111/)).toBeInTheDocument()
         expect(screen.getByText(/7\.5\s?MB/i)).toBeInTheDocument()
     })
@@ -130,7 +130,7 @@ describe('Download page', () => {
 
         expect(screen.getByText(/\.exe installer/i)).toBeInTheDocument()
         const exeLink = screen.getByRole('link', { name: /\.exe installer/i })
-        expect(exeLink).toHaveAttribute('href', 'https://example.com/spndr_x64-setup.exe')
+        expect(exeLink).toHaveAttribute('href', 'https://example.com/corvale_x64-setup.exe')
         expect(screen.getByText(/bbb222/)).toBeInTheDocument()
     })
 

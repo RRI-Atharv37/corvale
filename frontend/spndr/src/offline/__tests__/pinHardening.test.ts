@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 import * as deriveKeyModule from '../../db/encryption/deriveKey'
 import { resetLocalDbForTests, setLocalDb } from '../../db/localDbInstance'
-import { clearPin, hasPinConfigured, setupPin, verifyStoredPin } from '../pinStorage'
+import { clearPin, hasPinConfigured, migrateLegacyPinKeys, setupPin, verifyStoredPin } from '../pinStorage'
 
 /**
  * Acceptance spec for PIN cost + lockout hardening (S9, SEC-02).
@@ -33,8 +36,11 @@ import { clearPin, hasPinConfigured, setupPin, verifyStoredPin } from '../pinSto
  * already use, so this spec doesn't depend on S8 having landed first.
  */
 
-const PIN_SALT_KEY = 'spndr_pin_salt'
-const PIN_VERIFIER_KEY = 'spndr_pin_verifier'
+const PIN_SALT_KEY = 'corvale_pin_salt'
+const PIN_VERIFIER_KEY = 'corvale_pin_verifier'
+const LEGACY_PIN_SALT_KEY = 'spndr_pin_salt'
+const LEGACY_PIN_VERIFIER_KEY = 'spndr_pin_verifier'
+const LEGACY_PIN_ATTEMPTS_KEY = 'spndr_pin_attempts'
 
 const legacySha256Verifier = async (pin: string, saltB64: string): Promise<string> => {
     const data = new TextEncoder().encode(`${pin}:${saltB64}`)
@@ -170,5 +176,117 @@ describe('PIN verifier hardening (S9, SEC-02)', () => {
         await setupPin('551133')
 
         expect(await verifyStoredPin('551133')).toBe(true)
+    })
+})
+
+/**
+ * V7.3e rename-compat shim (FREEZE - do not rename): `VERIFIER_SALT_CONTEXT` and
+ * `VERIFIER_PLAINTEXT` are PBKDF2 domain-separation inputs, not brand strings - they feed the
+ * verifier derivation (`deriveVerifierSalt`/`computeVerifier`) that every existing encrypted
+ * local DB was set up against. Renaming either literal changes the derived key and makes every
+ * pre-rename local DB permanently unrecoverable, in exchange for nothing any user can see. This
+ * guard exists so a future "finish the rename" pass trips a red test instead of shipping data
+ * loss (ROADMAP's V7 compat matrix, V-R7).
+ */
+describe('PIN verifier KDF context is frozen (V7.3e rename shim - never rename)', () => {
+    it('pinStorage.ts still derives the verifier from the exact frozen context/plaintext literals', () => {
+        // Source-text guard, matching pwa/__tests__/pwaConfig.test.ts's drift-guard style: these
+        // two literals are PBKDF2 domain-separation inputs baked into every existing encrypted
+        // local DB, not brand strings. A behavioral known-answer test would only catch this after
+        // the fact (once a DB is already unrecoverable in some other test's fixture); reading the
+        // source directly fails the instant either literal is touched, blind `sed` included.
+        const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../pinStorage.ts'), 'utf-8')
+
+        expect(source).toContain("new TextEncoder().encode('spndr-pin-verifier-salt-v1')")
+        expect(source).toContain("new TextEncoder().encode('spndr-pin-verifier-v1')")
+    })
+})
+
+/**
+ * V7.1 new acceptance spec: PIN key copy-forward. `PIN_SALT_KEY`/`PIN_VERIFIER_KEY`/
+ * `PIN_ATTEMPTS_KEY` rename from `spndr_pin_*` to `corvale_pin_*` (V7.3e). Unlike the KDF
+ * context above, these are just localStorage key *names*, not cryptographic material - but a
+ * bare rename would still strand every existing PIN, since `hasPinConfigured`/`verifyStoredPin`
+ * would look under the new key and find nothing, and the encrypted local DB would look
+ * permanently PIN-less rather than merely renamed. `migrateLegacyPinKeys()` is a one-time,
+ * idempotent copy: if the legacy keys are present and the new keys are not, copy their values
+ * forward under the new names and remove the legacy keys, so an upgraded build recognizes a PIN
+ * set up before the rename without the user re-entering it.
+ */
+describe('PIN key copy-forward on rename (V7.3e rename shim)', () => {
+    afterEach(() => {
+        localStorage.clear()
+    })
+
+    it('copies a legacy-named salt/verifier forward to the new key names', async () => {
+        localStorage.clear()
+        localStorage.setItem(LEGACY_PIN_SALT_KEY, 'legacy-salt-b64')
+        localStorage.setItem(LEGACY_PIN_VERIFIER_KEY, 'legacy-verifier-b64')
+
+        migrateLegacyPinKeys()
+
+        expect(localStorage.getItem(PIN_SALT_KEY)).toBe('legacy-salt-b64')
+        expect(localStorage.getItem(PIN_VERIFIER_KEY)).toBe('legacy-verifier-b64')
+        expect(localStorage.getItem(LEGACY_PIN_SALT_KEY)).toBeNull()
+        expect(localStorage.getItem(LEGACY_PIN_VERIFIER_KEY)).toBeNull()
+    })
+
+    it('a PIN set up before the rename still verifies correctly after migration', async () => {
+        localStorage.clear()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setLocalDb(new FakeEncryptableDb() as any)
+
+        await setupPin('284915')
+        // Simulate the rename landing: move the just-written keys back under the legacy names,
+        // as if this profile had set up its PIN on a pre-rename build.
+        const salt = localStorage.getItem(PIN_SALT_KEY)
+        const verifier = localStorage.getItem(PIN_VERIFIER_KEY)
+        localStorage.removeItem(PIN_SALT_KEY)
+        localStorage.removeItem(PIN_VERIFIER_KEY)
+        localStorage.setItem(LEGACY_PIN_SALT_KEY, salt!)
+        localStorage.setItem(LEGACY_PIN_VERIFIER_KEY, verifier!)
+
+        migrateLegacyPinKeys()
+
+        expect(hasPinConfigured()).toBe(true)
+        expect(await verifyStoredPin('284915')).toBe(true)
+
+        resetLocalDbForTests()
+    })
+
+    it('is a no-op when only the new keys are present (already migrated / fresh install)', () => {
+        localStorage.clear()
+        localStorage.setItem(PIN_SALT_KEY, 'current-salt-b64')
+        localStorage.setItem(PIN_VERIFIER_KEY, 'current-verifier-b64')
+
+        migrateLegacyPinKeys()
+
+        expect(localStorage.getItem(PIN_SALT_KEY)).toBe('current-salt-b64')
+        expect(localStorage.getItem(PIN_VERIFIER_KEY)).toBe('current-verifier-b64')
+    })
+
+    it('never overwrites new keys that already exist, even if legacy keys are also present', () => {
+        localStorage.clear()
+        localStorage.setItem(PIN_SALT_KEY, 'current-salt-b64')
+        localStorage.setItem(PIN_VERIFIER_KEY, 'current-verifier-b64')
+        localStorage.setItem(LEGACY_PIN_SALT_KEY, 'stale-legacy-salt')
+        localStorage.setItem(LEGACY_PIN_VERIFIER_KEY, 'stale-legacy-verifier')
+
+        migrateLegacyPinKeys()
+
+        expect(localStorage.getItem(PIN_SALT_KEY)).toBe('current-salt-b64')
+        expect(localStorage.getItem(PIN_VERIFIER_KEY)).toBe('current-verifier-b64')
+    })
+
+    it('also copies forward the legacy attempts counter, so an active lockout survives the rename', () => {
+        localStorage.clear()
+        localStorage.setItem(LEGACY_PIN_SALT_KEY, 'legacy-salt-b64')
+        localStorage.setItem(LEGACY_PIN_VERIFIER_KEY, 'legacy-verifier-b64')
+        localStorage.setItem(LEGACY_PIN_ATTEMPTS_KEY, '5')
+
+        migrateLegacyPinKeys()
+
+        expect(localStorage.getItem('corvale_pin_attempts')).toBe('5')
+        expect(localStorage.getItem(LEGACY_PIN_ATTEMPTS_KEY)).toBeNull()
     })
 })

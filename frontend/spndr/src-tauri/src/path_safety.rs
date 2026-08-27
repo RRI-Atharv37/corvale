@@ -36,12 +36,12 @@ mod tests {
 
     #[test]
     fn accepts_a_plain_filename() {
-        assert!(sanitize_db_filename("spndr.sqlite3").is_ok());
+        assert!(sanitize_db_filename("corvale.sqlite3").is_ok());
     }
 
     #[test]
     fn accepts_names_with_dots_dashes_and_underscores() {
-        assert!(sanitize_db_filename("spndr-backup_v2.sqlite3").is_ok());
+        assert!(sanitize_db_filename("corvale-backup_v2.sqlite3").is_ok());
     }
 
     #[test]
@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn rejects_alternate_data_stream_marker() {
-        assert!(sanitize_db_filename("spndr.sqlite3:hidden").is_err());
+        assert!(sanitize_db_filename("corvale.sqlite3:hidden").is_err());
     }
 
     #[test]

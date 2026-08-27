@@ -10,7 +10,7 @@ import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { hashToken } from '../utils/tokenUtils'
 import { createPasswordResetForUser } from '../utils/passwordResetUtils'
 
-const REFRESH_COOKIE = 'spndr_refresh'
+const REFRESH_COOKIE = 'corvale_refresh'
 
 const getSetCookieHeaders = (headers: request.Response['headers']): string[] => {
     const setCookie = headers['set-cookie']

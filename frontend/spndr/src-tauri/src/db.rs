@@ -148,3 +148,135 @@ pub fn db_close(state: State<DbState>) -> Result<(), String> {
     *state.0.lock().map_err(to_sql_error)? = None;
     Ok(())
 }
+
+/// V7.1 new acceptance spec: Tauri legacy-data-dir copy (V7.3f rename shim).
+///
+/// The Tauri `identifier` renames from `com.spndr.app` to `com.corvale.app`
+/// (`tauri.conf.json`), which repoints `app.path().app_data_dir()` to a brand-new, empty
+/// directory on every platform - `app_data_dir()` is always `<platform base>/<identifier>`, so a
+/// changed identifier is a changed directory, full stop. Without mitigation, every desktop
+/// tester's existing local database looks like it vanished the moment they upgrade, which is
+/// indistinguishable from real data loss to someone who hasn't read a changelog. `db_open`
+/// (V7.3f) is expected to call `copy_legacy_db_if_missing` before opening the connection: if the
+/// new-identifier directory has no database yet, but the old-identifier sibling directory still
+/// has `spndr.sqlite3`, copy it into place under the new filename first. The legacy file and
+/// directory are left untouched either way - this is a copy, never a move, so a rollback or a
+/// second device profile can't lose data to it.
+///
+/// These two helpers are pure (no `AppHandle`, no Tauri runtime) specifically so they're testable
+/// with plain `std::fs` against a temp directory, without spinning up a Tauri app context.
+#[cfg(test)]
+mod legacy_data_dir_tests {
+    use std::path::{Path, PathBuf};
+
+    /// Computes the legacy (pre-rename) app-data directory from the new one. Tauri's
+    /// `app_data_dir()` always ends in the identifier as its final path component on every
+    /// platform (`%APPDATA%\<identifier>`, `~/Library/Application Support/<identifier>`,
+    /// `~/.local/share/<identifier>`), so swapping that final component for the old identifier
+    /// finds the sibling directory the pre-rename build wrote to.
+    fn legacy_app_data_dir(new_app_data_dir: &Path) -> Option<PathBuf> {
+        super::legacy_app_data_dir(new_app_data_dir)
+    }
+
+    /// If `new_dir/filename` doesn't exist yet but `legacy_dir/spndr.sqlite3` does, copies the
+    /// legacy file into place and returns `true`. Never overwrites an existing new-identifier
+    /// database (a second, later launch must not clobber data written since the first migration),
+    /// and returns `false` (not an error) when there's nothing to migrate.
+    fn copy_legacy_db_if_missing(new_dir: &Path, legacy_dir: &Path, filename: &str) -> std::io::Result<bool> {
+        super::copy_legacy_db_if_missing(new_dir, legacy_dir, filename)
+    }
+
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(label: &str) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "corvale-rename-test-{label}-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&path).unwrap();
+            TempDir(path)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn legacy_dir_is_the_new_dirs_sibling_named_after_the_old_identifier() {
+        let base = TempDir::new("sibling");
+        let new_dir = base.0.join("com.corvale.app");
+
+        let legacy = legacy_app_data_dir(&new_dir).expect("new_dir has a parent");
+
+        assert_eq!(legacy, base.0.join("com.spndr.app"));
+    }
+
+    #[test]
+    fn copies_the_legacy_db_when_the_new_dir_has_none_yet() {
+        let base = TempDir::new("copy");
+        let new_dir = base.0.join("com.corvale.app");
+        let legacy_dir = base.0.join("com.spndr.app");
+        std::fs::create_dir_all(&legacy_dir).unwrap();
+        std::fs::write(legacy_dir.join("spndr.sqlite3"), b"legacy-db-bytes").unwrap();
+
+        let copied = copy_legacy_db_if_missing(&new_dir, &legacy_dir, "corvale.sqlite3").unwrap();
+
+        assert!(copied);
+        let migrated = std::fs::read(new_dir.join("corvale.sqlite3")).unwrap();
+        assert_eq!(migrated, b"legacy-db-bytes");
+        // The legacy file is left in place - this is a copy, not a move.
+        assert!(legacy_dir.join("spndr.sqlite3").exists());
+    }
+
+    #[test]
+    fn does_not_overwrite_an_existing_new_identifier_database() {
+        let base = TempDir::new("no-clobber");
+        let new_dir = base.0.join("com.corvale.app");
+        let legacy_dir = base.0.join("com.spndr.app");
+        std::fs::create_dir_all(&new_dir).unwrap();
+        std::fs::create_dir_all(&legacy_dir).unwrap();
+        std::fs::write(new_dir.join("corvale.sqlite3"), b"current-db-bytes").unwrap();
+        std::fs::write(legacy_dir.join("spndr.sqlite3"), b"legacy-db-bytes").unwrap();
+
+        let copied = copy_legacy_db_if_missing(&new_dir, &legacy_dir, "corvale.sqlite3").unwrap();
+
+        assert!(!copied);
+        let untouched = std::fs::read(new_dir.join("corvale.sqlite3")).unwrap();
+        assert_eq!(untouched, b"current-db-bytes");
+    }
+
+    #[test]
+    fn is_a_no_op_when_no_legacy_database_exists() {
+        let base = TempDir::new("nothing-to-migrate");
+        let new_dir = base.0.join("com.corvale.app");
+        let legacy_dir = base.0.join("com.spndr.app");
+        std::fs::create_dir_all(&legacy_dir).unwrap();
+        // legacy_dir exists but has no spndr.sqlite3 in it (e.g. a fresh install, never
+        // installed pre-rename, or the legacy identifier's dir belongs to an unrelated app).
+
+        let copied = copy_legacy_db_if_missing(&new_dir, &legacy_dir, "corvale.sqlite3").unwrap();
+
+        assert!(!copied);
+        assert!(!new_dir.join("corvale.sqlite3").exists());
+    }
+
+    #[test]
+    fn is_a_no_op_when_the_legacy_directory_does_not_exist_at_all() {
+        let base = TempDir::new("no-legacy-dir");
+        let new_dir = base.0.join("com.corvale.app");
+        let legacy_dir = base.0.join("com.spndr.app");
+        // Deliberately not created - simulates a user who never had the pre-rename app installed.
+
+        let copied = copy_legacy_db_if_missing(&new_dir, &legacy_dir, "corvale.sqlite3").unwrap();
+
+        assert!(!copied);
+    }
+}

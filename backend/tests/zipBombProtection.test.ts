@@ -50,7 +50,7 @@ const buildZip = (entries: { name: string; data: Buffer }[]): Buffer => {
 }
 
 const minimalBackupJsonEntry = () => ({
-    name: 'spndr-backup.json',
+    name: 'corvale-backup.json',
     data: Buffer.from(
         JSON.stringify({
             version: 1,
@@ -82,7 +82,7 @@ describe('Zip-bomb protection on backup restore (S15, SEC-16)', () => {
         const { token } = await registerUser(app)
 
         const bombEntry = {
-            name: 'spndr-backup.json',
+            name: 'corvale-backup.json',
             // Highly compressible: a 20,000-byte run of the same character compresses to
             // well under 1 KB, but its declared uncompressed size (20,000) exceeds the cap.
             data: Buffer.alloc(20_000, 'a'),
@@ -123,7 +123,7 @@ describe('Zip-bomb protection on backup restore (S15, SEC-16)', () => {
         // Keep this under the (unset, default) uncompressed-size cap so only the ratio check
         // is exercised: a large run of identical bytes compresses far beyond 5:1.
         const highRatioEntry = {
-            name: 'spndr-backup.json',
+            name: 'corvale-backup.json',
             data: Buffer.alloc(500_000, 0),
         }
         const { token } = await registerUser(app)

@@ -72,7 +72,7 @@ const setOnline = (online: boolean): void => {
 
 beforeEach(() => {
     setOnline(true)
-    localStorage.removeItem('spndr_active_workspace_id')
+    localStorage.removeItem('corvale_active_workspace_id')
     workspacesState = [ownedWorkspace, memberWorkspace]
     receivedInvitesState = [receivedInvite]
 

@@ -15,10 +15,10 @@ describe('nativeBackup', () => {
   it('invokes save_backup_file with filename and contents', async () => {
     invokeMock.mockResolvedValueOnce(true)
 
-    const result = await saveBackupFileNative('spndr-backup.json', '{"a":1}')
+    const result = await saveBackupFileNative('corvale-backup.json', '{"a":1}')
 
     expect(invokeMock).toHaveBeenCalledWith('save_backup_file', {
-      filename: 'spndr-backup.json',
+      filename: 'corvale-backup.json',
       contents: '{"a":1}',
     })
     expect(result).toBe(true)
@@ -27,7 +27,7 @@ describe('nativeBackup', () => {
   it('returns false (not a rejection) when the save dialog is cancelled', async () => {
     invokeMock.mockResolvedValueOnce(false)
 
-    const result = await saveBackupFileNative('spndr-backup.json', '{}')
+    const result = await saveBackupFileNative('corvale-backup.json', '{}')
 
     expect(result).toBe(false)
   })

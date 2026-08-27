@@ -6,7 +6,7 @@ import { createApp } from '../app'
  * Acceptance spec for cross-origin refresh-cookie topology (S13, SEC-11).
  *
  * Today `setRefreshTokenCookie`/`clearRefreshTokenCookie` (`backend/utils/tokenUtils.ts`)
- * hardcode `sameSite: 'lax'`. That is the right choice for spndr's pinned deployment
+ * hardcode `sameSite: 'lax'`. That is the right choice for Corvale's pinned deployment
  * topology (frontend and API sharing a registrable domain) but breaks silently — no error,
  * just an unnoticed 15-minute logout loop — the moment someone deploys frontend and API on
  * unrelated domains (SEC-11's reported symptom).
@@ -37,7 +37,10 @@ const getSetCookieHeaders = (headers: request.Response['headers']): string[] => 
 }
 
 const findRefreshCookie = (headers: request.Response['headers']): string | undefined =>
-    getSetCookieHeaders(headers).find((cookie) => cookie.startsWith('spndr_refresh='))
+    getSetCookieHeaders(headers).find((cookie) => cookie.startsWith('corvale_refresh='))
+
+const findCookieNamed = (headers: request.Response['headers'], name: string): string | undefined =>
+    getSetCookieHeaders(headers).find((cookie) => cookie.startsWith(`${name}=`))
 
 describe('Refresh cookie deployment topology (S13, SEC-11)', () => {
     afterEach(() => {
@@ -99,5 +102,38 @@ describe('Refresh cookie deployment topology (S13, SEC-11)', () => {
         const cookie = findRefreshCookie(res.headers)
         expect(cookie).toBeTruthy()
         expect((cookie as string).toLowerCase()).toContain('samesite=strict')
+    })
+})
+
+/**
+ * V7.3a rename-compat shim: `spndr_refresh` (the pre-rename cookie name) is replaced by
+ * `corvale_refresh`, but a browser that still holds the old cookie from before the rename would
+ * otherwise carry it forever - cookies aren't cleaned up by a rename alone. `clearRefreshTokenCookie`
+ * must issue a one-shot `Set-Cookie: spndr_refresh=...; Expires=<past>` alongside clearing the new
+ * cookie, on every path that calls it (logout, logout-all, account deletion), so a stale cookie
+ * doesn't sit in every pre-rename tester's browser indefinitely (see ROADMAP's V7 compat matrix).
+ */
+describe('Legacy spndr_refresh cookie cleanup (V7.3a rename shim)', () => {
+    it('clears the legacy spndr_refresh cookie alongside the new corvale_refresh cookie on logout', async () => {
+        const app = createApp()
+        const registerRes = await request(app).post('/api/v1/auth/register').send({
+            fullName: 'Legacy Cookie Cleanup',
+            email: 'legacy-cookie-cleanup@example.com',
+            password: 'TestPassword123!',
+        })
+
+        const refreshCookie = findRefreshCookie(registerRes.headers)
+        expect(refreshCookie).toBeTruthy()
+        const cookieValue = (refreshCookie as string).split(';')[0]
+
+        const logoutRes = await request(app).post('/api/v1/auth/logout').set('Cookie', cookieValue)
+
+        const clearedNew = findCookieNamed(logoutRes.headers, 'corvale_refresh')
+        const clearedLegacy = findCookieNamed(logoutRes.headers, 'spndr_refresh')
+        expect(clearedNew).toBeTruthy()
+        expect(clearedLegacy).toBeTruthy()
+        // clearCookie expires immediately in the past, with no meaningful token value.
+        expect((clearedNew as string).toLowerCase()).toMatch(/expires=|max-age=0/)
+        expect((clearedLegacy as string).toLowerCase()).toMatch(/expires=|max-age=0/)
     })
 })

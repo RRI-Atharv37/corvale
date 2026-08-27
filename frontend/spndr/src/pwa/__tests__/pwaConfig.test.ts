@@ -84,8 +84,24 @@ describe('PWA config (Sprint 13.8)', () => {
 
         expect(swSource).toContain("from './pwa/constants'")
         expect(backgroundSyncSource).toContain("from './constants'")
-        expect(constantsSource).toContain("OUTBOX_SYNC_TAG = 'spndr-outbox-sync'")
-        expect(constantsSource).toContain("FLUSH_OUTBOX_MESSAGE = 'SPNDR_FLUSH_OUTBOX'")
+        expect(constantsSource).toContain("OUTBOX_SYNC_TAG = 'corvale-outbox-sync'")
+        expect(constantsSource).toContain("FLUSH_OUTBOX_MESSAGE = 'CORVALE_FLUSH_OUTBOX'")
+    })
+
+    /**
+     * V7.3d rename-compat shim: Background Sync registrations persist across service-worker
+     * updates, so a tag registered as `spndr-outbox-sync` before the rename is still what the
+     * browser fires after the new build activates - without this, every queued offline write from
+     * a pre-rename session never flushes. `constants.ts` must keep exporting the legacy tag for one
+     * release, and `sw.ts`'s `sync` handler must accept either tag (ROADMAP's V7 compat matrix).
+     */
+    it('constants.ts keeps a legacy spndr-outbox-sync tag, and sw.ts accepts it alongside the new tag', () => {
+        const swSource = readSource('src/sw.ts')
+        const constantsSource = readSource('src/pwa/constants.ts')
+
+        expect(constantsSource).toContain("LEGACY_OUTBOX_SYNC_TAG = 'spndr-outbox-sync'")
+        expect(swSource).toContain('LEGACY_OUTBOX_SYNC_TAG')
+        expect(swSource).toMatch(/event\.tag\s*!==\s*OUTBOX_SYNC_TAG\s*&&\s*event\.tag\s*!==\s*LEGACY_OUTBOX_SYNC_TAG/)
     })
 
     it('React.lazy code-splits every dashboard page instead of statically importing all 25', () => {

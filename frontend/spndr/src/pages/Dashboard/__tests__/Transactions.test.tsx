@@ -126,7 +126,7 @@ const seedTransaction = async (overrides: Partial<LocalTransaction> = {}) => {
 beforeEach(async () => {
     vi.stubEnv('VITE_LOCAL_FIRST', 'true')
     resetLocalDbForTests()
-    localStorage.removeItem('spndr_active_workspace_id')
+    localStorage.removeItem('corvale_active_workspace_id')
     setCachedUser(mockUser)
     await storeOfflineGrant(await createTestOfflineGrant(mockUser._id))
     Object.defineProperty(navigator, 'onLine', { value: false, writable: true, configurable: true })

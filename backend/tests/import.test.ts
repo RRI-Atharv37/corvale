@@ -45,7 +45,7 @@ const CHASE_CSV = [
     '01/06/2026,01/07/2026,Employer Payroll,,Payment,2000.00,',
 ].join('\n')
 
-const SPNDR_EXPORT_CSV = [
+const CORVALE_EXPORT_CSV = [
     'Type,Title,Amount,Currency,Category,Date,Description,Source,Payment Method,Tags,Status',
     'expense,Grocery Store,45.50,USD,Food,2026-01-05,Weekly shop,manual,card,groceries,posted',
 ].join('\n')
@@ -77,13 +77,13 @@ describe('Bank CSV/OFX import - parse & format detection', () => {
         expect(res.body.data.suggestedMapping.amount).toBe('Amount')
     })
 
-    it('detects an spndr_export CSV format matching the export column order', async () => {
-        const { token } = await seedUserDirectly({ email: 'import-spndr@example.com' })
+    it('detects a corvale_export CSV format matching the export column order', async () => {
+        const { token } = await seedUserDirectly({ email: 'import-corvale@example.com' })
 
-        const res = await parseFile(token, SPNDR_EXPORT_CSV, 'spndr-export.csv')
+        const res = await parseFile(token, CORVALE_EXPORT_CSV, 'corvale-export.csv')
 
         expect(res.status).toBe(200)
-        expect(res.body.data.format).toBe('spndr_export')
+        expect(res.body.data.format).toBe('corvale_export')
     })
 
     it('parses OFX content directly without requiring a column mapping', async () => {
