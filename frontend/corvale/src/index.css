@@ -98,8 +98,60 @@
 }
 
 @layer base {
+    :root {
+        /* Corvale renders dark only. This tells the UA to draw native controls,
+           autofill backgrounds, date pickers, the canvas and the default
+           scrollbars in their dark variant. Mirrored by the pre-CSS
+           <meta name="color-scheme"> in index.html so the first paint matches. */
+        color-scheme: dark;
+
+        /* Scrollbar tokens - deliberately NOT in the --color-* namespace:
+           Tailwind v4 generates utilities from --color-*, so --color-scrollbar-thumb
+           would emit dead `bg-scrollbar-thumb` classes. (V8) */
+        --scrollbar-thumb: #3d3654;
+        --scrollbar-thumb-hover: #4a4260;
+        --scrollbar-track: transparent;
+    }
+
     html {
         scroll-behavior: smooth;
+
+        /* Standard properties. `scrollbar-color` inherits, so all ~14 scroll
+           containers in the app pick this up with zero per-component edits. */
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+
+    /* Legacy WebKit/Blink fallback. Gated behind `@supports not` because in
+       Chromium 121+ setting scrollbar-width/-color on an element already
+       DISABLES these pseudo-elements for it - styling both unconditionally
+       gives browser-dependent results. Bare pseudo-selectors only: a `*`
+       prefix here is a known paint hazard on long transaction lists. */
+    @supports not (scrollbar-width: thin) {
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+            background-clip: padding-box;
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: var(--scrollbar-track);
+        }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -123,6 +175,38 @@
 }
 
 @layer components {
+    /* Opt-in scroll container. The global `html` rules already theme every
+       scroller by inheritance; use `.scroll-area` on an element that needs to
+       re-assert the thin themed scrollbar after a library or reset override, or
+       where the intent (this box scrolls) should be explicit in the markup. */
+    .scroll-area {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+
+    @supports not (scrollbar-width: thin) {
+        .scroll-area::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+            background-clip: padding-box;
+        }
+    }
+
     .font-display {
         font-family: var(--font-display);
     }
