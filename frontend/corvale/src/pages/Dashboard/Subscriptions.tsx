@@ -4,6 +4,8 @@ import { IoBan, IoPlay } from 'react-icons/io5'
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import StatCard from '../../components/ui/StatCard'
+import Disclaimer from '../../components/ui/Disclaimer'
+import { DISCLAIMERS } from '../../utils/disclaimers'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
 import { useSubscriptionsData } from './hooks/useSubscriptionsData'
@@ -39,6 +41,7 @@ const Subscriptions: React.FC = () => {
                         ? 'Recurring expenses billed monthly or more often'
                         : `Subscriptions in ${activeWorkspace?.name ?? 'workspace'}`
                 }
+                note={<Disclaimer>{DISCLAIMERS.subscriptions}</Disclaimer>}
             />
 
             <WorkspaceReadOnlyBanner />

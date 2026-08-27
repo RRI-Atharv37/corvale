@@ -12,6 +12,8 @@ import {
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import StatCard from '../../components/ui/StatCard'
+import Disclaimer from '../../components/ui/Disclaimer'
+import { DISCLAIMERS } from '../../utils/disclaimers'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOnlyBanner'
 import { useForecastData } from './hooks/useForecastData'
@@ -175,6 +177,7 @@ const Forecast: React.FC = () => {
                         ? 'Projected balances based on recurring bills, goal contributions, and average spending'
                         : `Forecast for ${activeWorkspace?.name ?? 'workspace'}`
                 }
+                note={<Disclaimer>{DISCLAIMERS.forecast}</Disclaimer>}
             />
 
             <WorkspaceReadOnlyBanner />

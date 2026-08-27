@@ -17,6 +17,8 @@ import PageHeader from '../../components/ui/PageHeader'
 import StatCard from '../../components/ui/StatCard'
 import AsyncContent from '../../components/ui/AsyncContent'
 import ErrorState from '../../components/ui/ErrorState'
+import Disclaimer from '../../components/ui/Disclaimer'
+import { DISCLAIMERS } from '../../utils/disclaimers'
 import CustomReportBuilder from '../../components/reports/CustomReportBuilder'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -230,6 +232,7 @@ const Reports = () => {
             <PageHeader
                 title="Reports & Analytics"
                 description="Advanced analytics, trends, and exportable financial reports"
+                note={<Disclaimer>{DISCLAIMERS.reportsAverages}</Disclaimer>}
             />
 
             <div className="card mb-6 space-y-4">

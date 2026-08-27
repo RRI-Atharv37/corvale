@@ -13,6 +13,8 @@ import {
 import PageHeader from '../../components/ui/PageHeader'
 import AsyncContent from '../../components/ui/AsyncContent'
 import StatCard from '../../components/ui/StatCard'
+import Disclaimer from '../../components/ui/Disclaimer'
+import { DISCLAIMERS } from '../../utils/disclaimers'
 import FormField from '../../components/forms/FormField'
 import AccountMultiSelect from '../../components/budgets/AccountMultiSelect'
 import { useWorkspace } from '../../hooks/useWorkspace'
@@ -127,6 +129,7 @@ const DebtPayoff: React.FC = () => {
                         ? 'Snowball or avalanche plan to pay off your credit accounts'
                         : `Debt planner for ${activeWorkspace?.name ?? 'workspace'}`
                 }
+                note={<Disclaimer tone="caution">{DISCLAIMERS.debtPayoff}</Disclaimer>}
             />
 
             <WorkspaceReadOnlyBanner />

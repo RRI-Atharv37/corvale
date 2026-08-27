@@ -16,6 +16,8 @@ import AsyncContent from '../../components/ui/AsyncContent'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import PaginatedCardList from '../../components/ui/PaginatedCardList'
+import Disclaimer from '../../components/ui/Disclaimer'
+import { DISCLAIMERS } from '../../utils/disclaimers'
 import FormField from '../../components/forms/FormField'
 import SavingsGoalProgressBar from '../../components/savingsGoals/SavingsGoalProgressBar'
 import CurrencySelect from '../../components/Inputs/CurrencySelect'
@@ -552,6 +554,7 @@ const SavingsGoals = () => {
             <PageHeader
                 title="Savings Goals"
                 description="Set targets, track progress, and log contributions toward what matters"
+                note={<Disclaimer>{DISCLAIMERS.savingsGoalProjection}</Disclaimer>}
                 actions={
                     <button
                         type="button"

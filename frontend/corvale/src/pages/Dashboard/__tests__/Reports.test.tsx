@@ -172,6 +172,13 @@ describe('Reports page resilience (X3, BUG-05)', () => {
         expect(screen.queryByText(/try again/i)).not.toBeInTheDocument()
     })
 
+    it('shows a standing note that savings rate and averages are not forecasts (V2)', async () => {
+        renderWithProviders(<Reports />, { route: '/reports' })
+
+        const note = await screen.findByRole('note')
+        expect(note).toHaveTextContent(/not forecasts of future income or spending/i)
+    })
+
     it('keeps other sections rendering and scopes the error when one endpoint fails', async () => {
         mockReportsGet(API_PATHS.REPORTS.CROSSOVER_POINT, 'Crossover point endpoint is down')
 

@@ -90,6 +90,15 @@ describe('SavingsGoals page (local-first)', () => {
         expect(screen.getByText('25% complete')).toBeInTheDocument()
     })
 
+    it('shows a standing note that projected completion dates are estimates (V2)', async () => {
+        await seedGoal()
+
+        renderWithProviders(<SavingsGoals />)
+
+        const note = await screen.findByRole('note')
+        expect(note).toHaveTextContent(/projected completion dates assume your recent contribution rate/i)
+    })
+
     it('creates a new savings goal through the form and persists it to the local store', async () => {
         const db = await seedGoal()
         const user = userEvent.setup()
