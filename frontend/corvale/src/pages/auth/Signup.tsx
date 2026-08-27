@@ -14,6 +14,7 @@ import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 import OfflineNotice from '../../components/ui/OfflineNotice'
 import Captcha from '../../components/Captcha'
 import { BRAND } from '../../utils/brand'
+import { detectTimezone } from '../../utils/timezoneSync'
 
 const captchaEnabled = import.meta.env.VITE_CAPTCHA_ENABLED === 'true'
 
@@ -55,9 +56,18 @@ const Signup = () => {
         setIsSubmitting(true)
 
         try {
+            // V5: auto-detected, no dropdown. The server validates and falls back to 'UTC'.
+            const timezone = detectTimezone()
+
             const response = await axiosInstance.post<ApiResponse<AuthPayload>>(
                 API_PATHS.AUTH.REGISTER,
-                { fullName, email, password, ...(captchaEnabled ? { captchaToken } : {}) }
+                {
+                    fullName,
+                    email,
+                    password,
+                    ...(timezone ? { timezone } : {}),
+                    ...(captchaEnabled ? { captchaToken } : {}),
+                }
             )
 
             const payload = parseAuthPayload(response)

@@ -27,9 +27,9 @@ Each Corvale account stores:
 | **Email** | Used to sign in; must be unique across all users |
 | **Password** | Stored securely using bcrypt hashing; never sent back to the client |
 | **Preferred currency** | Default for new budgets, goals, accounts, and transactions |
-| **Timezone** | Used for budget periods and date-boundary calculations |
+| **Timezone** | Used for budget periods and date-boundary calculations; auto-detected from your device, not set by hand |
 
-Your name and email are set at registration. Change your default currency in [Account Settings](./account-settings.md). Name and email editing is not yet available in the UI.
+Your email is set at registration. Change your name and default currency in [Account Settings](./account-settings.md). Email editing is not yet available in the UI.
 
 ## Password reset
 

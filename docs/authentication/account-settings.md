@@ -11,7 +11,14 @@ Corvale exposes a **Settings** modal from the sidebar footer. Use it to change y
 1. Look at the bottom of the sidebar (desktop) or mobile menu.
 2. Next to your name and email, click the **gear** icon.
 
-The Settings modal opens with two sections: **Preferences** and **Account**.
+The Settings modal opens with a **Profile** section followed by **Preferences** and **Account**.
+
+## Profile
+
+The **Profile** section shows your name and timezone.
+
+- **Full name** is editable. Change it and click **Save profile**; Corvale saves it via `PATCH /auth/user` and a success toast confirms the update.
+- **Timezone** is read-only. Corvale detects it from your device when you sign up, and re-checks it once per browser session, updating your profile automatically whenever your device's timezone changes. This keeps date filters, recurring due dates, budget periods, and reminders aligned with where you actually are. There is no timezone picker - the displayed value always reflects your current device.
 
 ## Default currency
 
@@ -47,10 +54,10 @@ Corvale asks for confirmation before proceeding. Use this if you suspect unautho
 
 The Settings modal does not currently let you edit:
 
-- Full name
 - Email address
 - Password (use [Resetting Your Password](./resetting-your-password.md) instead)
-- Timezone (stored on your user profile; API support exists for future UI)
+
+Timezone is managed automatically from your device and cannot be set by hand (see [Profile](#profile) above).
 
 Your name and email remain visible in the sidebar footer for reference.
 

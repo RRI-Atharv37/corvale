@@ -16,6 +16,14 @@ vi.mock('../../../utils/axiosInstance', () => ({
     },
 }))
 
+// V5: the layout kicks off a once-per-session timezone resync. That path has its own test
+// (`utils/__tests__/timezoneSync.test.ts`); here it's stubbed so it can't PATCH /auth/user
+// depending on the CI runner's system timezone.
+vi.mock('../../../utils/timezoneSync', () => ({
+    syncTimezoneOncePerSession: vi.fn().mockResolvedValue(undefined),
+    detectTimezone: vi.fn().mockReturnValue('UTC'),
+}))
+
 const mockUser: User = {
     _id: 'user1',
     fullName: 'Jamie Rivera',

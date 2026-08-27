@@ -27,6 +27,12 @@ vi.mock('react-router-dom', async () => {
     return { ...actual, useNavigate: () => mockNavigate }
 })
 
+// V5: Signup sends the auto-detected device timezone in the register payload. Pin it so the
+// assertion doesn't depend on the CI runner's system zone.
+vi.mock('../../../utils/timezoneSync', () => ({
+    detectTimezone: vi.fn().mockReturnValue('America/Chicago'),
+}))
+
 const mockUser: User = {
     _id: 'user2',
     fullName: 'Alex Kim',
@@ -113,6 +119,7 @@ describe('Signup - successful sign-up', () => {
                 fullName: 'Alex Kim',
                 email: 'alex@example.com',
                 password: 'correcthorsebattery',
+                timezone: 'America/Chicago',
             })
         )
         await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/dashboard'))

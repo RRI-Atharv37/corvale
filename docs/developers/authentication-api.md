@@ -16,9 +16,12 @@ Create a new user account. **Rate-limited.**
 {
   "fullName": "Jane Doe",
   "email": "jane@example.com",
-  "password": "securepassword"
+  "password": "securepassword",
+  "timezone": "America/New_York"
 }
 ```
+
+`timezone` is optional. The web client auto-detects it from the browser (`Intl.DateTimeFormat().resolvedOptions().timeZone`) and sends it here. An invalid or missing value falls back to `UTC` rather than failing the request.
 
 ### Success response (201)
 
@@ -31,7 +34,8 @@ Create a new user account. **Rate-limited.**
       "_id": "...",
       "fullName": "Jane Doe",
       "email": "jane@example.com",
-      "preferredCurrency": "USD"
+      "preferredCurrency": "USD",
+      "timezone": "America/New_York"
     }
   }
 }
@@ -175,7 +179,7 @@ Update user preferences. **Requires auth.**
 }
 ```
 
-Both fields are optional. Supported currencies are validated server-side.
+Both fields are optional. Supported currencies are validated server-side. An invalid `timezone` here returns `400` (unlike `POST /auth/register`, which falls back to `UTC`) - this endpoint is a deliberate client call, and the web client also uses it to re-sync the detected timezone once per session.
 
 ## JWT details
 

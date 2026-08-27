@@ -66,11 +66,21 @@ const issueAuthSession = async (user: IUser, res: Response) => {
 }
 
 export const registerUser = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { fullName, email, password } = req.body
+    const { fullName, email, password, timezone } = req.body
 
     if (!fullName || !email || !password) {
         throw new CustomError(ERROR_MESSAGES.AUTH.FILL_ALL_FIELDS, 400)
     }
+
+    // Timezone is auto-detected client-side (V5) and sent in the signup payload - there is no
+    // dropdown any more. It's not user-typed, so a bad value isn't worth failing signup over:
+    // validate and keep it, otherwise fall through to the User model's 'UTC' default. `updateUserInfo`
+    // (the once-per-session resync path) still hard-rejects an invalid timezone since that one is a
+    // deliberate client call.
+    const detectedTimezone =
+        typeof timezone === 'string' && timezone.trim() && isValidTimezone(timezone.trim())
+            ? timezone.trim()
+            : undefined
 
     const normalizedEmail = normalizeEmail(email)
     const validatedPassword = validatePassword(password)
@@ -89,6 +99,7 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
         fullName,
         email: normalizedEmail,
         password: validatedPassword,
+        ...(detectedTimezone ? { timezone: detectedTimezone } : {}),
     })) as IUser
 
     const verificationToken = await createEmailVerificationForUser(user)

@@ -6,24 +6,19 @@ import { useUser } from '../../hooks/useUser'
 import type { ApiResponse, User } from '../../types/api'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { getTimezoneOptions } from '../../utils/timezones'
-
-const timezoneOptions = getTimezoneOptions()
 
 const ProfileSettings: React.FC = () => {
     const { user, updateUser } = useUser()
     const [fullName, setFullName] = useState(user?.fullName ?? '')
-    const [timezone, setTimezone] = useState(user?.timezone ?? 'UTC')
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
         setFullName(user?.fullName ?? '')
-        setTimezone(user?.timezone ?? 'UTC')
-    }, [user?.fullName, user?.timezone])
+    }, [user?.fullName])
 
     if (!user) return null
 
-    const dirty = fullName.trim() !== user.fullName || timezone !== (user.timezone ?? 'UTC')
+    const dirty = fullName.trim() !== user.fullName
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault()
@@ -37,7 +32,6 @@ const ProfileSettings: React.FC = () => {
         try {
             const response = await axiosInstance.patch<ApiResponse<User>>(API_PATHS.AUTH.UPDATE_USER, {
                 fullName: fullName.trim(),
-                timezone,
             })
             updateUser(unwrapApiData(response))
             toast.success('Profile updated')
@@ -64,21 +58,21 @@ const ProfileSettings: React.FC = () => {
                         className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"
                     />
                 </label>
-                <label className="block text-sm text-text-secondary">
+                {/*
+                  V5: timezone is auto-detected from the device (at signup and once per session) -
+                  there is no picker any more. Showing the current value turns what would otherwise
+                  look like a silent overwrite into explained behaviour.
+                */}
+                <div className="block text-sm text-text-secondary">
                     Timezone
-                    <select
-                        value={timezone}
-                        onChange={(event) => setTimezone(event.target.value)}
-                        disabled={submitting}
-                        className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"
-                    >
-                        {timezoneOptions.map((tz) => (
-                            <option key={tz} value={tz}>
-                                {tz}
-                            </option>
-                        ))}
-                    </select>
-                </label>
+                    <p className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary">
+                        {user.timezone ?? 'UTC'}
+                    </p>
+                    <p className="mt-1.5 text-xs text-text-quiet">
+                        Detected automatically from your device. Corvale updates this when your device&rsquo;s
+                        timezone changes, so your dates and reminders stay correct.
+                    </p>
+                </div>
                 <div className="flex justify-end">
                     <button
                         type="submit"

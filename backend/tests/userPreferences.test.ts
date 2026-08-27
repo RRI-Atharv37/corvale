@@ -204,4 +204,37 @@ describe('User preferences', () => {
 
         expect(badTimezone.status).toBe(400)
     })
+
+    // V5: the signup form auto-detects the device timezone and sends it in the register payload
+    // (there is no dropdown any more). `registerUser` reads it where it previously ignored it.
+    it('stores a valid auto-detected timezone from the signup payload', async () => {
+        const res = await request(app).post('/api/v1/auth/register').send({
+            fullName: 'Tz User',
+            email: 'signup-tz@example.com',
+            password: 'TestPassword123!',
+            timezone: 'Asia/Kolkata',
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.user.timezone).toBe('Asia/Kolkata')
+    })
+
+    it('falls back to UTC when the signup timezone is missing or invalid, without failing signup', async () => {
+        const missing = await request(app).post('/api/v1/auth/register').send({
+            fullName: 'No Tz',
+            email: 'signup-no-tz@example.com',
+            password: 'TestPassword123!',
+        })
+        expect(missing.status).toBe(201)
+        expect(missing.body.data.user.timezone).toBe('UTC')
+
+        const invalid = await request(app).post('/api/v1/auth/register').send({
+            fullName: 'Bad Tz',
+            email: 'signup-bad-tz@example.com',
+            password: 'TestPassword123!',
+            timezone: 'Not/AZone',
+        })
+        expect(invalid.status).toBe(201)
+        expect(invalid.body.data.user.timezone).toBe('UTC')
+    })
 })

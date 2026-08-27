@@ -58,6 +58,7 @@ import SyncSettings from '../settings/SyncSettings'
 import SyncStatusBadge from '../sync/SyncStatusBadge'
 import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import { startSyncEngine, syncNow } from '../../sync/syncEngine'
+import { syncTimezoneOncePerSession } from '../../utils/timezoneSync'
 
 const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
 
@@ -110,6 +111,12 @@ const DashboardLayout: React.FC = () => {
         void syncNow()
         return stop
     }, [])
+
+    // V5: keep the stored timezone in step with the device, once per session. Self-guarded and
+    // silent - see `utils/timezoneSync.ts`.
+    useEffect(() => {
+        void syncTimezoneOncePerSession(user, updateUser)
+    }, [user, updateUser])
 
     const handleReplayOnboarding = () => {
         setSettingsOpen(false)

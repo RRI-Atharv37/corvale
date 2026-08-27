@@ -25,7 +25,7 @@ const mockUser: User = {
     _id: 'user1',
     fullName: 'Jamie Rivera',
     email: 'jamie@example.com',
-    timezone: 'UTC',
+    timezone: 'America/New_York',
     preferredCurrency: 'USD',
 }
 
@@ -56,19 +56,23 @@ afterEach(() => {
 })
 
 describe('ProfileSettings', () => {
-    it('renders the current full name and timezone once the session loads', async () => {
+    it('renders the current full name and the auto-detected timezone as read-only text (V5)', async () => {
         renderWithProviders(<ProfileSettings />)
 
         await waitFor(() =>
             expect(screen.getByLabelText(/full name/i)).toHaveValue('Jamie Rivera')
         )
-        expect(screen.getByLabelText(/timezone/i)).toHaveValue('UTC')
+
+        // No picker any more - the timezone is shown, not chosen.
+        expect(screen.queryByRole('combobox', { name: /timezone/i })).not.toBeInTheDocument()
+        expect(screen.getByText('America/New_York')).toBeInTheDocument()
+        expect(screen.getByText(/detected automatically from your device/i)).toBeInTheDocument()
     })
 
-    it('saves an updated full name and timezone', async () => {
+    it('saves an updated full name without sending a timezone', async () => {
         vi.mocked(axiosInstance.patch).mockResolvedValue({
             success: true,
-            data: { ...mockUser, fullName: 'Jamie R. Rivera', timezone: 'America/New_York' },
+            data: { ...mockUser, fullName: 'Jamie R. Rivera' },
         })
 
         renderWithProviders(<ProfileSettings />)
@@ -78,14 +82,12 @@ describe('ProfileSettings', () => {
         const nameInput = screen.getByLabelText(/full name/i)
         await user.clear(nameInput)
         await user.type(nameInput, 'Jamie R. Rivera')
-        await user.selectOptions(screen.getByLabelText(/timezone/i), 'America/New_York')
 
         submitClosestForm(screen.getByRole('button', { name: /save profile/i }))
 
         await waitFor(() =>
             expect(axiosInstance.patch).toHaveBeenCalledWith(API_PATHS.AUTH.UPDATE_USER, {
                 fullName: 'Jamie R. Rivera',
-                timezone: 'America/New_York',
             })
         )
         await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Profile updated'))
