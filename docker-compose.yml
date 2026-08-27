@@ -45,7 +45,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend/spndr/Dockerfile
+      dockerfile: frontend/corvale/Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api/v1}
         VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://localhost:5000}

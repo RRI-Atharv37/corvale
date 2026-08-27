@@ -10,7 +10,7 @@ updates:
           - '*'
 
   - package-ecosystem: npm
-    directory: /frontend/spndr
+    directory: /frontend/corvale
     schedule:
       interval: weekly
     groups:
@@ -28,7 +28,7 @@ updates:
           - '*'
 
   - package-ecosystem: cargo
-    directory: /frontend/spndr/src-tauri
+    directory: /frontend/corvale/src-tauri
     schedule:
       interval: weekly
     groups:
