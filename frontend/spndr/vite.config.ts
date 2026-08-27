@@ -14,7 +14,7 @@ import { VitePWA } from 'vite-plugin-pwa'
  * (frame-src), not substitute a single value.
  */
 const captchaCspPlugin = (): Plugin => ({
-    name: 'spndr-captcha-csp',
+    name: 'corvale-captcha-csp',
     transformIndexHtml: (html) =>
         html
             .replace("script-src 'self';", "script-src 'self' https://js.hcaptcha.com;")
@@ -71,8 +71,8 @@ export default defineConfig(({ mode }) => {
       registerType: 'prompt',
       includeAssets: ['apple-touch-icon.png'],
       manifest: {
-        name: 'spndr — Know where every dollar went',
-        short_name: 'spndr',
+        name: 'Corvale — Know where every dollar went',
+        short_name: 'Corvale',
         description: 'Personal finance tracker — budgets, accounts, transactions and reports that work offline.',
         theme_color: '#14121c',
         background_color: '#14121c',

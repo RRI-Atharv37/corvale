@@ -4,6 +4,7 @@ import Modal from '../ui/Modal'
 import { MIN_PIN_LENGTH, hasPinConfigured, setupPin } from '../../offline/pinStorage'
 import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { BRAND } from '../../utils/brand'
 
 const PROMPT_SEEN_KEY = 'spndr_pin_prompt_seen'
 
@@ -64,7 +65,7 @@ const PinSetupPrompt: React.FC = () => {
         <Modal open={open} onClose={dismiss} title="Secure your offline data" size="sm">
             <div className="space-y-4">
                 <p className="text-sm text-text-muted">
-                    spndr can work fully offline. Set up a PIN so your financial data stays
+                    {BRAND.name} can work fully offline. Set up a PIN so your financial data stays
                     protected when this device isn&apos;t connected.
                 </p>
                 <label className="block text-sm text-text-secondary">

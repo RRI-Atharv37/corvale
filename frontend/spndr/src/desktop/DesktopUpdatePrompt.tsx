@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { FiDownloadCloud, FiX } from 'react-icons/fi'
 import { isTauriRuntime } from './isTauri'
 import { checkForDesktopUpdate, installPendingUpdate } from './updater'
+import { BRAND } from '../utils/brand'
 
 /**
  * Desktop counterpart to `pwa/UpdatePrompt.tsx` - checks the Tauri updater endpoint once on mount
@@ -45,7 +46,7 @@ const DesktopUpdatePrompt: React.FC = () => {
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-xl max-w-[calc(100vw-2rem)]">
       <FiDownloadCloud size={18} className="shrink-0 text-accent" />
       <p className="text-sm text-fg">
-        {version ? `spndr ${version} is available.` : 'A new version of spndr is available.'}
+        {version ? `${BRAND.name} ${version} is available.` : `A new version of ${BRAND.name} is available.`}
       </p>
       <button
         type="button"

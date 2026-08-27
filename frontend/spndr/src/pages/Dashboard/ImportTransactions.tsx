@@ -17,6 +17,7 @@ import type {
 } from '../../types/api'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatCurrency, formatDisplayDate } from '../../utils/format'
+import { BRAND } from '../../utils/brand'
 import { IMPORT_ACCEPT, validateImportFile } from '../../utils/importApi'
 import { buildWorkspaceBodyFields } from '../../utils/workspaceScope'
 import { useImportTransactionsData } from './hooks/useImportTransactionsData'
@@ -314,7 +315,7 @@ const ImportTransactions = () => {
             {step === 'upload' && (
                 <div className="card p-6 space-y-4">
                     <p className="text-sm text-text-muted">
-                        Supported formats: generic CSV, Chase-style CSV, spndr export CSV, and OFX/QFX
+                        Supported formats: generic CSV, Chase-style CSV, {BRAND.name} export CSV, and OFX/QFX
                         bank exports. Maximum 2 MB and 2,000 rows.
                     </p>
                     <label className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-accent/30 bg-accent-subtle/40 px-6 py-10 cursor-pointer hover:bg-accent-subtle/60 transition-colors">

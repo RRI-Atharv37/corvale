@@ -42,8 +42,8 @@ const Landing: React.FC = () => {
                                     <span className="text-gradient-accent">.</span>
                                 </h1>
                                 <p className="mt-5 max-w-lg text-lg text-text-secondary leading-relaxed">
-                                    {BRAND.adHook} spndr shows you where your money actually goes — before rent week
-                                    turns into panic.
+                                    {BRAND.adHook} {BRAND.name} shows you where your money actually goes — before rent
+                                    week turns into panic.
                                 </p>
 
                                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -134,7 +134,7 @@ const Landing: React.FC = () => {
                             <div>
                                 <p className="section-label">Built for you</p>
                                 <h2 className="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                                    Who spndr is for
+                                    Who {BRAND.name} is for
                                 </h2>
                                 <p className="mt-4 text-text-secondary leading-relaxed">
                                     {BRAND.audience}. Part-time jobs, side gigs, student loans, split rent — your
@@ -162,8 +162,8 @@ const Landing: React.FC = () => {
                                     One place for all of it
                                 </h2>
                                 <p className="mt-4 text-text-secondary leading-relaxed">
-                                    spndr replaces the mental math. Log what you spend, set limits that match your
-                                    life, and check a dashboard that tells the truth — not the story you tell
+                                    {BRAND.name} replaces the mental math. Log what you spend, set limits that match
+                                    your life, and check a dashboard that tells the truth — not the story you tell
                                     yourself.
                                 </p>
                                 <div className="mt-8 grid gap-3 sm:grid-cols-3">

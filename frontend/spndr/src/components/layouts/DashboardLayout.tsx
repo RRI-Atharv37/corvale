@@ -25,6 +25,7 @@ import {
     FiCompass,
     FiDownload,
 } from 'react-icons/fi'
+import { BRAND } from '../../utils/brand'
 import OnboardingWizard, { OnboardingWizardHandle } from '../onboarding/OnboardingWizard'
 import PinSetupPrompt from '../onboarding/PinSetupPrompt'
 import PinSettings from '../settings/PinSettings'
@@ -239,7 +240,7 @@ const DashboardLayout: React.FC = () => {
         <>
             <div className="shrink-0 px-4 py-6 border-b border-border-subtle">
                 <p className="font-display text-lg font-bold tracking-tight">
-                    <span className="text-gradient-accent">spndr</span>
+                    <span className="text-gradient-accent">{BRAND.name}</span>
                 </p>
                 <p className="text-xs text-text-quiet mt-1">Stop guessing. Start knowing.</p>
             </div>

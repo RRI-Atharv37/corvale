@@ -1,6 +1,7 @@
 import React from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { FiDownloadCloud, FiX } from 'react-icons/fi'
+import { BRAND } from '../utils/brand'
 
 /**
  * Registers the service worker (Sprint 13.8) and surfaces the two states `virtual:pwa-register/react`
@@ -30,7 +31,7 @@ const UpdatePrompt: React.FC = () => {
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-xl max-w-[calc(100vw-2rem)]">
             <FiDownloadCloud size={18} className="shrink-0 text-accent" />
             <p className="text-sm text-fg">
-                {needRefresh ? 'A new version of spndr is available.' : 'spndr is ready to work offline.'}
+                {needRefresh ? `A new version of ${BRAND.name} is available.` : `${BRAND.name} is ready to work offline.`}
             </p>
             {needRefresh && (
                 <button

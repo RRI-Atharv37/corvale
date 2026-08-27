@@ -8,6 +8,7 @@ import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { unwrapApiData } from '../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { BRAND } from '../../utils/brand'
 import type {
     AccountType,
     ApiResponse,
@@ -140,7 +141,7 @@ const OnboardingWizard = forwardRef<OnboardingWizardHandle>((_props, ref) => {
             const data = unwrapApiData(response)
             setStatus(data)
             if (data.onboardingCompleted) {
-                toast.success('Welcome to spndr! Your setup is complete.')
+                toast.success(`Welcome to ${BRAND.name}! Your setup is complete.`)
                 close()
             }
         } catch (error) {
@@ -217,7 +218,7 @@ const OnboardingWizard = forwardRef<OnboardingWizardHandle>((_props, ref) => {
     const categoryOptions = categories ? [...categories.masters, ...categories.userCategories] : []
 
     return (
-        <Modal open={visible} onClose={close} title="Welcome to spndr" size="md">
+        <Modal open={visible} onClose={close} title={`Welcome to ${BRAND.name}`} size="md">
             <div className="space-y-5">
                 <div>
                     <div className="flex items-center justify-between text-xs text-fg-muted mb-1">

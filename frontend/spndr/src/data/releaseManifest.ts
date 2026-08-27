@@ -44,7 +44,7 @@ export const getReleaseManifest = (): ReleaseManifest => ({
     releaseNotesUrl: `${REPO_URL}/releases/tag/${RELEASE_TAG}`,
     highlights: [
         'Native SQLite storage, encrypted at rest with SQLCipher',
-        'Sign in once, then use spndr fully offline',
+        'Sign in once, then use Corvale fully offline',
         'Automatic updates, verified against a signed release before install',
     ],
     platforms: [

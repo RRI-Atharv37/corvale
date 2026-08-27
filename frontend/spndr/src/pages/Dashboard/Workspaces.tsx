@@ -12,6 +12,7 @@ import FormField from '../../components/forms/FormField'
 import RoleBadge from '../../components/workspaces/RoleBadge'
 import { useWorkspace } from '../../hooks/useWorkspace'
 import { useUser } from '../../hooks/useUser'
+import { BRAND } from '../../utils/brand'
 import type {
     Workspace,
     WorkspaceInvite,
@@ -554,7 +555,7 @@ const Workspaces = () => {
                             <form onSubmit={(e) => void handleInvite(e)} className="space-y-3">
                                 <p className="section-label">Invite member</p>
                                 <p className="text-xs text-fg-muted">
-                                    The person must already have a spndr account. They will receive
+                                    The person must already have a {BRAND.name} account. They will receive
                                     a notification and can accept or decline.
                                 </p>
                                 <FormField

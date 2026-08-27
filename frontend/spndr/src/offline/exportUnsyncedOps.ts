@@ -16,7 +16,7 @@ export const exportUnsyncedOps = async (): Promise<boolean> => {
         }
 
         const blob = ensureExportBlob(JSON.stringify(ops, null, 2), 'json')
-        downloadExportBlob(blob, `spndr-unsynced-changes-${new Date().toISOString()}.json`)
+        downloadExportBlob(blob, `corvale-unsynced-changes-${new Date().toISOString()}.json`)
         return true
     } catch {
         return false

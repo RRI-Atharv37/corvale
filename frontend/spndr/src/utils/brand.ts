@@ -1,6 +1,6 @@
 /** Shared copy — keep headlines, ads, and in-app messaging aligned. */
 export const BRAND = {
-    name: 'spndr',
+    name: 'Corvale',
     tagline: 'Stop guessing. Start knowing.',
     headline: 'Know where every dollar went',
     audience: 'Students and young adults with irregular income',

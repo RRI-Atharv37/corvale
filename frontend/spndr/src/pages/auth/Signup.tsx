@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 import OfflineNotice from '../../components/ui/OfflineNotice'
 import Captcha from '../../components/Captcha'
+import { BRAND } from '../../utils/brand'
 
 const captchaEnabled = import.meta.env.VITE_CAPTCHA_ENABLED === 'true'
 
@@ -78,7 +79,7 @@ const Signup = () => {
         <AuthLayout>
             <div>
                 <h3 className="text-xl font-semibold text-fg">Create an account</h3>
-                <p className="text-xs text-fg-muted mt-1 mb-6">Join spndr and start tracking your finances</p>
+                <p className="text-xs text-fg-muted mt-1 mb-6">Join {BRAND.name} and start tracking your finances</p>
 
                 <form onSubmit={handleSignup}>
                     <Input

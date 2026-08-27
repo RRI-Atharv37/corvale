@@ -4,6 +4,7 @@ import { FiCheckCircle, FiChevronDown, FiClock, FiDownload } from 'react-icons/f
 import BrandLogo from '../components/ui/BrandLogo'
 import { detectPlatform, type DesktopPlatformId } from '../utils/platformDetect'
 import { getReleaseManifest, type PlatformRelease, type ReleaseAsset } from '../data/releaseManifest'
+import { BRAND } from '../utils/brand'
 
 const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
 
@@ -152,7 +153,7 @@ const Download: React.FC = () => {
                     {/* "/" resolves to the dashboard for an authenticated user (see HomeRoute in
                         App.tsx) and to the landing page for a guest, so one link works for both. */}
                     <Link to="/" className="btn-ghost py-2 px-3">
-                        Back to spndr
+                        Back to {BRAND.name}
                     </Link>
                 </div>
             </header>
@@ -162,10 +163,10 @@ const Download: React.FC = () => {
                     <div className="text-center">
                         <p className="section-label">Desktop app</p>
                         <h1 className="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                            Download spndr for Desktop
+                            Download {BRAND.name} for Desktop
                         </h1>
                         <p className="mt-4 mx-auto max-w-xl text-text-secondary leading-relaxed">
-                            The same spndr you use online, packaged as a native app for Windows, macOS, and
+                            The same {BRAND.name} you use online, packaged as a native app for Windows, macOS, and
                             Linux - with encrypted offline storage and a real save dialog for backups.
                         </p>
                     </div>

@@ -1,3 +1,3 @@
-# spndr frontend
+# Corvale frontend
 
-React + Vite + TypeScript dashboard for the spndr personal finance app.
+React + Vite + TypeScript dashboard for the Corvale personal finance app.

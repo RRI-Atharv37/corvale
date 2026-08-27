@@ -208,7 +208,7 @@ const Reports = () => {
             )
 
             const blob = ensureExportBlob(blobData, exportFormat)
-            const baseName = `spndr-report-${periodDates.startDate}-${periodDates.endDate}`
+            const baseName = `corvale-report-${periodDates.startDate}-${periodDates.endDate}`
             downloadExportBlob(blob, buildExportFilename(baseName, exportFormat))
             toast.success('Report downloaded')
         } catch (error) {
