@@ -67,11 +67,17 @@ Before shipping, confirm the three things Sprint 13.11 exists to deliver:
 
 `db_open` (in `src-tauri/src/db.rs`) resolves the database path via Tauri's app-data directory resolver, not a path supplied by the frontend:
 
-- **Windows** - `%APPDATA%\com.spndr.app\spndr.sqlite3`
-- **macOS** - `~/Library/Application Support/com.spndr.app/spndr.sqlite3`
-- **Linux** - `~/.local/share/com.spndr.app/spndr.sqlite3`
+- **Windows** - `%APPDATA%\com.corvale.app\corvale.sqlite3`
+- **macOS** - `~/Library/Application Support/com.corvale.app/corvale.sqlite3`
+- **Linux** - `~/.local/share/com.corvale.app/corvale.sqlite3`
 
-The frontend does still pass a `filename` (normally the default `spndr.sqlite3`), so
+Builds made before the rename from spndr to Corvale wrote to a `com.spndr.app` directory with a
+`spndr.sqlite3` file instead. On first launch of a renamed build, `db_open` looks for that old
+directory next to the new one and, if the new location has no database yet, copies the legacy
+`spndr.sqlite3` into place as `corvale.sqlite3`. The old file is left untouched, so a rollback
+still finds its data.
+
+The frontend does still pass a `filename` (normally the default `corvale.sqlite3`), so
 `src-tauri/src/path_safety.rs` validates it before it's joined onto that directory - rejecting
 path separators, `..`, drive/UNC markers, and absolute paths - so the resolved file can never
 land outside the app-data directory even if the calling frontend code were compromised.
@@ -113,12 +119,12 @@ Re-run this if `public/pwa-512.png` changes.
 
 1. **Generate a new signing keypair:**
    ```bash
-   npx @tauri-apps/cli signer generate -w ~/.tauri/spndr.key
+   npx @tauri-apps/cli signer generate -w ~/.tauri/corvale.key
    ```
    This prints a public key - paste it into `tauri.conf.json`'s `plugins.updater.pubkey`.
 2. **Set the private key as an environment variable** before running `tauri:build` locally, so the build signs the release:
    ```bash
-   export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/spndr.key)"
+   export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/corvale.key)"
    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="your-key-password"
    ```
    For CI, the same two values go into the `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets that `.github/workflows/release.yml` reads.

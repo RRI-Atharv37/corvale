@@ -35,7 +35,10 @@ const buildNodemailerTransport = (): MailTransport => {
     return {
         sendMail: async (message: MailMessage) => {
             const info = await transporter.sendMail({
-                from: process.env.SMTP_FROM ?? 'spndr <no-reply@spndr.app>',
+                // V7.2b: display name renamed to Corvale; the no-reply@spndr.app address is kept
+                // until corvale.app has SPF/DKIM/DMARC records — a From-domain change without them
+                // silently gets password-reset mail spam-foldered or hard-rejected.
+                from: process.env.SMTP_FROM ?? 'Corvale <no-reply@spndr.app>',
                 ...message,
             })
             return { messageId: info.messageId }
@@ -50,9 +53,9 @@ export const sendPasswordResetEmail = async (email: string, resetUrl: string): P
 
     await getTransport().sendMail({
         to: email,
-        subject: 'Reset your spndr password',
+        subject: 'Reset your Corvale password',
         html: passwordResetEmailHtml(resetUrl, expiryMs),
-        text: `Reset your spndr password: ${resetUrl}`,
+        text: `Reset your Corvale password: ${resetUrl}`,
     })
 }
 
@@ -61,8 +64,8 @@ export const sendEmailVerificationEmail = async (email: string, verifyUrl: strin
 
     await getTransport().sendMail({
         to: email,
-        subject: 'Verify your spndr email address',
+        subject: 'Verify your Corvale email address',
         html: emailVerificationEmailHtml(verifyUrl, expiryMs),
-        text: `Verify your spndr email address: ${verifyUrl}`,
+        text: `Verify your Corvale email address: ${verifyUrl}`,
     })
 }

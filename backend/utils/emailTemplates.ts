@@ -23,7 +23,7 @@ const baseEmailTemplate = (title: string, bodyHtml: string): string => `
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
             <tr>
               <td style="background-color:#111827;padding:24px 32px;">
-                <span style="color:#ffffff;font-size:20px;font-weight:600;">spndr</span>
+                <span style="color:#ffffff;font-size:20px;font-weight:600;">Corvale</span>
               </td>
             </tr>
             <tr>
@@ -34,7 +34,7 @@ const baseEmailTemplate = (title: string, bodyHtml: string): string => `
             </tr>
             <tr>
               <td style="padding:16px 32px 24px;border-top:1px solid #e5e7eb;">
-                <p style="margin:0;font-size:12px;color:#9ca3af;">spndr — personal finance tracker</p>
+                <p style="margin:0;font-size:12px;color:#9ca3af;">Corvale — personal finance tracker</p>
               </td>
             </tr>
           </table>
@@ -58,7 +58,7 @@ const ctaButton = (url: string, label: string): string => `
 export const passwordResetEmailHtml = (resetUrl: string, expiryMs: number): string => {
     const body = `
         <p style="margin:0 0 8px;font-size:14px;color:#374151;line-height:1.5;">
-            We received a request to reset the password for your spndr account.
+            We received a request to reset the password for your Corvale account.
         </p>
         <p style="margin:0;font-size:14px;color:#374151;line-height:1.5;">
             Click the button below to choose a new password. This link expires in ${formatExpiry(expiryMs)}.
@@ -74,14 +74,14 @@ export const passwordResetEmailHtml = (resetUrl: string, expiryMs: number): stri
 export const emailVerificationEmailHtml = (verifyUrl: string, expiryMs: number): string => {
     const body = `
         <p style="margin:0 0 8px;font-size:14px;color:#374151;line-height:1.5;">
-            Thanks for signing up for spndr! Confirm this is your email address to finish setting up your account.
+            Thanks for signing up for Corvale! Confirm this is your email address to finish setting up your account.
         </p>
         <p style="margin:0;font-size:14px;color:#374151;line-height:1.5;">
             Click the button below to verify your email. This link expires in ${formatExpiry(expiryMs)}.
         </p>
         ${ctaButton(verifyUrl, 'Verify email')}
         <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5;">
-            If you didn't create a spndr account, you can safely ignore this email.
+            If you didn't create a Corvale account, you can safely ignore this email.
         </p>
     `
     return baseEmailTemplate('Verify your email', body)

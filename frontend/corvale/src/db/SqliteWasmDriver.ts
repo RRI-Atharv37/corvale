@@ -42,7 +42,7 @@ export class SqliteWasmDriver implements LocalDb {
     }
   }
 
-  static async create(filename = 'spndr.sqlite3'): Promise<SqliteWasmDriver> {
+  static async create(filename = 'corvale.sqlite3'): Promise<SqliteWasmDriver> {
     const driver = new SqliteWasmDriver(new SqliteWorker())
     await driver.send({ type: 'open', filename })
     return driver

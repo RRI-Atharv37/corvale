@@ -1,4 +1,4 @@
-# Self-hosting stack for spndr: MongoDB + the Express API + the built frontend behind nginx.
+# Self-hosting stack for Corvale: MongoDB + the Express API + the built frontend behind nginx.
 # See docs/developers/deployment.md for the full setup guide, including HTTPS, ClamAV, and
 # S3-compatible receipt storage.
 #
@@ -26,7 +26,10 @@ services:
     environment:
       # Overrides whatever MONGO_URI is set to in backend/.env so the container always talks
       # to the bundled `mongo` service rather than a stale localhost value.
-      MONGO_URI: mongodb://mongo:27017/spndr
+      # Renamed spndr -> corvale with the product rename. If you self-hosted before the rename,
+      # your data is still in the `spndr` database on the same mongo volume — either set this
+      # back to `.../spndr` or `db.copyDatabase`/`mongodump | mongorestore` it into `corvale`.
+      MONGO_URI: mongodb://mongo:27017/corvale
       PORT: 5000
       # Overrides backend/.env's CLIENT_URL (which most people leave pointed at :5173 for their
       # normal non-Docker `npm run dev`) with this stack's actual frontend origin, so CORS

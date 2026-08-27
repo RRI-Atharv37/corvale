@@ -25,7 +25,7 @@ const VALID_REFRESH_COOKIE_SAME_SITE = ['lax', 'strict', 'none'] as const
 type RefreshCookieSameSite = (typeof VALID_REFRESH_COOKIE_SAME_SITE)[number]
 
 /**
- * SEC-11: spndr's pinned deployment topology is same-site (frontend and API share a
+ * SEC-11: Corvale's pinned deployment topology is same-site (frontend and API share a
  * registrable domain), so the refresh cookie defaults to `SameSite=Lax`. A cross-site
  * deployment must opt in explicitly via `REFRESH_COOKIE_SAME_SITE=none` — silently
  * switching topologies without changing this setting is exactly what caused SEC-11 (an

@@ -152,7 +152,7 @@ const writePdfSectionTitle = (doc: InstanceType<typeof PDFDocument>, title: stri
 }
 
 const renderCustomReportPdf = (doc: InstanceType<typeof PDFDocument>, report: CustomReportResult): void => {
-    doc.fontSize(18).fillColor('#111827').text('spndr Financial Report')
+    doc.fontSize(18).fillColor('#111827').text('Corvale Financial Report')
     doc.moveDown(0.25)
     doc.fontSize(10).fillColor('#6b7280').text(`Period: ${report.periodStart} to ${report.periodEnd}`)
     doc.fontSize(10).text(`Period type: ${report.periodType}`)
@@ -234,7 +234,7 @@ const renderTransactionsPdf = (
     doc: InstanceType<typeof PDFDocument>,
     payload: TransactionExportPayload
 ): void => {
-    doc.fontSize(18).fillColor('#111827').text('spndr Transactions Export')
+    doc.fontSize(18).fillColor('#111827').text('Corvale Transactions Export')
     doc.moveDown(0.25)
     doc.fontSize(10).fillColor('#6b7280')
     doc.text(`Exported: ${payload.exportedAt}`)

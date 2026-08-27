@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "spndr",
+  "productName": "Corvale",
   "version": "1.0.0",
-  "identifier": "com.spndr.app",
+  "identifier": "com.corvale.app",
   "build": {
     "beforeDevCommand": "npm run dev:desktop",
     "beforeBuildCommand": "npm run build:desktop",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "spndr",
+        "title": "Corvale",
         "width": 1280,
         "height": 800,
         "minWidth": 960,

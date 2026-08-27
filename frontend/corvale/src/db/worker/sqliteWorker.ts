@@ -23,7 +23,11 @@ const ctx = self as unknown as {
   onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null
 }
 
-const OPFS_VFS_NAME = 'spndr-opfs-sahpool'
+// V7.3f: renamed with the Corvale rename. Accepted breakage (see ROADMAP V7 compat matrix) —
+// the web local-first stack is inert (`VITE_LOCAL_FIRST=false`), so no shipped build ever wrote
+// to the old `spndr-opfs-sahpool` pool; any pre-rename dev/desktop data is covered by the
+// Tauri legacy-dir copy in `src-tauri/src/db.rs` and the V7.6 tester notice.
+const OPFS_VFS_NAME = 'corvale-opfs-sahpool'
 
 let sqlite3: Sqlite3Static | null = null
 let db: Database | null = null

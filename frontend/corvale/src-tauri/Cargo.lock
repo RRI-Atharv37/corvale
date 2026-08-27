@@ -403,6 +403,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "corvale"
+version = "1.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "hmac",
+ "pbkdf2",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-process",
+ "tauri-plugin-updater",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3285,24 +3303,6 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
-]
-
-[[package]]
-name = "spndr"
-version = "1.0.0"
-dependencies = [
- "base64 0.22.1",
- "hmac",
- "pbkdf2",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-process",
- "tauri-plugin-updater",
 ]
 
 [[package]]

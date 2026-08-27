@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main spndr window",
+  "description": "Capability for the main Corvale window",
   "windows": ["main"],
   "permissions": [
     "core:default",

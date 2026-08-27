@@ -1,13 +1,13 @@
 [package]
-name = "spndr"
+name = "corvale"
 version = "1.0.0"
-description = "spndr desktop shell — personal finance tracker"
-authors = ["spndr"]
+description = "Corvale desktop shell — personal finance tracker"
+authors = ["Corvale"]
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "spndr_lib"
+name = "corvale_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -16,7 +16,7 @@ import type { LocalDb, LocalDbRow } from './LocalDb'
 export class TauriSqlDriver implements LocalDb {
   private constructor() {}
 
-  static async create(filename = 'spndr.sqlite3'): Promise<TauriSqlDriver> {
+  static async create(filename = 'corvale.sqlite3'): Promise<TauriSqlDriver> {
     await invoke('db_open', { filename })
     return new TauriSqlDriver()
   }

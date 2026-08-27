@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
-/// Matches `frontend/spndr/src/db/encryption/deriveKey.ts`'s PBKDF2 iteration count. Exact
+/// Matches `frontend/corvale/src/db/encryption/deriveKey.ts`'s PBKDF2 iteration count. Exact
 /// cross-platform key parity isn't required (each device's local DB is independent, encrypted
 /// with its own device-local key), but matching the constant keeps the two implementations easy
 /// to reason about side by side.
@@ -66,6 +66,14 @@ pub fn db_open(app: AppHandle, state: State<DbState>, filename: String) -> Resul
 
     let dir = app.path().app_data_dir().map_err(to_sql_error)?;
     std::fs::create_dir_all(&dir).map_err(to_sql_error)?;
+
+    // V7.3f rename shim: if this is a pre-rename tester's first launch on the renamed build, the
+    // new-identifier app-data dir is empty but the old `com.spndr.app` sibling still holds their
+    // `spndr.sqlite3`. Copy it into place (once) so their history doesn't look like it vanished.
+    if let Some(legacy_dir) = legacy_app_data_dir(&dir) {
+        copy_legacy_db_if_missing(&dir, &legacy_dir, &filename).map_err(to_sql_error)?;
+    }
+
     let path = dir.join(filename);
 
     let conn = Connection::open(path).map_err(to_sql_error)?;
@@ -149,22 +157,60 @@ pub fn db_close(state: State<DbState>) -> Result<(), String> {
     Ok(())
 }
 
-/// V7.1 new acceptance spec: Tauri legacy-data-dir copy (V7.3f rename shim).
-///
-/// The Tauri `identifier` renames from `com.spndr.app` to `com.corvale.app`
-/// (`tauri.conf.json`), which repoints `app.path().app_data_dir()` to a brand-new, empty
-/// directory on every platform - `app_data_dir()` is always `<platform base>/<identifier>`, so a
-/// changed identifier is a changed directory, full stop. Without mitigation, every desktop
-/// tester's existing local database looks like it vanished the moment they upgrade, which is
-/// indistinguishable from real data loss to someone who hasn't read a changelog. `db_open`
-/// (V7.3f) is expected to call `copy_legacy_db_if_missing` before opening the connection: if the
-/// new-identifier directory has no database yet, but the old-identifier sibling directory still
-/// has `spndr.sqlite3`, copy it into place under the new filename first. The legacy file and
-/// directory are left untouched either way - this is a copy, never a move, so a rollback or a
-/// second device profile can't lose data to it.
-///
-/// These two helpers are pure (no `AppHandle`, no Tauri runtime) specifically so they're testable
-/// with plain `std::fs` against a temp directory, without spinning up a Tauri app context.
+// V7.1 acceptance spec / V7.3f rename shim: Tauri legacy-data-dir copy.
+//
+// The Tauri `identifier` renamed from `com.spndr.app` to `com.corvale.app` (`tauri.conf.json`),
+// which repoints `app.path().app_data_dir()` to a brand-new, empty directory on every platform -
+// `app_data_dir()` is always `<platform base>/<identifier>`, so a changed identifier is a changed
+// directory, full stop. Without mitigation, every desktop tester's existing local database looks
+// like it vanished the moment they upgrade, which is indistinguishable from real data loss to
+// someone who hasn't read a changelog. `db_open` calls `copy_legacy_db_if_missing` before opening
+// the connection: if the new-identifier directory has no database yet, but the old-identifier
+// sibling directory still has `spndr.sqlite3`, copy it into place under the new filename first.
+// The legacy file and directory are left untouched either way - this is a copy, never a move, so a
+// rollback or a second device profile can't lose data to it.
+//
+// These two helpers are pure (no `AppHandle`, no Tauri runtime) specifically so they're testable
+// with plain `std::fs` against a temp directory, without spinning up a Tauri app context.
+
+/// The pre-rename Tauri identifier. `app_data_dir()` always ends in the current identifier as its
+/// final path component, so swapping that component for this one names the sibling directory the
+/// pre-rename build wrote to.
+const LEGACY_APP_IDENTIFIER: &str = "com.spndr.app";
+
+/// The pre-rename local SQLite filename (`TauriSqlDriver`/`SqliteWasmDriver` defaulted to this).
+const LEGACY_DB_FILENAME: &str = "spndr.sqlite3";
+
+/// Given the current (new-identifier) app-data dir, returns its sibling dir named after the old
+/// identifier, or `None` when the path has no parent.
+fn legacy_app_data_dir(new_app_data_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    new_app_data_dir
+        .parent()
+        .map(|parent| parent.join(LEGACY_APP_IDENTIFIER))
+}
+
+/// If `new_dir/filename` doesn't exist yet but `legacy_dir/spndr.sqlite3` does, copies the legacy
+/// file into place under the new name and returns `true`. Never overwrites an existing
+/// new-identifier database, and returns `false` (not an error) when there's nothing to migrate.
+/// Always a copy, never a move, so a rollback or a second device profile can't lose data to it.
+fn copy_legacy_db_if_missing(
+    new_dir: &std::path::Path,
+    legacy_dir: &std::path::Path,
+    filename: &str,
+) -> std::io::Result<bool> {
+    let new_path = new_dir.join(filename);
+    if new_path.exists() {
+        return Ok(false);
+    }
+    let legacy_path = legacy_dir.join(LEGACY_DB_FILENAME);
+    if !legacy_path.exists() {
+        return Ok(false);
+    }
+    std::fs::create_dir_all(new_dir)?;
+    std::fs::copy(&legacy_path, &new_path)?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod legacy_data_dir_tests {
     use std::path::{Path, PathBuf};

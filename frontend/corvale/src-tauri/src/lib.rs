@@ -21,5 +21,5 @@ pub fn run() {
             backup::open_backup_file,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running the spndr desktop application");
+        .expect("error while running the Corvale desktop application");
 }

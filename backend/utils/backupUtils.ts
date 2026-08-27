@@ -4,12 +4,17 @@ import crypto from 'crypto'
 import { Types } from 'mongoose'
 import { PassThrough } from 'stream'
 
-// CommonJS interop for ESM-only packages
+// CommonJS interop for ESM-only packages. archiver v8 dropped the callable `archiver('zip', …)`
+// factory and exports named archive classes instead, so construct `ZipArchive` directly.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const archiver = require('archiver') as (
-    format: string,
-    options?: { zlib?: { level?: number } }
-) => { pipe: (dest: PassThrough) => void; append: (source: string | Buffer, opts: { name: string }) => void; file: (source: string, opts: { name: string }) => void; finalize: () => Promise<void> }
+const { ZipArchive } = require('archiver') as {
+    ZipArchive: new (options?: { zlib?: { level?: number } }) => {
+        pipe: (dest: PassThrough) => void
+        append: (source: string | Buffer, opts: { name: string }) => void
+        file: (source: string, opts: { name: string }) => void
+        finalize: () => Promise<void>
+    }
+}
 interface ZipEntry {
     getData: () => Buffer
     isDirectory: boolean
@@ -747,7 +752,7 @@ export const createBackupZipStream = async (
     payload: CorvaleBackupPayload
 ): Promise<{ stream: PassThrough; filename: string }> => {
     const stream = new PassThrough()
-    const archive = archiver('zip', { zlib: { level: 9 } })
+    const archive = new ZipArchive({ zlib: { level: 9 } })
     archive.pipe(stream)
 
     archive.append(JSON.stringify(payload, null, 2), { name: 'corvale-backup.json' })

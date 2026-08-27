@@ -9,7 +9,7 @@ use tauri_plugin_dialog::DialogExt;
 // traversal `db_open` was hardened for (see `path_safety.rs`) - no change needed here.
 
 /// Opens a native "Save As" dialog and writes the JSON backup straight to disk. Replaces the
-/// browser `<a download>` hack (`frontend/spndr/src/utils/downloadExport.ts`), which a Tauri
+/// browser `<a download>` hack (`frontend/corvale/src/utils/downloadExport.ts`), which a Tauri
 /// webview doesn't reliably turn into a real OS save prompt. Returns `false` if the user cancels.
 #[tauri::command]
 pub async fn save_backup_file(app: AppHandle, filename: String, contents: String) -> Result<bool, String> {
@@ -17,7 +17,7 @@ pub async fn save_backup_file(app: AppHandle, filename: String, contents: String
         .dialog()
         .file()
         .set_file_name(&filename)
-        .add_filter("spndr backup", &["json"])
+        .add_filter("Corvale backup", &["json"])
         .blocking_save_file();
 
     let Some(file_path) = picked else {
@@ -35,7 +35,7 @@ pub async fn open_backup_file(app: AppHandle) -> Result<Option<String>, String> 
     let picked = app
         .dialog()
         .file()
-        .add_filter("spndr backup", &["json"])
+        .add_filter("Corvale backup", &["json"])
         .blocking_pick_file();
 
     let Some(file_path) = picked else {
