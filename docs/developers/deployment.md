@@ -62,11 +62,17 @@ their normal non-Docker `npm run dev`. If you change the frontend's published po
 HTTPS](#putting-it-behind-https)), update the `CLIENT_URL` override there to match, not the value
 in `backend/.env`.
 
-Edit the root `.env` (a separate file from `backend/.env`) and set `VITE_OFFLINE_GRANT_PUBLIC_KEY`
-to the public half of the same keypair, plus `VITE_API_URL`/`VITE_API_ORIGIN` if you're not using
-the default `localhost` ports. These become part of the compiled frontend JS at build time, so
-they must be correct *before* building, not changed afterward - see [Why the frontend needs its
-own .env](#why-the-frontend-needs-its-own-env-file).
+Edit the root `.env` (a separate file from `backend/.env`) and set:
+
+- `MONGO_ROOT_PASSWORD` - a strong password for the bundled MongoDB, which runs with
+  authentication enabled. `docker compose up` refuses to start until this is set. Use only
+  URL-safe characters (letters, digits, and `- _ . ~`) - the password is substituted into the
+  API's connection string unescaped. `MONGO_ROOT_USERNAME` can stay at its `corvale` default.
+- `VITE_OFFLINE_GRANT_PUBLIC_KEY` - the public half of the offline-grant keypair, plus
+  `VITE_API_URL`/`VITE_API_ORIGIN` if you're not using the default `localhost` ports. These
+  become part of the compiled frontend JS at build time, so they must be correct *before*
+  building, not changed afterward - see [Why the frontend needs its own
+  .env](#why-the-frontend-needs-its-own-env-file).
 
 Then build and start everything:
 
@@ -89,7 +95,7 @@ curl http://localhost:5000/ready    # {"success":true,"data":{"status":"ready"}}
 
 | Service | Image / build | Purpose |
 |---------|---------------|---------|
-| `mongo` | `mongo:7` | System of record. Data persists in the `mongo-data` volume |
+| `mongo` | `mongo:7` | System of record. Runs with authentication enabled (root user from `MONGO_ROOT_USERNAME`/`MONGO_ROOT_PASSWORD`); never published to the host. Data persists in the `mongo-data` volume |
 | `backend` | built from `backend/Dockerfile` | The Express API, compiled with `tsc` and run under Node |
 | `frontend` | built from `frontend/corvale/Dockerfile` | The Vite production build, served as static files by nginx with SPA routing |
 | `clamav` | `clamav/clamav:stable` | Optional receipt virus scanning - only started with `--profile clamav` |
@@ -126,7 +132,41 @@ cadence guidance. That runbook also covers backing up receipts under either stor
 To point at MongoDB Atlas or another managed provider instead of the `mongo` service, remove
 the `mongo` service and its `depends_on` entry from `docker-compose.yml`, and delete the
 `MONGO_URI` override under `backend.environment` so the real connection string in
-`backend/.env` takes effect.
+`backend/.env` takes effect. `MONGO_ROOT_USERNAME`/`MONGO_ROOT_PASSWORD` in the root `.env` are
+then unused - the managed provider's own connection string (with its own credentials) is the
+whole story. Managed MongoDB always has authentication on; if you run your own instance instead,
+enable it there too.
+
+## Database authentication
+
+The bundled `mongo` service runs with authentication enabled. Two things protect the data, and
+you need to keep both:
+
+- **The root credentials.** `MONGO_ROOT_USERNAME` (default `corvale`) and `MONGO_ROOT_PASSWORD`
+  from the root `.env` create a root user on the `mongo-data` volume the first time it's
+  created, and the API connects with them over `authSource=admin`.
+- **Network isolation.** The `mongo` service has no `ports:` mapping, so it's reachable only
+  from the other containers on the Compose network, never from the host or the internet. This
+  is deliberate and load-bearing - a comment on the service in `docker-compose.yml` says so.
+  Don't add a port mapping "just to debug"; run `docker compose exec mongo mongosh -u corvale
+  -p "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin` instead.
+
+### Enabling auth on an existing mongo-data volume
+
+`MONGO_INITDB_ROOT_USERNAME`/`_PASSWORD` only create the root user when the data directory is
+**empty**. If you're upgrading a deployment whose `mongo-data` volume already has data, adding
+the credentials to `.env` makes the container start with `--auth` while no user exists - and the
+API can't connect.
+
+Create the user once by hand first, while `MONGO_ROOT_PASSWORD` is still unset (so `mongo` is
+still running without auth):
+
+```bash
+docker compose exec mongo mongosh admin --eval 'db.createUser({ user: "corvale", pwd: "PUT_YOUR_MONGO_ROOT_PASSWORD_HERE", roles: [{ role: "root", db: "admin" }] })'
+```
+
+Then set `MONGO_ROOT_PASSWORD` in `.env` to that same value and run `docker compose up -d`. The
+`mongo` container restarts with auth on, and the API authenticates as the user you just created.
 
 ## Putting it behind HTTPS
 
@@ -235,9 +275,10 @@ If you'd rather not use Docker, run the same three pieces as standalone processe
    static file server that supports SPA fallback routing (nginx, Caddy, Netlify, S3 + CloudFront
    all work) - see `frontend/corvale/nginx.conf` in the repository for a minimal example
    configuration.
-4. Point both at a MongoDB instance you run or manage yourself, and follow the same environment
-   variable, HTTPS, virus-scanning, and receipt-storage guidance above - none of it is
-   Docker-specific.
+4. Point both at a MongoDB instance you run or manage yourself - with **authentication enabled**
+   and not exposed to any untrusted network - and put its full connection string (credentials
+   included) in `backend/.env`'s `MONGO_URI`. Then follow the same environment variable, HTTPS,
+   virus-scanning, and receipt-storage guidance above - none of it is Docker-specific.
 
 ## Related pages
 

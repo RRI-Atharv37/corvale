@@ -194,7 +194,11 @@ for alerting and stack-trace triage; leave it unset in development.
 - Set `CLIENT_URL` to your actual frontend domain in production
 - Deploy the frontend and API same-site; see [Deployment topology](#deployment-topology) above
   before considering a cross-site setup
-- Use a managed MongoDB instance with authentication in production
+- Run MongoDB with authentication enabled and never expose it to an untrusted network. The
+  bundled `mongo` service in `docker-compose.yml` does both (root user from `MONGO_ROOT_PASSWORD`
+  in the repo-root `.env`, no host port mapping) — see [Database
+  authentication](./deployment.md#database-authentication). A managed instance (Atlas or similar)
+  handles this for you.
 
 ## Related pages
 
