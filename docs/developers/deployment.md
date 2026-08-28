@@ -40,7 +40,14 @@ cp .env.example .env
 
 Edit `backend/.env` and fill in at minimum:
 
-- `JWT_SECRET` - a long, random string
+- `JWT_SECRET` - a unique random string of at least 32 characters. Don't leave it at the
+  placeholder - the API refuses to start on a placeholder or well-known weak value, and on
+  anything shorter than 32 characters when `NODE_ENV=production`. Generate one with:
+
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+  ```
+
 - `OFFLINE_GRANT_PRIVATE_KEY` - generate a keypair as described in [Offline session
   grant](./environment-variables.md#offline-session-grant)
 

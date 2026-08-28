@@ -10,7 +10,7 @@ Create a `.env` file in the `backend/` folder.
 |----------|----------|---------|-------------|
 | `PORT` | No | `5000` | HTTP port for the API server |
 | `MONGO_URI` | Yes | - | MongoDB connection string |
-| `JWT_SECRET` | Yes | - | Secret key for signing JWT tokens |
+| `JWT_SECRET` | Yes | - | Secret key for signing JWT access tokens. Must be a unique random string — the server refuses to start if it is left at the `.env.example` placeholder or another well-known weak value, and when `NODE_ENV=production` it must be at least 32 characters. See [Security notes](#security-notes) |
 | `JWT_EXPIRY` | Yes | - | Access token expiry (e.g., `15m`, `1h`) |
 | `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses, reset-link console logging, and secure-cookie flags |
 | `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token expiry |
@@ -70,6 +70,11 @@ JWT_REFRESH_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
 OFFLINE_GRANT_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIGHAgEA...\n-----END PRIVATE KEY-----
 ```
+
+Replace the `JWT_SECRET` and `OFFLINE_GRANT_PRIVATE_KEY` placeholders with real generated values
+before starting the server — it validates both at boot and refuses to run on the shipped
+placeholders (see [Security notes](#security-notes) and [Offline session
+grant](#offline-session-grant)).
 
 ## Frontend environment variables
 
@@ -174,7 +179,12 @@ for alerting and stack-trace triage; leave it unset in development.
 ## Security notes
 
 - Never commit `.env` files to version control
-- Use a strong, unique `JWT_SECRET` in production
+- Use a strong, unique `JWT_SECRET` — never the `.env.example` placeholder. The server rejects
+  placeholder and well-known weak values at startup, and requires at least 32 characters when
+  `NODE_ENV=production`. Generate one with:
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+  ```
 - Generate a dedicated `OFFLINE_GRANT_PRIVATE_KEY` keypair per deployment and never commit it —
   only the public half belongs in the frontend build
 - Set `CLIENT_URL` to your actual frontend domain in production

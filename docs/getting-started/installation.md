@@ -61,12 +61,19 @@ Create a `.env` file inside the `backend/` folder with the following variables:
 ```
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/corvale
-JWT_SECRET=your-secret-key-here
+JWT_SECRET=paste-a-generated-secret-here
 JWT_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
 ```
 
-Replace `your-secret-key-here` with a long, random string. Never commit your `.env` file to version control.
+Replace the `JWT_SECRET` value with a unique random string — the server refuses to start if it's
+left at a placeholder or a well-known weak value. Generate one with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+Never commit your `.env` file to version control.
 
 ### Frontend
 
