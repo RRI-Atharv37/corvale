@@ -67,6 +67,52 @@ describe('SEC-30 — RLS coverage gap (S23)', () => {
                 await expect(Category.findById(new Types.ObjectId())).resolves.toBeNull()
             })
         })
+
+        it('allows a bare { _id: { $in: [...] } } lookup — the shape .populate() issues (S28 regression)', async () => {
+            const user = await registerUser(app)
+            await runWithRlsContext({ userId: user.userId }, async () => {
+                await expect(
+                    Category.find({ _id: { $in: [new Types.ObjectId(), new Types.ObjectId()] } })
+                ).resolves.toBeDefined()
+            })
+        })
+
+        it('still blocks { _id: { $in: [...] } } when a non-id operator is smuggled alongside', async () => {
+            const user = await registerUser(app)
+            await runWithRlsContext({ userId: user.userId }, async () => {
+                await expect(
+                    Category.find({ _id: { $in: [new Types.ObjectId()], $ne: null } })
+                ).rejects.toThrow(UNSCOPED)
+            })
+        })
+
+        it('populating categoryId across several categories does not trip the RLS guard (S28 regression)', async () => {
+            const user = await registerUser(app)
+            await ensureMasterCategoriesSeeded()
+            await runWithRlsContext({ userId: user.userId }, async () => {
+                const masters = await Category.find({ userId: null }).limit(3)
+                const account = new Types.ObjectId()
+                await Transaction.insertMany(
+                    masters.map((category, i) => ({
+                        userId: new Types.ObjectId(user.userId),
+                        accountId: account,
+                        categoryId: category._id,
+                        type: 'expense' as const,
+                        status: 'posted' as const,
+                        amount: 100 + i,
+                        currency: 'USD',
+                        title: `Row ${i}`,
+                        date: new Date('2026-01-15T12:00:00.000Z'),
+                    }))
+                )
+                await expect(
+                    Transaction.find({ userId: new Types.ObjectId(user.userId) }).populate(
+                        'categoryId',
+                        'name'
+                    )
+                ).resolves.toHaveLength(masters.length)
+            })
+        })
     })
 
     describe.each([

@@ -68,9 +68,18 @@ describe('bundled MongoDB — authentication (SEC-37, S28)', () => {
     })
 
     it('does NOT publish the mongo service to the host', () => {
-        expect(mongo).not.toMatch(/^\s*ports:/m)
-        // guard against the classic `27017:27017` debug edit landing anywhere in the file
-        expect(COMPOSE).not.toMatch(/27017:27017/)
+        // strip full-line comments so the "do not add ports: ['27017:27017']" warning in the
+        // service comment doesn't count as an actual mapping
+        const active = COMPOSE.split('\n')
+            .filter((l) => !/^\s*#/.test(l))
+            .join('\n')
+        const activeMongo = mongo
+            .split('\n')
+            .filter((l) => !/^\s*#/.test(l))
+            .join('\n')
+        expect(activeMongo).not.toMatch(/^\s*ports:/m)
+        // no real host<->container mapping to the mongo port anywhere in the stack
+        expect(active).not.toMatch(/["']?\d+:27017["']?/)
     })
 
     it('records on the mongo service that the absent ports: mapping is load-bearing', () => {

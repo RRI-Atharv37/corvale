@@ -39,9 +39,28 @@ const isObjectIdLike = (value: unknown): boolean => {
     return false
 }
 
+const isIdListLookup = (idValue: unknown): boolean => {
+    // `{ _id: { $in: [<ObjectId>, ...] } }` — the filter Mongoose's `populate()` issues, and
+    // the shape of any post-fetch "load these specific rows I already hold ids for" join.
+    // Treated the same as a bare `{ _id: <ObjectId> }`: the caller must already possess the
+    // ids (which came from a row it was itself allowed to read), so it cannot widen tenancy.
+    if (!idValue || typeof idValue !== 'object' || Array.isArray(idValue)) {
+        return false
+    }
+    const operators = Object.keys(idValue as Record<string, unknown>)
+    if (operators.length !== 1 || operators[0] !== '$in') {
+        return false
+    }
+    const values = (idValue as { $in: unknown }).$in
+    return Array.isArray(values) && values.length > 0 && values.every(isObjectIdLike)
+}
+
 const isFindByIdFilter = (filter: Record<string, unknown>): boolean => {
     const keys = Object.keys(filter)
-    return keys.length === 1 && keys[0] === '_id' && isObjectIdLike(filter._id)
+    if (keys.length !== 1 || keys[0] !== '_id') {
+        return false
+    }
+    return isObjectIdLike(filter._id) || isIdListLookup(filter._id)
 }
 
 export const filterHasOwnershipScope = (
