@@ -2,6 +2,12 @@
 # See docs/developers/deployment.md for the full setup guide, including HTTPS, ClamAV, and
 # S3-compatible receipt storage.
 #
+# This stack serves plain HTTP on :8080 / :5000. Any internet-facing deployment MUST run behind
+# a TLS terminator that also redirects HTTP->HTTPS (Caddy does both automatically) - without it
+# session cookies and financial data cross the wire in cleartext. Also set NODE_ENV=production
+# in backend/.env so the refresh cookie is marked Secure. See the "Putting it behind HTTPS"
+# section of the deployment guide.
+#
 # Before running `docker compose up -d --build`:
 #   1. cp backend/.env.example backend/.env   and fill in real values (JWT_SECRET,
 #      OFFLINE_GRANT_PRIVATE_KEY, CLIENT_URL, etc). MONGO_URI in that file is overridden below

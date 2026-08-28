@@ -26,8 +26,10 @@ unrelated domains (for example, a frontend on Vercel calling an API on Render).
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2 (`docker compose`, not
   the older standalone `docker-compose`)
-- A domain name and a reverse proxy if you want HTTPS and a real hostname (see
-  [Putting it behind HTTPS](#putting-it-behind-https)) - not required to try Corvale locally
+- A domain name and a reverse proxy that terminates TLS (see [Putting it behind
+  HTTPS](#putting-it-behind-https)). This is **required** for any deployment reachable from the
+  internet - not just a nice-to-have. It's only skippable for a purely local or internal-network
+  trial that never leaves your machine.
 
 ## Quickstart
 
@@ -128,17 +130,34 @@ the `mongo` service and its `depends_on` entry from `docker-compose.yml`, and de
 
 ## Putting it behind HTTPS
 
-The Compose stack above serves plain HTTP on `:8080`/`:5000`, which is fine for local use or an
-internal network. For anything reachable from the internet, put a reverse proxy in front that
-terminates TLS and forwards to the frontend container. [Caddy](https://caddyserver.com/) does
-this with automatic Let's Encrypt certificates and almost no configuration - a `Caddyfile` on
-the host, outside the Compose stack:
+The Compose stack above serves plain HTTP on `:8080`/`:5000`. That is fine for a local or
+internal-network trial, but **any deployment reachable from the internet must run behind a TLS
+terminator** - this is a hard requirement, for three concrete reasons:
+
+- The refresh-token cookie is only marked `Secure` when `NODE_ENV=production`, and even then a
+  browser will only keep a `Secure` cookie that arrived over HTTPS. Served over plain HTTP,
+  session cookies travel in cleartext.
+- Passwords and every financial record cross the wire in cleartext without TLS. Corvale's
+  privacy policy states credentials are transmitted only over encrypted connections - that is a
+  property of your deployment, and this is how you make it true.
+- The `Strict-Transport-Security` header the frontend sends is inert until the site is actually
+  served over HTTPS.
+
+Put a reverse proxy in front that terminates TLS and forwards to the frontend container.
+[Caddy](https://caddyserver.com/) does this with automatic Let's Encrypt certificates and
+almost no configuration - a `Caddyfile` on the host, outside the Compose stack:
 
 ```
 corvale.example.com {
     reverse_proxy localhost:8080
 }
 ```
+
+Caddy redirects HTTP to HTTPS automatically. If you use a different proxy (nginx, Traefik),
+configure the HTTP→HTTPS redirect explicitly and make sure it forwards `X-Forwarded-Proto` - the
+frontend container falls back to its own HTTP→HTTPS redirect when it sees
+`X-Forwarded-Proto: http`. Set `NODE_ENV=production` in `backend/.env` as well, so the
+refresh-token cookie is marked `Secure`.
 
 Update the `CLIENT_URL` override under `backend.environment` in `docker-compose.yml` (not
 `backend/.env` - see [Quickstart](#quickstart) above) to `https://corvale.example.com`, and rebuild
@@ -147,6 +166,19 @@ through your proxy (either the same domain under a `/api` path you proxy separat
 subdomain like `api.corvale.example.com` - either keeps the deployment same-site). An nginx or
 Traefik reverse proxy works the same way; the requirement is only that TLS terminates in front of
 both containers and `CLIENT_URL` matches the public frontend URL exactly.
+
+## Security headers
+
+The frontend container's nginx (`frontend/corvale/nginx.conf`) sends `Content-Security-Policy`
+(`frame-ancestors 'none'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` on every
+response. The `frame-ancestors` / `X-Frame-Options` pair is what stops the app being embedded in
+a hostile page and used for clickjacking - the CSP in `index.html` can't do this on its own,
+because `frame-ancestors` is ignored when it comes from a `<meta>` tag.
+
+If you serve the built frontend some other way (see [Deploying without
+Docker](#deploying-without-docker)), replicate these headers at your web server or CDN. If your
+reverse proxy adds its own headers, make sure it doesn't strip or duplicate these.
 
 ## Enabling ClamAV virus scanning
 
