@@ -41,7 +41,14 @@ import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
-import { getReceiptFilePath } from './receiptUtils'
+import { isObjectStorageConfigured, putReceiptObject, receiptObjectKey } from './receiptStorage'
+import {
+    assertValidReceiptBuffer,
+    assertWithinReceiptStorageQuota,
+    deleteReceiptFile,
+    getReceiptFilePath,
+} from './receiptUtils'
+import { scanUploadedFile } from './virusScanService'
 import { buildScopedListFilter } from './workspaceUtils'
 
 export const BACKUP_VERSION = 1 as const
@@ -347,12 +354,62 @@ export const parseBackupPayload = (raw: unknown): CorvaleBackupPayload => {
     ] as const
 
     for (const key of requiredArrays) {
-        if (!Array.isArray(backup[key])) {
+        const section = backup[key]
+        if (!Array.isArray(section)) {
             throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+        }
+
+        // Per-record shape check — previously the payload was trusted wholesale past the
+        // "is it an array" gate (SEC-28). Every record must be a plain object carrying an id;
+        // the restore loop stringifies `record.id` and would otherwise map `"undefined"`.
+        for (const record of section) {
+            if (!isPlainRecord(record) || record.id == null || record.id === '') {
+                throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+            }
         }
     }
 
+    for (const receipt of backup.receipts as Record<string, unknown>[]) {
+        validateReceiptRecord(receipt)
+    }
+
     return backup as CorvaleBackupPayload
+}
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * Restore no longer trusts a receipt record's `mimeType`/`size` — both are re-derived from the
+ * actual bytes (SEC-28) — but a structurally broken record should still be rejected up front
+ * rather than blowing up mid-restore. `storedFilename` is the key used to find the file inside
+ * the ZIP, so it must be a usable string.
+ */
+const validateReceiptRecord = (receipt: Record<string, unknown>): void => {
+    if (
+        typeof receipt.originalFilename !== 'string' ||
+        receipt.originalFilename.trim() === '' ||
+        typeof receipt.storedFilename !== 'string' ||
+        receipt.storedFilename.trim() === ''
+    ) {
+        throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+    }
+
+    // `mimeType` and `size` are only shape-checked here, not enforced — restore ignores both
+    // and re-derives them from the actual bytes (SEC-28). A pre-S14 backup may carry a
+    // declared type outside today's allowlist, and that must still restore.
+    if (receipt.mimeType !== undefined && typeof receipt.mimeType !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+    }
+
+    if (
+        receipt.size !== undefined &&
+        (typeof receipt.size !== 'number' ||
+            !Number.isFinite(receipt.size) ||
+            receipt.size < 0)
+    ) {
+        throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+    }
 }
 
 export const previewBackupRestore = (
@@ -637,21 +694,48 @@ export const restoreUserBackup = async (
             continue
         }
 
+        // Restore used to write the file blind and copy `mimeType`/`size` straight from the
+        // backup JSON (SEC-28), skipping every control `POST /receipts` enforces. Run the
+        // same pipeline here: sniff the real bytes, allowlist the detected type, size from
+        // the buffer, per-user quota, then virus-scan the written file.
+        const detectedMimeType = assertValidReceiptBuffer(fileBuffer)
+        const actualSize = fileBuffer.byteLength
+
+        await assertWithinReceiptStorageQuota(userId, actualSize)
+
         const ext = path.extname(String(record.originalFilename ?? '')).toLowerCase()
         const safeExt = ext.length <= 10 ? ext : ''
         const newStoredFilename = `${crypto.randomUUID()}${safeExt}`
+
+        const destPath = getReceiptFilePath(userId, newStoredFilename)
+        fs.mkdirSync(path.dirname(destPath), { recursive: true })
+        fs.writeFileSync(destPath, fileBuffer)
+
+        try {
+            await scanUploadedFile(destPath)
+        } catch (error) {
+            deleteReceiptFile(userId, newStoredFilename)
+            throw error
+        }
+
+        if (isObjectStorageConfigured()) {
+            await putReceiptObject(
+                receiptObjectKey(userId, newStoredFilename),
+                destPath,
+                detectedMimeType
+            )
+            // Object storage is the only durable copy — the local write was staging for the
+            // scan and the upload, exactly as in `uploadReceipt` (SEC-23).
+            deleteReceiptFile(userId, newStoredFilename)
+        }
 
         const createdReceipt = await Receipt.create({
             userId: userObjectId,
             originalFilename: record.originalFilename,
             storedFilename: newStoredFilename,
-            mimeType: record.mimeType,
-            size: record.size,
+            mimeType: detectedMimeType,
+            size: actualSize,
         })
-
-        const destPath = getReceiptFilePath(userId, newStoredFilename)
-        fs.mkdirSync(path.dirname(destPath), { recursive: true })
-        fs.writeFileSync(destPath, fileBuffer)
 
         idMap.set(sourceId, createdReceipt._id.toString())
         created.receipts += 1

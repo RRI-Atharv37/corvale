@@ -6,19 +6,15 @@ import { Types } from 'mongoose'
 import Receipt, { IReceipt } from '../models/Receipt'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
+import { detectReceiptSignature } from './fileSignature'
+import { RECEIPT_ALLOWED_MIME_TYPES, ReceiptMimeType } from './receiptMimeTypes'
 import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from './receiptStorage'
 import { validateOwnership } from './sharedUtils'
 
 export const RECEIPT_MAX_SIZE_BYTES = 5 * 1024 * 1024
 
-export const RECEIPT_ALLOWED_MIME_TYPES = [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'application/pdf',
-] as const
-
-export type ReceiptMimeType = (typeof RECEIPT_ALLOWED_MIME_TYPES)[number]
+export { RECEIPT_ALLOWED_MIME_TYPES }
+export type { ReceiptMimeType }
 
 export const RECEIPT_UPLOAD_ROOT = path.join(process.cwd(), 'uploads', 'receipts')
 
@@ -83,6 +79,26 @@ export const assertAllowedReceiptMimeType = (mimeType: string): void => {
     if (!RECEIPT_ALLOWED_MIME_TYPES.includes(mimeType as ReceiptMimeType)) {
         throw new CustomError(ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE, 400)
     }
+}
+
+/**
+ * Validates raw receipt bytes the same way the upload endpoint does — size cap, magic-byte
+ * sniff, allowlist — and returns the *detected* MIME type. Used by both the multipart upload
+ * path and backup restore (SEC-28) so a restored receipt cannot smuggle past the checks a
+ * direct upload enforces. The virus scan and storage-quota checks are left to the caller,
+ * since they need the file on disk / the caller's accumulated usage respectively.
+ */
+export const assertValidReceiptBuffer = (buffer: Buffer): ReceiptMimeType => {
+    if (buffer.byteLength > RECEIPT_MAX_SIZE_BYTES) {
+        throw new CustomError(ERROR_MESSAGES.RECEIPT.FILE_TOO_LARGE, 400)
+    }
+
+    const detected = detectReceiptSignature(buffer)
+    if (!detected) {
+        throw new CustomError(ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE, 400)
+    }
+    assertAllowedReceiptMimeType(detected)
+    return detected
 }
 
 /**
