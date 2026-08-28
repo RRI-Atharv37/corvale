@@ -1,17 +1,17 @@
 <div align="center">
 
-# spndr
+# Corvale
 
 **Personal finance, simplified**
 **Track transactions, accounts, budgets, savings goals, and more in one place.**
 
 Built for students and young adults who want clarity over complexity.
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
+[![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/corvale/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/corvale?style=social)](https://github.com/RRI-Atharv37/corvale/stargazers)
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
-<img src="docs/public/screenshots/dashboard-overview.png" alt="spndr dashboard preview" width="900" />
+<img src="docs/public/screenshots/dashboard-overview.png" alt="Corvale dashboard preview" width="900" />
 <br />
 
 [Quick Start](#-quick-start-3-minute-setup) · [Features](#-key-features) · [Screenshots](#-screenshots) · [Documentation](#-documentation)
@@ -168,14 +168,14 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **480 tests**
 ### 1 · Clone & install
 
 ```bash
-git clone https://github.com/RRI-Atharv37/spndr.git
+git clone https://github.com/RRI-Atharv37/corvale.git
 cd spndr
 
 # Backend
 cd backend && npm install
 
 # Frontend (new terminal)
-cd frontend/spndr && npm install
+cd frontend/corvale && npm install
 ```
 
 ### 2 · Configure environment
@@ -184,7 +184,7 @@ cd frontend/spndr && npm install
 
 ```env
 PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/spndr
+MONGO_URI=mongodb://127.0.0.1:27017/corvale
 JWT_SECRET=replace-with-a-long-random-string
 JWT_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
@@ -196,7 +196,7 @@ See [Environment Variables](docs/developers/environment-variables.md) for the fu
 **Frontend** - copy the example file:
 
 ```bash
-cp frontend/spndr/.env.example frontend/spndr/.env
+cp frontend/corvale/.env.example frontend/corvale/.env
 ```
 
 Default `VITE_API_URL` points to `http://localhost:5000/api/v1`.
@@ -207,7 +207,7 @@ Default `VITE_API_URL` points to `http://localhost:5000/api/v1`.
 # Terminal 1 - API (from backend/)
 npm run dev
 
-# Terminal 2 - App (from frontend/spndr/)
+# Terminal 2 - App (from frontend/corvale/)
 npm run dev
 ```
 
@@ -273,13 +273,17 @@ Phases **0–12** are complete with **480 backend tests** across 41 files, zero 
 
 Copyright © 2026 **[Atharv Dewangan](https://github.com/RRI-Atharv37)**
 
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-or-later`).
+
+> **v1.0.0 is the first AGPL release.** Every earlier release — up to and including **v0.17.0**
+> — was published under the Apache License 2.0, and that grant is irrevocable for those
+> versions.
 
 ---
 
 <div align="center">
 
-**[⭐ Star this repo](https://github.com/RRI-Atharv37/spndr)** if spndr helps you stay on top of your money.
+**[⭐ Star this repo](https://github.com/RRI-Atharv37/corvale)** if Corvale helps you stay on top of your money.
 
 </div>
 

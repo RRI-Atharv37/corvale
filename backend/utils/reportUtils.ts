@@ -366,7 +366,10 @@ export const computeLargestExpenses = async (
     }
 
     const categoryIds = [...new Set(transactions.map((tx) => tx.categoryId.toString()))]
-    const categories = await Category.find({ _id: { $in: categoryIds } })
+    const categories = await Category.find({
+        _id: { $in: categoryIds },
+        userId: { $in: [new Types.ObjectId(userId), null] },
+    })
     const categoryMap = new Map(categories.map((category) => [category._id.toString(), category]))
 
     return transactions.map((tx) => {
@@ -684,7 +687,12 @@ export const computeBudgetAnalysis = async (
         .filter((id): id is string => Boolean(id))
 
     const categories =
-        categoryIds.length > 0 ? await Category.find({ _id: { $in: categoryIds } }) : []
+        categoryIds.length > 0
+            ? await Category.find({
+                  _id: { $in: categoryIds },
+                  userId: { $in: [new Types.ObjectId(userId), null] },
+              })
+            : []
     const categoryMap = new Map(categories.map((category) => [category._id.toString(), category.name]))
 
     const items: BudgetAnalysisItem[] = withProgress.map((budget) => ({

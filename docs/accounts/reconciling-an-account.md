@@ -2,9 +2,9 @@
 title: Reconciling an Account
 ---
 
-## Match spndr against your bank statement
+## Match Corvale against your bank statement
 
-Reconciliation confirms that your transaction history in spndr agrees with your bank's statement, so nothing was missed or double-entered.
+Reconciliation confirms that your transaction history in Corvale agrees with your bank's statement, so nothing was missed or double-entered.
 
 ## Starting a reconciliation
 
@@ -12,7 +12,7 @@ Reconciliation confirms that your transaction history in spndr agrees with your 
 2. Enter the **statement end date** and **statement balance** from your bank statement.
 3. Click **Compare to statement**.
 
-spndr shows your cleared balance, your pending (uncleared) balance, the statement balance you entered, and the **differential** between your cleared balance and the statement - zero means they match.
+Corvale shows your cleared balance, your pending (uncleared) balance, the statement balance you entered, and the **differential** between your cleared balance and the statement - zero means they match.
 
 ## Clearing transactions
 

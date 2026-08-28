@@ -20,14 +20,14 @@ Entries sort by most recent first.
 
 ## Empty state
 
-If you have never performed a rollover, spndr shows:
+If you have never performed a rollover, Corvale shows:
 
 - **Title:** No pushover history yet
 - **Description:** When you roll over savings at month-end, snapshots will appear here.
 
 ## Cumulative tracking
 
-Behind the scenes, spndr also tracks a cumulative `pushoverAmount` on your saver document - the running total of all rollovers. This value is maintained server-side and included in API responses but is not displayed as a separate card in the UI.
+Behind the scenes, Corvale also tracks a cumulative `pushoverAmount` on your saver document - the running total of all rollovers. This value is maintained server-side and included in API responses but is not displayed as a separate card in the UI.
 
 ## History is permanent
 

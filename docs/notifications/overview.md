@@ -4,7 +4,7 @@ title: Notifications Overview
 
 ## Stay on top of what needs attention
 
-spndr surfaces important events through the notification bell in the header. Click it to open a dropdown panel listing your recent notifications, newest first.
+Corvale surfaces important events through the notification bell in the header. Click it to open a dropdown panel listing your recent notifications, newest first.
 
 ## What triggers a notification
 
@@ -15,7 +15,7 @@ spndr surfaces important events through the notification bell in the header. Cli
 | **Savings milestone** | A savings goal contribution crosses the 25%, 50%, 75%, or 100% mark |
 | **Workspace invite** | Someone invites you to join their workspace |
 
-spndr avoids duplicate notifications for the same event - for example, a budget only notifies you once per period, and a savings goal only notifies once per milestone.
+Corvale avoids duplicate notifications for the same event - for example, a budget only notifies you once per period, and a savings goal only notifies once per milestone.
 
 ## Managing notifications
 

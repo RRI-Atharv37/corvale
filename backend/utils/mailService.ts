@@ -35,7 +35,13 @@ const buildNodemailerTransport = (): MailTransport => {
     return {
         sendMail: async (message: MailMessage) => {
             const info = await transporter.sendMail({
-                from: process.env.SMTP_FROM ?? 'spndr <no-reply@spndr.app>',
+                // V9: sending domain send.corvale.app has SPF + DKIM + DMARC published, so this
+                // From address authenticates and aligns. Override per-deployment with SMTP_FROM;
+                // if you change the domain here, publish its DNS records first or reset mail gets
+                // spam-foldered / hard-rejected.
+                from: process.env.SMTP_FROM ?? 'Corvale <no-reply@send.corvale.app>',
+                // These are no-reply mailboxes; point human replies at a real inbox instead.
+                replyTo: process.env.SMTP_REPLY_TO ?? 'Corvale Support <support@corvale.app>',
                 ...message,
             })
             return { messageId: info.messageId }
@@ -46,23 +52,23 @@ const buildNodemailerTransport = (): MailTransport => {
 const getTransport = (): MailTransport => testTransport ?? buildNodemailerTransport()
 
 export const sendPasswordResetEmail = async (email: string, resetUrl: string): Promise<void> => {
-    const expiryMs = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 3_600_000)
+    const expiryMs = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 600_000)
 
     await getTransport().sendMail({
         to: email,
-        subject: 'Reset your spndr password',
+        subject: 'Reset your Corvale password',
         html: passwordResetEmailHtml(resetUrl, expiryMs),
-        text: `Reset your spndr password: ${resetUrl}`,
+        text: `Reset your Corvale password: ${resetUrl}`,
     })
 }
 
 export const sendEmailVerificationEmail = async (email: string, verifyUrl: string): Promise<void> => {
-    const expiryMs = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 86_400_000)
+    const expiryMs = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 600_000)
 
     await getTransport().sendMail({
         to: email,
-        subject: 'Verify your spndr email address',
+        subject: 'Verify your Corvale email address',
         html: emailVerificationEmailHtml(verifyUrl, expiryMs),
-        text: `Verify your spndr email address: ${verifyUrl}`,
+        text: `Verify your Corvale email address: ${verifyUrl}`,
     })
 }

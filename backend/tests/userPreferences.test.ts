@@ -155,4 +155,92 @@ describe('User preferences', () => {
 
         expect(badPageSize.status).toBe(400)
     })
+
+    it('updates full name and timezone', async () => {
+        const { token } = await registerUser(app, {
+            email: 'profile-update@example.com',
+        })
+
+        const updateRes = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ fullName: 'New Name', timezone: 'America/New_York' })
+
+        expect(updateRes.status).toBe(200)
+        expect(updateRes.body.data.fullName).toBe('New Name')
+        expect(updateRes.body.data.timezone).toBe('America/New_York')
+    })
+
+    it('trims whitespace around a full name update', async () => {
+        const { token } = await registerUser(app, {
+            email: 'profile-trim@example.com',
+        })
+
+        const updateRes = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ fullName: '  Spaced Name  ' })
+
+        expect(updateRes.status).toBe(200)
+        expect(updateRes.body.data.fullName).toBe('Spaced Name')
+    })
+
+    it('rejects an empty full name and an invalid timezone', async () => {
+        const { token } = await registerUser(app, {
+            email: 'invalid-profile-update@example.com',
+        })
+
+        const badName = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ fullName: '   ' })
+
+        expect(badName.status).toBe(400)
+
+        const badTimezone = await request(app)
+            .patch('/api/v1/auth/user')
+            .set(authHeader(token))
+            .send({ timezone: 'Not/AZone' })
+
+        expect(badTimezone.status).toBe(400)
+    })
+
+    // V5: the signup form auto-detects the device timezone and sends it in the register payload
+    // (there is no dropdown any more). `registerUser` reads it where it previously ignored it.
+    it('stores a valid auto-detected timezone from the signup payload', async () => {
+        const res = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
+            fullName: 'Tz User',
+            email: 'signup-tz@example.com',
+            password: 'TestPassword123!',
+            timezone: 'Asia/Kolkata',
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.user.timezone).toBe('Asia/Kolkata')
+    })
+
+    it('falls back to UTC when the signup timezone is missing or invalid, without failing signup', async () => {
+        const missing = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
+            fullName: 'No Tz',
+            email: 'signup-no-tz@example.com',
+            password: 'TestPassword123!',
+        })
+        expect(missing.status).toBe(201)
+        expect(missing.body.data.user.timezone).toBe('UTC')
+
+        const invalid = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
+            fullName: 'Bad Tz',
+            email: 'signup-bad-tz@example.com',
+            password: 'TestPassword123!',
+            timezone: 'Not/AZone',
+        })
+        expect(invalid.status).toBe(201)
+        expect(invalid.body.data.user.timezone).toBe('UTC')
+    })
 })

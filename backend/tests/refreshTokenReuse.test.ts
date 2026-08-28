@@ -44,7 +44,7 @@ import { ERROR_MESSAGES } from '../utils/errorMessages'
  * specific key name the implementation is free to choose.
  */
 
-const REFRESH_COOKIE = 'spndr_refresh'
+const REFRESH_COOKIE = 'corvale_refresh'
 
 const getSetCookieHeaders = (headers: request.Response['headers']): string[] => {
     const setCookie = headers['set-cookie']

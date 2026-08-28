@@ -39,7 +39,7 @@ Deletion is permanent and cannot be undone.
 
 ## Empty state
 
-If you have no expense entries, spndr shows:
+If you have no expense entries, Corvale shows:
 
 - **Title:** No expenses yet
 - **Description:** Add your first expense to start tracking spending.

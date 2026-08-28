@@ -420,7 +420,9 @@ export const computeNetWorthTrend = async (
     let credit = 0
 
     for (const account of accounts) {
-        const balance = roundMoney(account.currentBalance)
+        const balance = roundMoney(
+            account.balanceUnit === 'minor' ? fromMinorUnits(account.currentBalance) : account.currentBalance
+        )
         if (account.type === 'credit') {
             credit = roundMoney(credit + balance)
         } else if (account.type === 'savings') {
@@ -470,7 +472,10 @@ export const computeBudgetOverview = async (
 
     const categories =
         categoryIds.length > 0
-            ? await Category.find({ _id: { $in: categoryIds } })
+            ? await Category.find({
+                  _id: { $in: categoryIds },
+                  userId: { $in: [new Types.ObjectId(userId), null] },
+              })
             : []
     const categoryMap = new Map(categories.map((category) => [category._id.toString(), category.name]))
 
@@ -642,7 +647,8 @@ export const computeCategoryBreakdown = async (
     }
 
     const categoryIds = rows.map((row) => row._id as Types.ObjectId)
-    const categories = await Category.find({ _id: { $in: categoryIds } })
+    const userScope = { $in: [new Types.ObjectId(userId), null] }
+    const categories = await Category.find({ _id: { $in: categoryIds }, userId: userScope })
     const categoryMap = new Map(categories.map((category) => [category._id.toString(), category]))
 
     const missingMasterIds = [
@@ -653,7 +659,7 @@ export const computeCategoryBreakdown = async (
         ),
     ]
     if (missingMasterIds.length > 0) {
-        const masters = await Category.find({ _id: { $in: missingMasterIds } })
+        const masters = await Category.find({ _id: { $in: missingMasterIds }, userId: userScope })
         for (const master of masters) {
             categoryMap.set(master._id.toString(), master)
         }

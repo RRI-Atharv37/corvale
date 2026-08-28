@@ -37,6 +37,8 @@ describe('Auth rate limiting', () => {
             const res = await request(registerApp)
                 .post('/api/v1/auth/register')
                 .send({
+                    acceptedTerms: true,
+                    ageAttested: true,
                     fullName: 'Rate Limit User',
                     email: `ratelimit-reg-${i}@example.com`,
                     password: 'short',
@@ -48,6 +50,8 @@ describe('Auth rate limiting', () => {
         const blocked = await request(registerApp)
             .post('/api/v1/auth/register')
             .send({
+                acceptedTerms: true,
+                ageAttested: true,
                 fullName: 'Blocked User',
                 email: 'blocked@example.com',
                 password: 'ValidPassword123!',

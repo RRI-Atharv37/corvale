@@ -13,13 +13,13 @@ You create budgets from the **Budgets** page. Each budget defines how much you p
 3. Fill in the form fields described below.
 4. Click **Create budget** to save.
 
-On success, spndr closes the modal, shows a success notification, and refreshes the budget list with progress calculated from your existing transactions.
+On success, Corvale closes the modal, shows a success notification, and refreshes the budget list with progress calculated from your existing transactions.
 
 ## Form fields
 
 ### Name (optional)
 
-A short label such as "Groceries" or "Monthly spending." If you leave this empty, spndr displays a default name based on the category scope.
+A short label such as "Groceries" or "Monthly spending." If you leave this empty, Corvale displays a default name based on the category scope.
 
 ### Period type
 
@@ -39,7 +39,7 @@ When **Monthly** is selected:
 - **Month** - the calendar month (January through December)
 - **Year** - the four-digit year (for example, `2026`)
 
-spndr resolves the exact start and end timestamps using your account timezone.
+Corvale resolves the exact start and end timestamps using your account timezone.
 
 ### Custom period fields
 
@@ -72,7 +72,7 @@ Choose which accounts count toward this budget:
 - **All accounts** (default) - every active account contributes to spent totals
 - **Selected accounts** - check one or more accounts to scope spending
 
-If you deselect all accounts while active accounts exist, spndr asks you to pick at least one or revert to all accounts.
+If you deselect all accounts while active accounts exist, Corvale asks you to pick at least one or revert to all accounts.
 
 ## Editing and archiving
 

@@ -4,7 +4,7 @@ title: Installation
 
 ## Before you begin
 
-Install spndr on a computer where you can run a local development environment. You need the following tools:
+Install Corvale on a computer where you can run a local development environment. You need the following tools:
 
 | Tool | Minimum version | Purpose |
 |------|-----------------|---------|
@@ -16,11 +16,11 @@ You also need a terminal (Command Prompt, PowerShell, or Terminal) and a code ed
 
 ## Clone the repository
 
-Open a terminal and clone the spndr repository:
+Open a terminal and clone the Corvale repository:
 
 ```bash
-git clone https://github.com/RRI-Atharv37/spndr.git
-cd spndr
+git clone https://github.com/RRI-Atharv37/corvale.git
+cd corvale
 ```
 
 ## Install backend dependencies
@@ -37,7 +37,7 @@ npm install
 Open a new terminal tab or window, navigate to the frontend folder, and install packages:
 
 ```bash
-cd frontend/spndr
+cd frontend/corvale
 npm install
 ```
 
@@ -60,13 +60,20 @@ Create a `.env` file inside the `backend/` folder with the following variables:
 
 ```
 PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/spndr
-JWT_SECRET=your-secret-key-here
+MONGO_URI=mongodb://127.0.0.1:27017/corvale
+JWT_SECRET=paste-a-generated-secret-here
 JWT_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
 ```
 
-Replace `your-secret-key-here` with a long, random string. Never commit your `.env` file to version control.
+Replace the `JWT_SECRET` value with a unique random string — the server refuses to start if it's
+left at a placeholder or a well-known weak value. Generate one with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+Never commit your `.env` file to version control.
 
 ### Frontend
 

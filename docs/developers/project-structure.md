@@ -5,7 +5,7 @@ title: Project Structure
 ## Repository layout
 
 ```
-spndr/
+corvale/
 ├── backend/                  API server
 │   ├── app.ts                Express app factory and route mounting
 │   ├── server.ts             Entry point - connects DB and listens
@@ -42,7 +42,7 @@ spndr/
 │   ├── utils/                Balance engine, transaction helpers, shared utils
 │   ├── scripts/              Migration CLI scripts
 │   └── tests/                Vitest integration and unit tests
-├── frontend/spndr/           React SPA
+├── frontend/corvale/          React SPA
 │   ├── src/
 │   │   ├── App.tsx           Route definitions
 │   │   ├── main.tsx          Entry point

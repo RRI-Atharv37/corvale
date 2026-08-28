@@ -1,18 +1,38 @@
-# Self-hosting stack for spndr: MongoDB + the Express API + the built frontend behind nginx.
+# Self-hosting stack for Corvale: MongoDB + the Express API + the built frontend behind nginx.
 # See docs/developers/deployment.md for the full setup guide, including HTTPS, ClamAV, and
 # S3-compatible receipt storage.
+#
+# This stack serves plain HTTP on :8080 / :5000. Any internet-facing deployment MUST run behind
+# a TLS terminator that also redirects HTTP->HTTPS (Caddy does both automatically) - without it
+# session cookies and financial data cross the wire in cleartext. Also set NODE_ENV=production
+# in backend/.env so the refresh cookie is marked Secure. See the "Putting it behind HTTPS"
+# section of the deployment guide.
 #
 # Before running `docker compose up -d --build`:
 #   1. cp backend/.env.example backend/.env   and fill in real values (JWT_SECRET,
 #      OFFLINE_GRANT_PRIVATE_KEY, CLIENT_URL, etc). MONGO_URI in that file is overridden below
 #      to point at the bundled `mongo` service.
 #   2. cp .env.example .env   and fill in the frontend build-time values (these become part of
-#      the compiled JS, so they must be set before `docker compose build`, not after).
+#      the compiled JS, so they must be set before `docker compose build`, not after) AND set
+#      MONGO_ROOT_PASSWORD — the bundled MongoDB runs with authentication enabled (SEC-37) and
+#      `docker compose up` refuses to start until that value is set.
 
 services:
   mongo:
     image: mongo:7
     restart: unless-stopped
+    # SEC-37: this service is deliberately NOT published to the host. There is no `ports:` entry
+    # here and there must never be one — the absent mapping is load-bearing. The bundled MongoDB
+    # is reachable only from the other services on the internal Compose network, and that
+    # isolation plus the credentials below are the only things between the internet and the
+    # entire financial dataset. Do NOT add `ports: ['27017:27017']`, not even "just to debug":
+    # use `docker compose exec mongo mongosh -u "$MONGO_ROOT_USERNAME" -p "$MONGO_ROOT_PASSWORD"
+    # --authenticationDatabase admin` instead.
+    environment:
+      # Creates the root user in the `admin` database on the mongo-data volume's FIRST
+      # initialization only. Values come from the repo-root `.env` (see .env.example).
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-corvale}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env — see .env.example}
     volumes:
       - mongo-data:/data/db
 
@@ -26,7 +46,12 @@ services:
     environment:
       # Overrides whatever MONGO_URI is set to in backend/.env so the container always talks
       # to the bundled `mongo` service rather than a stale localhost value.
-      MONGO_URI: mongodb://mongo:27017/spndr
+      # Renamed spndr -> corvale with the product rename. If you self-hosted before the rename,
+      # your data is still in the `spndr` database on the same mongo volume — either set this
+      # back to `.../spndr` or `db.copyDatabase`/`mongodump | mongorestore` it into `corvale`.
+      # Credentials and `authSource=admin` match the root user created by the `mongo` service
+      # above (SEC-37). Keep MONGO_ROOT_PASSWORD URL-safe — it is substituted in here unescaped.
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-corvale}:${MONGO_ROOT_PASSWORD}@mongo:27017/corvale?authSource=admin
       PORT: 5000
       # Overrides backend/.env's CLIENT_URL (which most people leave pointed at :5173 for their
       # normal non-Docker `npm run dev`) with this stack's actual frontend origin, so CORS
@@ -45,7 +70,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend/spndr/Dockerfile
+      dockerfile: frontend/corvale/Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api/v1}
         VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://localhost:5000}

@@ -34,6 +34,8 @@ export interface IRecurringRule extends Document {
     isActive: boolean
     isArchived: boolean
     isCancelled: boolean
+    /** See `Transaction.createdByRemovedUser` - same meaning, same sentinel `userId`. */
+    createdByRemovedUser?: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -64,6 +66,7 @@ const RecurringRuleSchema = new Schema<IRecurringRule>(
         isActive: { type: Boolean, default: true },
         isArchived: { type: Boolean, default: false },
         isCancelled: { type: Boolean, default: false },
+        createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

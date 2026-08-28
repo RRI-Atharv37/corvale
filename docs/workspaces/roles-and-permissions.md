@@ -16,7 +16,7 @@ Only the owner can invite members, change roles, or remove members. There is exa
 
 ## What viewers see
 
-If you have viewer access to a workspace, spndr shows a banner explaining that your access is read-only. Create, edit, and delete controls are hidden throughout the app while you're in that workspace's scope - you can still switch back to Personal or another workspace where you have edit access.
+If you have viewer access to a workspace, Corvale shows a banner explaining that your access is read-only. Create, edit, and delete controls are hidden throughout the app while you're in that workspace's scope - you can still switch back to Personal or another workspace where you have edit access.
 
 ## Related pages
 

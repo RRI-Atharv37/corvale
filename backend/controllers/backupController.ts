@@ -48,7 +48,7 @@ export const exportBackup = asyncHandler(async (req: AuthRequest, res: Response)
     }
 
     const scopeLabel = workspaceId ? 'workspace' : 'personal'
-    const filename = `spndr-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`
+    const filename = `corvale-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)

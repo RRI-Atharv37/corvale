@@ -4,7 +4,7 @@ title: Workspaces Overview
 
 ## Share your finances with others
 
-By default, everything you create in spndr is **personal** - visible only to you. **Workspaces** let you share accounts, transactions, budgets, savings goals, and recurring rules with other people, like a household or roommates splitting bills.
+By default, everything you create in Corvale is **personal** - visible only to you. **Workspaces** let you share accounts, transactions, budgets, savings goals, and recurring rules with other people, like a household or roommates splitting bills.
 
 Navigate to Workspaces from the sidebar or go to `/workspaces`.
 

@@ -28,11 +28,11 @@ whichever of the two is in use separately from the steps below.
 ## Taking a backup
 
 ```bash
-mongodump --uri="<connection-string>" --gzip --out=./spndr-backup-$(date +%Y%m%d-%H%M%S)
+mongodump --uri="<connection-string>" --gzip --out=./corvale-backup-$(date +%Y%m%d-%H%M%S)
 ```
 
 This dumps every collection in every database the credential can see, as BSON, one file per
-collection plus a `.metadata.json` sidecar with its indexes. `spndr`'s own data lives in a single
+collection plus a `.metadata.json` sidecar with its indexes. Corvale's own data lives in a single
 database (the one named in `MONGO_URI`'s path segment) — add `--db=<name>` to scope the dump to
 just that database on a shared cluster.
 
@@ -53,7 +53,7 @@ Restore into a **scratch database or a fresh scratch deployment first** — neve
 production — so a bad dump or a wrong `--uri` can't make an active incident worse:
 
 ```bash
-mongorestore --uri="<scratch-connection-string>" --gzip --nsInclude="<db-name>.*" ./spndr-backup-<timestamp>
+mongorestore --uri="<scratch-connection-string>" --gzip --nsInclude="<db-name>.*" ./corvale-backup-<timestamp>
 ```
 
 Once the scratch restore is verified (see below), point the application's `MONGO_URI` at the

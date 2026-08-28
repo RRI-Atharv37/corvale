@@ -10,7 +10,7 @@ import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { hashToken } from '../utils/tokenUtils'
 import { createPasswordResetForUser } from '../utils/passwordResetUtils'
 
-const REFRESH_COOKIE = 'spndr_refresh'
+const REFRESH_COOKIE = 'corvale_refresh'
 
 const getSetCookieHeaders = (headers: request.Response['headers']): string[] => {
     const setCookie = headers['set-cookie']
@@ -39,7 +39,7 @@ describe('Auth lifecycle', () => {
         const email = 'lifecycle-login@example.com'
         const password = 'TestPassword123!'
 
-        await User.create({ fullName: 'Lifecycle User', email, password })
+        await User.create({ fullName: 'Lifecycle User', email, password, isEmailVerified: true })
 
         const { res } = await loginWithAgent(app, email, password)
 
@@ -62,7 +62,7 @@ describe('Auth lifecycle', () => {
         const email = 'lifecycle-refresh@example.com'
         const password = 'TestPassword123!'
 
-        await User.create({ fullName: 'Refresh User', email, password })
+        await User.create({ fullName: 'Refresh User', email, password, isEmailVerified: true })
         const { agent, res: loginRes } = await loginWithAgent(app, email, password)
 
         const oldRefreshCookie = findRefreshCookie(loginRes.headers)
@@ -137,7 +137,7 @@ describe('Auth lifecycle', () => {
         const email = 'lifecycle-logout@example.com'
         const password = 'TestPassword123!'
 
-        await User.create({ fullName: 'Logout User', email, password })
+        await User.create({ fullName: 'Logout User', email, password, isEmailVerified: true })
         const { agent, res: loginRes } = await loginWithAgent(app, email, password)
 
         const refreshCookie = findRefreshCookie(loginRes.headers)

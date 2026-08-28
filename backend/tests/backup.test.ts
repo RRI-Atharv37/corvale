@@ -246,7 +246,7 @@ describe('JSON backup restore - dry run preview', () => {
             .send({ backup: { version: 1, accounts: [] } })
 
         expect(res.status).toBe(400)
-        expect(res.body.message).toMatch(/not a valid spndr backup/i)
+        expect(res.body.message).toMatch(/not a valid corvale backup/i)
     })
 
     it('requires a backup payload or file', async () => {
@@ -366,5 +366,58 @@ describe('JSON backup restore - commit with id mapping', () => {
             .send({ backup: badPayload })
 
         expect(res.status).toBe(400)
+    })
+})
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const AdmZip = require('adm-zip') as new () => {
+    addFile: (entryName: string, data: Buffer) => void
+    getEntries: () => { entryName: string }[]
+    toBuffer: () => Buffer
+}
+
+/**
+ * V7.3b rename-compat shim: the backup ZIP's JSON entry is renamed from `spndr-backup.json` to
+ * `corvale-backup.json`. New exports must use the new name, but `extractBackupFromUpload` must
+ * keep reading the legacy name too - otherwise a v1.0.0 build can't restore a backup a tester
+ * downloaded before the rename, which is exactly the escape hatch backups exist to provide (see
+ * ROADMAP's V7 compat matrix).
+ */
+describe('Backup ZIP entry name (V7.3b rename shim)', () => {
+    it('exports a ZIP whose JSON entry uses the new corvale-backup.json name', async () => {
+        const { token } = await seedUserDirectly({ email: 'backup-zip-entry-new@example.com' })
+
+        const res = await request(app)
+            .get('/api/v1/backup/export')
+            .query({ format: 'zip' })
+            .set(authHeader(token))
+            .buffer(true)
+            .parse((response, callback) => {
+                const chunks: Buffer[] = []
+                response.on('data', (chunk: Buffer) => chunks.push(chunk))
+                response.on('end', () => callback(null, Buffer.concat(chunks)))
+            })
+
+        expect(res.status).toBe(200)
+        const zip = new AdmZip(res.body as Buffer)
+        const entryNames = zip.getEntries().map((entry) => entry.entryName)
+        expect(entryNames).toContain('corvale-backup.json')
+        expect(entryNames).not.toContain('spndr-backup.json')
+    })
+
+    it('still restores a ZIP built with the legacy spndr-backup.json entry name (dual-read)', async () => {
+        const { token } = await seedUserDirectly({ email: 'backup-zip-entry-legacy@example.com' })
+
+        const exportRes = await request(app).get('/api/v1/backup/export').set(authHeader(token))
+
+        const legacyZip = new AdmZip()
+        legacyZip.addFile('spndr-backup.json', Buffer.from(JSON.stringify(exportRes.body)))
+
+        const restoreRes = await request(app)
+            .post('/api/v1/backup/restore')
+            .set(authHeader(token))
+            .attach('file', legacyZip.toBuffer(), 'legacy-backup.zip')
+
+        expect(restoreRes.status).toBe(201)
     })
 })

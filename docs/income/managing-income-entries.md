@@ -37,12 +37,12 @@ Deletion cannot be undone. The entry is removed from your database immediately.
 ## Pagination behavior
 
 - Entries display **10 per page**.
-- When you delete the last entry on a page (and you are not on page 1), spndr automatically moves you to the previous page.
-- When you add a new entry, spndr resets to page 1 so you see the latest data.
+- When you delete the last entry on a page (and you are not on page 1), Corvale automatically moves you to the previous page.
+- When you add a new entry, Corvale resets to page 1 so you see the latest data.
 
 ## Empty state
 
-If you have no income entries, spndr shows:
+If you have no income entries, Corvale shows:
 
 - **Title:** No income yet
 - **Description:** Add your first income entry to start tracking.

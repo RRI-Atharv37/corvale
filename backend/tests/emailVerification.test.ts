@@ -12,10 +12,13 @@ import { createEmailVerificationForUser } from '../utils/emailVerificationUtils'
  * Email verification (pulled forward from L9's G2 scope, built alongside S7 since both need
  * the mail-sending module in utils/mailService.ts).
  *
- * Hard-block model: a freshly-registered user can still log in, but every route behind the
- * `protect` middleware (everything except a small allowlist on `authenticateOnly`) rejects
- * them with 403 EMAIL_NOT_VERIFIED until they confirm the emailed token. Existing accounts
- * are grandfathered in via `backfillEmailVerification` so only post-deploy signups verify.
+ * Hard-block model (V9): `POST /auth/login` itself refuses an unverified account with 403
+ * EMAIL_NOT_VERIFIED, and every route behind the `protect` middleware (everything except a
+ * small allowlist on `authenticateOnly`) does the same. Registration still auto-issues a
+ * session so a brand-new signup lands on the in-app verify screen; a returning unverified user
+ * who is blocked at login can request a fresh link via the unauthenticated `{ email }` form of
+ * `POST /auth/email-verification/resend`, which stays enumeration-safe. Existing accounts are
+ * grandfathered in via `backfillEmailVerification` so only post-deploy signups verify.
  */
 describe('Email verification', () => {
     const originalSmtpHost = process.env.SMTP_HOST
@@ -28,6 +31,8 @@ describe('Email verification', () => {
 
     const registerRaw = async (app: ReturnType<typeof createApp>, email: string) => {
         const res = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Unverified User',
             email,
             password: 'TestPassword123!',
@@ -85,6 +90,81 @@ describe('Email verification', () => {
 
         const logoutAllRes = await request(app).post('/api/v1/auth/logout-all').set(authHeader(token))
         expect(logoutAllRes.status).toBe(200)
+    })
+
+    it('refuses login for an unverified account with 403 EMAIL_NOT_VERIFIED and issues no session', async () => {
+        const app = createApp()
+        await registerRaw(app, 'verify-login-blocked@example.com')
+
+        const res = await request(app)
+            .post('/api/v1/auth/login')
+            .send({ email: 'verify-login-blocked@example.com', password: 'TestPassword123!' })
+
+        expect(res.status).toBe(403)
+        expect(res.body.message).toBe(ERROR_MESSAGES.AUTH.EMAIL_NOT_VERIFIED)
+        expect(res.body.data?.token).toBeUndefined()
+        expect(res.headers['set-cookie']).toBeUndefined()
+    })
+
+    it('allows login once the account is verified', async () => {
+        const app = createApp()
+        await registerRaw(app, 'verify-login-ok@example.com')
+        await User.updateOne(
+            { email: 'verify-login-ok@example.com' },
+            { $set: { isEmailVerified: true } }
+        )
+
+        const res = await request(app)
+            .post('/api/v1/auth/login')
+            .send({ email: 'verify-login-ok@example.com', password: 'TestPassword123!' })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.token).toBeTruthy()
+    })
+
+    it('resends a fresh link for an unauthenticated request carrying a valid unverified email', async () => {
+        process.env.SMTP_HOST = 'smtp.test.local'
+        const sendMail = vi.fn().mockResolvedValue({ messageId: 'resend-public-1' })
+        setMailTransport({ sendMail })
+
+        const app = createApp()
+        await registerRaw(app, 'verify-public-resend@example.com')
+        sendMail.mockClear()
+
+        const res = await request(app)
+            .post('/api/v1/auth/email-verification/resend')
+            .send({ email: 'verify-public-resend@example.com' })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.message).toBe(ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_SENT)
+        expect(sendMail).toHaveBeenCalledTimes(1)
+    })
+
+    it('unauthenticated resend is enumeration-safe: unknown and already-verified emails get the same generic 200 with no send', async () => {
+        process.env.SMTP_HOST = 'smtp.test.local'
+        const sendMail = vi.fn().mockResolvedValue({ messageId: 'resend-public-2' })
+        setMailTransport({ sendMail })
+
+        const app = createApp()
+        await registerRaw(app, 'verify-public-verified@example.com')
+        await User.updateOne(
+            { email: 'verify-public-verified@example.com' },
+            { $set: { isEmailVerified: true } }
+        )
+        sendMail.mockClear()
+
+        const unknown = await request(app)
+            .post('/api/v1/auth/email-verification/resend')
+            .send({ email: 'nobody-at-all@example.com' })
+        const alreadyVerified = await request(app)
+            .post('/api/v1/auth/email-verification/resend')
+            .send({ email: 'verify-public-verified@example.com' })
+
+        expect(unknown.status).toBe(200)
+        expect(unknown.body.data.message).toBe(ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_SENT)
+        expect(alreadyVerified.status).toBe(200)
+        expect(alreadyVerified.body.data.message).toBe(ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_SENT)
+        expect(sendMail).not.toHaveBeenCalled()
     })
 
     it('confirms verification with the emailed token and unblocks protected routes', async () => {

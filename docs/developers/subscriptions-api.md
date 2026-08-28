@@ -7,7 +7,7 @@ title: Subscriptions API
 Requires authentication. Lists active recurring expense rules whose interval qualifies as a subscription (weekly through yearly - one-off `daily`/`custom` rules aren't included) and totals their cost.
 
 ::: warning No frontend yet
-This API is implemented and available today, but spndr's web UI does not yet have a page for it. Use it directly if you're building against the API.
+This API is implemented and available today, but Corvale's web UI does not yet have a page for it. Use it directly if you're building against the API.
 :::
 
 ### Query parameters

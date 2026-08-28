@@ -1,5 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { applySoftDelete } from '../utils/applySoftDelete'
 
 export const CATEGORIZATION_MATCH_TYPES = [
@@ -48,6 +49,8 @@ const CategorizationRuleSchema = new Schema<ICategorizationRule>(
 CategorizationRuleSchema.index({ userId: 1, priority: -1, isActive: 1 })
 CategorizationRuleSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 
+// RLS before soft-delete so the guard sees the caller's raw filter (SEC-30).
+applyRowLevelSecurity(CategorizationRuleSchema)
 applySoftDelete(CategorizationRuleSchema)
 
 const CategorizationRule: Model<ICategorizationRule> = mongoose.model<ICategorizationRule>(

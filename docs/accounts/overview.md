@@ -4,7 +4,7 @@ title: Accounts Overview
 
 ## Organize where your money lives
 
-The **Accounts** page lets you create and manage financial accounts - checking, cash, credit, and savings. Accounts give spndr a clearer picture of your net worth and spendable balance.
+The **Accounts** page lets you create and manage financial accounts - checking, cash, credit, and savings. Accounts give Corvale a clearer picture of your net worth and spendable balance.
 
 Navigate to Accounts from the sidebar or go to `/accounts`.
 
@@ -22,19 +22,19 @@ On the Accounts page, you can:
 
 ## How accounts affect your dashboard
 
-When you create at least one active account, spndr switches to **accounts mode** for balance calculations:
+When you create at least one active account, Corvale switches to **accounts mode** for balance calculations:
 
 - **Net worth** derives from the sum of your account balances
 - **Spendable balance** derives from checking and cash account balances minus your saver allocation
 - An additional **In Accounts** card appears on the dashboard
 
-When you have no active accounts, spndr uses **legacy mode** where net worth equals total income minus total expenses.
+When you have no active accounts, Corvale uses **legacy mode** where net worth equals total income minus total expenses.
 
 See [How Balances Are Calculated](../balances/how-balances-are-calculated.md) for details.
 
 ## Transactions update account balances
 
-Every transaction links to an account. When you create, edit, or delete an income, expense, or transfer entry, spndr updates the linked account balance automatically. Opening balances set the starting point; transactions keep balances current.
+Every transaction links to an account. When you create, edit, or delete an income, expense, or transfer entry, Corvale updates the linked account balance automatically. Opening balances set the starting point; transactions keep balances current.
 
 ## Archived accounts
 

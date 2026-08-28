@@ -4,7 +4,7 @@ title: Deployment Guide
 
 ## Who this is for
 
-This guide is for self-hosters: anyone running spndr on their own server or home lab, outside
+This guide is for self-hosters: anyone running Corvale on their own server or home lab, outside
 of local development. It covers the Docker Compose stack shipped in the repository root, plus
 the production-specific configuration (HTTPS, backups, virus scanning, receipt storage) that
 [Installation](../getting-started/installation.md) and [Running
@@ -15,7 +15,7 @@ still applies conceptually - jump to [Deploying without Docker](#deploying-witho
 
 ## Deployment topology, in short
 
-spndr's session cookie is `SameSite=Lax` by default, which requires the frontend and API to
+Corvale's session cookie is `SameSite=Lax` by default, which requires the frontend and API to
 share one registrable domain (same-site, though they can live on different ports or
 subdomains). The Docker Compose stack below satisfies this out of the box by exposing the
 frontend on `:8080` and the API on `:5000` of the same host. Read [Deployment
@@ -26,21 +26,30 @@ unrelated domains (for example, a frontend on Vercel calling an API on Render).
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2 (`docker compose`, not
   the older standalone `docker-compose`)
-- A domain name and a reverse proxy if you want HTTPS and a real hostname (see
-  [Putting it behind HTTPS](#putting-it-behind-https)) - not required to try spndr locally
+- A domain name and a reverse proxy that terminates TLS (see [Putting it behind
+  HTTPS](#putting-it-behind-https)). This is **required** for any deployment reachable from the
+  internet - not just a nice-to-have. It's only skippable for a purely local or internal-network
+  trial that never leaves your machine.
 
 ## Quickstart
 
 ```bash
-git clone https://github.com/RRI-Atharv37/spndr.git
-cd spndr
+git clone https://github.com/RRI-Atharv37/corvale.git
+cd corvale
 cp backend/.env.example backend/.env
 cp .env.example .env
 ```
 
 Edit `backend/.env` and fill in at minimum:
 
-- `JWT_SECRET` - a long, random string
+- `JWT_SECRET` - a unique random string of at least 32 characters. Don't leave it at the
+  placeholder - the API refuses to start on a placeholder or well-known weak value, and on
+  anything shorter than 32 characters when `NODE_ENV=production`. Generate one with:
+
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+  ```
+
 - `OFFLINE_GRANT_PRIVATE_KEY` - generate a keypair as described in [Offline session
   grant](./environment-variables.md#offline-session-grant)
 
@@ -53,11 +62,17 @@ their normal non-Docker `npm run dev`. If you change the frontend's published po
 HTTPS](#putting-it-behind-https)), update the `CLIENT_URL` override there to match, not the value
 in `backend/.env`.
 
-Edit the root `.env` (a separate file from `backend/.env`) and set `VITE_OFFLINE_GRANT_PUBLIC_KEY`
-to the public half of the same keypair, plus `VITE_API_URL`/`VITE_API_ORIGIN` if you're not using
-the default `localhost` ports. These become part of the compiled frontend JS at build time, so
-they must be correct *before* building, not changed afterward - see [Why the frontend needs its
-own .env](#why-the-frontend-needs-its-own-env-file).
+Edit the root `.env` (a separate file from `backend/.env`) and set:
+
+- `MONGO_ROOT_PASSWORD` - a strong password for the bundled MongoDB, which runs with
+  authentication enabled. `docker compose up` refuses to start until this is set. Use only
+  URL-safe characters (letters, digits, and `- _ . ~`) - the password is substituted into the
+  API's connection string unescaped. `MONGO_ROOT_USERNAME` can stay at its `corvale` default.
+- `VITE_OFFLINE_GRANT_PUBLIC_KEY` - the public half of the offline-grant keypair, plus
+  `VITE_API_URL`/`VITE_API_ORIGIN` if you're not using the default `localhost` ports. These
+  become part of the compiled frontend JS at build time, so they must be correct *before*
+  building, not changed afterward - see [Why the frontend needs its own
+  .env](#why-the-frontend-needs-its-own-env-file).
 
 Then build and start everything:
 
@@ -80,9 +95,9 @@ curl http://localhost:5000/ready    # {"success":true,"data":{"status":"ready"}}
 
 | Service | Image / build | Purpose |
 |---------|---------------|---------|
-| `mongo` | `mongo:7` | System of record. Data persists in the `mongo-data` volume |
+| `mongo` | `mongo:7` | System of record. Runs with authentication enabled (root user from `MONGO_ROOT_USERNAME`/`MONGO_ROOT_PASSWORD`); never published to the host. Data persists in the `mongo-data` volume |
 | `backend` | built from `backend/Dockerfile` | The Express API, compiled with `tsc` and run under Node |
-| `frontend` | built from `frontend/spndr/Dockerfile` | The Vite production build, served as static files by nginx with SPA routing |
+| `frontend` | built from `frontend/corvale/Dockerfile` | The Vite production build, served as static files by nginx with SPA routing |
 | `clamav` | `clamav/clamav:stable` | Optional receipt virus scanning - only started with `--profile clamav` |
 
 The `backend` Dockerfile builds from the repository root (not `backend/` alone) because the
@@ -117,29 +132,93 @@ cadence guidance. That runbook also covers backing up receipts under either stor
 To point at MongoDB Atlas or another managed provider instead of the `mongo` service, remove
 the `mongo` service and its `depends_on` entry from `docker-compose.yml`, and delete the
 `MONGO_URI` override under `backend.environment` so the real connection string in
-`backend/.env` takes effect.
+`backend/.env` takes effect. `MONGO_ROOT_USERNAME`/`MONGO_ROOT_PASSWORD` in the root `.env` are
+then unused - the managed provider's own connection string (with its own credentials) is the
+whole story. Managed MongoDB always has authentication on; if you run your own instance instead,
+enable it there too.
+
+## Database authentication
+
+The bundled `mongo` service runs with authentication enabled. Two things protect the data, and
+you need to keep both:
+
+- **The root credentials.** `MONGO_ROOT_USERNAME` (default `corvale`) and `MONGO_ROOT_PASSWORD`
+  from the root `.env` create a root user on the `mongo-data` volume the first time it's
+  created, and the API connects with them over `authSource=admin`.
+- **Network isolation.** The `mongo` service has no `ports:` mapping, so it's reachable only
+  from the other containers on the Compose network, never from the host or the internet. This
+  is deliberate and load-bearing - a comment on the service in `docker-compose.yml` says so.
+  Don't add a port mapping "just to debug"; run `docker compose exec mongo mongosh -u corvale
+  -p "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin` instead.
+
+### Enabling auth on an existing mongo-data volume
+
+`MONGO_INITDB_ROOT_USERNAME`/`_PASSWORD` only create the root user when the data directory is
+**empty**. If you're upgrading a deployment whose `mongo-data` volume already has data, adding
+the credentials to `.env` makes the container start with `--auth` while no user exists - and the
+API can't connect.
+
+Create the user once by hand first, while `MONGO_ROOT_PASSWORD` is still unset (so `mongo` is
+still running without auth):
+
+```bash
+docker compose exec mongo mongosh admin --eval 'db.createUser({ user: "corvale", pwd: "PUT_YOUR_MONGO_ROOT_PASSWORD_HERE", roles: [{ role: "root", db: "admin" }] })'
+```
+
+Then set `MONGO_ROOT_PASSWORD` in `.env` to that same value and run `docker compose up -d`. The
+`mongo` container restarts with auth on, and the API authenticates as the user you just created.
 
 ## Putting it behind HTTPS
 
-The Compose stack above serves plain HTTP on `:8080`/`:5000`, which is fine for local use or an
-internal network. For anything reachable from the internet, put a reverse proxy in front that
-terminates TLS and forwards to the frontend container. [Caddy](https://caddyserver.com/) does
-this with automatic Let's Encrypt certificates and almost no configuration - a `Caddyfile` on
-the host, outside the Compose stack:
+The Compose stack above serves plain HTTP on `:8080`/`:5000`. That is fine for a local or
+internal-network trial, but **any deployment reachable from the internet must run behind a TLS
+terminator** - this is a hard requirement, for three concrete reasons:
+
+- The refresh-token cookie is only marked `Secure` when `NODE_ENV=production`, and even then a
+  browser will only keep a `Secure` cookie that arrived over HTTPS. Served over plain HTTP,
+  session cookies travel in cleartext.
+- Passwords and every financial record cross the wire in cleartext without TLS. Corvale's
+  privacy policy states credentials are transmitted only over encrypted connections - that is a
+  property of your deployment, and this is how you make it true.
+- The `Strict-Transport-Security` header the frontend sends is inert until the site is actually
+  served over HTTPS.
+
+Put a reverse proxy in front that terminates TLS and forwards to the frontend container.
+[Caddy](https://caddyserver.com/) does this with automatic Let's Encrypt certificates and
+almost no configuration - a `Caddyfile` on the host, outside the Compose stack:
 
 ```
-spndr.example.com {
+corvale.example.com {
     reverse_proxy localhost:8080
 }
 ```
 
+Caddy redirects HTTP to HTTPS automatically. If you use a different proxy (nginx, Traefik),
+configure the HTTP→HTTPS redirect explicitly and make sure it forwards `X-Forwarded-Proto` - the
+frontend container falls back to its own HTTP→HTTPS redirect when it sees
+`X-Forwarded-Proto: http`. Set `NODE_ENV=production` in `backend/.env` as well, so the
+refresh-token cookie is marked `Secure`.
+
 Update the `CLIENT_URL` override under `backend.environment` in `docker-compose.yml` (not
-`backend/.env` - see [Quickstart](#quickstart) above) to `https://spndr.example.com`, and rebuild
+`backend/.env` - see [Quickstart](#quickstart) above) to `https://corvale.example.com`, and rebuild
 the frontend image with `VITE_API_URL`/`VITE_API_ORIGIN` pointing at wherever the API is reachable
 through your proxy (either the same domain under a `/api` path you proxy separately, or a
-subdomain like `api.spndr.example.com` - either keeps the deployment same-site). An nginx or
+subdomain like `api.corvale.example.com` - either keeps the deployment same-site). An nginx or
 Traefik reverse proxy works the same way; the requirement is only that TLS terminates in front of
 both containers and `CLIENT_URL` matches the public frontend URL exactly.
+
+## Security headers
+
+The frontend container's nginx (`frontend/corvale/nginx.conf`) sends `Content-Security-Policy`
+(`frame-ancestors 'none'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` on every
+response. The `frame-ancestors` / `X-Frame-Options` pair is what stops the app being embedded in
+a hostile page and used for clickjacking - the CSP in `index.html` can't do this on its own,
+because `frame-ancestors` is ignored when it comes from a `<meta>` tag.
+
+If you serve the built frontend some other way (see [Deploying without
+Docker](#deploying-without-docker)), replicate these headers at your web server or CDN. If your
+reverse proxy adds its own headers, make sure it doesn't strip or duplicate these.
 
 ## Enabling ClamAV virus scanning
 
@@ -187,18 +266,19 @@ cleanly before relying on it.
 If you'd rather not use Docker, run the same three pieces as standalone processes:
 
 1. Follow [Installation](../getting-started/installation.md) to install dependencies and
-   configure `backend/.env` and `frontend/spndr/.env`.
+   configure `backend/.env` and `frontend/corvale/.env`.
 2. `cd backend && npm run build && npm start` - runs the compiled API under plain Node. Use a
    process manager (`pm2`, `systemd`, a container orchestrator) to keep it running and restart
    it on crash or reboot; nothing in this repository does that for you outside Docker's own
    `restart: unless-stopped`.
-3. `cd frontend/spndr && npm run build` - produces static files in `dist/`. Serve them with any
+3. `cd frontend/corvale && npm run build` - produces static files in `dist/`. Serve them with any
    static file server that supports SPA fallback routing (nginx, Caddy, Netlify, S3 + CloudFront
-   all work) - see `frontend/spndr/nginx.conf` in the repository for a minimal example
+   all work) - see `frontend/corvale/nginx.conf` in the repository for a minimal example
    configuration.
-4. Point both at a MongoDB instance you run or manage yourself, and follow the same environment
-   variable, HTTPS, virus-scanning, and receipt-storage guidance above - none of it is
-   Docker-specific.
+4. Point both at a MongoDB instance you run or manage yourself - with **authentication enabled**
+   and not exposed to any untrusted network - and put its full connection string (credentials
+   included) in `backend/.env`'s `MONGO_URI`. Then follow the same environment variable, HTTPS,
+   virus-scanning, and receipt-storage guidance above - none of it is Docker-specific.
 
 ## Related pages
 

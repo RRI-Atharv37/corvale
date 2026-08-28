@@ -1,5 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { applySoftDelete } from '../utils/applySoftDelete'
 
 export interface ITag extends Document {
@@ -24,6 +25,9 @@ const TagSchema = new Schema<ITag>(
 TagSchema.index({ userId: 1, name: 1 }, { unique: true, partialFilterExpression: { deletedAt: null } })
 TagSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 
+// RLS registered before soft-delete so the guard sees the caller's raw filter (a bare `{ _id }`
+// findById stays allowed) before the soft-delete hook injects `deletedAt: null` (SEC-30).
+applyRowLevelSecurity(TagSchema)
 applySoftDelete(TagSchema)
 
 const Tag: Model<ITag> = mongoose.model<ITag>('Tag', TagSchema)

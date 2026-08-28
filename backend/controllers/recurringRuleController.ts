@@ -277,7 +277,7 @@ export const generateRecurringDrafts = asyncHandler(async (req: AuthRequest, res
     const endOfToday = getEndOfToday(timezone)
     const workspaceId = await resolveListWorkspaceId(req)
 
-    const drafts = await generateDraftsForUser(userId, endOfToday, workspaceId)
+    const drafts = await generateDraftsForUser(userId, endOfToday, workspaceId, timezone)
     handleResponses(res, 200, drafts)
 })
 
@@ -297,7 +297,7 @@ export const generateRecurringDraftsForRule = asyncHandler(async (req: AuthReque
         'editor'
     )
 
-    const drafts = await generateDraftsForRule(rule, userId, endOfToday)
+    const drafts = await generateDraftsForRule(rule, userId, endOfToday, timezone)
     handleResponses(res, 200, drafts)
 })
 

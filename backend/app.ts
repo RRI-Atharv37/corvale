@@ -23,7 +23,7 @@ import recurringRuleRoutes from './routes/recurringRuleRoutes'
 import dashboardRoutes from './routes/dashboardRoutes'
 import reportRoutes from './routes/reportRoutes'
 import notificationRoutes from './routes/notificationRoutes'
-import workspaceRoutes from './routes/workspaceRoutes'
+import { createWorkspaceRoutes } from './routes/workspaceRoutes'
 import importRoutes from './routes/importRoutes'
 import backupRoutes from './routes/backupRoutes'
 import forecastRoutes from './routes/forecastRoutes'
@@ -60,6 +60,17 @@ export const createApp = (): express.Application => {
 
     const app = express()
     app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY))
+
+    /**
+     * Pin the query parser to 'simple' explicitly (SEC-35). This is already the Express 5
+     * default, but `sanitizeBody` only guards `req.body` — `req.query` reaches Mongoose
+     * filters (e.g. `buildListFilter`'s `accountId`) unsanitized. The 'simple' parser
+     * (Node's `querystring`) cannot produce nested objects, so a bracketed operator like
+     * `?accountId[$ne]=` parses to a literal key rather than `{ $ne: ... }`. Switching this
+     * to 'extended' would silently make that operator-injection route live, so the choice
+     * is recorded here rather than left to an implicit framework default.
+     */
+    app.set('query parser', 'simple')
 
     app.use(
         helmet({
@@ -119,7 +130,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/dashboard', dashboardRoutes)
     app.use('/api/v1/dashboard/reports', reportRoutes)
     app.use('/api/v1/notifications', notificationRoutes)
-    app.use('/api/v1/workspaces', workspaceRoutes)
+    app.use('/api/v1/workspaces', createWorkspaceRoutes())
     app.use('/api/v1/imports', importRoutes)
     app.use('/api/v1/backup', backupRoutes)
     app.use('/api/v1/forecast', forecastRoutes)

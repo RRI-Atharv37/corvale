@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export const SYNC_OP_STATUSES = ['applied', 'noop', 'conflict', 'rejected', 'id_conflict', 'pending'] as const
 export type SyncOpStatus = (typeof SYNC_OP_STATUSES)[number]
 
@@ -47,6 +49,19 @@ const SyncOperationSchema = new Schema<ISyncOperation>(
 )
 
 SyncOperationSchema.index({ userId: 1, opId: 1 }, { unique: true })
+
+/**
+ * SEC-33: the ledger is per-user activity metadata that only needs to outlive a client's retry
+ * window (days, not forever), and account deletion is meant to be complete. A TTL on `createdAt`
+ * releases these rows on its own and backstops the explicit sweep in `deleteUserAccountCascade`.
+ */
+const SYNC_OPERATION_TTL_SECONDS =
+    Number(process.env.SYNC_OPERATION_TTL_SECONDS) || 30 * 24 * 60 * 60
+SyncOperationSchema.index({ createdAt: 1 }, { expireAfterSeconds: SYNC_OPERATION_TTL_SECONDS })
+
+// Row-level security (SEC-30) - the idempotency ledger is per-user activity metadata; every
+// read/write goes through a `{ userId, opId }` filter already.
+applyRowLevelSecurity(SyncOperationSchema)
 
 const SyncOperation: Model<ISyncOperation> = mongoose.model<ISyncOperation>(
     'SyncOperation',

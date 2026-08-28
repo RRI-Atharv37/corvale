@@ -4,17 +4,23 @@ title: Frequently Asked Questions
 
 ## General
 
-### What is spndr?
+### What is Corvale?
 
-spndr is a personal finance web application for tracking transactions, account balances, categories, and savings. It is built for students and young adults who want a clear picture of their money without complexity.
+Corvale is a personal finance web application for tracking transactions, account balances, categories, and savings. It is built for students and young adults who want a clear picture of their money without complexity.
 
-### Is spndr free to use?
+### Is Corvale free to use?
 
-spndr is open source under the Apache-2.0 License. You can run it locally or deploy it on your own infrastructure at no cost.
+Yes, both ways. The hosted service is free: there are no paid plans, no trial that turns into a charge, and no payment details to give. If paid plans ever launch, Corvale will publish subscription terms and ask you to accept them before any charge is made - see the [Terms of Service](../legal/terms.md).
+
+Corvale is also open source under the GNU AGPL v3.0 License, so you can run it locally or deploy it on your own infrastructure at no cost. If you modify it and offer it to others over a network, the AGPL requires you to publish your changes.
 
 ### Do I need to create an account?
 
-Yes. spndr requires registration to keep your financial data private and scoped to your user account.
+Yes. Corvale requires registration to keep your financial data private and scoped to your user account.
+
+### Does Corvale connect to my bank?
+
+No. Corvale has no bank connection of any kind. It never asks for your banking credentials, never retrieves your balances, and never sees a transaction you did not enter or import yourself. Every number in Corvale comes from you - by typing it in, or by uploading a statement file you exported from your bank. See the [Privacy Policy](../legal/privacy.md).
 
 ## Transactions and categories
 
@@ -24,7 +30,7 @@ Use the **Transactions** page (`/transactions`). The old separate Income and Exp
 
 ### Are categories predefined?
 
-spndr provides nine master categories (Food, Transport, Entertainment, Housing, Education, Health, Shopping, Income, Other). You create your own sub-categories under each master with custom names, icons, and colors.
+Corvale provides nine master categories (Food, Transport, Entertainment, Housing, Education, Health, Shopping, Income, Other). You create your own sub-categories under each master with custom names, icons, and colors.
 
 ### Does adding a transaction update my account balance?
 
@@ -42,15 +48,22 @@ Yes. Enable **Split expense** when creating an expense. Each split line needs a 
 
 Yes. Upload JPEG, PNG, WebP, or PDF files up to 5 MB per receipt. Attach them when creating or editing a transaction.
 
+### Do I have to be 18 to use Corvale?
+
+Yes. The hosted Corvale service is for adults only, and you confirm your age when you sign up.
+India's data protection law requires verified parental consent for anyone under 18, which Corvale
+cannot reliably do. Corvale stores only your answer, never your date of birth. See the
+[Privacy Policy](../legal/privacy.md).
+
 ### Can I export my data?
 
-The backend supports CSV export for transactions via `GET /transactions/download`. The web UI does not currently include an export button.
+Yes, and export is never restricted. Open **Settings → Backup and Restore** to download everything as JSON, or as a ZIP that includes your receipt files. You can also export transactions as CSV from the Transactions page. See [Backup and Restore](../backup-restore/overview.md).
 
 ## Budgets and savings goals
 
 ### How do budgets work?
 
-Create a budget on the **Budgets** page (`/budgets`). spndr compares your limit against **posted expense** transactions in the budget period. Draft transactions and transfers do not count. See [Budgets Overview](../budgets/overview.md).
+Create a budget on the **Budgets** page (`/budgets`). Corvale compares your limit against **posted expense** transactions in the budget period. Draft transactions and transfers do not count. See [Budgets Overview](../budgets/overview.md).
 
 ### What is the difference between saver and savings goals?
 
@@ -58,7 +71,7 @@ The **Saver** is a discretionary pool you fund from spendable balance during the
 
 ### Can savings goals automatically save for me?
 
-You can enable **automatic contributions** on a goal (weekly or monthly). When due, process the contribution from the goal card. spndr does not pull money from bank accounts - contributions track progress toward a target you define.
+You can enable **automatic contributions** on a goal (weekly or monthly). When due, process the contribution from the goal card. Corvale does not pull money from bank accounts - contributions track progress toward a target you define.
 
 ## Accounts
 
@@ -72,13 +85,17 @@ No. Only one active account can be default at a time.
 
 ### Why does my savings account not affect spendable balance?
 
-spndr treats savings as set-aside money. Spendable balance only includes checking and cash account balances, minus any saver allocation.
+Corvale treats savings as set-aside money. Spendable balance only includes checking and cash account balances, minus any saver allocation.
 
 ## Saver and pushover
 
 ### What is the difference between saver and pushover?
 
 The **saver** is your active savings pool - money you set aside during the current period. **Pushover** is the month-end action that snapshots your saver balance into history and resets the saver to zero.
+
+### Does the saver move money out of my bank account?
+
+No. Nothing about the saver or pushover moves real money. Adding to the saver creates no transaction and changes no account balance - it only lowers the spendable balance Corvale displays, as a reminder that you have earmarked that amount. A pushover rollover resets the saver to zero, which returns that amount to your displayed spendable balance. Your bank account and net worth never change. See [Saver Overview](../saver/overview.md#what-the-saver-is).
 
 ### Can I undo a pushover rollover?
 
@@ -92,7 +109,7 @@ No. Rollover history records are permanent. Once you roll over, the saver resets
 
 ### Why does my net worth differ from total income minus expenses?
 
-If you have active accounts, spndr calculates net worth from account balances, not from income and expense totals. Income and expenses become activity metrics only.
+If you have active accounts, Corvale calculates net worth from account balances, not from income and expense totals. Income and expenses become activity metrics only.
 
 ### Why is my spendable balance zero?
 
@@ -110,21 +127,29 @@ Use **Forgot password?** on the login page to request a reset link. See [Resetti
 
 ### Can I change my email or name?
 
-spndr does not currently provide UI to edit your email or full name after registration.
+Corvale does not currently provide UI to edit your email or full name after registration.
+
+### Do I have to verify my email?
+
+Corvale emails you a verification link when you sign up. You can use Corvale without clicking it, but verifying confirms the address is really yours - and that address is where a password reset gets sent. To send a new link, open `/verify-email` and click **Resend verification email**. See [Creating an Account](../authentication/creating-an-account.md#verifying-your-email).
+
+### How do I delete my account?
+
+Open **Settings** and scroll to **Delete my account** at the bottom. You confirm with your password. Deletion immediately and irreversibly removes your account from the live service: it erases your records and your uploaded receipt files outright, rather than hiding them behind a flag. Backup copies are overwritten on the retention schedule in the [Privacy Policy](../legal/privacy.md). Export first if you want a copy - export is never restricted. See [Your Data and Privacy](../legal/your-data-and-privacy.md).
 
 ### How long does my session last?
 
-Your access token expires after a short interval (default **15 minutes**). spndr refreshes it automatically using a longer-lived refresh token cookie (default **7 days**). See [Sessions and Logout](../authentication/sessions-and-logout.md).
+Your access token expires after a short interval (default **15 minutes**). Corvale refreshes it automatically using a longer-lived refresh token cookie (default **7 days**). See [Sessions and Logout](../authentication/sessions-and-logout.md).
 
 ### What happens if I log out?
 
-spndr revokes your refresh token, clears local storage, and redirects you to the login page. Use **Logout all devices** in Settings to invalidate every session. Your data remains in the database.
+Corvale revokes your refresh token, clears local storage, and redirects you to the login page. Use **Logout all devices** in Settings to invalidate every session. Your data remains in the database.
 
 ## Recurring transactions
 
 ### How do I set up a repeating bill or paycheck?
 
-Create a rule on the **Recurring** page (`/recurring`) with an amount, account, category, and interval. spndr doesn't post anything automatically - it generates a draft transaction for each due date, which you confirm or dismiss from your draft inbox. See [Recurring Overview](../recurring/overview.md).
+Create a rule on the **Recurring** page (`/recurring`) with an amount, account, category, and interval. Corvale doesn't post anything automatically - it generates a draft transaction for each due date, which you confirm or dismiss from your draft inbox. See [Recurring Overview](../recurring/overview.md).
 
 ### Why didn't my recurring rule post a transaction?
 
@@ -136,7 +161,7 @@ Recurring rules only generate **drafts**, not posted transactions. Click **Sync 
 
 Every transaction needs exactly one category, used for budgeting and reports. Tags are optional and a transaction can have several - use them for cross-cutting labels like a trip or project. See [Tags Overview](../tags/overview.md).
 
-### Can spndr categorize transactions for me automatically?
+### Can Corvale categorize transactions for me automatically?
 
 Yes. Create an auto-categorization rule on `/categories/rules` that matches on description, amount range, or account. Matching rules apply automatically the moment a transaction is created, and you can also run them against your existing transactions with **Apply to existing**. See [Auto-Categorization Rules](../categories/categorization-rules.md).
 
@@ -162,7 +187,7 @@ Yes. Create a workspace on `/workspaces` and invite people by email as an editor
 
 ### What can a viewer do in a workspace?
 
-Viewers can see everything in the workspace but can't create, edit, or delete anything. spndr shows a banner reminding you when you're in a view-only workspace. See [Roles and Permissions](../workspaces/roles-and-permissions.md).
+Viewers can see everything in the workspace but can't create, edit, or delete anything. Corvale shows a banner reminding you when you're in a view-only workspace. See [Roles and Permissions](../workspaces/roles-and-permissions.md).
 
 ## Reconciliation and multi-currency
 
@@ -170,15 +195,15 @@ Viewers can see everything in the workspace but can't create, edit, or delete an
 
 Click the reconcile icon on an account on the **Accounts** page, enter your statement's end date and balance, and mark transactions cleared as you check them against your statement. See [Reconciling an Account](../accounts/reconciling-an-account.md).
 
-### I have accounts in different currencies - can spndr show one total?
+### I have accounts in different currencies - can Corvale show one total?
 
-Yes, if you set exchange rates in Settings. Once a rate exists for a currency pair, spndr shows a converted balance next to any account not already in your preferred currency. See [Multi-Currency Balances](../accounts/multi-currency-balances.md).
+Yes, if you set exchange rates in Settings. Once a rate exists for a currency pair, Corvale shows a converted balance next to any account not already in your preferred currency. See [Multi-Currency Balances](../accounts/multi-currency-balances.md).
 
 ## Import and backup
 
 ### Can I import transactions from my bank?
 
-Yes. Click **Import** on the Transactions page and upload a CSV, OFX, or QFX file. spndr detects likely duplicates against your existing transactions and lets you skip, import, or merge each one. See [Import Overview](../import/overview.md).
+Yes. Click **Import** on the Transactions page and upload a CSV, OFX, or QFX file. Corvale detects likely duplicates against your existing transactions and lets you skip, import, or merge each one. See [Import Overview](../import/overview.md).
 
 ### How do I back up my data or move it to a new device?
 
@@ -186,7 +211,7 @@ Open **Settings** and use **Backup & restore** to export a JSON or ZIP file, or 
 
 ## Technical
 
-### What technologies does spndr use?
+### What technologies does Corvale use?
 
 - **Backend:** TypeScript, Node.js, Express, MongoDB, JWT
 - **Frontend:** React, Vite, TypeScript, Tailwind CSS, Axios
@@ -199,4 +224,4 @@ Run the migration script from `backend/`: `npm run migrate:transactions`. See [D
 
 ### Where can I report bugs?
 
-Open an issue on the [GitHub repository](https://github.com/RRI-Atharv37/spndr/issues).
+Open an issue on the [GitHub repository](https://github.com/RRI-Atharv37/corvale/issues). Please don't report security vulnerabilities there - use the repository's **Security** tab instead, and see [Contact](../legal/contact.md) for privacy and data-rights requests.

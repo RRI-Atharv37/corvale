@@ -13,7 +13,15 @@
 export const IMPORT_MAX_ROWS = 2000
 export const IMPORT_PREVIEW_SAMPLE_ROWS = 5
 
-export type ImportFormat = 'generic' | 'chase' | 'spndr_export' | 'ofx'
+/**
+ * `'spndr_export'` is the pre-rename spelling of `'corvale_export'`. It stays a valid
+ * `ImportFormat` (V7.3c rename-compat shim): `detectImportFormat` only ever returns the new
+ * tag, but `suggestColumnMapping` still resolves the legacy one identically, so an older build
+ * anywhere in the pipeline that produces/expects `'spndr_export'` keeps working and every CSV a
+ * tester exported before the rename still imports. Removes the backend/frontend atomic-deploy
+ * constraint entirely. Safe to drop one release after v1.0.0. See ROADMAP's V7 compat matrix.
+ */
+export type ImportFormat = 'generic' | 'chase' | 'corvale_export' | 'spndr_export' | 'ofx'
 
 export type ColumnMappingField =
     | 'date'
@@ -60,11 +68,11 @@ const CHASE_HEADERS = new Set([
 ])
 
 /**
- * Mirrors `backend/utils/transactionUtils.ts`'s `CSV_HEADERS` (the spndr
+ * Mirrors `backend/utils/transactionUtils.ts`'s `CSV_HEADERS` (the Corvale
  * export column order). Duplicated as a literal here rather than imported,
  * since `transactionUtils.ts` is not itself a pure/dependency-free module.
  */
-const SPNDR_CSV_HEADERS = [
+const CORVALE_CSV_HEADERS = [
     'Type',
     'Title',
     'Amount',
@@ -78,7 +86,7 @@ const SPNDR_CSV_HEADERS = [
     'Status',
 ]
 
-const SPNDR_EXPORT_HEADERS = SPNDR_CSV_HEADERS.map((header) => normalizeHeader(header))
+const CORVALE_EXPORT_HEADERS = CORVALE_CSV_HEADERS.map((header) => normalizeHeader(header))
 
 export const isOfxContent = (content: string): boolean => {
     const trimmed = content.trimStart()
@@ -137,8 +145,8 @@ export const parseCsvContent = (content: string): { headers: string[]; rows: str
 export const detectImportFormat = (headers: string[]): ImportFormat => {
     const normalized = headers.map(normalizeHeader)
 
-    if (normalized.every((header, index) => header === SPNDR_EXPORT_HEADERS[index])) {
-        return 'spndr_export'
+    if (normalized.every((header, index) => header === CORVALE_EXPORT_HEADERS[index])) {
+        return 'corvale_export'
     }
 
     const normalizedSet = new Set(normalized)
@@ -167,7 +175,7 @@ const findHeader = (headers: string[], candidates: string[]): string | undefined
 }
 
 export const suggestColumnMapping = (headers: string[], format: ImportFormat): ColumnMapping => {
-    if (format === 'spndr_export') {
+    if (format === 'corvale_export' || format === 'spndr_export') {
         return {
             date: findHeader(headers, ['date']),
             description: findHeader(headers, ['title', 'description']),

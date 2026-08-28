@@ -9,7 +9,7 @@ import Transaction, { ITransaction, TransactionType } from '../models/Transactio
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from './moneyUtils'
-import { startOfDayInTimezone } from './timezoneUtils'
+import { dateStringInTimezone, endOfDayInTimezone, startOfDayInTimezone } from './timezoneUtils'
 import { advanceNextDueDate as sharedAdvanceNextDueDate } from '../../shared/src/categorization'
 import {
     applyTransactionToAccount,
@@ -104,13 +104,14 @@ export const parseCustomIntervalDays = (
 export const advanceNextDueDate = (
     current: Date,
     interval: RecurringInterval,
-    customIntervalDays?: number
+    customIntervalDays?: number,
+    timezone: string = 'UTC'
 ): Date => {
     if (interval === 'custom' && (!customIntervalDays || customIntervalDays < 1)) {
         throw new CustomError('customIntervalDays is required for custom intervals', 400)
     }
 
-    return sharedAdvanceNextDueDate(current, interval, customIntervalDays, 'UTC')
+    return sharedAdvanceNextDueDate(current, interval, customIntervalDays, timezone)
 }
 
 export const serializeRecurringRule = (rule: IRecurringRule): SerializedRecurringRule => {
@@ -128,17 +129,18 @@ export const serializeRecurringRules = (rules: IRecurringRule[]): SerializedRecu
 const hasDraftForDueDate = async (
     userId: string,
     rule: IRecurringRule,
-    dueDate: Date
+    dueDate: Date,
+    timezone: string
 ): Promise<boolean> => {
-    const dayStart = new Date(dueDate)
-    const dayEnd = new Date(dueDate)
-    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
+    const dateStr = dateStringInTimezone(dueDate, timezone)
+    const dayStart = startOfDayInTimezone(dateStr, timezone)
+    const dayEnd = endOfDayInTimezone(dateStr, timezone)
 
     const existing = await Transaction.findOne({
         ...buildScopedListFilter(userId, rule.workspaceId?.toString() ?? null),
         recurringPaymentId: rule._id,
         status: 'draft',
-        date: { $gte: dayStart, $lt: dayEnd },
+        date: { $gte: dayStart, $lte: dayEnd },
     })
 
     return existing != null
@@ -147,7 +149,8 @@ const hasDraftForDueDate = async (
 export const generateDraftsForRule = async (
     rule: IRecurringRule,
     userId: string,
-    endOfToday: Date
+    endOfToday: Date,
+    timezone: string = 'UTC'
 ): Promise<SerializedTransaction[]> => {
     if (!rule.isActive || rule.isArchived) {
         return []
@@ -166,7 +169,7 @@ export const generateDraftsForRule = async (
     while (rule.nextDueDate <= endOfToday && iterations < MAX_CATCHUP_DRAFTS) {
         const dueDate = new Date(rule.nextDueDate)
 
-        const duplicate = await hasDraftForDueDate(userId, rule, dueDate)
+        const duplicate = await hasDraftForDueDate(userId, rule, dueDate, timezone)
         if (!duplicate) {
             const draft = await Transaction.create({
                 userId,
@@ -191,7 +194,8 @@ export const generateDraftsForRule = async (
         rule.nextDueDate = advanceNextDueDate(
             rule.nextDueDate,
             rule.interval,
-            rule.customIntervalDays
+            rule.customIntervalDays,
+            timezone
         )
         iterations += 1
     }
@@ -206,7 +210,8 @@ export const generateDraftsForRule = async (
 export const generateDraftsForUser = async (
     userId: string,
     endOfToday: Date,
-    workspaceId?: string | null
+    workspaceId?: string | null,
+    timezone: string = 'UTC'
 ): Promise<SerializedTransaction[]> => {
     const rules = await RecurringRule.find({
         ...buildScopedListFilter(userId, workspaceId ?? null),
@@ -218,7 +223,7 @@ export const generateDraftsForUser = async (
     const allDrafts: SerializedTransaction[] = []
 
     for (const rule of rules) {
-        const drafts = await generateDraftsForRule(rule, userId, endOfToday)
+        const drafts = await generateDraftsForRule(rule, userId, endOfToday, timezone)
         allDrafts.push(...drafts)
     }
 

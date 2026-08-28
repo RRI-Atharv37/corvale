@@ -1,0 +1,16 @@
+import React from 'react'
+
+interface LoadingStateProps {
+    message?: string
+}
+
+const LoadingState: React.FC<LoadingStateProps> = ({ message = 'Loading...' }) => {
+    return (
+        <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-16 gap-4">
+            <div className="h-10 w-10 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+            <p className="text-sm text-text-muted">{message}</p>
+        </div>
+    )
+}
+
+export default LoadingState

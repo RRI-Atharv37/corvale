@@ -2,18 +2,18 @@
 title: Developer Overview
 ---
 
-## Building on spndr
+## Building on Corvale
 
-This section documents the spndr codebase for developers who want to run, extend, or integrate with the application.
+This section documents the Corvale codebase for developers who want to run, extend, or integrate with the application.
 
 ## Architecture summary
 
-spndr is a full-stack TypeScript application split into two packages:
+Corvale is a full-stack TypeScript application split into two packages:
 
 | Package | Location | Purpose |
 |---------|----------|---------|
 | **Backend** | `backend/` | REST API server (Express + MongoDB) |
-| **Frontend** | `frontend/spndr/` | Single-page application (React + Vite) |
+| **Frontend** | `frontend/corvale/` | Single-page application (React + Vite) |
 
 The frontend communicates with the backend over HTTP. All API routes live under `/api/v1`.
 

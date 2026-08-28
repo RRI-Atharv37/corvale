@@ -15,7 +15,7 @@ File uploads use the `file` form field, memory storage, and a **2 MB** cap. Acce
 Multipart upload. Detects OFX vs. CSV automatically.
 
 - **OFX/QFX**: parsed directly - no mapping needed. Response: `{ format: 'ofx', requiresMapping: false, parsedRows, sampleRows }`.
-- **CSV**: parsed and format-detected (`generic`, `chase`, or `spndr_export`, based on header matching). Response: `{ format: 'csv', requiresMapping: true, headers, rows, suggestedMapping, sampleRows }`, where `suggestedMapping` maps `date`/`description`/`amount`/`debit`/`credit`/`type` to detected column headers.
+- **CSV**: parsed and format-detected (`generic`, `chase`, or `corvale_export`, based on header matching). CSV files exported by older versions are still recognized and reported as the legacy `spndr_export` format. Response: `{ format: 'csv', requiresMapping: true, headers, rows, suggestedMapping, sampleRows }`, where `suggestedMapping` maps `date`/`description`/`amount`/`debit`/`credit`/`type` to detected column headers.
 
 Row count is capped at 2,000.
 

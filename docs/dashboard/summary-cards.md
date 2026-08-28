@@ -66,7 +66,7 @@ This card is hidden when you have no active accounts.
 
 ## Balance modes
 
-spndr calculates spendable balance and net worth differently depending on whether you have accounts:
+Corvale calculates spendable balance and net worth differently depending on whether you have accounts:
 
 | Mode | Condition | Net worth source | Spendable source |
 |------|-----------|------------------|------------------|

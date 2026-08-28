@@ -4,7 +4,7 @@ title: Adding Income
 
 ## Record a new income entry
 
-Follow these steps to add income to spndr.
+Follow these steps to add income to Corvale.
 
 ## Step-by-step
 
@@ -19,11 +19,11 @@ Follow these steps to add income to spndr.
    - **Description** (optional) - any additional notes
 4. Click **Add income**.
 
-On success, spndr closes the modal, shows a success notification, refreshes the list, and returns you to page 1.
+On success, Corvale closes the modal, shows a success notification, refreshes the list, and returns you to page 1.
 
 ## Validation
 
-Before submitting, spndr checks that title, amount, and date are provided. If any required field is missing, you see an error toast and the form stays open.
+Before submitting, Corvale checks that title, amount, and date are provided. If any required field is missing, you see an error toast and the form stays open.
 
 Amount must be a valid number. The form accepts decimal values with up to two decimal places.
 

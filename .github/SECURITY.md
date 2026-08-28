@@ -1,6 +1,6 @@
 # Security Policy
 
-spndr takes security seriously, especially given the app handles personal financial data —
+Corvale takes security seriously, especially given the app handles personal financial data —
 transaction history, account balances, and receipt images. If you've found a vulnerability,
 please report it responsibly using the process below.
 
@@ -37,7 +37,7 @@ To help triage and fix the issue quickly, please include:
 - Social engineering targeting the maintainer or users
 - Attacks requiring physical access to a user's device
 - Vulnerabilities that exist only in an unpatched third-party dependency and aren't
-  reachable through spndr's own shipped code
+  reachable through Corvale's own shipped code
 - Reports generated purely from automated scanners without a demonstrated, concrete impact
 
 ## What to expect

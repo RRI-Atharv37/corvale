@@ -8,13 +8,13 @@ The Transactions page gives you full control over your recorded activity.
 
 ## Searching
 
-Use the **search bar** at the top of the list to find transactions by text. spndr searches titles, descriptions, and related fields. Results replace the main list while a search is active.
+Use the **search bar** at the top of the list to find transactions by text. Corvale searches titles, descriptions, and related fields. Results replace the main list while a search is active.
 
 Clear the search field to return to the full paginated list.
 
 ## Date range filter
 
-Use the **start date** and **end date** fields to narrow transactions to a specific period. spndr normalizes dates using your account timezone, so day boundaries match your local calendar.
+Use the **start date** and **end date** fields to narrow transactions to a specific period. Corvale normalizes dates using your account timezone, so day boundaries match your local calendar.
 
 ## Sorting
 
@@ -48,7 +48,7 @@ Deleting removes the entry and reverses its effect on the account balance.
 
 ### Transfer deletions
 
-Deleting a transfer removes **both legs** of the linked pair and restores both account balances. spndr warns you before deleting a transfer.
+Deleting a transfer removes **both legs** of the linked pair and restores both account balances. Corvale warns you before deleting a transfer.
 
 ## Duplicating a transaction
 

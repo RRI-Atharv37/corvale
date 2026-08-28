@@ -59,6 +59,33 @@ export const getTransferInDeltaMajor = (amountMinor: number, accountType: Accoun
 export const getTransferOutDeltaMajor = (amountMinor: number, accountType: AccountType): number =>
     getBalanceDeltaMajor('transfer', amountMinor, accountType)
 
+/**
+ * Same sign logic as getBalanceDeltaMajor, but for an account balance that is
+ * itself stored in minor units (Sprint C5) — integer math throughout, no
+ * fromMinorUnits round-trip, so no rounding drift on repeated application.
+ */
+export const getBalanceDeltaMinor = (
+    type: TransactionType,
+    amountMinor: number,
+    accountType: AccountType
+): number => {
+    if (type === 'transfer') {
+        return accountType === 'credit' ? amountMinor : -amountMinor
+    }
+
+    if (accountType === 'credit') {
+        return type === 'expense' ? amountMinor : -amountMinor
+    }
+
+    return type === 'income' ? amountMinor : -amountMinor
+}
+
+export const getTransferInDeltaMinor = (amountMinor: number, accountType: AccountType): number =>
+    getBalanceDeltaMinor('income', amountMinor, accountType)
+
+export const getTransferOutDeltaMinor = (amountMinor: number, accountType: AccountType): number =>
+    getBalanceDeltaMinor('transfer', amountMinor, accountType)
+
 export interface SplitInput {
     categoryId: string
     amount: unknown

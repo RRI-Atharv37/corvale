@@ -9,14 +9,23 @@ export interface AccessTokenPayload {
     tv: number
 }
 
-const REFRESH_TOKEN_COOKIE = process.env.REFRESH_TOKEN_COOKIE_NAME ?? 'spndr_refresh'
+const REFRESH_TOKEN_COOKIE = process.env.REFRESH_TOKEN_COOKIE_NAME ?? 'corvale_refresh'
 const REFRESH_COOKIE_PATH = '/api/v1/auth'
+
+/**
+ * V7.3a rename-compat shim: the refresh cookie's default name changed from `spndr_refresh` to
+ * `corvale_refresh` with the Corvale rename. A rename alone never removes the old cookie, so a
+ * pre-rename tester's browser would carry a dead `spndr_refresh` indefinitely. Every path that
+ * clears the session (logout, logout-all, account deletion) also issues a one-shot expiry for
+ * this legacy name. Safe to delete one release after v1.0.0. See ROADMAP's V7 compat matrix.
+ */
+const LEGACY_REFRESH_TOKEN_COOKIE = 'spndr_refresh'
 
 const VALID_REFRESH_COOKIE_SAME_SITE = ['lax', 'strict', 'none'] as const
 type RefreshCookieSameSite = (typeof VALID_REFRESH_COOKIE_SAME_SITE)[number]
 
 /**
- * SEC-11: spndr's pinned deployment topology is same-site (frontend and API share a
+ * SEC-11: Corvale's pinned deployment topology is same-site (frontend and API share a
  * registrable domain), so the refresh cookie defaults to `SameSite=Lax`. A cross-site
  * deployment must opt in explicitly via `REFRESH_COOKIE_SAME_SITE=none` — silently
  * switching topologies without changing this setting is exactly what caused SEC-11 (an
@@ -99,12 +108,17 @@ export const setRefreshTokenCookie = (res: Response, refreshToken: string): void
 }
 
 export const clearRefreshTokenCookie = (res: Response): void => {
-    res.clearCookie(REFRESH_TOKEN_COOKIE, {
+    const options = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: getRefreshCookieSameSite(),
         path: REFRESH_COOKIE_PATH,
-    })
+    }
+    res.clearCookie(REFRESH_TOKEN_COOKIE, options)
+    // V7.3a: expire any pre-rename `spndr_refresh` cookie still sitting in the browser.
+    if (LEGACY_REFRESH_TOKEN_COOKIE !== REFRESH_TOKEN_COOKIE) {
+        res.clearCookie(LEGACY_REFRESH_TOKEN_COOKIE, options)
+    }
 }
 
 export const getRefreshTokenFromRequest = (cookies: Record<string, string | undefined>): string | null => {

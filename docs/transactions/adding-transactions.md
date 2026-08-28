@@ -24,7 +24,7 @@ Follow these steps to add a new income or expense transaction.
    - **Tags** - comma-separated labels for filtering later
 6. Click **Save** to create the transaction.
 
-spndr updates the selected account balance immediately when you save.
+Corvale updates the selected account balance immediately when you save.
 
 ## Choosing an account
 

@@ -4,13 +4,13 @@ title: Desktop App (Tauri)
 
 ## Overview
 
-The desktop shell lives in `frontend/spndr/src-tauri/` and wraps the existing Vite build with [Tauri v2](https://tauri.app). It reuses the same React app, routes, and local-first SQLite migrations as the browser build - the only new pieces are:
+The desktop shell lives in `frontend/corvale/src-tauri/` and wraps the existing Vite build with [Tauri v2](https://tauri.app). It reuses the same React app, routes, and local-first SQLite migrations as the browser build - the only new pieces are:
 
-- `src-tauri/src/db.rs` - Rust commands (`db_open`, `db_exec`, `db_select`, `db_set_key`, `db_close`) that implement the same `LocalDb` contract as `frontend/spndr/src/db/SqliteWasmDriver.ts`, backed by `rusqlite` with SQLCipher instead of `@sqlite.org/sqlite-wasm` + OPFS.
-- `frontend/spndr/src/db/TauriSqlDriver.ts` - the TypeScript side of that same contract, calling the Rust commands via `invoke()`.
+- `src-tauri/src/db.rs` - Rust commands (`db_open`, `db_exec`, `db_select`, `db_set_key`, `db_close`) that implement the same `LocalDb` contract as `frontend/corvale/src/db/SqliteWasmDriver.ts`, backed by `rusqlite` with SQLCipher instead of `@sqlite.org/sqlite-wasm` + OPFS.
+- `frontend/corvale/src/db/TauriSqlDriver.ts` - the TypeScript side of that same contract, calling the Rust commands via `invoke()`.
 - `src-tauri/src/backup.rs` - native "Save As" / "Open" file dialogs for backup export/import.
 - `src-tauri/src/path_safety.rs` - filename validation shared by `db_open` (see [Where the local database lives](#where-the-local-database-lives)).
-- `frontend/spndr/src/db/provisionLocalDb.ts` - one-shot local DB provisioning on first sign-in (see [Sign in once, then offline forever](#sign-in-once-then-offline-forever)).
+- `frontend/corvale/src/db/provisionLocalDb.ts` - one-shot local DB provisioning on first sign-in (see [Sign in once, then offline forever](#sign-in-once-then-offline-forever)).
 - The auto-updater, configured in `tauri.conf.json`'s `plugins.updater` block.
 
 This page is for building and running the desktop shell itself. For day-to-day frontend/backend development, see [Running Locally](../getting-started/running-locally.md).
@@ -28,7 +28,7 @@ Unlike the web app, the desktop build compiles native code, so it needs a Rust t
    - **Windows** - "Desktop development with C++" workload from Visual Studio Build Tools, plus [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) (preinstalled on current Windows 10/11).
    - **macOS** - Xcode Command Line Tools: `xcode-select --install`.
    - **Linux** - `webkit2gtk`, `libayatana-appindicator3-dev`, `librsvg2-dev`, and standard build essentials (package names vary by distro - see the prerequisites guide above).
-3. **Node.js dependencies** - from `frontend/spndr/`:
+3. **Node.js dependencies** - from `frontend/corvale/`:
    ```bash
    npm install
    ```
@@ -37,7 +37,7 @@ The Rust dependency list (`src-tauri/Cargo.toml`) includes `rusqlite` with the `
 
 ## First build
 
-All commands run from `frontend/spndr/` (where `package.json`'s `tauri`/`tauri:dev`/`tauri:build` scripts live):
+All commands run from `frontend/corvale/` (where `package.json`'s `tauri`/`tauri:dev`/`tauri:build` scripts live):
 
 ```bash
 npm run tauri:dev
@@ -67,11 +67,17 @@ Before shipping, confirm the three things Sprint 13.11 exists to deliver:
 
 `db_open` (in `src-tauri/src/db.rs`) resolves the database path via Tauri's app-data directory resolver, not a path supplied by the frontend:
 
-- **Windows** - `%APPDATA%\com.spndr.app\spndr.sqlite3`
-- **macOS** - `~/Library/Application Support/com.spndr.app/spndr.sqlite3`
-- **Linux** - `~/.local/share/com.spndr.app/spndr.sqlite3`
+- **Windows** - `%APPDATA%\com.corvale.app\corvale.sqlite3`
+- **macOS** - `~/Library/Application Support/com.corvale.app/corvale.sqlite3`
+- **Linux** - `~/.local/share/com.corvale.app/corvale.sqlite3`
 
-The frontend does still pass a `filename` (normally the default `spndr.sqlite3`), so
+Builds made before the rename from spndr to Corvale wrote to a `com.spndr.app` directory with a
+`spndr.sqlite3` file instead. On first launch of a renamed build, `db_open` looks for that old
+directory next to the new one and, if the new location has no database yet, copies the legacy
+`spndr.sqlite3` into place as `corvale.sqlite3`. The old file is left untouched, so a rollback
+still finds its data.
+
+The frontend does still pass a `filename` (normally the default `corvale.sqlite3`), so
 `src-tauri/src/path_safety.rs` validates it before it's joined onto that directory - rejecting
 path separators, `..`, drive/UNC markers, and absolute paths - so the resolved file can never
 land outside the app-data directory even if the calling frontend code were compromised.
@@ -90,7 +96,7 @@ above keep working.
 
 The first time someone signs in on a desktop install with local-first enabled, the app pulls a
 full snapshot of their data from `/sync/bootstrap` and seeds every local table from it in one
-transaction (`frontend/spndr/src/db/provisionLocalDb.ts`), rather than waiting for the same data
+transaction (`frontend/corvale/src/db/provisionLocalDb.ts`), rather than waiting for the same data
 to trickle in through the incremental pull loop. That, plus the signed offline session grant
 (see [Offline session grant](./environment-variables.md#offline-session-grant)), is what lets
 the app be used indefinitely afterward with no network at all - the one online sign-in is the
@@ -113,12 +119,12 @@ Re-run this if `public/pwa-512.png` changes.
 
 1. **Generate a new signing keypair:**
    ```bash
-   npx @tauri-apps/cli signer generate -w ~/.tauri/spndr.key
+   npx @tauri-apps/cli signer generate -w ~/.tauri/corvale.key
    ```
    This prints a public key - paste it into `tauri.conf.json`'s `plugins.updater.pubkey`.
 2. **Set the private key as an environment variable** before running `tauri:build` locally, so the build signs the release:
    ```bash
-   export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/spndr.key)"
+   export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/corvale.key)"
    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="your-key-password"
    ```
    For CI, the same two values go into the `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets that `.github/workflows/release.yml` reads.
@@ -147,7 +153,7 @@ Pushing a tag matching `v*.*.*` (e.g. `v0.14.0`) triggers `.github/workflows/rel
 2. Builds installers for Windows, macOS (Apple Silicon and Intel), and Linux, signing each with whatever credentials are configured per the sections above.
 3. Publishes a draft GitHub Release with the installers, the updater's `latest.json` (generated by `tauri-action`), and a `checksums-<platform>.sha256.txt` per platform, then combines those into one `checksums.sha256.txt` covering every installer.
 
-The release is left as a **draft** - review the generated notes and attached artifacts, then publish it manually from GitHub. `/download`'s `frontend/spndr/src/data/releaseManifest.ts` still needs its checksums/URLs filled in by hand from the published release until that's wired to read the release automatically.
+The release is left as a **draft** - review the generated notes and attached artifacts, then publish it manually from GitHub. `/download`'s `frontend/corvale/src/data/releaseManifest.ts` still needs its checksums/URLs filled in by hand from the published release until that's wired to read the release automatically.
 
 ## Related pages
 

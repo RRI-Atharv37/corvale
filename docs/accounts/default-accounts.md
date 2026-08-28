@@ -8,7 +8,7 @@ Each user can have exactly **one default account** at a time among active (non-a
 
 ## Automatic default assignment
 
-When you create your first active account, spndr automatically sets it as the default. You do not need to take any extra steps.
+When you create your first active account, Corvale automatically sets it as the default. You do not need to take any extra steps.
 
 ## Changing the default account
 
@@ -17,7 +17,7 @@ To set a different account as default:
 1. Navigate to the **Accounts** page.
 2. Find the account you want to make default.
 3. Click the **star outline icon** on the right side of the row.
-4. spndr updates the default and shows a success notification.
+4. Corvale updates the default and shows a success notification.
 
 The previously default account loses its default status automatically. Only one account can be default at a time.
 

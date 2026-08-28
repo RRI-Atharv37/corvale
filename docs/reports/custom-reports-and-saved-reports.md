@@ -15,7 +15,7 @@ Choose:
 - **Data type** - income, expense, or both
 - **Group by** - day, week, or month (for time-based splits)
 
-spndr runs the query against your selected period and renders the result using your chosen chart type.
+Corvale runs the query against your selected period and renders the result using your chosen chart type.
 
 ## Exporting a report
 
@@ -30,7 +30,7 @@ Save a report configuration to re-run it later without rebuilding it from scratc
 3. Find it in the **saved reports** list on the Reports page.
 4. Click a saved report to re-run its configuration against live data.
 
-Saved reports store the configuration only - each time you run one, spndr recalculates the results from your current transactions.
+Saved reports store the configuration only - each time you run one, Corvale recalculates the results from your current transactions.
 
 ## Related pages
 

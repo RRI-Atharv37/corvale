@@ -71,6 +71,29 @@ export const authenticateOnly = async (req: AuthRequest, res: Response, next: Ne
 }
 
 /**
+ * Attaches `req.user` (and an RLS context) when a valid bearer token is present, but lets the
+ * request through unauthenticated otherwise. A *present* but invalid/expired token is still an
+ * error. Used by routes that serve both a signed-in and a signed-out caller — e.g. resending a
+ * verification email, which a returning unverified user (blocked at login, so no token) must
+ * still be able to trigger by email.
+ */
+export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return next()
+    }
+    try {
+        const user = await authenticateRequest(req)
+        req.user = user
+        return runWithRlsContext({ userId: user._id.toString() }, () => {
+            next()
+        })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+/**
  * Authenticates the request and hard-blocks unverified accounts. This is the middleware every
  * other router in the app imports, so the verification gate applies everywhere by default
  * without touching those route files individually.

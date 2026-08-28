@@ -4,7 +4,7 @@ title: Spendable Balance and Net Worth
 
 ## Two numbers that guide your decisions
 
-**Net worth** and **spendable balance** are the two most important derived metrics in spndr. Understanding the difference helps you make better saving and spending choices.
+**Net worth** and **spendable balance** are the two most important derived metrics in Corvale. Understanding the difference helps you make better saving and spending choices.
 
 ## Net worth
 

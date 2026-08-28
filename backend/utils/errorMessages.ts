@@ -22,6 +22,10 @@ export const ERROR_MESSAGES = {
         EMAIL_VERIFICATION_INVALID: 'Invalid or expired email verification token',
         EMAIL_ALREADY_VERIFIED: 'Email address is already verified',
         CAPTCHA_FAILED: 'CAPTCHA verification failed, please try again',
+        INVALID_FULL_NAME: 'Full name is required',
+        INVALID_TIMEZONE: 'Invalid timezone',
+        TERMS_NOT_ACCEPTED: 'You must accept the Terms of Service and Privacy Policy to create an account',
+        AGE_NOT_ATTESTED: 'You must be 18 or older to create an account',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',
@@ -102,6 +106,7 @@ export const ERROR_MESSAGES = {
         BULK_CATEGORY_TRANSFER: 'Transfers cannot be bulk recategorized',
         RECEIPT_ALREADY_ATTACHED: 'Receipt is already attached to this transaction',
         RECEIPT_NOT_ATTACHED: 'Receipt is not attached to this transaction',
+        INVALID_ACCOUNT_ID_FILTER: 'Invalid accountId filter',
     },
     RECEIPT: {
         RECEIPT_NOT_FOUND: 'Receipt not found',
@@ -157,7 +162,7 @@ export const ERROR_MESSAGES = {
         INVALID_MERGE_TARGET: 'Cannot merge a row that has no matching transaction',
     },
     BACKUP: {
-        INVALID_FORMAT: 'Backup file is not a valid spndr backup',
+        INVALID_FORMAT: 'Backup file is not a valid Corvale backup',
         UNSUPPORTED_VERSION: 'Unsupported backup version',
         INVALID_FILE_TYPE: 'Backup file must be a JSON or ZIP export',
         FILE_TOO_LARGE: 'Backup file exceeds the 10 MB size limit',

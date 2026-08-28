@@ -10,7 +10,15 @@ Navigate to Saver from the sidebar or go to `/saver`.
 
 ## What the saver is
 
-The saver is not a bank account. It is a virtual pool tracked by spndr that sits on top of your spendable balance. When you deposit to the saver, your spendable balance decreases and your saver balance increases.
+The saver is not a bank account. It is a label Corvale keeps on top of your existing balances - an amount you have decided to treat as off-limits.
+
+Adding to the saver:
+
+- Creates **no transaction**
+- Changes **no account balance**
+- Moves **no money** - nothing leaves or enters your real bank account
+
+The only thing that changes is the number Corvale shows you: your saver balance goes up, and your **displayed** spendable balance goes down by the same amount, because spendable balance is calculated as your liquid money minus your saver earmark. Withdrawing from the saver reverses that display change.
 
 Each user has exactly one saver document. If you have never deposited, your saver balance is $0.00.
 
@@ -24,11 +32,11 @@ Each user has exactly one saver document. If you have never deposited, your save
 
 | Action | Saver balance | Spendable balance | Net worth |
 |--------|---------------|-------------------|-----------|
-| Deposit to saver | Increases | Decreases | Unchanged |
-| Withdraw from saver | Decreases | Increases | Unchanged |
-| Pushover rollover | Resets to $0.00 | Unchanged | Unchanged |
+| Deposit to saver | Increases | Decreases (displayed) | Unchanged |
+| Withdraw from saver | Decreases | Increases (displayed) | Unchanged |
+| Pushover rollover | Resets to $0.00 | Increases (displayed) | Unchanged |
 
-Net worth does not change when you move money between spendable and saver - you are reallocating, not gaining or losing money.
+Every one of these actions is a bookkeeping change inside Corvale. None of them move money, create a transaction, or touch an account balance - so net worth never changes, and "spendable balance" moves only because it is *derived* as liquid money minus your saver earmark. A pushover rollover raises displayed spendable for exactly the same reason a withdrawal does: the earmark drops to zero.
 
 ## Last updated date
 

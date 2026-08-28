@@ -35,5 +35,9 @@ const workspaceSchema = new Schema<IWorkspace>(
 workspaceSchema.index({ ownerId: 1 })
 workspaceSchema.index({ 'members.userId': 1 })
 
+// No row-level-security plugin (SEC-30): a Workspace has no `userId` field. Access is
+// membership-scoped via `ownerId` / `members.userId`, which the plugin's `'userId' in filter`
+// guard cannot express; `utils/workspaceUtils.ts` (`assertWorkspaceMembership`) enforces it.
+
 const Workspace: Model<IWorkspace> = mongoose.model<IWorkspace>('Workspace', workspaceSchema)
 export default Workspace

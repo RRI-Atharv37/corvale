@@ -2,9 +2,9 @@
 title: Account Types
 ---
 
-## The four account types in spndr
+## The four account types in Corvale
 
-When you create an account, you choose one of four types. Each type affects how spndr includes the account in balance calculations.
+When you create an account, you choose one of four types. Each type affects how Corvale includes the account in balance calculations.
 
 ## Available types
 
@@ -17,7 +17,7 @@ When you create an account, you choose one of four types. Each type affects how 
 
 ## How each type affects net worth
 
-spndr calculates net worth from account balances as:
+Corvale calculates net worth from account balances as:
 
 ```
 net worth = (checking + cash + savings balances) − (credit balance)

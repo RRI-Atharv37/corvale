@@ -5,7 +5,7 @@ import User from '../models/User'
 import { hashToken } from './tokenUtils'
 import { revokeAllRefreshTokensForUser } from './refreshTokenService'
 
-const PASSWORD_RESET_EXPIRY_MS = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 3_600_000)
+const PASSWORD_RESET_EXPIRY_MS = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 600_000)
 
 export const generatePasswordResetToken = (): string => {
     return crypto.randomBytes(32).toString('hex')

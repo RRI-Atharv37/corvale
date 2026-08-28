@@ -4,7 +4,7 @@ title: Creating an Account
 
 ## Add a new financial account
 
-Follow these steps to create an account in spndr.
+Follow these steps to create an account in Corvale.
 
 ## Step-by-step
 
@@ -17,11 +17,11 @@ Follow these steps to create an account in spndr.
    - **Opening balance** (required) - the starting balance, defaults to `0.00`
 4. Click **Create account**.
 
-On success, spndr creates the account, sets `currentBalance` equal to your opening balance, and refreshes the list.
+On success, Corvale creates the account, sets `currentBalance` equal to your opening balance, and refreshes the list.
 
 ## Default account behavior
 
-- If this is your **first active account**, spndr automatically marks it as your default account.
+- If this is your **first active account**, Corvale automatically marks it as your default account.
 - If you already have accounts, the new account is not set as default unless you change it later.
 
 ## What you cannot set manually

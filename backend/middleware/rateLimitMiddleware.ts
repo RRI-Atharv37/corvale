@@ -24,6 +24,29 @@ export const createAuthRateLimiter = (prefix: string) =>
         },
     })
 
+/**
+ * SEC-32: `POST /workspaces/:workspaceId/members` looks the invitee up by email and 404s when
+ * there is no match, so any authenticated user can bulk-probe whether an address has a Corvale
+ * account. Metered only by the global mutating limiter (300 / 15 min) that is ~28,800 probes a
+ * day. Its own tighter budget — and a distinct prefix so it can't lock a user out of login —
+ * caps that without changing the endpoint's contract.
+ */
+export const createWorkspaceInviteRateLimiter = () =>
+    rateLimit({
+        windowMs: Number(process.env.WORKSPACE_INVITE_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+        max: Number(process.env.WORKSPACE_INVITE_RATE_LIMIT_MAX) || 30,
+        standardHeaders: true,
+        legacyHeaders: false,
+        store: new MongoRateLimitStore('workspace-invite'),
+        handler: (_req, res) => {
+            res.status(429).json({
+                success: false,
+                statusCode: 429,
+                message: ERROR_MESSAGES.AUTH.TOO_MANY_REQUESTS,
+            })
+        },
+    })
+
 export const createSyncPushRateLimiter = () =>
     rateLimit({
         windowMs: Number(process.env.SYNC_PUSH_RATE_LIMIT_WINDOW_MS) || 60 * 1000,

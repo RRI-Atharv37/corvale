@@ -4,24 +4,24 @@ title: Sessions and Logout
 
 ## How sessions work
 
-When you sign up or sign in, spndr issues two tokens:
+When you sign up or sign in, Corvale issues two tokens:
 
 | Token | Storage | Lifetime |
 |-------|---------|----------|
-| **Access token (JWT)** | Browser local storage | Short (default **15 minutes**) |
-| **Refresh token** | httpOnly cookie (`spndr_refresh`) | Longer (default **7 days**) |
+| **Access token (JWT)** | In memory only, never stored | Short (default **15 minutes**) |
+| **Refresh token** | httpOnly cookie (`corvale_refresh`) | Longer (default **7 days**) |
 
-The access token is sent on every API request. When it expires, the frontend automatically calls `POST /auth/refresh` using the refresh cookie to obtain a new access token without interrupting your work.
+The access token is sent on every API request. Because it is held in memory, a page reload discards it and Corvale fetches a new one from the refresh cookie. When it expires, the frontend automatically calls `POST /auth/refresh` using that cookie to obtain a new access token without interrupting your work.
 
 ## Automatic session restore
 
-When you open spndr:
+When you open Corvale:
 
-1. The app checks local storage for a saved access token.
-2. If a token exists, spndr calls `GET /auth/user` to fetch your profile.
-3. If the token is valid, you remain signed in and can access all features.
-4. If the token is expired, the axios interceptor attempts a silent refresh.
-5. If refresh fails, spndr clears your session and redirects you to login.
+1. The app has no access token in memory yet, so it calls `POST /auth/refresh` using the refresh cookie.
+2. If the cookie is valid, Corvale receives a new access token and calls `GET /auth/user` to fetch your profile.
+3. You remain signed in and can access all features.
+4. If an access token later expires mid-session, the axios interceptor attempts a silent refresh.
+5. If refresh fails, Corvale clears your session and redirects you to login.
 
 While the session is being restored, you see a loading screen with the message "Loading...".
 
@@ -33,7 +33,7 @@ While the session is being restored, you see a loading screen with the message "
 
 ## What happens on 401 errors
 
-If an API request returns **401 Unauthorized** on a protected route, the axios interceptor tries to refresh once. If refresh succeeds, the original request retries automatically. If refresh fails, spndr clears your token and redirects you to login.
+If an API request returns **401 Unauthorized** on a protected route, the axios interceptor tries to refresh once. If refresh succeeds, the original request retries automatically. If refresh fails, Corvale clears your token and redirects you to login.
 
 ## Logging out
 
@@ -43,7 +43,8 @@ Logout:
 
 - Revokes the current refresh token on the server
 - Clears the refresh cookie
-- Removes the access token from local storage
+- Discards the in-memory access token
+- Clears the data Corvale cached in your browser for offline use
 - Redirects you to the login page
 
 ## Logging out of all devices

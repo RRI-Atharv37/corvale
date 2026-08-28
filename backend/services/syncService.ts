@@ -79,8 +79,14 @@ const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
     category: {
         model: Category as unknown as Model<Document>,
         hasSoftDelete: false,
+        // User's own categories plus the shared `userId: null` masters. Expressed as a single
+        // `userId: { $in: [...] }` rather than a top-level `$or` so it survives being merged
+        // with the pull cursor's own `$or` in `combineFilters` — and so the RLS guard sees a
+        // top-level `userId` key (an `$or` whose branches carry the scope satisfies the guard
+        // alone, but not once it is `$and`-nested under an unscoped cursor clause). See the
+        // `Category` note in CLAUDE.md.
         buildScope: (userId) => ({
-            $or: [{ userId: new Types.ObjectId(userId) }, { userId: null }],
+            userId: { $in: [new Types.ObjectId(userId), null] },
         }),
     },
     budget: {

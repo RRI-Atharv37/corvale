@@ -5,6 +5,7 @@ import { CustomError } from './customError'
 import type { CustomReportResult } from './reportUtils'
 import { customReportToCsv, flattenCustomReport } from './reportUtils'
 import {
+    buildCsvRow,
     buildCsvString,
     CSV_HEADERS,
     formatTransactionCsvRow,
@@ -114,6 +115,32 @@ export const sendExportResponse = (
     }
 }
 
+/**
+ * Streams a CSV export row-by-row instead of buffering the full file in memory, so a large date
+ * range doesn't hold every matching transaction (and the whole rendered CSV string) in the
+ * process at once. `rows` is expected to be backed by a DB cursor rather than a pre-loaded array.
+ */
+export const streamCsvExport = async (
+    res: Response,
+    filename: string,
+    headerRow: string[],
+    rows: AsyncIterable<string[]>
+): Promise<void> => {
+    const safeName = sanitizeFilename(filename)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}.csv"`)
+    res.write(buildCsvRow(headerRow) + '\n')
+
+    for await (const row of rows) {
+        if (res.destroyed) {
+            break
+        }
+        res.write(buildCsvRow(row) + '\n')
+    }
+
+    res.end()
+}
+
 const writePdfSectionTitle = (doc: InstanceType<typeof PDFDocument>, title: string): void => {
     if (doc.y > doc.page.height - 100) {
         doc.addPage()
@@ -125,7 +152,7 @@ const writePdfSectionTitle = (doc: InstanceType<typeof PDFDocument>, title: stri
 }
 
 const renderCustomReportPdf = (doc: InstanceType<typeof PDFDocument>, report: CustomReportResult): void => {
-    doc.fontSize(18).fillColor('#111827').text('spndr Financial Report')
+    doc.fontSize(18).fillColor('#111827').text('Corvale Financial Report')
     doc.moveDown(0.25)
     doc.fontSize(10).fillColor('#6b7280').text(`Period: ${report.periodStart} to ${report.periodEnd}`)
     doc.fontSize(10).text(`Period type: ${report.periodType}`)
@@ -207,7 +234,7 @@ const renderTransactionsPdf = (
     doc: InstanceType<typeof PDFDocument>,
     payload: TransactionExportPayload
 ): void => {
-    doc.fontSize(18).fillColor('#111827').text('spndr Transactions Export')
+    doc.fontSize(18).fillColor('#111827').text('Corvale Transactions Export')
     doc.moveDown(0.25)
     doc.fontSize(10).fillColor('#6b7280')
     doc.text(`Exported: ${payload.exportedAt}`)

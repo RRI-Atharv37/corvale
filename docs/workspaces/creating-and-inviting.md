@@ -19,6 +19,8 @@ From your workspace's page in the **Workspaces** tab:
 2. Choose a **role** - Editor or Viewer.
 3. Send the invite.
 
+The person you invite must already have a Corvale account. If no account uses that address, the invite fails and they need to sign up first. That also means sending an invite tells you whether an address is registered with Corvale, so only invite people who are expecting it.
+
 You can't invite someone who is already a member, invite yourself, or send a second invite to someone with a pending one.
 
 ## Accepting or declining an invite

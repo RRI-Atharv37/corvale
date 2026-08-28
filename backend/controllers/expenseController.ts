@@ -4,6 +4,7 @@ import { Response } from 'express'
 import Expense from '../models/Expense'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { buildCsvString } from '../utils/transactionUtils'
 import {
     aggregateExpenses,
     buildSearchRegex,
@@ -191,10 +192,10 @@ export const downloadExpense = asyncHandler(async (req: AuthRequest, res: Respon
     const expenses = await Expense.find({ userId }).sort({ date: -1 })
 
     const csvData = [
-        ['Title,Amount,Description,Category,Date,Payment Method,Recurring,Tags'],
+        ['Title', 'Amount', 'Description', 'Category', 'Date', 'Payment Method', 'Recurring', 'Tags'],
         ...expenses.map((expense) => [
             expense.title,
-            expense.amount,
+            expense.amount.toString(),
             expense.description || 'N/A',
             expense.category || 'N/A',
             expense.date.toISOString().split('T')[0],
@@ -204,7 +205,7 @@ export const downloadExpense = asyncHandler(async (req: AuthRequest, res: Respon
         ]),
     ]
 
-    const csvString = csvData.map((row) => row.join(',')).join('\n')
+    const csvString = buildCsvString(csvData)
 
     res.setHeader('Content-Type', 'text/csv')
     res.setHeader('Content-Disposition', 'attachment; filename=expenses.csv')

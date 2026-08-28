@@ -31,7 +31,7 @@ When a budget is over limit, the card border turns rose and an **Over budget** b
 
 ## What counts toward spent
 
-spndr includes transactions that match all of the following:
+Corvale includes transactions that match all of the following:
 
 1. Type is **expense**
 2. Status is **posted** (not draft)

@@ -5,7 +5,7 @@ import Account from '../models/Account'
 import Category from '../models/Category'
 import Transaction from '../models/Transaction'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
-import { registerUser, authHeader, RegisteredUser } from './helpers'
+import { registerUser, authHeader, ensureTimestampAdvances, RegisteredUser } from './helpers'
 
 /**
  * Acceptance spec for sync conflict detection.
@@ -62,6 +62,7 @@ describe('Sync API — conflict resolution', () => {
         })
         const staleBaseUpdatedAt = transaction.updatedAt.toISOString()
 
+        await ensureTimestampAdvances()
         transaction.title = 'Changed out from under the client'
         await transaction.save()
 
@@ -103,6 +104,7 @@ describe('Sync API — conflict resolution', () => {
             date: new Date(),
         })
         const staleBaseUpdatedAt = transaction.updatedAt.toISOString()
+        await ensureTimestampAdvances()
         transaction.amount = 9999
         await transaction.save()
 

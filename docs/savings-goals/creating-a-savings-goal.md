@@ -13,7 +13,7 @@ You create savings goals from the **Savings Goals** page. Each goal stores a nam
 3. Complete the form fields below.
 4. Click **Create goal** to save.
 
-On success, spndr closes the modal, shows a success notification, and displays the new goal on the **Active** tab with $0.00 saved toward the target.
+On success, Corvale closes the modal, shows a success notification, and displays the new goal on the **Active** tab with $0.00 saved toward the target.
 
 ## Form fields
 
@@ -27,7 +27,7 @@ Enter a positive target (for example, `2,000.00`) and choose the currency. The d
 
 ### Target date (optional)
 
-Set a deadline if you want spndr to calculate **required monthly contribution** and **months remaining** metrics. Leave empty for open-ended goals.
+Set a deadline if you want Corvale to calculate **required monthly contribution** and **months remaining** metrics. Leave empty for open-ended goals.
 
 ### Linked account (optional)
 
@@ -55,7 +55,7 @@ New goals start with:
 - **Status:** Active
 - **Progress:** 0% complete
 
-Add manual contributions or process auto contributions to increase progress. When contributions reach the target, spndr can automatically mark the goal complete.
+Add manual contributions or process auto contributions to increase progress. When contributions reach the target, Corvale can automatically mark the goal complete.
 
 ## Editing goals
 

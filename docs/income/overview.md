@@ -2,7 +2,7 @@
 title: Income Overview
 ---
 
-> **This page describes the legacy Income section.** spndr now uses a unified [Transactions](../transactions/overview.md) page. The `/income` route redirects to `/transactions?type=income`.
+> **This page describes the legacy Income section.** Corvale now uses a unified [Transactions](../transactions/overview.md) page. The `/income` route redirects to `/transactions?type=income`.
 
 ## Track money coming in
 
@@ -32,7 +32,7 @@ Each income entry supports the following fields:
 | **Category** | No | A free-text category (e.g., "Salary", "Freelance") |
 | **Description** | No | Optional notes about the entry |
 
-Categories are free-text - spndr does not enforce a predefined list.
+Categories are free-text - Corvale does not enforce a predefined list.
 
 ## How income affects your balances
 

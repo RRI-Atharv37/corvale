@@ -8,14 +8,29 @@ import {
     isRlsActive,
 } from '../utils/rowLevelSecurity'
 
-const QUERY_OPERATIONS = [
+/**
+ * Every Mongoose query operation the RLS guard hooks. Kept exported and pinned by
+ * `tests/rlsHookedOperations.test.ts` so a future Mongoose upgrade or a casual edit
+ * cannot silently drop coverage (SEC-36).
+ *
+ * `estimatedDocumentCount` takes no filter, so it can never be user-scoped — hooking it
+ * means it is *rejected* outright while an RLS context is active. Use `countDocuments`
+ * with a `userId`/`workspaceId` filter instead, or the `RLS_BYPASS` option for genuine
+ * system-wide counts.
+ */
+export const QUERY_OPERATIONS = [
     'find',
     'findOne',
     'findOneAndUpdate',
     'findOneAndDelete',
+    'findOneAndReplace',
+    'updateOne',
     'updateMany',
+    'replaceOne',
+    'deleteOne',
     'deleteMany',
     'countDocuments',
+    'estimatedDocumentCount',
     'distinct',
 ] as const
 

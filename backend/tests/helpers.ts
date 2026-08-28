@@ -30,7 +30,13 @@ export async function registerUser(
 ): Promise<RegisteredUser> {
     const userData = { ...defaultTestUser, ...overrides }
 
-    const res = await request(app).post('/api/v1/auth/register').send(userData)
+    // Signup requires an explicit consent + 18+ attestation (M0c). Every test that isn't
+    // specifically exercising that gate wants a user who cleared it, so it's defaulted here
+    // rather than in each caller - same reasoning as the auto-verify below.
+    // See tests/legalAcceptance.test.ts for the specs that omit these deliberately.
+    const res = await request(app)
+        .post('/api/v1/auth/register')
+        .send({ ...userData, acceptedTerms: true, ageAttested: true })
 
     // Auto-verify so existing/unrelated tests can keep using protected routes right after
     // registering, without every caller needing to know about the email-verification flow.
@@ -51,6 +57,15 @@ export async function createSecondUser(app: Application): Promise<RegisteredUser
         email: 'other@example.com',
         password: 'OtherPassword123!',
     })
+}
+
+/**
+ * Marks an account verified out-of-band. For specs that register via raw HTTP (rather than the
+ * auto-verifying `registerUser` helper) but still need the account past the login/verification
+ * hard gate.
+ */
+export async function verifyUserByEmail(email: string): Promise<void> {
+    await User.updateOne({ email: email.trim().toLowerCase() }, { $set: { isEmailVerified: true } })
 }
 
 export function authHeader(token: string): { Authorization: string } {
@@ -117,6 +132,17 @@ export async function createPostedTransaction(
         date: new Date(),
     })
 }
+
+/**
+ * `updatedAt` has millisecond precision, and sync staleness detection compares it as an exact
+ * string (`isStaleGeneric` in syncController.ts). A "stale baseUpdatedAt" test captures a doc's
+ * `updatedAt`, then mutates and re-saves it - on a fast machine those two writes can land in the
+ * same millisecond, so the "changed out from under the client" save produces an `updatedAt`
+ * identical to the captured baseline and the conflict goes undetected (flaky "applied" instead of
+ * "conflict"). Call this between the capture and the mutating save to force a new millisecond.
+ */
+export const ensureTimestampAdvances = (): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, 5))
 
 export async function seedUserDirectly(overrides: Partial<TestUser> = {}): Promise<RegisteredUser> {
     const userData = { ...defaultTestUser, ...overrides }

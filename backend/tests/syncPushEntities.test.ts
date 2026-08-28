@@ -10,7 +10,7 @@ import SavingsGoal from '../models/SavingsGoal'
 import RecurringRule from '../models/RecurringRule'
 import CategorizationRule from '../models/CategorizationRule'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
-import { authHeader, registerUser, RegisteredUser } from './helpers'
+import { authHeader, ensureTimestampAdvances, registerUser, RegisteredUser } from './helpers'
 
 /**
  * Sprint 13.9 acceptance spec for the generalized POST /sync/push dispatch
@@ -104,6 +104,7 @@ describe('Sync API — push: account (archive-flag entity)', () => {
         const account = await seedAccount(owner.userId, { name: 'Original' })
         const staleBaseUpdatedAt = account.updatedAt.toISOString()
 
+        await ensureTimestampAdvances()
         account.name = 'Changed out from under the client'
         await account.save()
 
@@ -259,6 +260,7 @@ describe('Sync API — push: tag (soft-delete entity)', () => {
         const tag = await Tag.create({ userId: owner.userId, name: 'Original Tag' })
         const staleBaseUpdatedAt = tag.updatedAt.toISOString()
 
+        await ensureTimestampAdvances()
         tag.name = 'Changed out from under the client'
         await tag.save()
 
@@ -442,6 +444,7 @@ describe('Sync API — push: transactionTemplate (new entity)', () => {
         })
         const staleBaseUpdatedAt = template.updatedAt.toISOString()
 
+        await ensureTimestampAdvances()
         template.name = 'Changed out from under the client'
         await template.save()
 

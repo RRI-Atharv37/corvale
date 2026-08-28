@@ -148,6 +148,92 @@ describe('Transactions', () => {
         expect(expenseRes.body.data.data[0].type).toBe('expense')
     })
 
+    it('filters transactions by status (X4 draft filter on /transactions)', async () => {
+        const { token } = await registerUser(app)
+        const account = await createTestAccount(token)
+        const categoryId = await getFoodMasterId(token)
+
+        const postedRes = await createTestTransaction(token, {
+            type: 'expense',
+            title: 'Posted expense',
+            amount: 20,
+            date: '2026-01-02T12:00:00.000Z',
+            accountId: account._id,
+            categoryId,
+        })
+
+        await Transaction.create({
+            userId: postedRes.body.data.userId,
+            accountId: account._id,
+            categoryId,
+            type: 'expense',
+            status: 'draft',
+            amount: 1500,
+            currency: 'USD',
+            title: 'Draft expense',
+            date: new Date('2026-01-03T12:00:00.000Z'),
+        })
+
+        const allRes = await request(app)
+            .get('/api/v1/transactions')
+            .set(authHeader(token))
+        expect(allRes.body.data.data).toHaveLength(2)
+
+        const draftRes = await request(app)
+            .get('/api/v1/transactions?status=draft')
+            .set(authHeader(token))
+        expect(draftRes.status).toBe(200)
+        expect(draftRes.body.data.data).toHaveLength(1)
+        expect(draftRes.body.data.data[0].title).toBe('Draft expense')
+
+        const postedListRes = await request(app)
+            .get('/api/v1/transactions?status=posted')
+            .set(authHeader(token))
+        expect(postedListRes.status).toBe(200)
+        expect(postedListRes.body.data.data).toHaveLength(1)
+        expect(postedListRes.body.data.data[0].title).toBe('Posted expense')
+
+        const invalidRes = await request(app)
+            .get('/api/v1/transactions?status=bogus')
+            .set(authHeader(token))
+        expect(invalidRes.status).toBe(400)
+    })
+
+    it('filters transactions by status within a date range via /transactions/filter', async () => {
+        const { token } = await registerUser(app)
+        const account = await createTestAccount(token)
+        const categoryId = await getFoodMasterId(token)
+
+        const postedRes = await createTestTransaction(token, {
+            type: 'expense',
+            title: 'Posted in range',
+            amount: 20,
+            date: '2026-02-02T12:00:00.000Z',
+            accountId: account._id,
+            categoryId,
+        })
+
+        await Transaction.create({
+            userId: postedRes.body.data.userId,
+            accountId: account._id,
+            categoryId,
+            type: 'expense',
+            status: 'draft',
+            amount: 1500,
+            currency: 'USD',
+            title: 'Draft in range',
+            date: new Date('2026-02-03T12:00:00.000Z'),
+        })
+
+        const res = await request(app)
+            .get('/api/v1/transactions/filter?startDate=2026-02-01&endDate=2026-02-28&status=draft')
+            .set(authHeader(token))
+
+        expect(res.status).toBe(200)
+        expect(res.body.data).toHaveLength(1)
+        expect(res.body.data[0].title).toBe('Draft in range')
+    })
+
     it('gets, updates, and deletes a transaction with balance adjustments', async () => {
         const { token } = await registerUser(app)
         const account = await createTestAccount(token, 300)

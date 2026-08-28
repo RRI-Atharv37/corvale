@@ -49,6 +49,8 @@ describe('Signup abuse controls (L9)', () => {
             const app = createApp()
 
             const res = await request(app).post('/api/v1/auth/register').send({
+                acceptedTerms: true,
+                ageAttested: true,
                 fullName: 'No Captcha Needed',
                 email: 'no-captcha@example.com',
                 password: 'ValidPassword123!',
@@ -62,6 +64,8 @@ describe('Signup abuse controls (L9)', () => {
             const app = createApp()
 
             const res = await request(app).post('/api/v1/auth/register').send({
+                acceptedTerms: true,
+                ageAttested: true,
                 fullName: 'Bot',
                 email: 'bot-no-token@example.com',
                 password: 'ValidPassword123!',
@@ -81,6 +85,8 @@ describe('Signup abuse controls (L9)', () => {
 
             try {
                 const res = await request(app).post('/api/v1/auth/register').send({
+                    acceptedTerms: true,
+                    ageAttested: true,
                     fullName: 'Bot',
                     email: 'bot-bad-token@example.com',
                     password: 'ValidPassword123!',
@@ -102,6 +108,8 @@ describe('Signup abuse controls (L9)', () => {
 
             try {
                 const res = await request(app).post('/api/v1/auth/register').send({
+                    acceptedTerms: true,
+                    ageAttested: true,
                     fullName: 'Real Human',
                     email: 'real-human@example.com',
                     password: 'ValidPassword123!',
@@ -131,6 +139,8 @@ describe('Signup abuse controls (L9)', () => {
             }
 
             const res = await request(app).post('/api/v1/auth/register').send({
+                acceptedTerms: true,
+                ageAttested: true,
                 fullName: 'Fresh Signup',
                 email: 'fresh-signup-after-login-burst@example.com',
                 password: 'ValidPassword123!',

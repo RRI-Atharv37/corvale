@@ -1,6 +1,8 @@
 {
-  "name": "spndr-docs",
+  "name": "corvale-docs",
   "private": true,
+  "license": "AGPL-3.0-or-later",
+  "author": "Atharv Dewangan",
   "type": "module",
   "scripts": {
     "dev": "vitepress dev --port 5174",

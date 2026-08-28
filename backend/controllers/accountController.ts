@@ -10,6 +10,7 @@ import { roundMoney } from '../utils/balanceUtils'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
 import { convertAmount } from '../utils/exchangeRateUtils'
 import { recomputeAccountBalance } from '../../shared/src/balances'
+import { fromMinorUnits, toMinorUnits } from '../../shared/src/money'
 import {
     getUserId,
     handleResponses,
@@ -51,19 +52,39 @@ const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): numb
     return roundMoney(parsed)
 }
 
+/**
+ * Balances are stored major-unit for every account created before Sprint
+ * C5's migration ran, minor-unit integers after — see Account.ts's
+ * balanceUnit doc comment. The API contract is unchanged by C5: every
+ * response converts back to major-unit decimals here, regardless of the
+ * account's internal storage form.
+ */
+const getAccountBalancesMajor = (
+    account: Pick<IAccount, 'openingBalance' | 'currentBalance' | 'balanceUnit'>
+): { openingBalance: number; currentBalance: number } =>
+    account.balanceUnit === 'minor'
+        ? { openingBalance: fromMinorUnits(account.openingBalance), currentBalance: fromMinorUnits(account.currentBalance) }
+        : { openingBalance: account.openingBalance, currentBalance: account.currentBalance }
+
+const serializeAccount = (account: IAccount) => ({
+    ...account.toObject(),
+    ...getAccountBalancesMajor(account),
+})
+
 const withConvertedBalance = (
     account: IAccount,
     preferredCurrency: string,
     exchangeRates: Record<string, number>
 ) => {
+    const serialized = serializeAccount(account)
     const { convertedAmount, rateApplied, rateConfigured } = convertAmount(
-        account.currentBalance,
+        serialized.currentBalance,
         account.currency,
         preferredCurrency,
         exchangeRates
     )
     return {
-        ...account.toObject(),
+        ...serialized,
         convertedBalance: roundMoney(convertedAmount),
         exchangeRateApplied: rateApplied,
         hasExchangeRate: rateConfigured,
@@ -246,7 +267,7 @@ export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response
     }
 
     const updatedAccount = await account.save()
-    handleResponses(res, 200, updatedAccount)
+    handleResponses(res, 200, serializeAccount(updatedAccount))
 })
 
 export const archiveAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -271,7 +292,7 @@ export const archiveAccount = asyncHandler(async (req: AuthRequest, res: Respons
     account.isDefault = false
     await account.save()
 
-    handleResponses(res, 200, { message: 'Account archived successfully', data: account })
+    handleResponses(res, 200, { message: 'Account archived successfully', data: serializeAccount(account) })
 })
 
 export const recomputeBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -312,9 +333,15 @@ export const recomputeBalance = asyncHandler(async (req: AuthRequest, res: Respo
         pairs.map((pair) => [pair._id.toString(), pair.createdAt])
     )
 
-    const previousBalance = account.currentBalance
+    // recomputeAccountBalance (shared/src/balances.ts) is major-unit-only and shared
+    // verbatim with the frontend's local domain engine, so it stays untouched here —
+    // a migrated ('minor') account's opening balance is converted to major before the
+    // call, and the major-unit result is converted back for storage after.
+    const isMinor = account.balanceUnit === 'minor'
+    const previousBalance = isMinor ? fromMinorUnits(account.currentBalance) : account.currentBalance
+    const openingBalanceMajor = isMinor ? fromMinorUnits(account.openingBalance) : account.openingBalance
     const recomputedBalance = recomputeAccountBalance(
-        { openingBalance: account.openingBalance, type: account.type },
+        { openingBalance: openingBalanceMajor, type: account.type },
         transactions.map((transaction) => {
             let effectiveType = transaction.type
 
@@ -333,7 +360,7 @@ export const recomputeBalance = asyncHandler(async (req: AuthRequest, res: Respo
         })
     )
 
-    account.currentBalance = recomputedBalance
+    account.currentBalance = isMinor ? toMinorUnits(recomputedBalance) : recomputedBalance
     await account.save()
 
     handleResponses(res, 200, {

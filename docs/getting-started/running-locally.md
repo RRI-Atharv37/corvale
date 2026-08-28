@@ -16,7 +16,7 @@ The backend exposes all API routes under `/api/v1`.
 
 ## Start the frontend
 
-Open a second terminal in the `frontend/spndr/` folder and run:
+Open a second terminal in the `frontend/corvale/` folder and run:
 
 ```bash
 npm run dev
@@ -24,7 +24,7 @@ npm run dev
 
 Vite starts the frontend development server, typically at `http://localhost:5173`.
 
-## Open spndr in your browser
+## Open Corvale in your browser
 
 Navigate to `http://localhost:5173` in your browser. You land on the landing page if you are not signed in, or the dashboard if you already have a valid session.
 
@@ -34,7 +34,7 @@ If this is your first visit:
 
 1. Click **Sign up** on the login page.
 2. Enter your full name, email, and password.
-3. Submit the form - spndr signs you in automatically and redirects you to the dashboard.
+3. Submit the form - Corvale signs you in automatically and redirects you to the dashboard.
 
 ## Run the documentation site (optional)
 

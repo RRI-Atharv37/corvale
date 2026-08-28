@@ -12,7 +12,7 @@ If you need access to funds you previously set aside, you can withdraw from the 
 2. In the **Withdraw from saver** card on the right, enter the amount you want to withdraw.
 3. Click **Withdraw**.
 
-On success, spndr decreases your saver balance, increases your spendable balance, and shows a success notification.
+On success, Corvale decreases your saver balance, raises your **displayed** spendable balance by the same amount, and shows a success notification. As with a deposit, no money moves and no transaction is created - only the earmark changes.
 
 ## Rules and limits
 
@@ -28,7 +28,7 @@ Withdrawing from the saver:
 - Does **not** create an income or expense entry
 - Does **not** modify any account balances
 
-It simply moves money from the saver pool back to spendable balance within spndr's internal accounting.
+It simply removes the earmark, so the amount is once again counted as spendable in Corvale's display. Your bank account is untouched.
 
 ## When to withdraw
 

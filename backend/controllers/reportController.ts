@@ -203,7 +203,7 @@ export const generateReport = asyncHandler(async (req: AuthRequest, res: Respons
         sendCustomReportExport(
             res,
             format,
-            `spndr-report-${period.startDate}-${period.endDate}`,
+            `corvale-report-${period.startDate}-${period.endDate}`,
             report
         )
         return

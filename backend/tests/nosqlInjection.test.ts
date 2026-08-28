@@ -35,7 +35,7 @@ describe('NoSQL operator injection — body sanitization (SEC-09)', () => {
 
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Attacker', email: { $ne: null }, password: 'ValidPassword123!' })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Attacker', email: { $ne: null }, password: 'ValidPassword123!' })
 
         expect(res.status).toBe(400)
     })
@@ -76,7 +76,7 @@ describe('NoSQL operator injection — body sanitization (SEC-09)', () => {
         const app = createApp()
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Normal User', email: 'normal-user@example.com', password: 'ValidPassword123!' })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Normal User', email: 'normal-user@example.com', password: 'ValidPassword123!' })
 
         expect(res.status).toBe(201)
     })

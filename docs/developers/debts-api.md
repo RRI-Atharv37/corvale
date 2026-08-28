@@ -7,7 +7,7 @@ title: Debt Payoff API
 Requires authentication. Generates a month-by-month payoff schedule for credit accounts with a negative balance.
 
 ::: warning No frontend yet
-This API is implemented and available today, but spndr's web UI does not yet have a page for it. Use it directly if you're building against the API.
+This API is implemented and available today, but Corvale's web UI does not yet have a page for it. Use it directly if you're building against the API.
 :::
 
 ### Request body

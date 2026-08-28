@@ -1,5 +1,5 @@
 {
-  "name": "spndr-backend",
+  "name": "corvale-backend",
   "version": "1.0.0",
   "description": "simple expense tracker",
   "homepage": "https://github.com/RRI-Atharv37/spndr#readme",
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/RRI-Atharv37/spndr.git"
   },
-  "license": "Apache-2.0",
+  "license": "AGPL-3.0-or-later",
   "author": "Atharv Dewangan",
   "type": "commonjs",
   "main": "server.ts",
@@ -25,6 +25,8 @@
     "migrate:transactions:dry-run": "ts-node scripts/migrateIncomeExpenseToTransactions.ts --dry-run",
     "migrate:email-verification": "ts-node scripts/backfillEmailVerification.ts",
     "migrate:email-verification:dry-run": "ts-node scripts/backfillEmailVerification.ts --dry-run",
+    "migrate:account-balances": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts",
+    "migrate:account-balances:dry-run": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts --dry-run",
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts"
   },
   "dependencies": {

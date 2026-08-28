@@ -17,11 +17,21 @@ export { roundMoney }
 export type { AccountTotals, UserBalanceSummary, CurrencyConversionOptions }
 
 const toAccountsLike = (
-    accounts: Array<{ type: AccountLike['type']; currentBalance: number; currency: string; isArchived: boolean }>
+    accounts: Array<{
+        type: AccountLike['type']
+        currentBalance: number
+        currency: string
+        isArchived: boolean
+        balanceUnit?: 'major' | 'minor'
+    }>
 ): AccountLike[] =>
     accounts.map((account) => ({
         type: account.type,
-        currentBalance: account.currentBalance,
+        // AccountLike/computeAccountTotalsPure operate in major units throughout
+        // (see shared/src/balances.ts) — an account migrated to minor-unit
+        // storage (Sprint C5) is converted back to major here, at the boundary,
+        // so that shared function never needs to know about the flag.
+        currentBalance: account.balanceUnit === 'minor' ? fromMinorUnits(account.currentBalance) : account.currentBalance,
         currency: account.currency,
         isArchived: account.isArchived,
     }))

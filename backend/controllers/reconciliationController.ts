@@ -9,6 +9,7 @@ import ReconciliationSession from '../models/ReconciliationSession'
 import Account from '../models/Account'
 import { roundMoney } from '../utils/balanceUtils'
 import { getBalanceDeltaMajor } from '../utils/transactionUtils'
+import { fromMinorUnits } from '../../shared/src/money'
 import {
     getUserId,
     validateRequiredFields,
@@ -96,7 +97,9 @@ export const createReconciliationSession = asyncHandler(async (req: AuthRequest,
             list.reduce((sum, t) => sum + getBalanceDeltaMajor(t.type, t.amount, account.type), 0)
         )
 
-    const clearedBalance = roundMoney(account.openingBalance + sumDeltas(settledTransactions))
+    const openingBalanceMajor =
+        account.balanceUnit === 'minor' ? fromMinorUnits(account.openingBalance) : account.openingBalance
+    const clearedBalance = roundMoney(openingBalanceMajor + sumDeltas(settledTransactions))
     const pendingBalance = sumDeltas(pendingTransactions)
 
     const balanceDifferential = roundMoney(Math.abs(statementBalance - clearedBalance))
