@@ -106,6 +106,7 @@ export const ERROR_MESSAGES = {
         BULK_CATEGORY_TRANSFER: 'Transfers cannot be bulk recategorized',
         RECEIPT_ALREADY_ATTACHED: 'Receipt is already attached to this transaction',
         RECEIPT_NOT_ATTACHED: 'Receipt is not attached to this transaction',
+        INVALID_ACCOUNT_ID_FILTER: 'Invalid accountId filter',
     },
     RECEIPT: {
         RECEIPT_NOT_FOUND: 'Receipt not found',

@@ -120,6 +120,13 @@ const buildListFilter = (
     }
 
     if (accountId !== undefined && accountId !== '') {
+        // req.query is not covered by the app-level sanitizeBody guard (SEC-35), and the
+        // query parser is pinned to 'simple' so this is always a primitive — validate it
+        // as an ObjectId before it reaches the Mongoose filter. accountId is compared
+        // against an ObjectId column, so a non-ObjectId value is meaningless anyway.
+        if (typeof accountId !== 'string' || !Types.ObjectId.isValid(accountId)) {
+            throw new CustomError(ERROR_MESSAGES.TRANSACTION.INVALID_ACCOUNT_ID_FILTER, 400)
+        }
         filter.accountId = accountId
     }
 

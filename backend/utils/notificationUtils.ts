@@ -12,7 +12,6 @@ import { IUser } from '../models/User'
 import { attachProgressToBudget, computeBudgetProgress, computeBudgetSpentMinor } from './budgetUtils'
 import { fromMinorUnits } from './moneyUtils'
 import { endOfDayInTimezone, startOfDayInTimezone } from './timezoneUtils'
-import { RLS_BYPASS } from './rowLevelSecurity'
 import { buildScopedListFilter } from './workspaceUtils'
 
 export const SAVINGS_MILESTONES = [25, 50, 75, 100] as const
@@ -323,7 +322,7 @@ export const attachBudgetContextToNotifications = async (
 
     const budgets =
         budgetIds.length > 0
-            ? await Budget.find({ _id: { $in: budgetIds } }).setOptions({ [RLS_BYPASS]: true })
+            ? await Budget.find({ _id: { $in: budgetIds }, userId })
             : []
 
     const budgetMap = new Map(budgets.map((b) => [b._id.toString(), b]))
