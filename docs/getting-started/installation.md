@@ -19,8 +19,8 @@ You also need a terminal (Command Prompt, PowerShell, or Terminal) and a code ed
 Open a terminal and clone the Corvale repository:
 
 ```bash
-git clone https://github.com/RRI-Atharv37/spndr.git
-cd spndr
+git clone https://github.com/RRI-Atharv37/corvale.git
+cd corvale
 ```
 
 ## Install backend dependencies

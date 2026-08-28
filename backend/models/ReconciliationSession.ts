@@ -11,6 +11,8 @@ export interface IReconciliationSession extends Document {
     clearedBalance: number
     pendingBalance: number
     balanceDifferential: number
+    /** See `Transaction.createdByRemovedUser` - same meaning, same sentinel `userId`. */
+    createdByRemovedUser?: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -25,6 +27,7 @@ const ReconciliationSessionSchema = new Schema<IReconciliationSession>(
         clearedBalance: { type: Number, required: true, default: 0 },
         pendingBalance: { type: Number, required: true, default: 0 },
         balanceDifferential: { type: Number, required: true, default: 0 },
+        createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

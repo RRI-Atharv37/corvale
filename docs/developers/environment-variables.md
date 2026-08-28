@@ -19,13 +19,14 @@ Create a `.env` file in the `backend/` folder.
 | `CLIENT_URL` | Yes | - | Frontend origin for CORS (e.g., `http://localhost:5173`). The desktop app's origins (`tauri://localhost`, `http://tauri.localhost`) are always admitted alongside it — see `backend/utils/corsOriginAllowlist.ts` |
 | `OFFLINE_GRANT_PRIVATE_KEY` | Yes | - | EC (P-256) private key, PEM-encoded with real newlines replaced by literal `\n`, that signs the client's offline session grant. See [Offline session grant](#offline-session-grant) below |
 | `OFFLINE_GRANT_DAYS` | No | `30` | How many days a client may render its cached data offline before the signed grant expires |
-| `PASSWORD_RESET_EXPIRY_MS` | No | `3600000` (1 hour) | Password reset token lifetime |
-| `EMAIL_VERIFICATION_EXPIRY_MS` | No | `86400000` (24 hours) | Email verification token lifetime |
-| `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev to log reset/verification links to the console instead of emailing them |
+| `PASSWORD_RESET_EXPIRY_MS` | No | `600000` (10 minutes) | Password reset token lifetime |
+| `EMAIL_VERIFICATION_EXPIRY_MS` | No | `600000` (10 minutes) | Email verification token lifetime. Login is hard-blocked until the address is verified; a blocked user gets a fresh link from the unauthenticated `POST /auth/email-verification/resend` (`{ email }` body, enumeration-safe) |
+| `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev to log reset/verification links to the console instead of emailing them. Setting it switches on real delivery, so only set it once the sending domain's SPF/DKIM/DMARC records are published and verified. Current provider is Resend (`smtp.resend.com`) |
 | `SMTP_PORT` | No | `587` | SMTP server port (`465` switches to implicit TLS) |
-| `SMTP_USER` | No | unset | SMTP account username |
-| `SMTP_PASS` | No | unset | SMTP account password |
-| `SMTP_FROM` | No | SMTP account email | "From" address on outgoing password-reset and email-verification messages |
+| `SMTP_USER` | Only if `SMTP_HOST` set | unset | SMTP account username (for Resend this is the literal string `resend`) |
+| `SMTP_PASS` | Only if `SMTP_HOST` set | unset | SMTP account password (for Resend, a "Sending access" API key, `re_…`) |
+| `SMTP_FROM` | No | `Corvale <no-reply@send.corvale.app>` | "From" address on outgoing password-reset and email-verification messages. Its domain must be the verified sending domain or DKIM will not align |
+| `SMTP_REPLY_TO` | No | `Corvale Support <support@corvale.app>` | "Reply-To" address on outgoing mail — a real monitored inbox, since `SMTP_FROM` is a no-reply mailbox |
 | `AUTH_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for auth routes, and for `/auth/refresh` + `/auth/logout` |
 | `AUTH_RATE_LIMIT_MAX` | No | `10` | Max requests per window per IP for auth routes, and for `/auth/refresh` + `/auth/logout` |
 | `SYNC_PUSH_RATE_LIMIT_WINDOW_MS` | No | `60000` (1 min) | Rate limit window for `POST /sync/push` |

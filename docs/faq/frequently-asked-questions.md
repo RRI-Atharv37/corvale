@@ -10,11 +10,17 @@ Corvale is a personal finance web application for tracking transactions, account
 
 ### Is Corvale free to use?
 
-Corvale is open source under the GNU AGPL v3.0 License. You can run it locally or deploy it on your own infrastructure at no cost. If you modify it and offer it to others over a network, the AGPL requires you to publish your changes.
+Yes, both ways. The hosted service is free: there are no paid plans, no trial that turns into a charge, and no payment details to give. If paid plans ever launch, Corvale will publish subscription terms and ask you to accept them before any charge is made - see the [Terms of Service](../legal/terms.md).
+
+Corvale is also open source under the GNU AGPL v3.0 License, so you can run it locally or deploy it on your own infrastructure at no cost. If you modify it and offer it to others over a network, the AGPL requires you to publish your changes.
 
 ### Do I need to create an account?
 
 Yes. Corvale requires registration to keep your financial data private and scoped to your user account.
+
+### Does Corvale connect to my bank?
+
+No. Corvale has no bank connection of any kind. It never asks for your banking credentials, never retrieves your balances, and never sees a transaction you did not enter or import yourself. Every number in Corvale comes from you - by typing it in, or by uploading a statement file you exported from your bank. See the [Privacy Policy](../legal/privacy.md).
 
 ## Transactions and categories
 
@@ -42,9 +48,16 @@ Yes. Enable **Split expense** when creating an expense. Each split line needs a 
 
 Yes. Upload JPEG, PNG, WebP, or PDF files up to 5 MB per receipt. Attach them when creating or editing a transaction.
 
+### Do I have to be 18 to use Corvale?
+
+Yes. The hosted Corvale service is for adults only, and you confirm your age when you sign up.
+India's data protection law requires verified parental consent for anyone under 18, which Corvale
+cannot reliably do. Corvale stores only your answer, never your date of birth. See the
+[Privacy Policy](../legal/privacy.md).
+
 ### Can I export my data?
 
-The backend supports CSV export for transactions via `GET /transactions/download`. The web UI does not currently include an export button.
+Yes, and export is never restricted. Open **Settings → Backup and Restore** to download everything as JSON, or as a ZIP that includes your receipt files. You can also export transactions as CSV from the Transactions page. See [Backup and Restore](../backup-restore/overview.md).
 
 ## Budgets and savings goals
 
@@ -115,6 +128,14 @@ Use **Forgot password?** on the login page to request a reset link. See [Resetti
 ### Can I change my email or name?
 
 Corvale does not currently provide UI to edit your email or full name after registration.
+
+### Do I have to verify my email?
+
+Corvale emails you a verification link when you sign up. You can use Corvale without clicking it, but verifying confirms the address is really yours - and that address is where a password reset gets sent. To send a new link, open `/verify-email` and click **Resend verification email**. See [Creating an Account](../authentication/creating-an-account.md#verifying-your-email).
+
+### How do I delete my account?
+
+Open **Settings** and scroll to **Delete my account** at the bottom. You confirm with your password. Deletion immediately and irreversibly removes your account from the live service: it erases your records and your uploaded receipt files outright, rather than hiding them behind a flag. Backup copies are overwritten on the retention schedule in the [Privacy Policy](../legal/privacy.md). Export first if you want a copy - export is never restricted. See [Your Data and Privacy](../legal/your-data-and-privacy.md).
 
 ### How long does my session last?
 
@@ -203,4 +224,4 @@ Run the migration script from `backend/`: `npm run migrate:transactions`. See [D
 
 ### Where can I report bugs?
 
-Open an issue on the [GitHub repository](https://github.com/RRI-Atharv37/spndr/issues).
+Open an issue on the [GitHub repository](https://github.com/RRI-Atharv37/corvale/issues). Please don't report security vulnerabilities there - use the repository's **Security** tab instead, and see [Contact](../legal/contact.md) for privacy and data-rights requests.

@@ -1,6 +1,6 @@
 import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
-import User, { IUser } from '../models/User'
+import User, { IUser, LegalAcceptance } from '../models/User'
 import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
@@ -38,7 +38,12 @@ import { parseDateFormat, parsePageSize } from '../utils/userPreferencesUtils'
 import { normalizeEmail } from '../utils/emailUtils'
 import { validatePassword } from '../utils/passwordPolicy'
 import { verifyCaptcha } from '../utils/captchaService'
-import { assertAccountDeletionAllowed, deleteUserAccountCascade } from '../utils/accountDeletionUtils'
+import {
+    assertAccountDeletionAllowed,
+    computeAccountDeletionImpact,
+    deleteUserAccountCascade,
+} from '../utils/accountDeletionUtils'
+import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from '../utils/legalVersions'
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
@@ -51,6 +56,21 @@ const toPublicUser = (user: IUser) => ({
     notificationPreferences: user.notificationPreferences,
     exchangeRates: user.exchangeRates,
     isEmailVerified: user.isEmailVerified,
+    legalAcceptance: user.legalAcceptance,
+    // The currently published versions ride along on every user payload so the client can tell
+    // whether the stored acceptance is stale without a second round trip on each login (M0c).
+    legalVersions: CURRENT_LEGAL_VERSIONS,
+})
+
+/**
+ * Builds the acceptance record stamped onto a user at signup or re-acceptance. Versions come from
+ * `legalVersions.ts`, never from the request body - see that file's header for why.
+ */
+const buildLegalAcceptance = (): LegalAcceptance => ({
+    termsVersion: TERMS_VERSION,
+    privacyVersion: PRIVACY_VERSION,
+    acceptedAt: new Date(),
+    ageAttested: true,
 })
 
 const issueAuthSession = async (user: IUser, res: Response) => {
@@ -62,6 +82,26 @@ const issueAuthSession = async (user: IUser, res: Response) => {
         token: accessToken,
         user: toPublicUser(user),
         offlineGrant: generateOfflineGrant(user._id.toString()),
+    }
+}
+
+/**
+ * Mints a fresh email-verification token for `user` and delivers the link — over SMTP when it's
+ * configured, otherwise to the console (dev). A send failure is logged, never surfaced, so it
+ * can't become a probing oracle or a new outage mode.
+ */
+const dispatchEmailVerification = async (user: IUser): Promise<void> => {
+    const verificationToken = await createEmailVerificationForUser(user)
+    const verificationUrl = buildEmailVerificationUrl(verificationToken)
+
+    if (isSmtpConfigured()) {
+        try {
+            await sendEmailVerificationEmail(user.email, verificationUrl)
+        } catch (error) {
+            console.error('[email-verification] failed to send email:', error)
+        }
+    } else {
+        logEmailVerificationLink(user.email, verificationUrl)
     }
 }
 
@@ -90,6 +130,18 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
         throw new CustomError(ERROR_MESSAGES.AUTH.CAPTCHA_FAILED, 400)
     }
 
+    // Consent is checked last, after the field/password/captcha rules above, so a malformed
+    // signup still reports the specific thing that was wrong with it rather than being masked by
+    // a consent error. Both flags are required: the published policy and ToS assert that a user
+    // agreed and is 18+, and a claim with no record behind it is worse than no claim (M0c2).
+    if (req.body.acceptedTerms !== true) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.TERMS_NOT_ACCEPTED, 400)
+    }
+
+    if (req.body.ageAttested !== true) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.AGE_NOT_ATTESTED, 400)
+    }
+
     const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
         throw new CustomError(ERROR_MESSAGES.USER.USER_ALREADY_EXISTS, 400)
@@ -100,20 +152,10 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
         email: normalizedEmail,
         password: validatedPassword,
         ...(detectedTimezone ? { timezone: detectedTimezone } : {}),
+        legalAcceptance: buildLegalAcceptance(),
     })) as IUser
 
-    const verificationToken = await createEmailVerificationForUser(user)
-    const verificationUrl = buildEmailVerificationUrl(verificationToken)
-
-    if (isSmtpConfigured()) {
-        try {
-            await sendEmailVerificationEmail(normalizedEmail, verificationUrl)
-        } catch (error) {
-            console.error('[email-verification] failed to send email:', error)
-        }
-    } else {
-        logEmailVerificationLink(normalizedEmail, verificationUrl)
-    }
+    await dispatchEmailVerification(user)
 
     const payload = await issueAuthSession(user, res)
 
@@ -141,6 +183,13 @@ export const loginUser = asyncHandler(async (req: AuthRequest, res: Response): P
     const isMatch = await user.comparePassword(password)
     if (!isMatch) {
         throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
+    }
+
+    // V9: unverified accounts are hard-blocked at login, not just at `protect`. No session is
+    // issued; the client routes to the verify screen, where the unauthenticated resend form
+    // gets them a fresh link.
+    if (!user.isEmailVerified) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.EMAIL_NOT_VERIFIED, 403)
     }
 
     const payload = await issueAuthSession(user, res)
@@ -209,6 +258,28 @@ export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response):
     if (!user) {
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
+
+    handleResponses(res, 200, toPublicUser(user))
+})
+
+/**
+ * Re-accept the current Terms and Privacy Policy (M0c). Backs the `LegalGate` prompt shown when
+ * either version bumps, and the one-time prompt for accounts that predate the consent record.
+ *
+ * There is no body: the versions are the server's to stamp, and re-accepting necessarily
+ * re-affirms the 18+ attestation the user made at signup.
+ */
+export const acceptLegalTerms = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?._id
+
+    const user = (await User.findById(userId)) as IUser | null
+
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
+    }
+
+    user.legalAcceptance = buildLegalAcceptance()
+    await user.save()
 
     handleResponses(res, 200, toPublicUser(user))
 })
@@ -343,6 +414,22 @@ export const confirmEmailVerification = asyncHandler(async (req: AuthRequest, re
     handleResponses(res, 200, { message: 'Email verified successfully' })
 })
 
+/**
+ * Preview for the delete-account confirmation flow (Part 1) - lets the client show "N records in
+ * M shared workspaces will stay in those workspaces but won't be linked to you anymore" before
+ * the user commits to a password-confirmed, irreversible deletion. Read-only; no password check
+ * needed since nothing is mutated.
+ */
+export const getAccountDeletionImpact = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?._id.toString()
+    if (!userId) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 401)
+    }
+
+    const impact = await computeAccountDeletionImpact(userId)
+    handleResponses(res, 200, impact)
+})
+
 export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.user?._id.toString()
     if (!userId) {
@@ -374,29 +461,34 @@ export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Resp
 })
 
 export const resendEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    const userId = req.user?._id
-    const user = (await User.findById(userId)) as IUser | null
+    // Authenticated caller — the in-app verify screen. Resolve to their own account and answer
+    // precisely (including "already verified").
+    if (req.user?._id) {
+        const user = (await User.findById(req.user._id)) as IUser | null
 
-    if (!user) {
-        throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
-    }
+        if (!user) {
+            throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
+        }
 
-    if (user.isEmailVerified) {
-        handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED })
+        if (user.isEmailVerified) {
+            handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED })
+            return
+        }
+
+        await dispatchEmailVerification(user)
+        handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_SENT })
         return
     }
 
-    const verificationToken = await createEmailVerificationForUser(user)
-    const verificationUrl = buildEmailVerificationUrl(verificationToken)
-
-    if (isSmtpConfigured()) {
-        try {
-            await sendEmailVerificationEmail(user.email, verificationUrl)
-        } catch (error) {
-            console.error('[email-verification] failed to send email:', error)
+    // Unauthenticated caller — a returning user blocked at login, so no token. Look up by email
+    // and stay enumeration-safe: the response is identical whether or not that account exists or
+    // is already verified.
+    const email = typeof req.body?.email === 'string' ? normalizeEmail(req.body.email) : ''
+    if (email) {
+        const user = (await User.findOne({ email })) as IUser | null
+        if (user && !user.isEmailVerified) {
+            await dispatchEmailVerification(user)
         }
-    } else {
-        logEmailVerificationLink(user.email, verificationUrl)
     }
 
     handleResponses(res, 200, { message: ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_SENT })

@@ -41,7 +41,7 @@ Login, registration, and password reset endpoints are rate-limited to protect ag
 
 ## Session persistence
 
-Corvale stores your access JWT in the browser's local storage and keeps the refresh token in an httpOnly cookie. When you reopen the app, Corvale restores your session by validating or refreshing tokens with the server.
+Corvale keeps your access token in memory only - it is never written to local storage or to a cookie, so closing the tab discards it. The refresh token lives in an httpOnly cookie that JavaScript cannot read. When you reopen the app, Corvale uses that cookie to obtain a fresh access token and restore your session.
 
 ## Related pages
 

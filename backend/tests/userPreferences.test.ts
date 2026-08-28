@@ -209,6 +209,8 @@ describe('User preferences', () => {
     // (there is no dropdown any more). `registerUser` reads it where it previously ignored it.
     it('stores a valid auto-detected timezone from the signup payload', async () => {
         const res = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Tz User',
             email: 'signup-tz@example.com',
             password: 'TestPassword123!',
@@ -221,6 +223,8 @@ describe('User preferences', () => {
 
     it('falls back to UTC when the signup timezone is missing or invalid, without failing signup', async () => {
         const missing = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'No Tz',
             email: 'signup-no-tz@example.com',
             password: 'TestPassword123!',
@@ -229,6 +233,8 @@ describe('User preferences', () => {
         expect(missing.body.data.user.timezone).toBe('UTC')
 
         const invalid = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Bad Tz',
             email: 'signup-bad-tz@example.com',
             password: 'TestPassword123!',

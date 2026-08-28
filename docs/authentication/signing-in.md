@@ -31,6 +31,10 @@ If either check fails, Corvale shows an inline error message.
 
 If the email or password does not match any account, Corvale returns an error without revealing which field was wrong. This protects your account from enumeration attacks.
 
+## Unverified email
+
+If your email address has not been verified yet, signing in does not complete - Corvale takes you to the **verify your email** screen instead. Click the link in the verification email, or use **Resend verification email** to get a fresh one (it expires 10 minutes after it is sent). Once the address is confirmed, sign in normally.
+
 ## Already signed in
 
 If you visit the login page while already authenticated, Corvale redirects you to the dashboard automatically. You do not need to sign in again.

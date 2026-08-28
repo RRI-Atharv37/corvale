@@ -1,8 +1,11 @@
 # Support
 
-Corvale is a solo-maintained personal/portfolio project — not a hosted service with a support
-team, so there's no guaranteed response time. That said, reports and questions are read and
-answered on a best-effort basis.
+Corvale is built and maintained by one person. There is a hosted service, but there is no support
+team behind it, so there's no guaranteed response time on anything in this file. That said,
+reports and questions are read and answered on a best-effort basis.
+
+**Privacy and data-rights requests do not go here.** Those have their own route and their own
+stated response window — see the Contact page on the docs site or in the app.
 
 ## Found a bug?
 
@@ -30,6 +33,9 @@ instructions instead.
 - Bug reports and PRs are triaged as time allows — there's no SLA.
 - Security reports are prioritized over everything else; see SECURITY.md for that process's
   own (faster) expectations.
-- This project does not host other users' real financial data — see the
-  [incident response runbook](../docs/developers/incident-response-runbook.md) if you're
-  running your own deployment and need an operational playbook.
+- Requests about your own data on the hosted service — export, correction, deletion, or a
+  complaint — are handled through the privacy route, not here, and that route does have a stated
+  response window.
+- Running your own deployment? The
+  [incident response runbook](../docs/developers/incident-response-runbook.md) is the
+  operational playbook for outages and data corruption.

@@ -24,6 +24,8 @@ export const ERROR_MESSAGES = {
         CAPTCHA_FAILED: 'CAPTCHA verification failed, please try again',
         INVALID_FULL_NAME: 'Full name is required',
         INVALID_TIMEZONE: 'Invalid timezone',
+        TERMS_NOT_ACCEPTED: 'You must accept the Terms of Service and Privacy Policy to create an account',
+        AGE_NOT_ATTESTED: 'You must be 18 or older to create an account',
     },
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',

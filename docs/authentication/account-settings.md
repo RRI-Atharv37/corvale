@@ -4,14 +4,24 @@ title: Account Settings
 
 ## Preferences and session controls
 
-Corvale exposes a **Settings** modal from the sidebar footer. Use it to change your default currency and manage sign-out actions.
+Corvale exposes a **Settings** modal from the sidebar footer. Use it to change your preferences, manage your data, and control your sessions.
 
 ## Open settings
 
 1. Look at the bottom of the sidebar (desktop) or mobile menu.
 2. Next to your name and email, click the **gear** icon.
 
-The Settings modal opens with a **Profile** section followed by **Preferences** and **Account**.
+The Settings modal opens with a **Profile** section, followed by these, in order:
+
+- **Preferences** - default currency, date format, cards per page, and bill reminders
+- **Quick-add templates** - saved transaction shortcuts, see [Templates Overview](../templates/overview.md)
+- **Exchange rates** - the rates used for converted balances, see [Multi-Currency Balances](../accounts/multi-currency-balances.md)
+- **Backup and restore** - export and import your data, see [Backup and Restore](../backup-restore/overview.md)
+- **Account** - the desktop app link, replaying the onboarding tour, and the two sign-out actions
+- **Privacy and data** - your data rights and the legal documents, see [Your Data and Privacy](../legal/your-data-and-privacy.md)
+- **Delete my account** - permanent deletion, at the very bottom
+
+On builds with offline support switched on, two more sections appear before **Account**: local sync controls and your app PIN.
 
 ## Profile
 
@@ -35,7 +45,8 @@ Corvale saves the choice immediately via `PATCH /auth/user`. A success toast con
 **Logout** ends your current browser session:
 
 - Revokes the refresh token cookie on the server
-- Clears the access token from local storage
+- Discards the in-memory access token
+- Clears the data Corvale cached in your browser for offline use
 - Redirects you to the login page
 
 Use this when you finish on a shared or public computer.
@@ -49,6 +60,12 @@ Use this when you finish on a shared or public computer.
 - Signs you out locally and redirects to login
 
 Corvale asks for confirmation before proceeding. Use this if you suspect unauthorized access or want to reset sessions after a password change.
+
+## Privacy and data
+
+The **Privacy and data** section gathers your rights over your own records in one place: exporting a copy, correcting it, and deleting it. It also links every legal document and shows the date you accepted the current Terms and Privacy Policy.
+
+See [Your Data and Privacy](../legal/your-data-and-privacy.md) for what each of those does and what deleting your account actually erases.
 
 ## What you cannot change in settings
 

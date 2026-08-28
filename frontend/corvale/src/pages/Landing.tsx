@@ -4,6 +4,7 @@ import BrandLogo from '../components/ui/BrandLogo'
 import LandingProductPreview from '../components/landing/LandingProductPreview'
 import LedgerPulse from '../components/ui/LedgerPulse'
 import { AUTHOR, BRAND, PAIN_POINTS, FEATURES, STEPS } from '../utils/brand'
+import { LEGAL_DOCUMENTS } from '../legal'
 
 const Landing: React.FC = () => {
     return (
@@ -267,6 +268,20 @@ const Landing: React.FC = () => {
                     >
                         Download the desktop app
                     </Link>
+                    <nav
+                        aria-label="Legal"
+                        className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-text-secondary"
+                    >
+                        {LEGAL_DOCUMENTS.map((doc) => (
+                            <Link
+                                key={doc.slug}
+                                to={doc.path}
+                                className="transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
+                            >
+                                {doc.title}
+                            </Link>
+                        ))}
+                    </nav>
                     <p className="text-sm text-text-secondary">
                         Made by{' '}
                         <a

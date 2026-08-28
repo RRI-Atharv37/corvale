@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import AuthLayout from '../../components/layouts/AuthLayout'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import type { ApiResponse } from '../../types/api'
@@ -21,8 +21,14 @@ const VerifyEmail = () => {
     const [searchParams] = useSearchParams()
     const token = searchParams.get('token') ?? ''
     const navigate = useNavigate()
+    const location = useLocation()
     const online = useOnlineStatus()
     const { isAuthenticated, restoreSession, logout } = useUser()
+
+    // Set when Login bounces a hard-blocked unverified account here: there's no session, so
+    // resend goes out by email instead.
+    const emailFromState = (location.state as { email?: string } | null)?.email ?? ''
+    const canResend = isAuthenticated || Boolean(emailFromState)
 
     const [status, setStatus] = useState<Status>(token ? 'confirming' : 'awaiting')
     const [error, setError] = useState<string | null>(null)
@@ -78,9 +84,16 @@ const VerifyEmail = () => {
     const handleResend = async () => {
         setIsResending(true)
         try {
-            const response = await axiosInstance.post<ApiResponse<EmailVerificationResponse>>(
-                API_PATHS.AUTH.EMAIL_VERIFICATION_RESEND
-            )
+            // Signed in: the server resolves the account from the token. Signed out (bounced from
+            // login): pass the email so the server can look it up, enumeration-safe.
+            const response = isAuthenticated
+                ? await axiosInstance.post<ApiResponse<EmailVerificationResponse>>(
+                      API_PATHS.AUTH.EMAIL_VERIFICATION_RESEND
+                  )
+                : await axiosInstance.post<ApiResponse<EmailVerificationResponse>>(
+                      API_PATHS.AUTH.EMAIL_VERIFICATION_RESEND,
+                      { email: emailFromState }
+                  )
             const data = unwrapApiData(response)
             toast.success(data.message)
         } catch (err) {
@@ -117,7 +130,7 @@ const VerifyEmail = () => {
                 <div>
                     <h3 className="text-xl font-semibold text-fg">Verification failed</h3>
                     <p className="text-sm text-fg-muted mt-2 mb-4">{error}</p>
-                    {isAuthenticated ? (
+                    {canResend ? (
                         <button
                             type="button"
                             className="btn-primary"
@@ -141,12 +154,14 @@ const VerifyEmail = () => {
             <div>
                 <h3 className="text-xl font-semibold text-fg">Verify your email</h3>
                 <p className="text-sm text-fg-muted mt-2 mb-4">
-                    We sent a verification link to your email address. Click it to finish setting up your account.
+                    {emailFromState
+                        ? `Verify your email address to sign in. We sent a link to ${emailFromState} — click it to continue.`
+                        : 'We sent a verification link to your email address. Click it to finish setting up your account.'}
                 </p>
 
                 {!online && <OfflineNotice message="You are offline. Resending requires a connection." />}
 
-                {isAuthenticated && (
+                {canResend && (
                     <button
                         type="button"
                         className="btn-primary"

@@ -17,6 +17,18 @@ export interface NotificationPreferences {
     billReminderDaysBefore: number
 }
 
+/**
+ * Proof that this user accepted the published Terms and Privacy Policy, and attested to being 18
+ * or older (M0c / M0c2). Versions are stamped by the server from `utils/legalVersions.ts` - the
+ * client never asserts which version it agreed to.
+ */
+export interface LegalAcceptance {
+    termsVersion: string
+    privacyVersion: string
+    acceptedAt: Date
+    ageAttested: boolean
+}
+
 export interface IUser extends Document {
     _id: Types.ObjectId
     fullName: string
@@ -39,8 +51,19 @@ export interface IUser extends Document {
     onboardingSkipped: boolean
     onboardingCurrentStep: OnboardingStep | null
     onboardingStepsCompleted: string[]
+    legalAcceptance?: LegalAcceptance
     comparePassword(candidatePassword: string): Promise<boolean>
 }
+
+const legalAcceptanceSchema = new Schema<LegalAcceptance>(
+    {
+        termsVersion: { type: String, required: true },
+        privacyVersion: { type: String, required: true },
+        acceptedAt: { type: Date, required: true },
+        ageAttested: { type: Boolean, required: true },
+    },
+    { _id: false }
+)
 
 const userSchema = new Schema<IUser>({
     fullName: { type: String, required: true },
@@ -82,6 +105,11 @@ const userSchema = new Schema<IUser>({
     onboardingSkipped: { type: Boolean, default: false },
     onboardingCurrentStep: { type: String, default: null },
     onboardingStepsCompleted: { type: [String], default: [] },
+    // Declared as a subdocument schema with `default: undefined` rather than a plain nested
+    // object, because Mongoose materialises nested objects as `{}` on every document. Staying
+    // genuinely absent is the point: "no record" is how accounts created before this shipped are
+    // identified and prompted exactly once, with no migration script.
+    legalAcceptance: { type: legalAcceptanceSchema, default: undefined },
     }, {timestamps: true}
 )
 

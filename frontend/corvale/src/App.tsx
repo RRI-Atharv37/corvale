@@ -16,10 +16,12 @@ import { useUser } from './hooks/useUser'
 import LoadingState from './components/ui/LoadingState'
 import Landing from './pages/Landing'
 import PinGate from './offline/PinGate'
+import LegalGate from './components/legal/LegalGate'
 import UpdatePrompt from './pwa/UpdatePrompt'
 import OfflineBanner from './pwa/OfflineBanner'
 import DesktopUpdatePrompt from './desktop/DesktopUpdatePrompt'
 import { isTauriRuntime } from './desktop/isTauri'
+import { LEGAL_DOCUMENTS } from './legal'
 
 // Sprint 13.8: dashboard pages are route-level code-split (previously all 25 were static
 // imports, so every visitor downloaded the entire dashboard - including Reports/recharts and
@@ -43,6 +45,7 @@ const CalendarPage = lazy(() => import('./pages/Dashboard/CalendarPage'))
 const Subscriptions = lazy(() => import('./pages/Dashboard/Subscriptions'))
 const DebtPayoff = lazy(() => import('./pages/Dashboard/DebtPayoff'))
 const Download = lazy(() => import('./pages/Download'))
+const LegalPage = lazy(() => import('./pages/legal/LegalPage'))
 
 const AppRoutes = () => {
     return (
@@ -66,9 +69,11 @@ const AppRoutes = () => {
                 element={
                     <ProtectedRoute>
                         <PinGate>
-                            <WorkspaceProvider>
-                                <DashboardLayout />
-                            </WorkspaceProvider>
+                            <LegalGate>
+                                <WorkspaceProvider>
+                                    <DashboardLayout />
+                                </WorkspaceProvider>
+                            </LegalGate>
                         </PinGate>
                     </ProtectedRoute>
                 }
@@ -94,6 +99,21 @@ const AppRoutes = () => {
                 <Route path="/subscriptions" element={<Subscriptions />} />
                 <Route path="/debts" element={<DebtPayoff />} />
             </Route>
+
+            {/* Public legal pages (M0c). Generated from the document registry so a route can
+                never go missing when a document is added, and declared before the catch-all
+                below - which would otherwise redirect them all to "/". */}
+            {LEGAL_DOCUMENTS.map((doc) => (
+                <Route
+                    key={doc.slug}
+                    path={doc.path}
+                    element={
+                        <Suspense fallback={<LoadingState message="Loading..." />}>
+                            <LegalPage document={doc} />
+                        </Suspense>
+                    }
+                />
+            ))}
 
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

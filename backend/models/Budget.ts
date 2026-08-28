@@ -20,6 +20,8 @@ export interface IBudget extends Document {
     rollover: boolean
     accountIds: Types.ObjectId[]
     isArchived: boolean
+    /** See `Transaction.createdByRemovedUser` - same meaning, same sentinel `userId`. */
+    createdByRemovedUser?: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -45,6 +47,7 @@ const BudgetSchema = new Schema<IBudget>(
         rollover: { type: Boolean, default: false },
         accountIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Account' }],
         isArchived: { type: Boolean, default: false },
+        createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

@@ -1,5 +1,5 @@
 import express from 'express'
-import { protect, authenticateOnly } from '../middleware/authMiddleware'
+import { protect, authenticateOnly, optionalAuthenticate } from '../middleware/authMiddleware'
 import { createAuthRateLimiter } from '../middleware/rateLimitMiddleware'
 import {
     registerUser,
@@ -13,7 +13,9 @@ import {
     confirmEmailVerification,
     resendEmailVerification,
     updateUserPreferences,
+    getAccountDeletionImpact,
     deleteUserAccount,
+    acceptLegalTerms,
 } from '../controllers/authController'
 
 export const createAuthRoutes = (): express.Router => {
@@ -42,9 +44,19 @@ export const createAuthRoutes = (): express.Router => {
     router.post('/password-reset/request', passwordResetRateLimiter, requestPasswordReset)
     router.post('/password-reset/confirm', passwordResetRateLimiter, confirmPasswordReset)
     router.post('/email-verification/confirm', verificationRateLimiter, confirmEmailVerification)
-    router.post('/email-verification/resend', verificationRateLimiter, authenticateOnly, resendEmailVerification)
+    // `optionalAuthenticate`: the signed-in verify screen calls this with a token, but a
+    // returning unverified user is blocked at login (no token) and resends by email instead.
+    router.post('/email-verification/resend', verificationRateLimiter, optionalAuthenticate, resendEmailVerification)
     router.get('/user', authenticateOnly, getUserInfo)
     router.patch('/user', protect, updateUserPreferences)
+    // Re-accept the current Terms/Privacy versions. `authenticateOnly` rather than `protect`:
+    // the gate must be clearable by a user whose email is not verified yet, or they would be
+    // stuck behind two blocking prompts at once.
+    router.post('/legal/accept', authenticateOnly, acceptLegalTerms)
+    // Read-only preview ahead of the irreversible delete below - same authenticateOnly gate
+    // (reachable even with an unverified email, matching the delete endpoint it previews), no
+    // rate limiter of its own since it never touches the password/brute-force surface.
+    router.get('/account/deletion-impact', authenticateOnly, getAccountDeletionImpact)
     router.delete('/account', accountDeletionRateLimiter, authenticateOnly, deleteUserAccount)
 
     return router

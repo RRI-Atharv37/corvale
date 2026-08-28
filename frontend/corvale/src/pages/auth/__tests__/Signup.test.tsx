@@ -98,6 +98,28 @@ describe('Signup - client validation', () => {
     })
 })
 
+describe('Signup - legal consent (M0c)', () => {
+    it('rejects a sign-up that has not attested to being 18 or older', async () => {
+        const user = userEvent.setup()
+        renderWithProviders(<Signup />, { route: '/signup' })
+
+        await user.type(screen.getByPlaceholderText('Your name'), 'Alex Kim')
+        await user.type(screen.getByPlaceholderText('you@example.com'), 'alex@example.com')
+        await user.type(screen.getByPlaceholderText('Minimum 12 characters'), 'correcthorsebattery')
+        await user.click(screen.getByRole('button', { name: /sign up/i }))
+
+        expect(screen.getByText('Please confirm that you are 18 or older.')).toBeInTheDocument()
+        expect(axiosInstance.post).not.toHaveBeenCalledWith(API_PATHS.AUTH.REGISTER, expect.anything())
+    })
+
+    it('links the Terms and Privacy Policy from the clickwrap notice', () => {
+        renderWithProviders(<Signup />, { route: '/signup' })
+
+        expect(screen.getByRole('link', { name: /terms of service/i })).toHaveAttribute('href', '/terms')
+        expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveAttribute('href', '/privacy')
+    })
+})
+
 describe('Signup - successful sign-up', () => {
     it('submits the form, persists the session, and navigates to /dashboard', async () => {
         vi.mocked(axiosInstance.post).mockImplementation(async (url: string) => {
@@ -112,6 +134,7 @@ describe('Signup - successful sign-up', () => {
         await user.type(screen.getByPlaceholderText('Your name'), 'Alex Kim')
         await user.type(screen.getByPlaceholderText('you@example.com'), 'alex@example.com')
         await user.type(screen.getByPlaceholderText('Minimum 12 characters'), 'correcthorsebattery')
+        await user.click(screen.getByRole('checkbox', { name: /18 years of age or older/i }))
         await user.click(screen.getByRole('button', { name: /sign up/i }))
 
         await waitFor(() =>
@@ -120,6 +143,8 @@ describe('Signup - successful sign-up', () => {
                 email: 'alex@example.com',
                 password: 'correcthorsebattery',
                 timezone: 'America/Chicago',
+                acceptedTerms: true,
+                ageAttested: true,
             })
         )
         await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/dashboard'))
@@ -141,6 +166,7 @@ describe('Signup - API rejection', () => {
         await user.type(screen.getByPlaceholderText('Your name'), 'Alex Kim')
         await user.type(screen.getByPlaceholderText('you@example.com'), 'alex@example.com')
         await user.type(screen.getByPlaceholderText('Minimum 12 characters'), 'correcthorsebattery')
+        await user.click(screen.getByRole('checkbox', { name: /18 years of age or older/i }))
         await user.click(screen.getByRole('button', { name: /sign up/i }))
 
         await waitFor(() =>

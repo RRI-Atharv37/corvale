@@ -7,7 +7,7 @@
 
 Built for students and young adults who want clarity over complexity.
 
-[![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/spndr/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/spndr?style=social)](https://github.com/RRI-Atharv37/spndr/stargazers)
+[![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/corvale/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/corvale?style=social)](https://github.com/RRI-Atharv37/corvale/stargazers)
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
@@ -168,7 +168,7 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **480 tests**
 ### 1 · Clone & install
 
 ```bash
-git clone https://github.com/RRI-Atharv37/spndr.git
+git clone https://github.com/RRI-Atharv37/corvale.git
 cd spndr
 
 # Backend
@@ -283,7 +283,7 @@ Licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-
 
 <div align="center">
 
-**[⭐ Star this repo](https://github.com/RRI-Atharv37/spndr)** if Corvale helps you stay on top of your money.
+**[⭐ Star this repo](https://github.com/RRI-Atharv37/corvale)** if Corvale helps you stay on top of your money.
 
 </div>
 

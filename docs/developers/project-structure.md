@@ -5,7 +5,7 @@ title: Project Structure
 ## Repository layout
 
 ```
-spndr/
+corvale/
 ├── backend/                  API server
 │   ├── app.ts                Express app factory and route mounting
 │   ├── server.ts             Entry point - connects DB and listens

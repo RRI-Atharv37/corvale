@@ -7,6 +7,18 @@ export type SupportedCurrency = 'USD' | 'EUR' | 'KRW' | 'INR'
 
 export type DateFormat = 'dd/mm/yy' | 'yy/mm/dd' | 'mm/dd/yy'
 
+export interface LegalAcceptance {
+    termsVersion: string
+    privacyVersion: string
+    acceptedAt: string
+    ageAttested: boolean
+}
+
+export interface LegalVersions {
+    termsVersion: string
+    privacyVersion: string
+}
+
 export interface User {
     _id: string
     fullName: string
@@ -18,6 +30,10 @@ export interface User {
     notificationPreferences?: NotificationPreferences
     exchangeRates?: Record<string, number>
     isEmailVerified?: boolean
+    /** Absent for accounts created before versioned consent shipped - they re-accept once. */
+    legalAcceptance?: LegalAcceptance
+    /** The currently published versions, sent by the server so the client can spot a stale one. */
+    legalVersions?: LegalVersions
 }
 
 export type ExchangeRateMap = Record<string, number>

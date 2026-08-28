@@ -14,6 +14,8 @@ export const API_PATHS = {
         EMAIL_VERIFICATION_CONFIRM: '/auth/email-verification/confirm',
         EMAIL_VERIFICATION_RESEND: '/auth/email-verification/resend',
         DELETE_ACCOUNT: '/auth/account',
+        DELETE_ACCOUNT_IMPACT: '/auth/account/deletion-impact',
+        LEGAL_ACCEPT: '/auth/legal/accept',
     },
     SAVER: {
         ADD: '/saver/add',

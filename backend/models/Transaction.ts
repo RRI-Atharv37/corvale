@@ -34,6 +34,14 @@ export interface ITransaction extends Document {
     receiptIds?: Types.ObjectId[]
     clearedStatus: ClearedStatus
     reconciledAt?: Date | null
+    /**
+     * Set (with `userId` rewritten to the reserved `REMOVED_MEMBER_USER_ID` sentinel - see
+     * `accountDeletionUtils.ts`) when this record's creator deleted their account but the
+     * workspace it lives in still has other members. The record is retained for them; this flag
+     * marks it as no longer anyone's personal data rather than pretending `userId` still
+     * identifies a real account.
+     */
+    createdByRemovedUser?: boolean
     deletedAt?: Date | null
     createdAt: Date
     updatedAt: Date
@@ -69,6 +77,7 @@ const TransactionSchema = new Schema<ITransaction>(
         receiptIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' }],
         clearedStatus: { type: String, enum: CLEARED_STATUSES, default: 'pending' },
         reconciledAt: { type: Date, default: null },
+        createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { AxiosError } from 'axios'
 import AuthLayout from '../../components/layouts/AuthLayout'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Input from '../../components/Inputs/Input'
@@ -52,6 +53,12 @@ const Login = () => {
             toast.success('Welcome back!')
             navigate(from || '/dashboard')
         } catch (err) {
+            // An unverified account is hard-blocked at login (403). Send them to the verify
+            // screen with their email so they can request a fresh link without a session.
+            if (err instanceof AxiosError && err.response?.status === 403) {
+                navigate('/verify-email', { state: { email } })
+                return
+            }
             const message = getApiErrorMessage(err, 'An error occurred. Please try again.')
             setError(message)
             toast.error(message)

@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import request from 'supertest'
 import { createApp } from '../app'
+import { verifyUserByEmail } from './helpers'
 import { generateOfflineGrant, getOfflineGrantDays, OFFLINE_GRANT_ALGORITHM } from '../utils/offlineGrantUtils'
 
 /**
@@ -95,6 +96,8 @@ describe('Auth endpoints return a fresh offline grant (S16, SEC-18)', () => {
     it('includes offlineGrant on register, bound to the new user', async () => {
         const app = createApp()
         const res = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Grant Register',
             email: 'grant-register@example.com',
             password: 'TestPassword123!',
@@ -114,7 +117,8 @@ describe('Auth endpoints return a fresh offline grant (S16, SEC-18)', () => {
         const password = 'TestPassword123!'
         await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Grant Login', email, password })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Grant Login', email, password })
+        await verifyUserByEmail(email)
 
         const res = await request(app).post('/api/v1/auth/login').send({ email, password })
 
@@ -132,7 +136,7 @@ describe('Auth endpoints return a fresh offline grant (S16, SEC-18)', () => {
         const agent = request.agent(app)
         const registerRes = await agent
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Grant Refresh', email, password })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Grant Refresh', email, password })
 
         const refreshRes = await agent.post('/api/v1/auth/refresh')
 

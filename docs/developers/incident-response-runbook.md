@@ -42,7 +42,7 @@ should actually catch a problem before a user reports one:
   exceptions and error spikes.
 - Structured JSON request logs to stdout/stderr — the first place to look once you know
   *something* is wrong, to work out *what*.
-- A user-filed bug report (see [`SUPPORT.md`](https://github.com/RRI-Atharv37/spndr/blob/main/.github/SUPPORT.md))
+- A user-filed bug report (see [`SUPPORT.md`](https://github.com/RRI-Atharv37/corvale/blob/main/.github/SUPPORT.md))
   — the least reliable channel for a Sev-1 (by definition, if uptime monitoring is configured,
   it should beat a user to noticing the service is down), but often the fastest way to hear about
   a Sev-2/3 that doesn't trip an alert.
@@ -106,6 +106,6 @@ actually writing it down before the details fade.
 - [Backup & Restore Runbook](./backup-restore-runbook.md) — the actual data-recovery procedure
 - [Environment Variables → Monitoring](./environment-variables.md#monitoring) — health checks,
   Sentry, and structured logging setup
-- [`SECURITY.md`](https://github.com/RRI-Atharv37/spndr/blob/main/.github/SECURITY.md) — for a
+- [`SECURITY.md`](https://github.com/RRI-Atharv37/corvale/blob/main/.github/SECURITY.md) — for a
   security vulnerability specifically, which follows its own (private, faster) reporting process
   instead of this one

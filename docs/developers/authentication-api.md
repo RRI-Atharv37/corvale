@@ -72,7 +72,27 @@ Same shape as register - returns access `token`, `user`, and refresh cookie.
 | Status | Condition |
 |--------|-----------|
 | 400 | Missing fields or invalid credentials |
+| 403 | Email address not verified - no session is issued; verify first (see below) |
 | 429 | Rate limit exceeded |
+
+## POST /auth/email-verification/confirm
+
+Confirm an email address with the token from the verification email. **Public** (no Bearer header), rate-limited.
+
+### Request body
+
+```json
+{
+  "token": "<verification-token-from-email>"
+}
+```
+
+## POST /auth/email-verification/resend
+
+Send a fresh verification link. **Rate-limited.** Optional auth:
+
+- **With** a Bearer token - resends for that account. Returns `EMAIL_ALREADY_VERIFIED` if it is already verified.
+- **Without** a token - pass `{ "email": "jane@example.com" }` in the body. Always returns the same generic success message whether or not the account exists or is already verified (enumeration-safe). This is the path for a user blocked at login.
 
 ## POST /auth/refresh
 

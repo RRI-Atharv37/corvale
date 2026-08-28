@@ -8,6 +8,7 @@ export const NOTIFICATION_TYPES = [
     'bill_due',
     'savings_milestone',
     'workspace_invite',
+    'workspace_member_left',
 ] as const
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
 

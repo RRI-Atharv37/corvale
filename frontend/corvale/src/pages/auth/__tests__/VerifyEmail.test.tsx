@@ -105,6 +105,35 @@ describe('VerifyEmail - no token, signed in', () => {
     })
 })
 
+describe('VerifyEmail - no token, signed out, bounced from a blocked login (V9)', () => {
+    it('shows the email and a resend button that calls the endpoint with { email }', async () => {
+        vi.mocked(axiosInstance.post).mockImplementation(async (url: string) => {
+            if (url === API_PATHS.AUTH.EMAIL_VERIFICATION_RESEND) {
+                return { success: true, data: { message: 'Verification email sent. Please check your inbox' } }
+            }
+            throw new AxiosError('Network Error')
+        })
+        const user = userEvent.setup()
+        render(
+            <MemoryRouter initialEntries={[{ pathname: '/verify-email', state: { email: 'blocked@example.com' } }]}>
+                <UserProvider>
+                    <VerifyEmail />
+                </UserProvider>
+            </MemoryRouter>
+        )
+
+        expect(screen.getByText(/blocked@example\.com/)).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: /resend verification email/i }))
+
+        await waitFor(() =>
+            expect(axiosInstance.post).toHaveBeenCalledWith(API_PATHS.AUTH.EMAIL_VERIFICATION_RESEND, {
+                email: 'blocked@example.com',
+            })
+        )
+    })
+})
+
 describe('VerifyEmail - confirming with a token, signed out', () => {
     it('confirms the token and navigates to /login', async () => {
         vi.mocked(axiosInstance.post).mockImplementation(async (url: string) => {

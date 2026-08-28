@@ -32,8 +32,8 @@ unrelated domains (for example, a frontend on Vercel calling an API on Render).
 ## Quickstart
 
 ```bash
-git clone https://github.com/RRI-Atharv37/spndr.git
-cd spndr
+git clone https://github.com/RRI-Atharv37/corvale.git
+cd corvale
 cp backend/.env.example backend/.env
 cp .env.example .env
 ```

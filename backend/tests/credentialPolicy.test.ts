@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app'
-import { authHeader } from './helpers'
+import { authHeader, verifyUserByEmail } from './helpers'
 
 /**
  * Acceptance spec for password/credential policy hardening (S3, SEC-22, BUG-08, BUG-14).
@@ -28,7 +28,7 @@ describe('Email normalization (BUG-08)', () => {
         const app = createApp()
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Case Test', email: 'Test@Example.com', password: basePassword })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Case Test', email: 'Test@Example.com', password: basePassword })
 
         expect(res.status).toBe(201)
         expect(res.body.data.user.email).toBe('test@example.com')
@@ -38,11 +38,11 @@ describe('Email normalization (BUG-08)', () => {
         const app = createApp()
         await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'First', email: 'Dup@Example.com', password: basePassword })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'First', email: 'Dup@Example.com', password: basePassword })
 
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Second', email: 'dup@example.com', password: basePassword })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Second', email: 'dup@example.com', password: basePassword })
 
         expect(res.status).toBe(400)
     })
@@ -51,7 +51,8 @@ describe('Email normalization (BUG-08)', () => {
         const app = createApp()
         await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Login Case', email: 'MixedCase@Example.com', password: basePassword })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Login Case', email: 'MixedCase@Example.com', password: basePassword })
+        await verifyUserByEmail('mixedcase@example.com')
 
         const res = await request(app)
             .post('/api/v1/auth/login')
@@ -64,7 +65,7 @@ describe('Email normalization (BUG-08)', () => {
         const app = createApp()
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Trim Test', email: '  trim@example.com  ', password: basePassword })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Trim Test', email: '  trim@example.com  ', password: basePassword })
 
         expect(res.status).toBe(201)
         expect(res.body.data.user.email).toBe('trim@example.com')
@@ -76,7 +77,7 @@ describe('Password policy (SEC-22)', () => {
         const app = createApp()
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Short Pw', email: 'short-pw@example.com', password: 'Short1!' })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Short Pw', email: 'short-pw@example.com', password: 'Short1!' })
 
         expect(res.status).toBe(400)
         expect(res.body.message).toMatch(/12/)
@@ -86,7 +87,7 @@ describe('Password policy (SEC-22)', () => {
         const app = createApp()
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Exact Pw', email: 'exact-pw@example.com', password: 'Exactly12Ch!' })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Exact Pw', email: 'exact-pw@example.com', password: 'Exactly12Ch!' })
 
         expect(res.status).toBe(201)
     })
@@ -96,7 +97,7 @@ describe('Password policy (SEC-22)', () => {
         const longPassword = 'Aa1!' + 'x'.repeat(80)
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Long Pw', email: 'long-pw@example.com', password: longPassword })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Long Pw', email: 'long-pw@example.com', password: longPassword })
 
         expect(res.status).toBe(400)
         expect(res.body.message).toMatch(/72/)
@@ -107,6 +108,8 @@ describe('Password policy (SEC-22)', () => {
         const res = await request(app)
             .post('/api/v1/auth/register')
             .send({
+                acceptedTerms: true,
+                ageAttested: true,
                 fullName: 'Array Pw',
                 email: 'array-pw@example.com',
                 password: ['aaa', 'bbb', 'ccc', 'ddd', 'eee', 'fff', 'ggg', 'hhh'],
@@ -140,7 +143,8 @@ describe('Normalized email flows through the rest of auth (regression guard)', (
         const app = createApp()
         await request(app)
             .post('/api/v1/auth/register')
-            .send({ fullName: 'Flow Test', email: 'FlowTest@Example.com', password: basePassword })
+            .send({ acceptedTerms: true, ageAttested: true, fullName: 'Flow Test', email: 'FlowTest@Example.com', password: basePassword })
+        await verifyUserByEmail('flowtest@example.com')
 
         const login = await request(app)
             .post('/api/v1/auth/login')

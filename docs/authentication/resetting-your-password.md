@@ -45,7 +45,7 @@ You must sign in again on every device after a password reset.
 
 ## Invalid or expired tokens
 
-Reset tokens expire after the duration configured on the server (`PASSWORD_RESET_EXPIRY_MS`, typically 1 hour). If the token is invalid or expired, Corvale shows an error and asks you to request a new link.
+For security, reset links are short-lived — 10 minutes by default (the server sets this with `PASSWORD_RESET_EXPIRY_MS`). If the link is invalid or expired, Corvale shows an error and asks you to request a new one.
 
 ## Related pages
 

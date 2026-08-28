@@ -51,6 +51,8 @@ describe('Refresh cookie deployment topology (S13, SEC-11)', () => {
     it('defaults to SameSite=Lax (the pinned same-site topology) when unset', async () => {
         const app = createApp()
         const res = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Topology Default',
             email: 'topology-default@example.com',
             password: 'TestPassword123!',
@@ -78,6 +80,8 @@ describe('Refresh cookie deployment topology (S13, SEC-11)', () => {
 
         const app = createApp()
         const res = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Topology Cross Site',
             email: 'topology-cross-site@example.com',
             password: 'TestPassword123!',
@@ -94,6 +98,8 @@ describe('Refresh cookie deployment topology (S13, SEC-11)', () => {
 
         const app = createApp()
         const res = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Topology Strict',
             email: 'topology-strict@example.com',
             password: 'TestPassword123!',
@@ -117,6 +123,8 @@ describe('Legacy spndr_refresh cookie cleanup (V7.3a rename shim)', () => {
     it('clears the legacy spndr_refresh cookie alongside the new corvale_refresh cookie on logout', async () => {
         const app = createApp()
         const registerRes = await request(app).post('/api/v1/auth/register').send({
+            acceptedTerms: true,
+            ageAttested: true,
             fullName: 'Legacy Cookie Cleanup',
             email: 'legacy-cookie-cleanup@example.com',
             password: 'TestPassword123!',

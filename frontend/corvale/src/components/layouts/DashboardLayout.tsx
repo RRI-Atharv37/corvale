@@ -53,6 +53,7 @@ import ProfileSettings from '../settings/ProfileSettings'
 import TransactionTemplatesSettings from '../settings/TransactionTemplatesSettings'
 import BackupRestoreSettings from '../settings/BackupRestoreSettings'
 import DeleteAccountSettings from '../settings/DeleteAccountSettings'
+import PrivacyDataSettings from '../settings/PrivacyDataSettings'
 import ExchangeRatesSettings from '../settings/ExchangeRatesSettings'
 import SyncSettings from '../settings/SyncSettings'
 import SyncStatusBadge from '../sync/SyncStatusBadge'
@@ -476,6 +477,8 @@ const DashboardLayout: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    <PrivacyDataSettings />
 
                     <DeleteAccountSettings />
                 </div>

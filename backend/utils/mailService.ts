@@ -35,10 +35,13 @@ const buildNodemailerTransport = (): MailTransport => {
     return {
         sendMail: async (message: MailMessage) => {
             const info = await transporter.sendMail({
-                // V7.2b: display name renamed to Corvale; the no-reply@spndr.app address is kept
-                // until corvale.app has SPF/DKIM/DMARC records — a From-domain change without them
-                // silently gets password-reset mail spam-foldered or hard-rejected.
-                from: process.env.SMTP_FROM ?? 'Corvale <no-reply@spndr.app>',
+                // V9: sending domain send.corvale.app has SPF + DKIM + DMARC published, so this
+                // From address authenticates and aligns. Override per-deployment with SMTP_FROM;
+                // if you change the domain here, publish its DNS records first or reset mail gets
+                // spam-foldered / hard-rejected.
+                from: process.env.SMTP_FROM ?? 'Corvale <no-reply@send.corvale.app>',
+                // These are no-reply mailboxes; point human replies at a real inbox instead.
+                replyTo: process.env.SMTP_REPLY_TO ?? 'Corvale Support <support@corvale.app>',
                 ...message,
             })
             return { messageId: info.messageId }
@@ -49,7 +52,7 @@ const buildNodemailerTransport = (): MailTransport => {
 const getTransport = (): MailTransport => testTransport ?? buildNodemailerTransport()
 
 export const sendPasswordResetEmail = async (email: string, resetUrl: string): Promise<void> => {
-    const expiryMs = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 3_600_000)
+    const expiryMs = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 600_000)
 
     await getTransport().sendMail({
         to: email,
@@ -60,7 +63,7 @@ export const sendPasswordResetEmail = async (email: string, resetUrl: string): P
 }
 
 export const sendEmailVerificationEmail = async (email: string, verifyUrl: string): Promise<void> => {
-    const expiryMs = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 86_400_000)
+    const expiryMs = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 600_000)
 
     await getTransport().sendMail({
         to: email,

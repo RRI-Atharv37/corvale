@@ -30,6 +30,8 @@ export interface ISavingsGoal extends Document {
     accountId?: Types.ObjectId | null
     autoContribution: IAutoContribution
     completedAt?: Date | null
+    /** See `Transaction.createdByRemovedUser` - same meaning, same sentinel `userId`. */
+    createdByRemovedUser?: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -74,6 +76,7 @@ const SavingsGoalSchema = new Schema<ISavingsGoal>(
         accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', default: null },
         autoContribution: { type: AutoContributionSchema, default: () => ({}) },
         completedAt: { type: Date, default: null },
+        createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

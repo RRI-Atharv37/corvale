@@ -32,6 +32,8 @@ export interface IAccount extends Document {
     isArchived: boolean
     interestRate?: number
     minimumPayment?: number
+    /** See `Transaction.createdByRemovedUser` - same meaning, same sentinel `userId`. */
+    createdByRemovedUser?: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -57,6 +59,7 @@ const AccountSchema = new Schema<IAccount>(
         isArchived: { type: Boolean, default: false },
         interestRate: { type: Number, min: 0 },
         minimumPayment: { type: Number, min: 0 },
+        createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

@@ -33,6 +33,8 @@ export interface ISavedReport extends Document {
     workspaceId?: Types.ObjectId | null
     name: string
     config: ISavedReportConfig
+    /** See `Transaction.createdByRemovedUser` - same meaning, same sentinel `userId`. */
+    createdByRemovedUser?: boolean
     deletedAt?: Date | null
     createdAt: Date
     updatedAt: Date
@@ -59,6 +61,7 @@ const SavedReportSchema = new Schema<ISavedReport>(
         workspaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', default: null },
         name: { type: String, required: true, trim: true },
         config: { type: SavedReportConfigSchema, required: true },
+        createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

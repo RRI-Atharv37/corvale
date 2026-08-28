@@ -155,6 +155,33 @@ describe('Login - API rejection', () => {
     })
 })
 
+describe('Login - unverified account (V9 hard gate)', () => {
+    it('routes to the verify screen with the email when the server returns 403, without a page error', async () => {
+        const rejection = new AxiosError('Request failed with status code 403')
+        rejection.response = {
+            status: 403,
+            data: { success: false, message: 'Please verify your email address to continue' },
+        } as never
+
+        vi.mocked(axiosInstance.post).mockImplementation(async (url: string) => {
+            if (url === API_PATHS.AUTH.LOGIN) throw rejection
+            throw new AxiosError('Network Error')
+        })
+        const user = userEvent.setup()
+        renderWithProviders(<Login />, { route: '/login' })
+
+        await user.type(screen.getByPlaceholderText('you@example.com'), 'unverified@example.com')
+        await user.type(screen.getByPlaceholderText('Enter your password'), 'correcthorsebattery')
+        await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+        await waitFor(() =>
+            expect(mockNavigate).toHaveBeenCalledWith('/verify-email', {
+                state: { email: 'unverified@example.com' },
+            })
+        )
+    })
+})
+
 describe('Login - offline', () => {
     it('disables submission and shows an offline notice', () => {
         setOnline(false)

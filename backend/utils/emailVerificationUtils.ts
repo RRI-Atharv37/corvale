@@ -4,7 +4,7 @@ import { ERROR_MESSAGES } from './errorMessages'
 import User, { IUser } from '../models/User'
 import { hashToken } from './tokenUtils'
 
-const EMAIL_VERIFICATION_EXPIRY_MS = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 86_400_000)
+const EMAIL_VERIFICATION_EXPIRY_MS = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 600_000)
 
 export const generateEmailVerificationToken = (): string => {
     return crypto.randomBytes(32).toString('hex')

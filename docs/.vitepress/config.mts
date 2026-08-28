@@ -290,14 +290,31 @@ export default defineConfig({
           { text: 'Incident Response Runbook', link: '/developers/incident-response-runbook' },
         ],
       },
+      {
+        text: 'Legal',
+        collapsed: true,
+        items: [
+          { text: 'Your Data and Privacy', link: '/legal/your-data-and-privacy' },
+          { text: 'Privacy Policy', link: '/legal/privacy' },
+          { text: 'Terms of Service', link: '/legal/terms' },
+          { text: 'Cookie Policy', link: '/legal/cookies' },
+          { text: 'Financial Disclaimer', link: '/legal/financial-disclaimer' },
+          { text: 'Contact', link: '/legal/contact' },
+        ],
+      },
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/RRI-Atharv37/spndr' },
+      { icon: 'github', link: 'https://github.com/RRI-Atharv37/corvale' },
     ],
 
     footer: {
-      message: 'Released under the GNU AGPL v3.0 License.',
+      message:
+        'Released under the GNU AGPL v3.0 License. ' +
+        '<a href="/legal/privacy">Privacy</a> · ' +
+        '<a href="/legal/terms">Terms</a> · ' +
+        '<a href="/legal/cookies">Cookies</a> · ' +
+        '<a href="/legal/contact">Contact</a>',
       copyright: 'Copyright © Corvale',
     },
 

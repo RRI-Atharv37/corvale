@@ -23,6 +23,7 @@ const Signup = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [captchaToken, setCaptchaToken] = useState('')
+    const [ageAttested, setAgeAttested] = useState(false)
     const [error, setError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const navigate = useNavigate()
@@ -52,6 +53,11 @@ const Signup = () => {
             return
         }
 
+        if (!ageAttested) {
+            setError('Please confirm that you are 18 or older.')
+            return
+        }
+
         setError('')
         setIsSubmitting(true)
 
@@ -67,6 +73,11 @@ const Signup = () => {
                     password,
                     ...(timezone ? { timezone } : {}),
                     ...(captchaEnabled ? { captchaToken } : {}),
+                    // Submitting the form is the agreement (the clickwrap line sits under the
+                    // button); the checkbox is the separate 18+ attestation. The server stamps
+                    // which document versions these refer to - see backend/utils/legalVersions.ts.
+                    acceptedTerms: true,
+                    ageAttested: true,
                 }
             )
 
@@ -123,6 +134,21 @@ const Signup = () => {
                         <Captcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
                     )}
 
+                    <label
+                        htmlFor="age-attestation"
+                        className="flex items-start gap-2.5 pt-1 pb-2 text-[13px] text-fg-muted cursor-pointer"
+                    >
+                        <input
+                            id="age-attestation"
+                            type="checkbox"
+                            checked={ageAttested}
+                            onChange={(e) => setAgeAttested(e.target.checked)}
+                            disabled={isSubmitting}
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-accent cursor-pointer"
+                        />
+                        <span>I am 18 years of age or older.</span>
+                    </label>
+
                     {error && <p className="text-expense text-xs pb-2.5">{error}</p>}
                     {!online && <OfflineNotice message="You are offline. Sign up requires a connection." />}
 
@@ -133,6 +159,18 @@ const Signup = () => {
                     >
                         {isSubmitting ? 'Creating account...' : 'Sign up'}
                     </button>
+
+                    <p className="text-[13px] text-fg-muted mt-3">
+                        By creating an account you agree to our{' '}
+                        <Link className="font-medium text-accent hover:text-accent" to="/terms">
+                            Terms of Service
+                        </Link>{' '}
+                        and acknowledge our{' '}
+                        <Link className="font-medium text-accent hover:text-accent" to="/privacy">
+                            Privacy Policy
+                        </Link>
+                        .
+                    </p>
 
                     <p className="text-[13px] text-fg-muted mt-3">
                         Already have an account?{' '}
