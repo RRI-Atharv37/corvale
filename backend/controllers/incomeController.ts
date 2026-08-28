@@ -4,6 +4,7 @@ import { Response } from 'express'
 import Income from '../models/Income'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { buildCsvString } from '../utils/transactionUtils'
 import {
     aggregateIncomes,
     buildSearchRegex,
@@ -114,7 +115,7 @@ export const downloadIncome = asyncHandler(async (req: AuthRequest, res: Respons
         ]),
     ]
 
-    const csvString = csvRows.map((row) => row.join(',')).join('\n')
+    const csvString = buildCsvString(csvRows)
 
     res.setHeader('Content-Type', 'text/csv')
     res.setHeader('Content-Disposition', 'attachment; filename=incomes.csv')
