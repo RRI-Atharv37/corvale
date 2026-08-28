@@ -302,8 +302,9 @@ and you can export everything and delete your account at any time.
 
 - Passwords are stored only as bcrypt-derived hashes, never in readable form, and are transmitted
   only over encrypted connections.
-- Every database query is scoped to your user account at the data layer, so one account's queries
-  cannot reach another's records.
+- Access to your records is scoped to your account in each part of the app that serves them, and
+  again by a guard at the database layer: a query that is not limited to your own account is
+  refused rather than answered.
 - Sessions use short-lived access tokens plus rotating refresh tokens, and every session you hold
   can be revoked at once.
 - The app sends a strict Content Security Policy, which blocks external scripts.

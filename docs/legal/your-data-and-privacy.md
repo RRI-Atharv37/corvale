@@ -60,6 +60,7 @@ erase, not a hidden flag. It removes:
   differently - see below)
 - Your saver balance and rollover history, your reconciliation sessions, and your saved reports
 - Every receipt file you uploaded, without exception
+- Any pending workspace invitations you sent or received
 - Every active session, so you are signed out everywhere
 
 It does **not** remove records created by other people in a workspace that carries on, and it does

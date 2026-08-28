@@ -1,4 +1,5 @@
 import asyncHandler from 'express-async-handler'
+import bcrypt from 'bcryptjs'
 import { Response } from 'express'
 import User, { IUser, LegalAcceptance } from '../models/User'
 import { AuthRequest } from '../middleware/authTypes'
@@ -44,6 +45,14 @@ import {
     deleteUserAccountCascade,
 } from '../utils/accountDeletionUtils'
 import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from '../utils/legalVersions'
+
+/**
+ * SEC-32: bcrypt hash of an unguessable constant, compared against the supplied password when
+ * no user matches the login email so `POST /auth/login` spends the same ~cost-12 time whether
+ * or not the address is registered. Without it, an unknown email returns before any hash runs
+ * and the timing gap is a reliable account-existence oracle. Computed once at module load.
+ */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('corvale::no-such-account::timing-equalizer', 12)
 
 const toPublicUser = (user: IUser) => ({
     _id: user._id,
@@ -144,6 +153,13 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
 
     const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
+        // SEC-32: this response discloses that an address is registered. The enumeration-safe
+        // alternative — accept the signup, issue no error, and reveal the collision only by
+        // email — is incompatible with register auto-issuing a session so a fresh signup lands
+        // on the in-app verify screen (V9). Accepted residual risk for v1.0.0; the mitigation
+        // is the dedicated `auth-register` rate limiter (routes/authRoutes.ts), a separate
+        // budget from login. Squatting a victim's address is bounded by the unverified-account
+        // TTL on the User schema.
         throw new CustomError(ERROR_MESSAGES.USER.USER_ALREADY_EXISTS, 400)
     }
 
@@ -177,6 +193,9 @@ export const loginUser = asyncHandler(async (req: AuthRequest, res: Response): P
 
     const user = (await User.findOne({ email: normalizedEmail })) as IUser | null
     if (!user) {
+        // SEC-32: burn the same bcrypt time a real account would, so "no such user" and
+        // "wrong password" are not distinguishable by response latency.
+        await bcrypt.compare(password, DUMMY_PASSWORD_HASH)
         throw new CustomError(ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS, 400)
     }
 

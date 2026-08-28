@@ -113,6 +113,26 @@ const userSchema = new Schema<IUser>({
     }, {timestamps: true}
 )
 
+/**
+ * SEC-32 (account squatting): an unverified account still reserves its email address, so an
+ * attacker can pre-register a victim's address and block the real signup (`USER_ALREADY_EXISTS`).
+ * This partial TTL expires accounts that never verify after a grace window, releasing the
+ * address. Once `isEmailVerified` flips to `true` the row no longer matches the partial filter
+ * and is never a TTL candidate again. The window is generous (default 7 days) so a real user
+ * who verifies late — the link itself lasts 10 min but resends restart it — is never caught;
+ * an unverified account is dead weight anyway, blocked from login (V9) and every data route
+ * (`protect`).
+ */
+const UNVERIFIED_ACCOUNT_TTL_SECONDS =
+    Number(process.env.UNVERIFIED_ACCOUNT_TTL_SECONDS) || 7 * 24 * 60 * 60
+userSchema.index(
+    { createdAt: 1 },
+    {
+        expireAfterSeconds: UNVERIFIED_ACCOUNT_TTL_SECONDS,
+        partialFilterExpression: { isEmailVerified: false },
+    }
+)
+
 userSchema.pre<IUser>('save', async function (next) {
     if(!this.isModified('password')) return next()
     this.password = await bcrypt.hash(this.password, 12)

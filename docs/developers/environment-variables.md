@@ -21,6 +21,7 @@ Create a `.env` file in the `backend/` folder.
 | `OFFLINE_GRANT_DAYS` | No | `30` | How many days a client may render its cached data offline before the signed grant expires |
 | `PASSWORD_RESET_EXPIRY_MS` | No | `600000` (10 minutes) | Password reset token lifetime |
 | `EMAIL_VERIFICATION_EXPIRY_MS` | No | `600000` (10 minutes) | Email verification token lifetime. Login is hard-blocked until the address is verified; a blocked user gets a fresh link from the unauthenticated `POST /auth/email-verification/resend` (`{ email }` body, enumeration-safe) |
+| `UNVERIFIED_ACCOUNT_TTL_SECONDS` | No | `604800` (7 days) | How long an account that never verifies its email is retained before a TTL index removes it, releasing the address (prevents indefinite account squatting). Verified accounts are never affected |
 | `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev to log reset/verification links to the console instead of emailing them. Setting it switches on real delivery, so only set it once the sending domain's SPF/DKIM/DMARC records are published and verified. Current provider is Resend (`smtp.resend.com`) |
 | `SMTP_PORT` | No | `587` | SMTP server port (`465` switches to implicit TLS) |
 | `SMTP_USER` | Only if `SMTP_HOST` set | unset | SMTP account username (for Resend this is the literal string `resend`) |
@@ -31,6 +32,9 @@ Create a `.env` file in the `backend/` folder.
 | `AUTH_RATE_LIMIT_MAX` | No | `10` | Max requests per window per IP for auth routes, and for `/auth/refresh` + `/auth/logout` |
 | `SYNC_PUSH_RATE_LIMIT_WINDOW_MS` | No | `60000` (1 min) | Rate limit window for `POST /sync/push` |
 | `SYNC_PUSH_RATE_LIMIT_MAX` | No | `120` | Max `POST /sync/push` requests per window per IP |
+| `SYNC_OPERATION_TTL_SECONDS` | No | `2592000` (30 days) | How long a `SyncOperation` idempotency-ledger row is kept before a TTL index removes it. Only needs to outlive a client's retry window |
+| `WORKSPACE_INVITE_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for `POST /workspaces/:id/members` (workspace invitations) |
+| `WORKSPACE_INVITE_RATE_LIMIT_MAX` | No | `30` | Max workspace invitations per window per IP. A dedicated budget because the endpoint reveals whether an email has an account |
 | `GLOBAL_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for mutating requests (POST/PUT/PATCH/DELETE) across the whole API |
 | `GLOBAL_RATE_LIMIT_MAX` | No | `300` | Max mutating requests per window per IP across the whole API |
 | `TRUST_PROXY` | No | unset (`false`) | Express `trust proxy` setting — set to the number of hops (e.g. `1`) behind a reverse proxy so rate limiters key on the real client IP |

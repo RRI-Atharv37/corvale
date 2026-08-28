@@ -23,7 +23,7 @@ import recurringRuleRoutes from './routes/recurringRuleRoutes'
 import dashboardRoutes from './routes/dashboardRoutes'
 import reportRoutes from './routes/reportRoutes'
 import notificationRoutes from './routes/notificationRoutes'
-import workspaceRoutes from './routes/workspaceRoutes'
+import { createWorkspaceRoutes } from './routes/workspaceRoutes'
 import importRoutes from './routes/importRoutes'
 import backupRoutes from './routes/backupRoutes'
 import forecastRoutes from './routes/forecastRoutes'
@@ -119,7 +119,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/dashboard', dashboardRoutes)
     app.use('/api/v1/dashboard/reports', reportRoutes)
     app.use('/api/v1/notifications', notificationRoutes)
-    app.use('/api/v1/workspaces', workspaceRoutes)
+    app.use('/api/v1/workspaces', createWorkspaceRoutes())
     app.use('/api/v1/imports', importRoutes)
     app.use('/api/v1/backup', backupRoutes)
     app.use('/api/v1/forecast', forecastRoutes)

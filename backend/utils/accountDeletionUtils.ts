@@ -16,9 +16,11 @@ import Saver from '../models/Saver'
 import Pushover from '../models/Pushover'
 import ReconciliationSession from '../models/ReconciliationSession'
 import SavedReport from '../models/SavedReport'
+import SyncOperation from '../models/SyncOperation'
 import Income from '../models/Income'
 import Expense from '../models/Expense'
 import Workspace, { IWorkspace } from '../models/Workspace'
+import WorkspaceInvite from '../models/WorkspaceInvite'
 import User from '../models/User'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
@@ -249,9 +251,13 @@ const notifyRemainingMembersOfDeparture = async (
 }
 
 /**
- * Hard-erases every resource this user owns individually - a genuine GDPR-style deletion,
+ * Hard-erases every private record attached to this user - a genuine GDPR/DPDP-style deletion,
  * distinct from the sync layer's `deletedAt` tombstones used for multi-device propagation.
- * Shared master categories (`userId: null`) are untouched.
+ * Shared master categories (`userId: null`) are untouched, and records this user contributed to
+ * a workspace that carries on are retained-but-anonymised (see below), not deleted. Coverage
+ * includes the per-user sync idempotency ledger (`SyncOperation`) and any pending
+ * `WorkspaceInvite` the user sent or received (SEC-33) - both are keyed to `userId` and both
+ * were previously left behind.
  *
  * Workspace-capable resources (`WORKSPACE_CAPABLE_MODELS`) are no longer blanket-deleted by
  * `userId` alone - a record this user created inside a *shared* workspace belongs to that
@@ -326,6 +332,14 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
         Pushover.deleteMany({ userId }),
         Income.deleteMany({ userId }),
         Expense.deleteMany({ userId }),
+        // SEC-33: the per-user sync idempotency ledger. `{ userId }` satisfies the RLS guard;
+        // the schema's TTL index is the backstop if this path is ever bypassed.
+        SyncOperation.deleteMany({ userId }),
+        // SEC-33: pending invites this user sent or received - no `userId` field, so scoped by
+        // both invite endpoints. Not RLS-plugged (see WorkspaceInvite.ts), no bypass needed.
+        WorkspaceInvite.deleteMany({
+            $or: [{ inviteeUserId: userId }, { inviterUserId: userId }],
+        }),
     ])
 
     // Drop the now-deleted user from the member list of every workspace they're still in (the
