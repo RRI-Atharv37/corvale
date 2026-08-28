@@ -1,5 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
 import { applySoftDelete } from '../utils/applySoftDelete'
 import { TRANSACTION_TYPES, TransactionType } from './Transaction'
 
@@ -42,6 +43,8 @@ const TransactionTemplateSchema = new Schema<ITransactionTemplate>(
 TransactionTemplateSchema.index({ userId: 1, name: 1 })
 TransactionTemplateSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 
+// RLS before soft-delete so the guard sees the caller's raw filter (SEC-30).
+applyRowLevelSecurity(TransactionTemplateSchema)
 applySoftDelete(TransactionTemplateSchema)
 
 const TransactionTemplate: Model<ITransactionTemplate> = mongoose.model<ITransactionTemplate>(

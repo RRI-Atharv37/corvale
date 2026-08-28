@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export const SYNC_OP_STATUSES = ['applied', 'noop', 'conflict', 'rejected', 'id_conflict', 'pending'] as const
 export type SyncOpStatus = (typeof SYNC_OP_STATUSES)[number]
 
@@ -47,6 +49,10 @@ const SyncOperationSchema = new Schema<ISyncOperation>(
 )
 
 SyncOperationSchema.index({ userId: 1, opId: 1 }, { unique: true })
+
+// Row-level security (SEC-30) - the idempotency ledger is per-user activity metadata; every
+// read/write goes through a `{ userId, opId }` filter already.
+applyRowLevelSecurity(SyncOperationSchema)
 
 const SyncOperation: Model<ISyncOperation> = mongoose.model<ISyncOperation>(
     'SyncOperation',

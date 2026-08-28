@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
+import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+
 export interface ICategory extends Document {
     _id: Types.ObjectId
     userId: Types.ObjectId | null
@@ -43,6 +45,12 @@ CategorySchema.index(
 )
 CategorySchema.index({ userId: 1, name: 1 }, { unique: true, partialFilterExpression: { userId: null } })
 CategorySchema.index({ userId: 1, updatedAt: 1, _id: 1 })
+
+// Row-level security (SEC-30). Shared master categories are stored with `userId: null`; a
+// `{ userId: null }` filter still satisfies the guard's `'userId' in filter` check, so master
+// reads keep working. Call sites that need both a user's own categories and the shared masters
+// pass `{ userId: { $in: [<userId>, null] } }`.
+applyRowLevelSecurity(CategorySchema)
 
 const Category: Model<ICategory> = mongoose.model<ICategory>('Category', CategorySchema)
 export default Category
