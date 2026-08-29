@@ -39,8 +39,20 @@ describe('Strict Tauri CSP (D2, SEC-04)', () => {
 
     it('does not allow unsafe-eval or unsafe-inline scripts', () => {
         const csp = readCsp()
-        expect(csp).not.toContain('unsafe-eval')
+        // `'wasm-unsafe-eval'` is permitted (see below) - forbid only the bare `'unsafe-eval'`
+        // token, which enables full JS `eval()`.
+        expect(csp).not.toMatch(/'unsafe-eval'/)
         expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/)
+    })
+
+    it("allows 'wasm-unsafe-eval' (needed by the @sqlite.org/sqlite-wasm fallback driver) but nothing broader", () => {
+        const csp = readCsp()
+        const scriptSrc = csp.match(/script-src([^;]*)/)?.[1] ?? ''
+        expect(scriptSrc).toContain("'wasm-unsafe-eval'")
+        // `'wasm-unsafe-eval'` only lifts the WebAssembly compilation ban - it does not enable
+        // `eval()` / `new Function()`. It must be the ONLY eval-family source in script-src.
+        expect(scriptSrc).not.toMatch(/'unsafe-eval'/)
+        expect(scriptSrc).not.toContain("'unsafe-inline'")
     })
 
     it('does not use a bare wildcard source anywhere', () => {
