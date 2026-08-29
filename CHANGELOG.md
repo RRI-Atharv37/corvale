@@ -13,6 +13,19 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-08-30
+
+### Fixed
+
+- **Desktop app: local store and sync were dead ("Failed to load local data", "Sync failed").**
+  index.html's `<meta>` CSP is enforced alongside the CSP Tauri injects from `tauri.conf.json`
+  (a page under two policies gets their intersection), and the meta policy — written for the web
+  build — omitted `ipc: http://ipc.localhost` from `connect-src`, so every Tauri `invoke()` was
+  blocked and `TauriSqlDriver` could never open the local SQLite database. The `desktop` Vite
+  mode now widens the meta CSP to admit Tauri IPC, `'wasm-unsafe-eval'` (for the sqlite-wasm
+  fallback driver), and `blob:` in `img-src` (receipt thumbnails render from object URLs);
+  `tauri.conf.json`'s own CSP carries the same widenings. Web builds are unchanged.
+
 ## [1.0.1] - 2026-08-30
 
 ### Fixed

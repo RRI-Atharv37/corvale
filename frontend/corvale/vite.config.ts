@@ -13,6 +13,34 @@ import { VitePWA } from 'vite-plugin-pwa'
  * this needs to add sources to several existing directives plus one new directive
  * (frame-src), not substitute a single value.
  */
+/**
+ * The Tauri desktop shell (`--mode desktop`) enforces BOTH the CSP Tauri injects from
+ * `src-tauri/tauri.conf.json` AND the `<meta>` CSP in index.html - a page under two policies gets
+ * the intersection of the two. The `<meta>` policy is written for the web build, so it omits the
+ * two things the desktop runtime needs:
+ *   - `ipc: http://ipc.localhost` in `connect-src` - Tauri v2's `invoke()` IPC goes over an
+ *     internal `fetch()` to `http://ipc.localhost` (Windows/Linux) / `ipc://localhost`; without
+ *     this every `invoke()` is blocked, so `TauriSqlDriver` can't open the local SQLite DB and
+ *     every local-first page fails with "Failed to load local data" / "Sync failed".
+ *   - `'wasm-unsafe-eval'` in `script-src` - the `@sqlite.org/sqlite-wasm` fallback driver
+ *     (used if the native driver ever can't load) instantiates WebAssembly, which Chromium
+ *     refuses under a bare `script-src 'self'`.
+ *   - `blob:` in `img-src` - receipt thumbnails render from `URL.createObjectURL(blob)` URLs
+ *     (`components/transactions/ReceiptAttachments.tsx`), which `'self'` does not cover.
+ * `tauri.conf.json` carries the same widenings so both layers agree. Web builds are untouched.
+ */
+const desktopCspPlugin = (): Plugin => ({
+    name: 'corvale-desktop-csp',
+    transformIndexHtml: (html) =>
+        html
+            .replace("script-src 'self';", "script-src 'self' 'wasm-unsafe-eval';")
+            .replace("img-src 'self' data:;", "img-src 'self' data: blob:;")
+            .replace(
+                /connect-src 'self'[^;]*;/,
+                (match) => `${match.slice(0, -1)} ipc: http://ipc.localhost;`
+            ),
+})
+
 const captchaCspPlugin = (): Plugin => ({
     name: 'corvale-captcha-csp',
     transformIndexHtml: (html) =>
@@ -36,6 +64,7 @@ const captchaCspPlugin = (): Plugin => ({
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '')
     const captchaEnabled = env.VITE_CAPTCHA_ENABLED === 'true'
+    const isDesktop = mode === 'desktop'
 
     return {
   // Tauri-recommended dev-server settings (https://v2.tauri.app/start/frontend/vite/):
@@ -58,6 +87,7 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     tailwindcss(),
+    ...(isDesktop ? [desktopCspPlugin()] : []),
     ...(captchaEnabled ? [captchaCspPlugin()] : []),
     VitePWA({
       // Custom sw.ts (src/sw.ts) instead of generateSW: needed for our own `sync` event
