@@ -11,6 +11,7 @@ import { generateLocalObjectId } from '../../../db/generateLocalId'
 import { isLocalFirstEnabled } from '../../../utils/localFirstFlag'
 import { getLocalUserPrefs } from '../../../db/localUserPrefs'
 import { convertAmountWithRates } from '../../../domain/currency'
+import { recomputeLocalAccountBalance } from '../../../domain/accountBalances'
 import { unwrapApiData } from '../../../utils/apiHelpers'
 import { getApiErrorMessage } from '../../../utils/apiError'
 import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../../utils/workspaceScope'
@@ -37,6 +38,8 @@ export interface CreateAccountInput {
     type: AccountType
     currency: string
     openingBalance: number
+    /** ISO date (YYYY-MM-DD or full ISO). Balance is stated "as of" this date. */
+    openingBalanceDate?: string
     interestRate?: number
     minimumPayment?: number
 }
@@ -44,6 +47,9 @@ export interface CreateAccountInput {
 export interface UpdateAccountInput {
     name: string
     type: AccountType
+    /** Editable post-creation; a change forces a server-side balance recompute. */
+    openingBalance?: number
+    openingBalanceDate?: string | null
     interestRate?: number
     minimumPayment?: number
 }
@@ -78,6 +84,7 @@ const toAccountView = (
         type: account.type,
         currency: account.currency,
         openingBalance: account.openingBalance ?? account.currentBalance,
+        openingBalanceDate: account.openingBalanceDate ?? null,
         currentBalance: account.currentBalance,
         isDefault: account.isDefault ?? false,
         isArchived: account.isArchived,
@@ -160,6 +167,7 @@ export const useAccountsData = (): UseAccountsDataResult => {
                     type: input.type,
                     currency: input.currency,
                     openingBalance: input.openingBalance,
+                    openingBalanceDate: input.openingBalanceDate,
                     interestRate: input.interestRate,
                     minimumPayment: input.minimumPayment,
                     ...buildWorkspaceBodyFields(activeWorkspaceId),
@@ -170,6 +178,10 @@ export const useAccountsData = (): UseAccountsDataResult => {
                 await axiosInstance.put(API_PATHS.ACCOUNTS.UPDATE(account._id), {
                     name: input.name,
                     type: input.type,
+                    ...(input.openingBalance !== undefined && { openingBalance: input.openingBalance }),
+                    ...(input.openingBalanceDate !== undefined && {
+                        openingBalanceDate: input.openingBalanceDate,
+                    }),
                     interestRate: input.interestRate,
                     minimumPayment: input.minimumPayment,
                 })
@@ -225,6 +237,7 @@ export const useAccountsData = (): UseAccountsDataResult => {
                     // it is simply initialized to `openingBalance` on create either way.
                     currentBalance: input.openingBalance,
                     openingBalance: input.openingBalance,
+                    openingBalanceDate: input.openingBalanceDate ?? null,
                     isDefault: shouldBeDefault,
                     isArchived: false,
                     interestRate: input.interestRate,
@@ -236,6 +249,8 @@ export const useAccountsData = (): UseAccountsDataResult => {
         },
         updateAccount: async (account, input) => {
             const db = await getLocalDb()
+            const opensChanged =
+                input.openingBalance !== undefined || input.openingBalanceDate !== undefined
             await db.transaction(async (tx) => {
                 const existing = await accountsRepo.findById(tx, account._id)
                 if (!existing) throw new Error('Account not found')
@@ -245,12 +260,32 @@ export const useAccountsData = (): UseAccountsDataResult => {
                         ...existing,
                         name: input.name,
                         type: input.type,
+                        ...(input.openingBalance !== undefined && {
+                            openingBalance: input.openingBalance,
+                        }),
+                        ...(input.openingBalanceDate !== undefined && {
+                            openingBalanceDate: input.openingBalanceDate,
+                        }),
                         interestRate: input.interestRate,
                         minimumPayment: input.minimumPayment,
                     },
                     existing.updatedAt
                 )
             })
+            // Opening balance / date drive the from-scratch balance, so a change
+            // forces a recompute (mirrors the server's updateAccount).
+            if (opensChanged) {
+                const recomputed = await recomputeLocalAccountBalance(db, account._id)
+                await db.transaction(async (tx) => {
+                    const current = await accountsRepo.findById(tx, account._id)
+                    if (!current) return
+                    await accountsRepo.update(
+                        tx,
+                        { ...current, currentBalance: recomputed },
+                        current.updatedAt
+                    )
+                })
+            }
             tableInvalidationBus.publish('accounts')
         },
         archiveAccount: async (account) => {

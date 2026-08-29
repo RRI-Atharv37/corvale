@@ -249,7 +249,7 @@ export const confirmRecurringDraft = async (
 
     transaction.status = 'posted'
     await transaction.save()
-    await applyTransactionToAccount(account, transaction.type, transaction.amount)
+    await applyTransactionToAccount(account, transaction.type, transaction.amount, transaction.date)
 
     return serializeTransaction(transaction)
 }

@@ -1,7 +1,8 @@
 import Account, { ACCOUNT_TYPES, IAccount } from '../models/Account'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { roundMoney } from '../utils/balanceUtils'
+import { recomputeAccountBalanceMajor, roundMoney } from '../utils/balanceUtils'
+import { toMinorUnits } from '../../shared/src/money'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
 import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
 import { assertWorkspaceMembership, parseOptionalWorkspaceId, validateResourceAccess } from '../utils/workspaceUtils'
@@ -30,6 +31,17 @@ const parseOpeningBalance = (value: unknown): number => {
         throw new CustomError('Invalid opening balance format', 400)
     }
     return balance
+}
+
+const parseOpeningBalanceDate = (value: unknown): Date | null => {
+    if (value === undefined || value === null || value === '') {
+        return null
+    }
+    const parsed = new Date(value as string | number)
+    if (isNaN(parsed.getTime())) {
+        throw new CustomError('Invalid opening balance date', 400)
+    }
+    return parsed
 }
 
 const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): number | undefined => {
@@ -82,6 +94,7 @@ export const createAccountForOp = async (
 
     const clientId = resolveClientObjectId(payload._id)
     const parsedOpeningBalance = parseOpeningBalance(openingBalance)
+    const parsedOpeningBalanceDate = parseOpeningBalanceDate(payload.openingBalanceDate)
     const activeAccountCount = await Account.countDocuments(
         workspaceId
             ? { workspaceId, isArchived: false }
@@ -102,6 +115,7 @@ export const createAccountForOp = async (
             type,
             currency: parseOptionalSupportedCurrency(currency),
             openingBalance: parsedOpeningBalance,
+            openingBalanceDate: parsedOpeningBalanceDate,
             currentBalance: parsedOpeningBalance,
             isDefault: shouldBeDefault,
             interestRate,
@@ -124,8 +138,8 @@ export const updateAccountForOp = async (
         throw new CustomError('Missing required field: _id', 400)
     }
 
-    if (payload.currentBalance !== undefined || payload.openingBalance !== undefined) {
-        throw new CustomError('Balance fields are server-derived and cannot be updated directly', 400)
+    if (payload.currentBalance !== undefined) {
+        throw new CustomError('currentBalance is server-derived and cannot be updated directly', 400)
     }
 
     const account = await validateResourceAccess(
@@ -178,6 +192,17 @@ export const updateAccountForOp = async (
         account.currency = parseSupportedCurrency(currency)
     }
 
+    let recomputeNeeded = false
+    if (payload.openingBalance !== undefined) {
+        const parsed = parseOpeningBalance(payload.openingBalance)
+        account.openingBalance = account.balanceUnit === 'minor' ? toMinorUnits(parsed) : parsed
+        recomputeNeeded = true
+    }
+    if (payload.openingBalanceDate !== undefined) {
+        account.openingBalanceDate = parseOpeningBalanceDate(payload.openingBalanceDate)
+        recomputeNeeded = true
+    }
+
     if (isDefault === true) {
         await unsetPreviousDefault(userId, accountId)
         account.isDefault = true
@@ -185,7 +210,16 @@ export const updateAccountForOp = async (
         throw new CustomError(ERROR_MESSAGES.ACCOUNT.CANNOT_UNSET_DEFAULT, 400)
     }
 
-    return account.save()
+    await account.save()
+
+    if (recomputeNeeded) {
+        const recomputedMajor = await recomputeAccountBalanceMajor(account, userId)
+        account.currentBalance =
+            account.balanceUnit === 'minor' ? toMinorUnits(recomputedMajor) : recomputedMajor
+        await account.save()
+    }
+
+    return account
 }
 
 export const deleteAccountForOp = (

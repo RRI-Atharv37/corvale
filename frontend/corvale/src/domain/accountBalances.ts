@@ -47,6 +47,7 @@ const toRecomputeTransactions = (
         amount: tx.amount,
         status: tx.status,
         splitTransactionId: tx.splitTransactionId,
+        date: tx.date,
       }
     })
 
@@ -59,7 +60,12 @@ export const recomputeLocalAccountBalance = async (db: LocalDb, accountId: strin
   const transactions = await transactionsRepo.list(db)
   const pairCreatedAtById = buildPairCreatedAtById(transactions)
   return sharedRecomputeAccountBalance(
-    { type: account.type, openingBalance: account.openingBalance, currentBalance: account.currentBalance },
+    {
+      type: account.type,
+      openingBalance: account.openingBalance,
+      currentBalance: account.currentBalance,
+      openingBalanceDate: account.openingBalanceDate ?? null,
+    },
     toRecomputeTransactions(transactions, account._id, pairCreatedAtById)
   )
 }
@@ -80,7 +86,12 @@ export const recomputeAllLocalAccountBalances = async (db: LocalDb): Promise<Map
   await db.transaction(async (tx) => {
     for (const account of accounts) {
       const balance = sharedRecomputeAccountBalance(
-        { type: account.type, openingBalance: account.openingBalance, currentBalance: account.currentBalance },
+        {
+          type: account.type,
+          openingBalance: account.openingBalance,
+          currentBalance: account.currentBalance,
+          openingBalanceDate: account.openingBalanceDate ?? null,
+        },
         toRecomputeTransactions(transactions, account._id, pairCreatedAtById)
       )
       results.set(account._id, balance)

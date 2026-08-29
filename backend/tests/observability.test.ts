@@ -7,7 +7,9 @@ import {
     setErrorTrackingClient,
     isErrorTrackingConfigured,
     captureException,
+    scrubErrorEvent,
 } from '../utils/errorTracking'
+import type { ErrorEvent } from '@sentry/node'
 import { requestLogger } from '../middleware/requestLoggerMiddleware'
 import { errorHandler } from '../middleware/errorMiddleware'
 import { CustomError } from '../utils/customError'
@@ -30,6 +32,9 @@ import { CustomError } from '../utils/customError'
  *       SENTRY_DSN, so tests never need a live DSN.
  *     export const captureException(err, context?): void  -- no-ops when neither a test
  *       client nor SENTRY_DSN is present.
+ *     export const scrubErrorEvent(event): event  -- the beforeSend scrubber; reduces an
+ *       event to message + stack + request method + path, matching the Privacy Policy's
+ *       "Operational data" promise. Wired into Sentry.init alongside sendDefaultPii: false.
  *
  *   backend/middleware/requestLoggerMiddleware.ts
  *     export const requestLogger  -- Express middleware; on response finish, emits one
@@ -133,6 +138,50 @@ describe('errorTracking (L4)', () => {
         expect(captured).toHaveLength(1)
         expect(captured[0].err).toBe(error)
         expect(captured[0].context).toEqual({ statusCode: 500, path: '/api/v1/transactions' })
+    })
+
+    it('scrubErrorEvent keeps only message, stack, request method and path (R9)', () => {
+        const scrubbed = scrubErrorEvent({
+            message: 'boom',
+            exception: { values: [{ type: 'Error', value: 'boom', stacktrace: { frames: [] } }] },
+            extra: { statusCode: 500, path: '/api/v1/transactions/6512', method: 'POST' },
+            user: { id: 'u_123', email: 'a@b.com', ip_address: '203.0.113.7' },
+            server_name: 'corvale-vm-1',
+            breadcrumbs: [{ message: 'GET /api/v1/transactions?token=supersecret' }],
+            request: {
+                method: 'POST',
+                url: 'https://api.corvale.app/api/v1/transactions/6512?token=supersecret',
+                headers: { authorization: 'Bearer supersecret', cookie: 'corvale_refresh=y' },
+                cookies: { corvale_refresh: 'y' },
+                data: { amount: 5000, note: 'private note' },
+                query_string: 'token=supersecret',
+            },
+        } as unknown as ErrorEvent)
+
+        expect(scrubbed.user).toBeUndefined()
+        expect(scrubbed.server_name).toBeUndefined()
+        expect(scrubbed.breadcrumbs).toBeUndefined()
+        expect(scrubbed.request).toEqual({ method: 'POST', url: '/api/v1/transactions/6512' })
+
+        // Message and stack trace survive -- they are what the report is for.
+        expect(scrubbed.message).toBe('boom')
+        expect(scrubbed.exception?.values?.[0]?.stacktrace).toBeDefined()
+        // The { statusCode, path, method } errorMiddleware passes as extra is within the policy.
+        expect(scrubbed.extra).toEqual({ statusCode: 500, path: '/api/v1/transactions/6512', method: 'POST' })
+
+        // Nothing sensitive anywhere in the serialized event.
+        expect(JSON.stringify(scrubbed)).not.toContain('supersecret')
+        expect(JSON.stringify(scrubbed)).not.toContain('private note')
+        expect(JSON.stringify(scrubbed)).not.toContain('203.0.113.7')
+    })
+
+    it('scrubErrorEvent tolerates an event with no request or relative url', () => {
+        expect(scrubErrorEvent({ message: 'boom' } as ErrorEvent).request).toBeUndefined()
+
+        const relative = scrubErrorEvent({
+            request: { method: 'GET', url: '/api/v1/health?probe=1' },
+        } as unknown as ErrorEvent)
+        expect(relative.request).toEqual({ method: 'GET', url: '/api/v1/health' })
     })
 })
 

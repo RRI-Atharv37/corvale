@@ -340,6 +340,12 @@ export interface Account {
     type: AccountType
     currency: string
     openingBalance: number
+    /**
+     * The date `openingBalance` is stated "as of". Transactions dated before it
+     * are informational only and don't affect `currentBalance`. `null` = no
+     * cutoff (legacy accounts: every transaction counts).
+     */
+    openingBalanceDate?: string | null
     currentBalance: number
     isDefault: boolean
     isArchived: boolean
@@ -357,6 +363,7 @@ export interface AccountFormData {
     type: AccountType
     currency: string
     openingBalance: string
+    openingBalanceDate: string
     interestRate: string
     minimumPayment: string
 }
@@ -364,6 +371,8 @@ export interface AccountFormData {
 export interface AccountEditFormData {
     name: string
     type: AccountType
+    openingBalance: string
+    openingBalanceDate: string
     interestRate: string
     minimumPayment: string
 }

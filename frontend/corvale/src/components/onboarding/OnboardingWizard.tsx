@@ -47,6 +47,9 @@ const OnboardingWizard = forwardRef<OnboardingWizardHandle>((_props, ref) => {
     const [accountName, setAccountName] = useState('')
     const [accountType, setAccountType] = useState<AccountType>('checking')
     const [openingBalance, setOpeningBalance] = useState('0')
+    const [openingBalanceDate, setOpeningBalanceDate] = useState(() =>
+        new Date().toISOString().slice(0, 10)
+    )
 
     const [budgetName, setBudgetName] = useState('Monthly Budget')
     const [budgetAmount, setBudgetAmount] = useState('')
@@ -161,6 +164,7 @@ const OnboardingWizard = forwardRef<OnboardingWizardHandle>((_props, ref) => {
             accountName: accountName.trim(),
             accountType,
             openingBalance: openingBalance || '0',
+            openingBalanceDate: openingBalanceDate || undefined,
         })
     }
 
@@ -265,12 +269,25 @@ const OnboardingWizard = forwardRef<OnboardingWizardHandle>((_props, ref) => {
                             </div>
                         </div>
                         <FormField
-                            label="Opening balance"
+                            label="Current balance"
                             type="number"
                             value={openingBalance}
                             onChange={setOpeningBalance}
                             step="0.01"
                         />
+                        <FormField
+                            label="Balance as of"
+                            type="date"
+                            value={openingBalanceDate}
+                            onChange={setOpeningBalanceDate}
+                            max={new Date().toISOString().slice(0, 10)}
+                        />
+                        <p className="text-[12px] text-fg-muted -mt-2">
+                            Enter what&apos;s in the account today. Transactions dated before this
+                            date won&apos;t change the balance &mdash; so you can safely import or
+                            back-fill older history later. Adjust the date if you&apos;re starting
+                            from the account&apos;s very beginning.
+                        </p>
                         <div className="flex justify-end gap-2 pt-2">
                             <button type="submit" disabled={submitting} className="btn-primary">
                                 {submitting ? 'Saving...' : 'Continue'}

@@ -33,6 +33,7 @@ import debtRoutes from './routes/debtRoutes'
 import reconciliationRoutes from './routes/reconciliationRoutes'
 import exchangeRateRoutes from './routes/exchangeRateRoutes'
 import onboardingRoutes from './routes/onboardingRoutes'
+import desktopRoutes from './routes/desktopRoutes'
 import { createSyncRoutes } from './routes/syncRoutes'
 import { sanitizeBody } from './middleware/sanitizeBodyMiddleware'
 import { buildCorsOriginAllowlist } from './utils/corsOriginAllowlist'
@@ -140,6 +141,7 @@ export const createApp = (): express.Application => {
     app.use('/api/v1/reconciliation-sessions', reconciliationRoutes)
     app.use('/api/v1/exchange-rates', exchangeRateRoutes)
     app.use('/api/v1/onboarding', onboardingRoutes)
+    app.use('/api/v1/desktop', desktopRoutes)
     app.use('/api/v1/sync', createSyncRoutes())
 
     app.use((_req, res) => {

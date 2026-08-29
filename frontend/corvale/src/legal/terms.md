@@ -1,9 +1,9 @@
-**Effective date:** [[EFFECTIVE_DATE]] · **Version:** 2026-08-28
+**Effective date:** 2026-08-29 · **Version:** 2026-08-29
 
 ## Agreeing to these terms
 
-These terms are an agreement between you and [[OPERATOR_LEGAL_NAME]], [[OPERATOR_TYPE]], covering
-your use of **the hosted Corvale service** at [[PRODUCT_DOMAIN]]. By creating an account you
+These terms are an agreement between you and Atharv Dewangan, an individual resident in India,
+covering your use of **the hosted Corvale service** at corvale.app. By creating an account you
 accept them.
 
 They do **not** cover self-hosted installations. The Corvale software is licensed separately
@@ -16,10 +16,11 @@ you may not create an account. See the age section of the [Privacy Policy](./pri
 
 One account is for one person. Do not share your login.
 
-**Where we offer the service.** Corvale is operated from India, and your data is stored there
-wherever you are. You may use it from anywhere, with one exception: **we do not offer the service
-in the European Economic Area or the UK.** If you are in one of those, please do not create an
-account — we have not appointed a data protection representative there, and the
+**Where we offer the service.** Corvale is operated from India, and your data is hosted and
+stored in the United States on Google Cloud infrastructure — the [Privacy Policy](./privacy.md)
+explains this and the basis for it. You may use it from anywhere, with one exception: **we do not
+offer the service in the European Economic Area or the UK.** If you are in one of those, please do
+not create an account — we have not appointed a data protection representative there, and the
 [Privacy Policy](./privacy.md) explains why.
 
 This eligibility rule is a condition of using **the hosted service**. It does not restrict who may
@@ -96,9 +97,9 @@ learning models.
 
 ### Our content
 
-Everything that is not Your Content stays ours. [[OPERATOR_LEGAL_NAME]] and its licensors retain
-all rights in the Corvale software, the hosted service, its interface and design, the Corvale name
-and logo and other branding, the documentation, and the underlying methods and calculations.
+Everything that is not Your Content stays ours. We and our licensors retain all rights in the
+Corvale software, the hosted service, its interface and design, the Corvale name and logo and
+other branding, the documentation, and the underlying methods and calculations.
 
 Nothing in these terms transfers any of that to you. "Your data is yours" means exactly that —
 your data — and not the product it is stored in.
@@ -173,7 +174,7 @@ Corvale lets you share a workspace with other people as owner, editor, or viewer
 Corvale is a place to store your own financial records, so this rarely comes up. Still: do not
 upload material you have no right to store or share, including in a shared workspace.
 
-If you believe material stored in Corvale infringes your copyright, email [[SUPPORT_EMAIL]] with:
+If you believe material stored in Corvale infringes your copyright, email support@corvale.app with:
 
 - What the work is, in enough detail to identify it
 - Where the infringing material is in Corvale, in enough detail for us to find it
@@ -203,7 +204,7 @@ including receipts. **Export is never restricted** — not while your account is
 during any billing state, not ever. We consider that a floor, not a feature.
 
 We keep our own backups so the service can be recovered after a failure. Those backups are kept
-for 30 days and then overwritten, so a deleted account can persist in a backup for that long even
+for 30 days and then deleted, so a deleted account can persist in a backup for that long even
 though it is erased from the live database immediately. We do not restore an individual account
 from a backup on request.
 
@@ -224,7 +225,7 @@ terms before any charge is ever made. Nothing in this document authorises us to 
 **You** can delete your account at any time from Settings. Deletion immediately removes your
 account, your records and your uploaded receipts from the live service, and it cannot be undone —
 there is no grace period. Backup copies may still contain your data for up to 30 days, as
-described above, after which they are overwritten. Export first if you want a copy.
+described above, after which they are deleted. Export first if you want a copy.
 
 **We** may suspend or close an account that breaches these terms. Except in cases of serious abuse
 or where the law requires otherwise, we will give you reasonable notice and a chance to export
@@ -233,7 +234,7 @@ your data first.
 **If we shut the service down**, we will give at least 30 days of notice before accounts are
 closed and data is deleted, so you can export everything you want to keep.
 Export stays available for that whole window. We will announce a shutdown by email to the address
-on your account and on [[PRODUCT_DOMAIN]].
+on your account and on corvale.app.
 
 ## Warranties and liability
 
@@ -264,7 +265,7 @@ over the defence if you want to.
 
 ## Governing law
 
-These terms are governed by the laws of India. The courts at [[JURISDICTION_CITY]] have exclusive
+These terms are governed by the laws of India. The courts at Bengaluru have exclusive
 jurisdiction over any dispute, except where mandatory consumer protection law in your country of
 residence gives you the right to bring a claim locally.
 
@@ -330,5 +331,5 @@ notices, safeguards, or other protections required by the law that applies to th
 
 ## Contact
 
-Questions about these terms: [[SUPPORT_EMAIL]]. See the [Contact page](./contact.md) for support,
+Questions about these terms: support@corvale.app. See the [Contact page](./contact.md) for support,
 privacy and security routes.

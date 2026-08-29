@@ -500,7 +500,7 @@ export const commitImport = asyncHandler(async (req: AuthRequest, res: Response)
             tags: item.tags,
         })
 
-        await applyTransactionToAccount(account, item.type, amountMinor)
+        await applyTransactionToAccount(account, item.type, amountMinor, transaction.date)
         await evaluateBudgetOverLimitNotifications(userId, transaction)
         createdIds.push(transaction._id.toString())
     }

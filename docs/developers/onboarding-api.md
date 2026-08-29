@@ -24,7 +24,7 @@ Advances the wizard by one step. `step` must match the user's current step (`onb
 
 | Step | Body | Side effect |
 |------|------|-------------|
-| `account` | `{ accountName, accountType, openingBalance? }` | Creates an `Account`; the first personal account created is set as default |
+| `account` | `{ accountName, accountType, openingBalance?, openingBalanceDate? }` | Creates an `Account`; the first personal account created is set as default. `openingBalanceDate` defaults to the current day (start of day, UTC) so transactions dated earlier don't shift the balance the user just entered |
 | `categories` | `{ categoriesReviewed? }` | No writes - acknowledgement only |
 | `budget` | `{ skipped }` or `{ budgetName, budgetAmount, categoryId? }` | Creates a monthly `Budget` unless skipped |
 | `goal` | `{ skipped }` or `{ goalName, targetAmount }` | Creates a `SavingsGoal` unless skipped |

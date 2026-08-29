@@ -284,6 +284,7 @@ export default defineConfig({
           { text: 'Calendar API', link: '/developers/calendar-api' },
           { text: 'Subscriptions API', link: '/developers/subscriptions-api' },
           { text: 'Debt Payoff API', link: '/developers/debts-api' },
+          { text: 'Desktop API', link: '/developers/desktop-api' },
           { text: 'Receipts API', link: '/developers/receipts-api' },
           { text: 'Data Migration', link: '/developers/data-migration' },
           { text: 'Backup & Restore Runbook', link: '/developers/backup-restore-runbook' },

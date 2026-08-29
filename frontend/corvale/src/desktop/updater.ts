@@ -1,5 +1,6 @@
 import { check, type Update } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
+import { getVersion } from '@tauri-apps/api/app'
 
 export interface DesktopUpdateCheckResult {
   available: boolean
@@ -23,6 +24,12 @@ export const checkForDesktopUpdate = async (): Promise<DesktopUpdateCheckResult>
   }
   return { available: true, version: pendingUpdate.version, body: pendingUpdate.body ?? undefined }
 }
+
+/**
+ * The version string baked into the running desktop binary (`tauri.conf.json` `version`). Used by
+ * the manual "Check for updates" panel (V15) to show what the user is currently on.
+ */
+export const getInstalledVersion = (): Promise<string> => getVersion()
 
 /** Downloads and installs the update found by `checkForDesktopUpdate`, then relaunches the app. */
 export const installPendingUpdate = async (): Promise<void> => {

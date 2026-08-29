@@ -485,3 +485,71 @@ describe('Reconciliation - Reconciliation sessions', () => {
         expect(res.body.data[0].accountId).toBe(account._id)
     })
 })
+
+describe('Reconciliation - openingBalanceDate', () => {
+    it('excludes transactions dated before openingBalanceDate from the cleared balance', async () => {
+        const { token } = await seedUserDirectly({ email: 'reconcile-obd@example.com' })
+        const accountRes = await request(app)
+            .post('/api/v1/accounts')
+            .set(authHeader(token))
+            .send({
+                name: 'Checking',
+                type: 'checking',
+                openingBalance: 1000,
+                openingBalanceDate: '2026-08-01T00:00:00.000Z',
+            })
+        const account = accountRes.body.data
+        const foodId = await getFoodMasterId(token)
+
+        // pre-cutoff expense, marked cleared - must NOT be summed again (it is
+        // already baked into openingBalance)
+        const preCutoff = (
+            await request(app)
+                .post('/api/v1/transactions')
+                .set(authHeader(token))
+                .send({
+                    type: 'expense',
+                    title: 'Historical',
+                    amount: 300,
+                    date: '2026-07-01T12:00:00.000Z',
+                    accountId: account._id,
+                    categoryId: foodId,
+                })
+        ).body.data
+        // post-cutoff expense, cleared
+        const postCutoff = (
+            await request(app)
+                .post('/api/v1/transactions')
+                .set(authHeader(token))
+                .send({
+                    type: 'expense',
+                    title: 'Recent',
+                    amount: 50,
+                    date: '2026-08-10T12:00:00.000Z',
+                    accountId: account._id,
+                    categoryId: foodId,
+                })
+        ).body.data
+
+        for (const id of [preCutoff._id, postCutoff._id]) {
+            await request(app)
+                .patch(`/api/v1/transactions/${id}/cleared-status`)
+                .set(authHeader(token))
+                .send({ clearedStatus: 'cleared' })
+        }
+
+        const res = await request(app)
+            .post('/api/v1/reconciliation-sessions')
+            .set(authHeader(token))
+            .send({
+                accountId: account._id,
+                statementEndDate: '2026-08-31T00:00:00.000Z',
+                statementBalance: 950,
+            })
+
+        expect(res.status).toBe(201)
+        // 1000 opening - 50 post-cutoff only (pre-cutoff 300 is not re-counted)
+        expect(res.body.data.clearedBalance).toBe(950)
+        expect(res.body.data.balanceDifferential).toBe(0)
+    })
+})

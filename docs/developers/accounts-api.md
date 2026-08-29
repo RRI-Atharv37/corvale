@@ -18,6 +18,7 @@ Create a new account.
   "type": "checking",
   "currency": "USD",
   "openingBalance": 2500.00,
+  "openingBalanceDate": "2026-08-01",
   "isDefault": false
 }
 ```
@@ -28,9 +29,10 @@ Create a new account.
 | `type` | Yes | string | `checking`, `cash`, `credit`, or `savings` |
 | `currency` | No | string | Defaults to `USD`; uppercased |
 | `openingBalance` | No | number | Defaults to `0`; sets `currentBalance` |
+| `openingBalanceDate` | No | string (date) | The date `openingBalance` is stated as of. Transactions dated before it don't affect `currentBalance`. Omit or send `null` for no cutoff (every transaction counts). The onboarding wizard defaults this to the current day |
 | `isDefault` | No | boolean | First account auto-defaults |
 
-`currentBalance` cannot be set directly - the server derives it from `openingBalance`.
+`currentBalance` cannot be set directly - the server derives it from `openingBalance` plus transaction activity dated on or after `openingBalanceDate`.
 
 ### Success response (201)
 
@@ -63,9 +65,11 @@ Update an account. Supports partial updates.
 | `name` | Must not be empty |
 | `type` | Must be a valid account type |
 | `currency` | Uppercased automatically |
+| `openingBalance` | Changing it recalculates `currentBalance` from scratch |
+| `openingBalanceDate` | Date string, or `null` to remove the cutoff; changing it recalculates `currentBalance` |
 | `isDefault` | Set to `true` to make default; cannot set to `false` on current default |
 
-`openingBalance` and `currentBalance` cannot be updated.
+`currentBalance` cannot be updated - it is always server-derived. Sending it returns `400`.
 
 ### Errors
 

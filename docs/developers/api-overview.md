@@ -81,6 +81,7 @@ The `data` field shape varies by endpoint.
 | `/calendar` | Unified financial calendar (no frontend yet) | Yes |
 | `/subscriptions` | Subscription tracker (no frontend yet) | Yes |
 | `/debts` | Debt payoff planner (no frontend yet) | Yes |
+| `/desktop` | Desktop release manifest for the download page | No |
 | `/income` | Legacy income CRUD (deprecated) | Yes |
 | `/expense` | Legacy expense CRUD (deprecated) | Yes |
 
@@ -153,3 +154,4 @@ Transaction amounts are stored as integer minor units (cents) in the database. A
 - [Calendar API](./calendar-api.md)
 - [Subscriptions API](./subscriptions-api.md)
 - [Debt Payoff API](./debts-api.md)
+- [Desktop API](./desktop-api.md)

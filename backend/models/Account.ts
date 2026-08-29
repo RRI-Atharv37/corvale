@@ -27,6 +27,16 @@ export interface IAccount extends Document {
      */
     balanceUnit: AccountBalanceUnit
     openingBalance: number
+    /**
+     * The date the `openingBalance` is stated "as of". Balance math counts only
+     * transactions dated on/after this instant, so backfilling or importing
+     * history older than the account's start doesn't inflate `currentBalance`.
+     * `null` keeps the legacy behavior — the opening balance predates all
+     * activity and every transaction contributes. Set at creation to the day the
+     * user tells us what's in the account (see onboardingController /
+     * accountController), editable afterward with a balance recompute.
+     */
+    openingBalanceDate?: Date | null
     currentBalance: number
     isDefault: boolean
     isArchived: boolean
@@ -54,6 +64,7 @@ const AccountSchema = new Schema<IAccount>(
         },
         balanceUnit: { type: String, enum: ACCOUNT_BALANCE_UNITS, default: 'major' },
         openingBalance: { type: Number, required: true, default: 0 },
+        openingBalanceDate: { type: Date, default: null },
         currentBalance: { type: Number, required: true, default: 0 },
         isDefault: { type: Boolean, default: false },
         isArchived: { type: Boolean, default: false },

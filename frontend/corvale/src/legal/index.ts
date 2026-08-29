@@ -15,9 +15,10 @@ import termsMd from './terms.md?raw'
  * no network round trip. The bodies deliberately carry no H1: each surface supplies its own title
  * (frontmatter on the docs site, `LegalPage` here).
  *
- * The documents still contain `[[PLACEHOLDER]]` tokens for facts that are not settled yet -
- * operator identity, grievance contact, jurisdiction. They render literally and visibly on
- * purpose. See `PAPERWORK.md` for the fill-in checklist that gates publishing.
+ * All fact placeholders were resolved on 2026-08-29, and `[[EFFECTIVE_DATE]]` was filled on the
+ * same day (launch): every document now carries `2026-08-29`, matching `TERMS_VERSION` /
+ * `PRIVACY_VERSION` in `backend/utils/legalVersions.ts`. No `[[TOKEN]]`s remain. See `PAPERWORK.md`
+ * for the pre-publish checklist.
  */
 
 export interface LegalDocument {

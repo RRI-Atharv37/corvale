@@ -12,9 +12,9 @@ Navigate to Accounts from the sidebar or go to `/accounts`.
 
 On the Accounts page, you can:
 
-- Create new accounts with an opening balance
+- Create new accounts with an opening balance and the date it applies from
 - View all active accounts with their current balances
-- Edit account name and type
+- Edit account name, type, opening balance, and balance-as-of date
 - Set one account as your default
 - Archive accounts you no longer need
 - [Reconcile](./reconciling-an-account.md) an account against a bank statement
@@ -34,7 +34,7 @@ See [How Balances Are Calculated](../balances/how-balances-are-calculated.md) fo
 
 ## Transactions update account balances
 
-Every transaction links to an account. When you create, edit, or delete an income, expense, or transfer entry, Corvale updates the linked account balance automatically. Opening balances set the starting point; transactions keep balances current.
+Every transaction links to an account. When you create, edit, or delete an income, expense, or transfer entry, Corvale updates the linked account balance automatically. The opening balance sets the starting point; transactions dated on or after the balance-as-of date keep the balance current.
 
 ## Archived accounts
 

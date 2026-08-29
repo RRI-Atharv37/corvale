@@ -8,7 +8,7 @@ The first time you sign in, Corvale walks you through a short onboarding wizard 
 
 ## The steps
 
-1. **Account** - create your first account (name, type, and opening balance).
+1. **Account** - create your first account (name, type, current balance, and the date that balance is accurate for - today by default).
 2. **Categories** - a quick look at your pre-seeded categories, so you know where to find them.
 3. **Budget** *(optional)* - create a first budget, or skip this step.
 4. **Goal** *(optional)* - create a first savings goal, or skip this step.

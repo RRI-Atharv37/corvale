@@ -1,7 +1,7 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders, screen } from '../../test/test-utils'
+import { renderWithProviders, screen, waitFor } from '../../test/test-utils'
 import Download from '../Download'
 import type { ReleaseManifest } from '../../data/releaseManifest'
 
@@ -11,10 +11,11 @@ vi.mock('../../utils/platformDetect', () => ({
 
 vi.mock('../../data/releaseManifest', () => ({
     getReleaseManifest: vi.fn(),
+    fetchLiveReleaseManifest: vi.fn(),
 }))
 
 import { detectPlatform } from '../../utils/platformDetect'
-import { getReleaseManifest } from '../../data/releaseManifest'
+import { fetchLiveReleaseManifest, getReleaseManifest } from '../../data/releaseManifest'
 
 const asset = (label: string, url: string | null, sha256: string | null, sizeBytes: number | null) => ({
     label,
@@ -74,10 +75,21 @@ const unavailableManifest: ReleaseManifest = {
     })),
 }
 
+const liveManifest: ReleaseManifest = {
+    ...availableManifest,
+    version: '1.4.2',
+    platforms: availableManifest.platforms.map((platform) => ({
+        ...platform,
+        primary: { ...platform.primary, url: `https://live.example.com/${platform.id}` },
+    })),
+}
+
 describe('Download page', () => {
     beforeEach(() => {
         vi.mocked(detectPlatform).mockReturnValue('windows')
         vi.mocked(getReleaseManifest).mockReturnValue(availableManifest)
+        // Default: the runtime fetch fails, so the page renders the built-in fallback manifest.
+        vi.mocked(fetchLiveReleaseManifest).mockRejectedValue(new Error('offline'))
     })
 
     it('renders a card for every supported desktop platform', () => {
@@ -151,6 +163,31 @@ describe('Download page', () => {
         expect(screen.getByText(/webview2/i)).toBeInTheDocument()
         expect(screen.getByText(/monterey/i)).toBeInTheDocument()
         expect(screen.getByText(/webkit2gtk/i)).toBeInTheDocument()
+    })
+
+    it('swaps in the live release manifest once the runtime fetch resolves', async () => {
+        vi.mocked(fetchLiveReleaseManifest).mockResolvedValue(liveManifest)
+        renderWithProviders(<Download />, { withUser: false, withWorkspace: false })
+
+        // Starts on the built-in fallback, then upgrades to the fetched manifest.
+        await waitFor(() =>
+            expect(screen.getByRole('heading', { name: /version 1\.4\.2 highlights/i })).toBeInTheDocument()
+        )
+        expect(screen.getByRole('link', { name: /download for windows/i })).toHaveAttribute(
+            'href',
+            'https://live.example.com/windows'
+        )
+    })
+
+    it('keeps rendering the built-in fallback manifest when the runtime fetch fails', async () => {
+        renderWithProviders(<Download />, { withUser: false, withWorkspace: false })
+
+        await waitFor(() => expect(fetchLiveReleaseManifest).toHaveBeenCalled())
+        expect(screen.getByRole('heading', { name: /version 0\.17\.0 highlights/i })).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: /download for windows/i })).toHaveAttribute(
+            'href',
+            'https://example.com/corvale_x64_en-US.msi'
+        )
     })
 
     it('links back to the desktop app documentation', () => {

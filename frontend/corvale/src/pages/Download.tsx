@@ -1,9 +1,14 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FiCheckCircle, FiChevronDown, FiClock, FiDownload } from 'react-icons/fi'
 import BrandLogo from '../components/ui/BrandLogo'
 import { detectPlatform, type DesktopPlatformId } from '../utils/platformDetect'
-import { getReleaseManifest, type PlatformRelease, type ReleaseAsset } from '../data/releaseManifest'
+import {
+    fetchLiveReleaseManifest,
+    getReleaseManifest,
+    type PlatformRelease,
+    type ReleaseAsset,
+} from '../data/releaseManifest'
 import { BRAND } from '../utils/brand'
 
 const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
@@ -142,8 +147,25 @@ const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean }
 }
 
 const Download: React.FC = () => {
-    const manifest = useMemo(() => getReleaseManifest(), [])
+    // Render the build-time fallback immediately, then upgrade to the live manifest published with
+    // the newest release (V16). A failed fetch — offline, GitHub down, no release yet — silently
+    // keeps the fallback.
+    const [manifest, setManifest] = useState(() => getReleaseManifest())
     const detected = useMemo(() => detectPlatform(), [])
+
+    useEffect(() => {
+        let cancelled = false
+        fetchLiveReleaseManifest()
+            .then((live) => {
+                if (!cancelled) setManifest(live)
+            })
+            .catch(() => {
+                /* keep the built-in fallback manifest */
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
 
     return (
         <div className="min-h-screen bg-page text-text-primary">

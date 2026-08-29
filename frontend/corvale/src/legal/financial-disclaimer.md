@@ -1,4 +1,4 @@
-**Effective date:** [[EFFECTIVE_DATE]] · **Version:** 2026-08-28
+**Effective date:** 2026-08-29 · **Version:** 2026-08-29
 
 ## Corvale is a tool, not an adviser
 
@@ -87,5 +87,5 @@ either document excludes liability that cannot lawfully be excluded.
 
 ## Questions
 
-[[SUPPORT_EMAIL]] — though note we cannot answer questions about what you should do with your
+support@corvale.app — though note we cannot answer questions about what you should do with your
 money, only about how Corvale works.

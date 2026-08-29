@@ -2,14 +2,12 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import Account, { ACCOUNT_TYPES, IAccount } from '../models/Account'
-import Transaction from '../models/Transaction'
 import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { roundMoney } from '../utils/balanceUtils'
+import { recomputeAccountBalanceMajor, roundMoney } from '../utils/balanceUtils'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
 import { convertAmount } from '../utils/exchangeRateUtils'
-import { recomputeAccountBalance } from '../../shared/src/balances'
 import { fromMinorUnits, toMinorUnits } from '../../shared/src/money'
 import {
     getUserId,
@@ -39,6 +37,22 @@ const parseOpeningBalance = (value: unknown): number => {
         throw new CustomError('Invalid opening balance format', 400)
     }
     return balance
+}
+
+/**
+ * The date the opening balance is stated "as of" — transactions before it don't
+ * move `currentBalance` (see shared/src/balances.ts). `undefined`/`null`/`''`
+ * means "no cutoff" (legacy: every transaction counts).
+ */
+const parseOpeningBalanceDate = (value: unknown): Date | null => {
+    if (value === undefined || value === null || value === '') {
+        return null
+    }
+    const parsed = new Date(value as string | number)
+    if (isNaN(parsed.getTime())) {
+        throw new CustomError('Invalid opening balance date', 400)
+    }
+    return parsed
 }
 
 const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): number | undefined => {
@@ -123,6 +137,7 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
 
     const clientId = resolveClientObjectId(req.body._id)
     const parsedOpeningBalance = parseOpeningBalance(openingBalance)
+    const parsedOpeningBalanceDate = parseOpeningBalanceDate(req.body.openingBalanceDate)
     const activeAccountCount = await Account.countDocuments(
         workspaceId
             ? { workspaceId, isArchived: false }
@@ -144,6 +159,7 @@ export const createAccount = asyncHandler(async (req: AuthRequest, res: Response
             type,
             currency: parseOptionalSupportedCurrency(currency),
             openingBalance: parsedOpeningBalance,
+            openingBalanceDate: parsedOpeningBalanceDate,
             currentBalance: parsedOpeningBalance,
             isDefault: shouldBeDefault,
             interestRate,
@@ -212,8 +228,8 @@ export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response
 
     validateRequiredFields({ accountId }, ['accountId'])
 
-    if (req.body.currentBalance !== undefined || req.body.openingBalance !== undefined) {
-        throw new CustomError('Balance fields are server-derived and cannot be updated directly', 400)
+    if (req.body.currentBalance !== undefined) {
+        throw new CustomError('currentBalance is server-derived and cannot be updated directly', 400)
     }
 
     const account = await validateResourceAccess(
@@ -259,6 +275,21 @@ export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response
         account.currency = parseSupportedCurrency(currency)
     }
 
+    // Opening balance and its "as of" date are user-editable (unlike
+    // currentBalance): a fresh account holder who later imports history dated
+    // before the account started re-points the anchor. Any change here forces a
+    // full balance recompute so currentBalance stays consistent.
+    let recomputeNeeded = false
+    if (req.body.openingBalance !== undefined) {
+        const parsed = parseOpeningBalance(req.body.openingBalance)
+        account.openingBalance = account.balanceUnit === 'minor' ? toMinorUnits(parsed) : parsed
+        recomputeNeeded = true
+    }
+    if (req.body.openingBalanceDate !== undefined) {
+        account.openingBalanceDate = parseOpeningBalanceDate(req.body.openingBalanceDate)
+        recomputeNeeded = true
+    }
+
     if (isDefault === true) {
         await unsetPreviousDefault(userId, accountId)
         account.isDefault = true
@@ -266,8 +297,16 @@ export const updateAccount = asyncHandler(async (req: AuthRequest, res: Response
         throw new CustomError(ERROR_MESSAGES.ACCOUNT.CANNOT_UNSET_DEFAULT, 400)
     }
 
-    const updatedAccount = await account.save()
-    handleResponses(res, 200, serializeAccount(updatedAccount))
+    await account.save()
+
+    if (recomputeNeeded) {
+        const recomputedMajor = await recomputeAccountBalanceMajor(account, userId)
+        account.currentBalance =
+            account.balanceUnit === 'minor' ? toMinorUnits(recomputedMajor) : recomputedMajor
+        await account.save()
+    }
+
+    handleResponses(res, 200, serializeAccount(account))
 })
 
 export const archiveAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -309,56 +348,13 @@ export const recomputeBalance = asyncHandler(async (req: AuthRequest, res: Respo
         'editor'
     )
 
-    const scope = buildScopedListFilter(userId, account.workspaceId?.toString() ?? null)
-
-    const transactions = await Transaction.find({
-        ...scope,
-        accountId: account._id,
-    }).select('type amount status splitTransactionId transferPairId createdAt')
-
-    // Both legs of a transfer persist with type: 'transfer' (see
-    // transactionController.createTransfer) — direction (in vs out) is only
-    // recoverable via creation order relative to the paired leg, the same
-    // technique deleteTransactionForUser uses. The outbound leg keeps the
-    // 'transfer' delta formula; the inbound leg is fed as 'income' to reuse
-    // getTransferInDeltaMajor's formula (see shared/src/money.ts).
-    const pairIds = transactions
-        .filter((transaction) => transaction.type === 'transfer' && transaction.transferPairId)
-        .map((transaction) => transaction.transferPairId!)
-
-    const pairs = pairIds.length
-        ? await Transaction.find({ ...scope, _id: { $in: pairIds } }).select('createdAt')
-        : []
-    const pairCreatedAtById = new Map(
-        pairs.map((pair) => [pair._id.toString(), pair.createdAt])
-    )
-
-    // recomputeAccountBalance (shared/src/balances.ts) is major-unit-only and shared
-    // verbatim with the frontend's local domain engine, so it stays untouched here —
-    // a migrated ('minor') account's opening balance is converted to major before the
-    // call, and the major-unit result is converted back for storage after.
+    // recomputeAccountBalanceMajor (balanceUtils.ts) owns the transfer-leg
+    // direction reconstruction and the openingBalanceDate cutoff, and is shared
+    // with updateAccount and the sync push path. It returns major units; a
+    // migrated ('minor') account converts back for storage here.
     const isMinor = account.balanceUnit === 'minor'
     const previousBalance = isMinor ? fromMinorUnits(account.currentBalance) : account.currentBalance
-    const openingBalanceMajor = isMinor ? fromMinorUnits(account.openingBalance) : account.openingBalance
-    const recomputedBalance = recomputeAccountBalance(
-        { openingBalance: openingBalanceMajor, type: account.type },
-        transactions.map((transaction) => {
-            let effectiveType = transaction.type
-
-            if (transaction.type === 'transfer' && transaction.transferPairId) {
-                const pairCreatedAt = pairCreatedAtById.get(transaction.transferPairId.toString())
-                const isInbound = pairCreatedAt !== undefined && transaction.createdAt > pairCreatedAt
-                effectiveType = isInbound ? 'income' : 'transfer'
-            }
-
-            return {
-                type: effectiveType,
-                amount: transaction.amount,
-                status: transaction.status,
-                splitTransactionId: transaction.splitTransactionId?.toString() ?? null,
-            }
-        })
-    )
+    const recomputedBalance = await recomputeAccountBalanceMajor(account, userId)
 
     account.currentBalance = isMinor ? toMinorUnits(recomputedBalance) : recomputedBalance
     await account.save()

@@ -183,6 +183,35 @@ describe('JSON backup export', () => {
         }
     })
 
+    it('round-trips openingBalanceDate through export and restore', async () => {
+        const source = await seedUserDirectly({ email: 'backup-obd-source@example.com' })
+        const target = await seedUserDirectly({ email: 'backup-obd-target@example.com' })
+
+        await request(app)
+            .post('/api/v1/accounts')
+            .set(authHeader(source.token))
+            .send({
+                name: 'Anchored',
+                type: 'checking',
+                openingBalance: 1000,
+                openingBalanceDate: '2026-08-01T00:00:00.000Z',
+            })
+
+        const exportRes = await request(app)
+            .get('/api/v1/backup/export')
+            .set(authHeader(source.token))
+        expect(exportRes.body.accounts[0].openingBalanceDate).toBe('2026-08-01T00:00:00.000Z')
+
+        const restoreRes = await request(app)
+            .post('/api/v1/backup/restore')
+            .set(authHeader(target.token))
+            .send({ backup: exportRes.body })
+        expect(restoreRes.status).toBe(201)
+
+        const restored = await Account.findOne({ userId: target.userId, name: 'Anchored' })
+        expect(restored?.openingBalanceDate?.toISOString()).toBe('2026-08-01T00:00:00.000Z')
+    })
+
     it('only exports data scoped to the requesting user', async () => {
         const owner = await seedUserDirectly({ email: 'backup-owner@example.com' })
         const other = await createSecondUser(app)

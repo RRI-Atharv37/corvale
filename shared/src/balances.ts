@@ -144,6 +144,14 @@ export interface RecomputeAccountLike {
     /** Either field is accepted as the base balance to recompute from. */
     openingBalance?: number
     currentBalance?: number
+    /**
+     * When set, only transactions dated on/after this instant contribute to the
+     * recomputed balance — the opening balance is stated "as of" this date.
+     * Omitted/null keeps the legacy behavior (every transaction counts). An
+     * unparseable value is ignored (treated as null) rather than dropping every
+     * transaction.
+     */
+    openingBalanceDate?: Date | string | number | null
 }
 
 export interface RecomputeTransactionLike {
@@ -153,6 +161,12 @@ export interface RecomputeTransactionLike {
     status?: TransactionStatus
     /** Missing/undefined is treated as null (not a split child). */
     splitTransactionId?: string | null
+    /**
+     * Transaction date. Only consulted when the account carries an
+     * `openingBalanceDate`; a missing date there is treated as on/after the
+     * cutoff (kept) so real data is never silently dropped.
+     */
+    date?: Date | string | number | null
 }
 
 /**
@@ -160,6 +174,11 @@ export interface RecomputeTransactionLike {
  * posted, non-split-child transaction's delta. No existing equivalent
  * elsewhere in the codebase — balances have only ever been maintained
  * incrementally. Used to heal drift after offline replay (Sprint 13.2+).
+ *
+ * When `account.openingBalanceDate` is set, transactions dated before it are
+ * excluded: the opening balance already represents the account's state as of
+ * that date, so older history is informational only (reports, trends) and must
+ * not move `currentBalance`.
  */
 export const recomputeAccountBalance = (
     account: RecomputeAccountLike,
@@ -167,9 +186,22 @@ export const recomputeAccountBalance = (
 ): number => {
     const openingBalance = account.openingBalance ?? account.currentBalance ?? 0
 
+    let cutoff: number | null = null
+    if (account.openingBalanceDate != null) {
+        const parsed = new Date(account.openingBalanceDate).getTime()
+        cutoff = Number.isNaN(parsed) ? null : parsed
+    }
+
     const delta = transactions
         .filter((tx) => (tx.status ?? 'posted') === 'posted')
         .filter((tx) => (tx.splitTransactionId ?? null) === null)
+        .filter((tx) => {
+            if (cutoff === null || tx.date == null) {
+                return true
+            }
+            const txTime = new Date(tx.date).getTime()
+            return Number.isNaN(txTime) || txTime >= cutoff
+        })
         .reduce((sum, tx) => sum + getBalanceDeltaMajor(tx.type, tx.amount, account.type), 0)
 
     return roundMoney(openingBalance + delta)

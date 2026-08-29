@@ -13,9 +13,11 @@ You can edit account details or archive accounts you no longer use.
 3. In the edit modal, update:
    - **Name** - the display name
    - **Type** - checking, cash, credit, or savings
+   - **Opening balance** - the account's starting figure
+   - **Balance as of** - the date the opening balance applies from; clear it to count every transaction regardless of date
 4. Click **Save changes**.
 
-You cannot edit the currency or balance through the edit form. Currency is set at creation time only.
+Currency is set at creation time only and cannot be changed. Changing the opening balance or its "as of" date makes Corvale recalculate the account's current balance from its transactions - useful when you've since imported history that predates the account's original start.
 
 ## Archiving an account
 
@@ -35,7 +37,7 @@ When you archive an account:
 ## Restrictions
 
 - You cannot edit an archived account.
-- You cannot update `openingBalance` or `currentBalance` through the API or UI - balance fields are server-managed.
+- You can update `openingBalance` and its `openingBalanceDate`, which triggers a recalculation. You can never set `currentBalance` directly - it is always derived.
 - Archiving is a soft delete - the account record remains in the database.
 
 ## Empty state

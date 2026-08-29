@@ -185,6 +185,9 @@ export const ERROR_MESSAGES = {
         INVALID_STEP: 'Invalid onboarding step',
         INVALID_STEP_ORDER: 'Onboarding steps must be completed in order',
     },
+    DESKTOP: {
+        RELEASE_UNAVAILABLE: 'Desktop release information is temporarily unavailable',
+    },
     WORKSPACE: {
         WORKSPACE_NOT_FOUND: 'Workspace not found',
         NOT_A_MEMBER: 'Not authorized to access this workspace',

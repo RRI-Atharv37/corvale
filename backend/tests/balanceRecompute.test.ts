@@ -92,6 +92,100 @@ describe('recomputeAccountBalance (shared pure function)', () => {
     // context — which leg was written first — distinguishes them, which this
     // function's signature doesn't carry. Transfer-pair correctness is
     // exercised end-to-end via the recompute-balance endpoint below instead.
+
+    describe('openingBalanceDate cutoff', () => {
+        it('counts every transaction when openingBalanceDate is absent (legacy behavior)', () => {
+            const account = { openingBalance: 1000, type: 'checking' as const }
+            const transactions = [
+                { type: 'expense' as const, amount: 10000, date: '2020-01-01T00:00:00.000Z' },
+                { type: 'income' as const, amount: 5000, date: '2026-01-01T00:00:00.000Z' },
+            ]
+
+            expect(recomputeAccountBalance(account, transactions)).toBeCloseTo(950, 2)
+        })
+
+        it('excludes transactions dated before openingBalanceDate', () => {
+            const account = {
+                openingBalance: 1000,
+                type: 'checking' as const,
+                openingBalanceDate: '2026-01-01T00:00:00.000Z',
+            }
+            const transactions = [
+                // pre-cutoff: ignored, already baked into the opening balance
+                { type: 'expense' as const, amount: 25000, date: '2025-12-31T23:59:59.000Z' },
+                { type: 'income' as const, amount: 999999, date: '2024-06-01T00:00:00.000Z' },
+                // on/after cutoff: applied
+                { type: 'expense' as const, amount: 4000, date: '2026-01-05T12:00:00.000Z' },
+            ]
+
+            expect(recomputeAccountBalance(account, transactions)).toBeCloseTo(960, 2)
+        })
+
+        it('includes a transaction dated exactly on openingBalanceDate (inclusive cutoff)', () => {
+            const account = {
+                openingBalance: 500,
+                type: 'checking' as const,
+                openingBalanceDate: '2026-02-01T00:00:00.000Z',
+            }
+            const transactions = [
+                { type: 'income' as const, amount: 10000, date: '2026-02-01T00:00:00.000Z' },
+            ]
+
+            expect(recomputeAccountBalance(account, transactions)).toBeCloseTo(600, 2)
+        })
+
+        it('accepts a Date instance for openingBalanceDate and tx.date', () => {
+            const account = {
+                openingBalance: 0,
+                type: 'checking' as const,
+                openingBalanceDate: new Date('2026-01-01T00:00:00.000Z'),
+            }
+            const transactions = [
+                { type: 'income' as const, amount: 5000, date: new Date('2025-01-01T00:00:00.000Z') },
+                { type: 'income' as const, amount: 3000, date: new Date('2026-06-01T00:00:00.000Z') },
+            ]
+
+            expect(recomputeAccountBalance(account, transactions)).toBeCloseTo(30, 2)
+        })
+
+        it('keeps a dated-cutoff transaction that has no date rather than dropping it', () => {
+            const account = {
+                openingBalance: 100,
+                type: 'checking' as const,
+                openingBalanceDate: '2026-01-01T00:00:00.000Z',
+            }
+            const transactions = [{ type: 'expense' as const, amount: 2500 }]
+
+            expect(recomputeAccountBalance(account, transactions)).toBeCloseTo(75, 2)
+        })
+
+        it('ignores an unparseable openingBalanceDate (falls back to counting everything)', () => {
+            const account = {
+                openingBalance: 100,
+                type: 'checking' as const,
+                openingBalanceDate: 'not-a-date',
+            }
+            const transactions = [
+                { type: 'expense' as const, amount: 2500, date: '2000-01-01T00:00:00.000Z' },
+            ]
+
+            expect(recomputeAccountBalance(account, transactions)).toBeCloseTo(75, 2)
+        })
+
+        it('applies the cutoff before the credit-account sign flip', () => {
+            const account = {
+                openingBalance: 0,
+                type: 'credit' as const,
+                openingBalanceDate: '2026-01-01T00:00:00.000Z',
+            }
+            const transactions = [
+                { type: 'expense' as const, amount: 50000, date: '2025-01-01T00:00:00.000Z' },
+                { type: 'expense' as const, amount: 10000, date: '2026-03-01T00:00:00.000Z' },
+            ]
+
+            expect(recomputeAccountBalance(account, transactions)).toBeCloseTo(100, 2)
+        })
+    })
 })
 
 describe('POST /accounts/:accountId/recompute-balance', () => {

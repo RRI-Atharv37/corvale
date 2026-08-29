@@ -252,7 +252,7 @@ export const createTransfer = asyncHandler(async (req: AuthRequest, res: Respons
             outbound.transferPairId = inbound._id
             await outbound.save()
 
-            await applyTransferToAccounts(fromAccount, toAccount, amountMinor)
+            await applyTransferToAccounts(fromAccount, toAccount, amountMinor, parsedDate)
 
             return { outbound, inbound }
         } catch (error) {
@@ -426,6 +426,11 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         amount !== undefined ? parseClientAmount(amount) : transaction.amount
     const nextAccountId = accountId ?? transaction.accountId.toString()
 
+    if (date !== undefined && isNaN(Date.parse(date))) {
+        throw new CustomError('Invalid date format', 400)
+    }
+    const nextDate = date !== undefined ? new Date(date) : transaction.date
+
     if (accountId !== undefined) {
         await validateAccountForTransaction(accountId, userId)
     }
@@ -433,17 +438,23 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
         await validateCategoryForTransaction(categoryId, userId)
     }
 
+    // A date change matters to the running balance too: moving a transaction
+    // across an account's openingBalanceDate adds or drops its delta. For an
+    // account with no openingBalanceDate the reverse+re-apply nets to zero.
+    const dateChanged = nextDate.getTime() !== transaction.date.getTime()
     const balanceChanged =
         nextType !== transaction.type ||
         nextAmountMinor !== transaction.amount ||
-        nextAccountId !== transaction.accountId.toString()
+        nextAccountId !== transaction.accountId.toString() ||
+        dateChanged
 
     if (balanceChanged) {
         await adjustAccountForTransactionChange(
             transaction,
             nextType,
             nextAmountMinor,
-            nextAccountId
+            nextAccountId,
+            nextDate
         )
     }
 
@@ -451,12 +462,7 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     if (amount !== undefined) transaction.amount = nextAmountMinor
     if (description !== undefined) transaction.description = description.trim() || undefined
     if (categoryId !== undefined) transaction.categoryId = categoryId
-    if (date !== undefined) {
-        if (isNaN(Date.parse(date))) {
-            throw new CustomError('Invalid date format', 400)
-        }
-        transaction.date = new Date(date)
-    }
+    if (date !== undefined) transaction.date = nextDate
     if (accountId !== undefined) {
         const account = await validateAccountForTransaction(accountId, userId)
         transaction.accountId = accountId
