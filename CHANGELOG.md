@@ -13,6 +13,12 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Desktop app: duplicate password-reveal / clear buttons.** WebView2 (Edge/Chromium) draws its
+  own `::-ms-reveal` / `::-ms-clear` controls next to the app's own show/hide toggle. They are now
+  suppressed globally in `index.css`; the web build (Chrome) never rendered them.
+
 ## [1.0.2] - 2026-08-30
 
 ### Fixed

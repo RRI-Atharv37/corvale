@@ -172,6 +172,16 @@
     ::selection {
         @apply bg-accent/30 text-text-primary;
     }
+
+    /* WebView2 (Edge/Chromium, i.e. the Tauri desktop build) draws its own reveal
+       button on `input[type=password]` and its own clear "×" on text/search inputs.
+       The app already ships a styled show/hide toggle (components/Inputs/Input.tsx),
+       so the native controls are visible duplicates. Chrome — the web build — never
+       renders these pseudo-elements, so this is a no-op there. */
+    input::-ms-reveal,
+    input::-ms-clear {
+        display: none;
+    }
 }
 
 @layer components {
