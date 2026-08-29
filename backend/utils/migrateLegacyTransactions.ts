@@ -161,7 +161,7 @@ const migrateRecord = async (params: {
         tags: params.tags,
     })
 
-    await applyTransactionToAccount(params.account, params.type, amountMinor)
+    await applyTransactionToAccount(params.account, params.type, amountMinor, params.date)
 
     return 'migrated'
 }

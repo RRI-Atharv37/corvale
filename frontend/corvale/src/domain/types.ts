@@ -19,6 +19,8 @@ export interface LocalAccount extends SyncableRecord {
   currency: string
   currentBalance: number
   openingBalance?: number
+  /** ISO string; transactions dated before this don't move currentBalance. Absent = legacy (all count). */
+  openingBalanceDate?: string | null
   isArchived: boolean
 }
 

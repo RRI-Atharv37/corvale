@@ -7,7 +7,7 @@
 
 Built for students and young adults who want clarity over complexity.
 
-[![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v0.13.0-green.svg)](https://github.com/RRI-Atharv37/corvale/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/corvale?style=social)](https://github.com/RRI-Atharv37/corvale/stargazers)
+[![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE) [![Release](https://img.shields.io/badge/release-v1.0.0-green.svg)](https://github.com/RRI-Atharv37/corvale/releases) [![GitHub stars](https://img.shields.io/github/stars/RRI-Atharv37/corvale?style=social)](https://github.com/RRI-Atharv37/corvale/stargazers)
 
 
 <!-- Hero banner - replace src with your screenshot or GIF -->
@@ -169,7 +169,7 @@ Isolated **Vitest + Supertest** suite with **in-memory MongoDB** - **480 tests**
 
 ```bash
 git clone https://github.com/RRI-Atharv37/corvale.git
-cd spndr
+cd corvale
 
 # Backend
 cd backend && npm install

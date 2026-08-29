@@ -14,6 +14,8 @@ Reconciliation confirms that your transaction history in Corvale agrees with you
 
 Corvale shows your cleared balance, your pending (uncleared) balance, the statement balance you entered, and the **differential** between your cleared balance and the statement - zero means they match.
 
+The cleared balance starts from the account's opening balance. If the account has a **balance as of** date, only cleared transactions dated on or after it are added, since anything earlier is already part of the opening figure.
+
 ## Clearing transactions
 
 Below the comparison, every unreconciled transaction on the account is listed. Click a transaction to toggle it between **pending** and **cleared** as you check it off against your statement. A running "live cleared total" updates as you go, so you can watch the differential close in on zero.

@@ -29,7 +29,7 @@ vi.mock('../../../hooks/useUser', () => ({
     useUser: () => ({ user: currentUser, updateUser: mockUpdateUser }),
 }))
 
-const CURRENT = { termsVersion: '2026-08-28', privacyVersion: '2026-08-28' }
+const CURRENT = { termsVersion: '2026-08-29', privacyVersion: '2026-08-29' }
 
 const baseUser: User = {
     _id: 'user1',
@@ -40,7 +40,7 @@ const baseUser: User = {
 
 const accepted = {
     ...CURRENT,
-    acceptedAt: '2026-08-28T00:00:00.000Z',
+    acceptedAt: '2026-08-29T00:00:00.000Z',
     ageAttested: true,
 }
 

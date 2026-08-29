@@ -1,7 +1,7 @@
-**Last updated:** [[EFFECTIVE_DATE]]
+**Last updated:** 2026-08-29
 
-Corvale is operated by [[OPERATOR_LEGAL_NAME]], [[OPERATOR_TYPE]]. Pick the route that matches
-what you need — it gets you a useful answer faster.
+Corvale is operated by Atharv Dewangan, an individual resident in India. Pick the route that
+matches what you need — it gets you a useful answer faster.
 
 ## Privacy and your data
 
@@ -9,7 +9,7 @@ For anything about your personal data: access, correction, deletion, or a compla
 handle it.
 
 - **Grievance Officer:** Atharv Dewangan
-- **Email:** [[PRIVACY_EMAIL]]
+- **Email:** privacy@corvale.app
 - **Response time:** within 30 days
 
 This is the route for privacy and data-rights grievances, and the response period above is the
@@ -43,7 +43,7 @@ Use GitHub's private vulnerability reporting on the repository's **Security** ta
 policy published there — scope, what is out of scope, the roughly 90-day disclosure window, and a
 safe-harbour commitment for good-faith research — governs that process.
 
-If private vulnerability reporting is unavailable to you, email [[SECURITY_EMAIL]] instead. The
+If private vulnerability reporting is unavailable to you, email security@corvale.app instead. The
 same policy applies to reports that arrive that way.
 
 ## Legal and everything else
@@ -51,8 +51,7 @@ same policy applies to reports that arrive that way.
 Questions about the [Terms of Service](./terms.md), licensing, copyright or trademark notices, or
 anything not covered above.
 
-- **Email:** [[SUPPORT_EMAIL]]
-- **Address:** [[POSTAL_ADDRESS]]
+- **Email:** support@corvale.app
 
 Copyright complaints about material stored in Corvale have their own route — see
 **Copyright and takedown requests** in the [Terms of Service](./terms.md).
@@ -67,6 +66,6 @@ your money. We can explain how Corvale works and what its numbers mean. See the
 
 If you use a Corvale instance that someone else runs, we cannot help with your account or your
 data — only the operator of that instance can. These contacts cover the hosted service at
-[[PRODUCT_DOMAIN]] only.
+corvale.app only.
 
 Bug reports about the software itself are always welcome on GitHub, wherever you run it.

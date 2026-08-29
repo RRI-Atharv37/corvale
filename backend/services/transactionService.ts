@@ -198,7 +198,8 @@ export const createTransactionForUser = async (
     await applyTransactionToAccount(
         account,
         type as (typeof SUPPORTED_CREATE_TYPES)[number],
-        amountMinor
+        amountMinor,
+        transaction.date
     )
 
     if (hasSplits) {
@@ -450,7 +451,7 @@ export const createTransferForOp = async (
         outbound.transferPairId = inbound._id
         await outbound.save()
 
-        await applyTransferToAccounts(fromAccount, toAccount, amountMinor)
+        await applyTransferToAccounts(fromAccount, toAccount, amountMinor, parsedDate)
     } catch (error) {
         if (inbound) {
             await Transaction.deleteOne({ _id: inbound._id })

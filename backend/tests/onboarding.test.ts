@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app'
 import User from '../models/User'
+import Account from '../models/Account'
 import { authHeader, registerUser } from './helpers'
 
 /**
@@ -160,6 +161,45 @@ describe('Onboarding - Step progression', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.accountCreated).toBe(true)
         expect(res.body.data.accountId).toBeDefined()
+    })
+
+    it('defaults the onboarding account openingBalanceDate to today (start of day UTC)', async () => {
+        const app = createApp()
+        const { token } = await registerUser(app)
+
+        await request(app).post('/api/v1/onboarding/start').set(authHeader(token))
+
+        const res = await request(app)
+            .post('/api/v1/onboarding/step/account')
+            .set(authHeader(token))
+            .send({ accountName: 'My Checking', accountType: 'checking', openingBalance: 5000 })
+
+        const account = await Account.findById(res.body.data.accountId)
+        const now = new Date()
+        const expected = new Date(
+            Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        )
+        expect(account?.openingBalanceDate?.toISOString()).toBe(expected.toISOString())
+    })
+
+    it('honors an explicit openingBalanceDate during onboarding', async () => {
+        const app = createApp()
+        const { token } = await registerUser(app)
+
+        await request(app).post('/api/v1/onboarding/start').set(authHeader(token))
+
+        const res = await request(app)
+            .post('/api/v1/onboarding/step/account')
+            .set(authHeader(token))
+            .send({
+                accountName: 'Full History',
+                accountType: 'checking',
+                openingBalance: 0,
+                openingBalanceDate: '2020-01-01T00:00:00.000Z',
+            })
+
+        const account = await Account.findById(res.body.data.accountId)
+        expect(account?.openingBalanceDate?.toISOString()).toBe('2020-01-01T00:00:00.000Z')
     })
 
     it('completes categories step', async () => {

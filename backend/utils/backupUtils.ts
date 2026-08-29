@@ -577,6 +577,9 @@ export const restoreUserBackup = async (
             // defaults to 'major', matching what a pre-migration account's raw numbers mean.
             balanceUnit: record.balanceUnit === 'minor' ? 'minor' : 'major',
             openingBalance: record.openingBalance ?? 0,
+            openingBalanceDate: record.openingBalanceDate
+                ? parseDate(record.openingBalanceDate)
+                : null,
             currentBalance: record.currentBalance ?? record.openingBalance ?? 0,
             isDefault: false,
             isArchived: record.isArchived ?? false,

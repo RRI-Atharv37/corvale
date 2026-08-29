@@ -210,4 +210,7 @@ export const API_PATHS = {
         PULL: '/sync/pull',
         PUSH: '/sync/push',
     },
+    DESKTOP: {
+        RELEASE_MANIFEST: '/desktop/release-manifest',
+    },
 } as const

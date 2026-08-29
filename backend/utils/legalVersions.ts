@@ -18,8 +18,8 @@
  * the app's own routes.
  */
 
-export const TERMS_VERSION = '2026-08-28'
-export const PRIVACY_VERSION = '2026-08-28'
+export const TERMS_VERSION = '2026-08-29'
+export const PRIVACY_VERSION = '2026-08-29'
 
 /** Shipped on every user payload so the client can compare without a second round trip. */
 export const CURRENT_LEGAL_VERSIONS = {

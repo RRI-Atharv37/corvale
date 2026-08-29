@@ -28,11 +28,14 @@ const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
     { value: 'savings', label: 'Savings' },
 ]
 
+const todayIso = (): string => new Date().toISOString().slice(0, 10)
+
 const emptyCreateForm = (preferredCurrency = DEFAULT_CURRENCY): AccountFormData => ({
     name: '',
     type: 'checking',
     currency: preferredCurrency,
     openingBalance: '0',
+    openingBalanceDate: todayIso(),
     interestRate: '',
     minimumPayment: '',
 })
@@ -40,6 +43,8 @@ const emptyCreateForm = (preferredCurrency = DEFAULT_CURRENCY): AccountFormData 
 const emptyEditForm = (): AccountEditFormData => ({
     name: '',
     type: 'checking',
+    openingBalance: '',
+    openingBalanceDate: '',
     interestRate: '',
     minimumPayment: '',
 })
@@ -137,6 +142,10 @@ const Accounts = () => {
         setEditForm({
             name: account.name,
             type: account.type,
+            openingBalance: String(account.openingBalance),
+            openingBalanceDate: account.openingBalanceDate
+                ? account.openingBalanceDate.slice(0, 10)
+                : '',
             interestRate: account.interestRate !== undefined ? String(account.interestRate) : '',
             minimumPayment: account.minimumPayment !== undefined ? String(account.minimumPayment) : '',
         })
@@ -184,6 +193,7 @@ const Accounts = () => {
                 type: createForm.type,
                 currency: createForm.currency,
                 openingBalance,
+                openingBalanceDate: createForm.openingBalanceDate || undefined,
                 interestRate,
                 minimumPayment,
             })
@@ -219,11 +229,27 @@ const Accounts = () => {
             return
         }
 
+        const openingBalance = Number(editForm.openingBalance)
+        if (editForm.openingBalance !== '' && isNaN(openingBalance)) {
+            toast.error('Opening balance must be a valid number')
+            return
+        }
+        const openingBalanceChanged =
+            editForm.openingBalance !== '' && openingBalance !== editingAccount.openingBalance
+        const currentOpeningDate = editingAccount.openingBalanceDate
+            ? editingAccount.openingBalanceDate.slice(0, 10)
+            : ''
+        const openingBalanceDateChanged = editForm.openingBalanceDate !== currentOpeningDate
+
         setSubmitting(true)
         try {
             await updateAccount(editingAccount, {
                 name: editForm.name.trim(),
                 type: editForm.type,
+                ...(openingBalanceChanged && { openingBalance }),
+                ...(openingBalanceDateChanged && {
+                    openingBalanceDate: editForm.openingBalanceDate || null,
+                }),
                 interestRate,
                 minimumPayment,
             })
@@ -459,7 +485,7 @@ const Accounts = () => {
                         disabled={submitting}
                     />
                     <FormField
-                        label="Opening balance"
+                        label="Current balance"
                         type="number"
                         value={createForm.openingBalance}
                         onChange={(v) => setCreateForm((f) => ({ ...f, openingBalance: v }))}
@@ -468,6 +494,18 @@ const Accounts = () => {
                         disabled={submitting}
                         step="0.01"
                     />
+                    <FormField
+                        label="Balance as of"
+                        type="date"
+                        value={createForm.openingBalanceDate}
+                        onChange={(v) => setCreateForm((f) => ({ ...f, openingBalanceDate: v }))}
+                        max={todayIso()}
+                        disabled={submitting}
+                    />
+                    <p className="text-[12px] text-fg-muted -mt-2">
+                        Enter the balance as it stands on this date. Transactions dated earlier
+                        won&apos;t change it, so importing or back-filling older history stays safe.
+                    </p>
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"
@@ -530,6 +568,30 @@ const Accounts = () => {
                             />
                         </div>
                     )}
+                    <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                            label="Opening balance"
+                            type="number"
+                            value={editForm.openingBalance}
+                            onChange={(v) => setEditForm((f) => ({ ...f, openingBalance: v }))}
+                            placeholder="0.00"
+                            disabled={submitting}
+                            step="0.01"
+                        />
+                        <FormField
+                            label="Balance as of"
+                            type="date"
+                            value={editForm.openingBalanceDate}
+                            onChange={(v) => setEditForm((f) => ({ ...f, openingBalanceDate: v }))}
+                            max={todayIso()}
+                            disabled={submitting}
+                        />
+                    </div>
+                    <p className="text-[12px] text-fg-muted -mt-2">
+                        Changing either value recalculates this account&apos;s current balance from
+                        its transactions. Leave &ldquo;balance as of&rdquo; empty to count every
+                        transaction regardless of date.
+                    </p>
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"

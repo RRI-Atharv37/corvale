@@ -45,6 +45,25 @@ const serializeOnboardingStatus = (user: IUser) => ({
     stepsCompleted: user.onboardingStepsCompleted,
 })
 
+/**
+ * The opening balance a user enters during onboarding is "what's in the account
+ * right now", so it is stated as of *today* by default (start of day, UTC):
+ * transactions they later add or import that predate today don't distort the
+ * figure they just gave us. An explicit `openingBalanceDate` overrides this
+ * (e.g. importing full history from the account's real start).
+ */
+const parseOnboardingOpeningBalanceDate = (value: unknown): Date => {
+    if (value === undefined || value === null || value === '') {
+        const now = new Date()
+        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    }
+    const parsed = new Date(value as string | number)
+    if (isNaN(parsed.getTime())) {
+        throw new CustomError('Invalid opening balance date', 400)
+    }
+    return parsed
+}
+
 const createOnboardingAccount = async (
     userId: string,
     currency: string,
@@ -62,6 +81,8 @@ const createOnboardingAccount = async (
         throw new CustomError('Invalid opening balance format', 400)
     }
 
+    const parsedOpeningBalanceDate = parseOnboardingOpeningBalanceDate(body.openingBalanceDate)
+
     const existingCount = await Account.countDocuments({
         userId,
         workspaceId: null,
@@ -75,6 +96,7 @@ const createOnboardingAccount = async (
         type: accountType,
         currency: parseOptionalSupportedCurrency(currency),
         openingBalance: parsedOpeningBalance,
+        openingBalanceDate: parsedOpeningBalanceDate,
         currentBalance: parsedOpeningBalance,
         isDefault: existingCount === 0,
     })

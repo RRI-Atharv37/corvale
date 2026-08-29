@@ -1,9 +1,9 @@
-**Effective date:** [[EFFECTIVE_DATE]] · **Version:** 2026-08-28
+**Effective date:** 2026-08-29 · **Version:** 2026-08-29
 
 ## Scope — what this policy covers
 
-This policy covers **the hosted Corvale service** operated by [[OPERATOR_LEGAL_NAME]] at
-[[PRODUCT_DOMAIN]].
+This policy covers **the hosted Corvale service** operated by Atharv Dewangan at
+corvale.app.
 
 It does **not** cover self-hosted installations. Corvale is free and open-source software under
 the GNU AGPL v3.0, and anyone may run their own copy. If you use a Corvale instance that someone
@@ -22,20 +22,23 @@ is protected, and what you can do about it.
 
 ## Who we are
 
-The hosted service is operated by [[OPERATOR_LEGAL_NAME]], [[OPERATOR_TYPE]].
+The hosted service is operated by Atharv Dewangan, an individual resident in India.
 
 Under India's Digital Personal Data Protection Act 2023 we act as the **data fiduciary** for the
 personal data described below. That is the framework this policy is built on.
 
-The service is operated from India and your data is stored there, wherever you are. You are
-welcome to use Corvale from anywhere, with one exception: **we do not offer it in the European
-Economic Area or the UK, and we have not appointed a representative there** — see
+The service is operated from India, but **your data is hosted and stored in the United States**,
+on Google Cloud infrastructure in South Carolina — that is where the application servers, the
+database and the backups run. [Where your data goes](#where-your-data-goes) explains this and the
+legal basis for it.
+
+You are welcome to use Corvale from anywhere, with one exception: **we do not offer it in the
+European Economic Area or the UK, and we have not appointed a representative there** — see
 [If you are in the EEA or the UK](#if-you-are-in-the-eea-or-the-uk) for what that means and what
 you can still ask of us.
 
 - **Grievance Officer:** Atharv Dewangan
-- **Email:** [[PRIVACY_EMAIL]]
-- **Address:** [[POSTAL_ADDRESS]]
+- **Email:** privacy@corvale.app
 - **Response window for data-rights requests and complaints:** 30 days
 
 ## What we collect
@@ -227,12 +230,11 @@ you use.
 
 | Sub-processor | What they do | Where they process | Always on? |
 | --- | --- | --- | --- |
-| MongoDB | Stores the database | [[MONGODB_REGION]] | Yes |
-| [[HOSTING_PROVIDER]] | Runs the application servers | [[HOSTING_REGION]] | Yes |
-| [[EMAIL_PROVIDER]] | Sends password-reset and verification email only | [[EMAIL_PROVIDER_REGION]] | Yes |
-| [[OBJECT_STORAGE_PROVIDER]] | Stores uploaded receipt files | [[OBJECT_STORAGE_REGION]] | Only when receipt storage is enabled |
-| [[UPDATE_HOST]] | Serves desktop app updates | [[UPDATE_HOST_REGION]] | Only for the desktop app |
-| Sentry | Reports unexpected server errors so we can fix them | United States / European Union, depending on the project region | Only when error reporting is enabled |
+| Google LLC (Google Cloud) | Runs the application servers, the database, receipt storage and the backups; also hosts the mailbox that receives messages sent to our published addresses | United States (South Carolina) | Yes |
+| Resend (Resend, Inc.) | Sends password-reset and email-verification messages only | United States | Yes |
+| Cloudflare, Inc. | Provides DNS for corvale.app and routes email sent to our published addresses to our mailbox | United States, over a global edge network | Yes |
+| GitHub, Inc. | Serves desktop-app updates | United States | Only for the desktop app |
+| Sentry | Reports unexpected server errors so we can fix them | United States or the European Union, depending on the project region | Only when error reporting is enabled |
 | hCaptcha (Intuition Machines, Inc.) | Checks that a signup is not automated | United States | Only when the signup captcha is enabled |
 
 We do not add a sub-processor without updating this list. Each of them processes data only on our
@@ -241,23 +243,31 @@ purposes.
 
 ## Where your data goes
 
-The service is operated from India, and that is where your account and your records live.
+The service is operated from India by an India-based data fiduciary, **but your data itself is
+stored and processed in the United States.** Google Cloud runs the application servers, the
+database and the backups from a region in South Carolina, and that is where your account and your
+records live. A few other sub-processors also operate in the United States — the table above says
+which.
 
-**If you are outside India, read that sentence twice.** Signing up means your personal and
-financial data is stored and processed in India, under Indian law, by an operator based there. It
-is not held in your own country, and the protections that apply to it are the ones described in
-this policy rather than the ones your local law would impose on a local provider. That is a real
-trade-off, and you should make it deliberately.
+This is a deliberate arrangement, so two things follow from it.
 
-Some of the sub-processors above store or process data outside India, including in the United
-States and the European Union — the table says which, and where. In each case the transfer happens
-because we use that provider to deliver the service, and it is covered by the data processing
-agreement we have with them, including that provider's standard contractual clauses or equivalent
-transfer terms where those apply.
+**If you are in India.** Your personal data is transferred outside India, to the United States.
+India's DPDP Act 2023 permits transferring personal data to any country the Central Government has
+not placed on a restricted list, and the United States is not on that list. Your data stays
+governed by this policy, by the DPDP Act, and by the agreements we hold with the sub-processors
+that store it. If the Government notifies a restriction that affects a provider we use, we will
+move that processing or stop using them.
 
-India's DPDP Act permits transfers outside India except to a country the Government restricts. If
-a restriction is notified that affects a provider we use, we will move the processing or stop
-using them.
+**If you are outside India, read this twice.** Signing up means your personal and financial data
+is handled by an operator in India and stored in the United States under agreements with
+US-based providers. It is not held in your own country, and the protections that apply to it are
+the ones set out in this policy rather than the ones your local law would place on a local
+provider. That is a real trade-off, and you should make it deliberately. If you are in the EEA or
+the UK, also read [If you are in the EEA or the UK](#if-you-are-in-the-eea-or-the-uk).
+
+Where a sub-processor moves data between countries to deliver the service, that transfer is
+covered by our data processing agreement with them, including that provider's standard
+contractual clauses or equivalent terms where those apply.
 
 ## If you are in the EEA or the UK
 
@@ -294,9 +304,9 @@ and you can export everything and delete your account at any time.
   devices, and then purges the marker.
 - **Error reports:** retained by our error-tracking provider for their standard retention period
   and then deleted.
-- **Our backups:** kept for 30 days, then overwritten. A deleted account disappears from the live
-  database immediately, but a backup copy can persist for that long. We do not restore an
-  individual account from a backup.
+- **Our backups:** kept for 30 days, then deleted, and stored in the United States alongside the
+  live database. A deleted account disappears from the live database immediately, but a backup
+  copy can persist for that long. We do not restore an individual account from a backup.
 
 ## How we protect it
 
@@ -309,8 +319,8 @@ and you can export everything and delete your account at any time.
   can be revoked at once.
 - The app sends a strict Content Security Policy, which blocks external scripts.
 - Uploaded receipts can be virus-scanned before they are accepted.
-- When receipts are held in object storage, they are encrypted at rest there and served through
-  links that expire after a few minutes and are not guessable.
+- Uploaded receipts are stored on the same Google Cloud infrastructure as your other data, and
+  every request for a receipt file is checked against your account before the file is served.
 - Login, signup, password reset and write operations are all rate limited.
 
 No system is perfectly secure, and we do not claim otherwise. What we can tell you is exactly
@@ -342,22 +352,23 @@ You can:
   operate in the EEA or the UK, but we offer it to everyone rather than gate it by geography.
 - **Nominate someone** (India): under section 14 of the DPDP Act you may nominate another
   individual to exercise your rights under the Act on your behalf if you die or become unable to
-  do so yourself. Email [[PRIVACY_EMAIL]] to record a nomination.
+  do so yourself. Email privacy@corvale.app to record a nomination.
 - **Complain.** Contact our Grievance Officer using the details above. In India, if you are not
   satisfied with our response, you may complain to the Data Protection Board of India. If a data
   protection authority elsewhere has jurisdiction over you, you are free to complain to it — see
   [If you are in the EEA or the UK](#if-you-are-in-the-eea-or-the-uk) for our position on that.
 
 Use the in-app tools first — they are immediate and need no request. If you would rather we
-handled it, email [[PRIVACY_EMAIL]] and we will respond within 30 days.
+handled it, email privacy@corvale.app and we will respond within 30 days.
 
 We may need to confirm who you are before acting on a request, so that nobody else can use these
 rights against your account.
 
 ## If you are in the United States
 
-You are welcome to use Corvale. Note that we are not a US business and your data is stored in
-India — see [Where your data goes](#where-your-data-goes).
+You are welcome to use Corvale. We are not a US business — the service is operated from India —
+but your data is stored in the United States on Google Cloud infrastructure. See
+[Where your data goes](#where-your-data-goes).
 
 We do not sell your personal information, and we do not share it for cross-context behavioural
 advertising or targeted advertising. We have never done either, and there is nothing to opt out
@@ -408,8 +419,7 @@ your rights will not interrupt you.
 ## Contact
 
 - **Grievance Officer:** Atharv Dewangan
-- **Email:** [[PRIVACY_EMAIL]]
-- **Address:** [[POSTAL_ADDRESS]]
+- **Email:** privacy@corvale.app
 - **Response window:** 30 days
 
 See also the [Contact page](./contact.md) for support and security routes.

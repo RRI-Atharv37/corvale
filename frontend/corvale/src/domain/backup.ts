@@ -428,6 +428,8 @@ export const restoreLocalBackup = async (
         type: record.type as LocalAccount['type'],
         currency: asString(record.currency),
         openingBalance: asNumber(record.openingBalance, 0),
+        openingBalanceDate:
+          typeof record.openingBalanceDate === 'string' ? record.openingBalanceDate : null,
         currentBalance: asNumber(record.currentBalance ?? record.openingBalance, 0),
         isArchived: asBoolean(record.isArchived, false),
       }

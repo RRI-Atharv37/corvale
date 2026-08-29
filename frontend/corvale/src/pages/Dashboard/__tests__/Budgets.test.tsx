@@ -43,9 +43,13 @@ const currentMonthPeriod = () => {
     const now = new Date()
     const year = now.getUTCFullYear()
     const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    // Real last day of the month (28-31). A hardcoded `-28` makes the budget's period end
+    // before "now" on the 29th-31st, so `isBudgetActive` drops it from the active view and
+    // every assertion in this suite fails purely because of the calendar date.
+    const lastDay = new Date(Date.UTC(year, now.getUTCMonth() + 1, 0)).getUTCDate()
     return {
         periodStart: `${year}-${month}-01T00:00:00.000Z`,
-        periodEnd: `${year}-${month}-28T23:59:59.999Z`,
+        periodEnd: `${year}-${month}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`,
         midMonth: `${year}-${month}-15T12:00:00.000Z`,
     }
 }

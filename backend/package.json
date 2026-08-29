@@ -2,13 +2,13 @@
   "name": "corvale-backend",
   "version": "1.0.0",
   "description": "simple expense tracker",
-  "homepage": "https://github.com/RRI-Atharv37/spndr#readme",
+  "homepage": "https://github.com/RRI-Atharv37/corvale#readme",
   "bugs": {
-    "url": "https://github.com/RRI-Atharv37/spndr/issues"
+    "url": "https://github.com/RRI-Atharv37/corvale/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RRI-Atharv37/spndr.git"
+    "url": "git+https://github.com/RRI-Atharv37/corvale.git"
   },
   "license": "AGPL-3.0-or-later",
   "author": "Atharv Dewangan",

@@ -66,7 +66,7 @@ total account balance (net worth) = asset total − credit total
 liquid balance = checking total + cash total
 ```
 
-Account balances reflect opening balances plus all transaction and transfer activity on each account.
+Account balances reflect the opening balance plus all transaction and transfer activity on the account. If an account has a **balance as of** date, only activity dated on or after that date is added - earlier transactions are treated as already folded into the opening balance, so importing older history doesn't distort the current figure.
 
 ### Spendable balance
 

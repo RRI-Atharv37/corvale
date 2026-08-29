@@ -56,6 +56,7 @@ import DeleteAccountSettings from '../settings/DeleteAccountSettings'
 import PrivacyDataSettings from '../settings/PrivacyDataSettings'
 import ExchangeRatesSettings from '../settings/ExchangeRatesSettings'
 import SyncSettings from '../settings/SyncSettings'
+import DesktopUpdateSettings from '../settings/DesktopUpdateSettings'
 import SyncStatusBadge from '../sync/SyncStatusBadge'
 import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
 import { startSyncEngine, syncNow } from '../../sync/syncEngine'
@@ -437,6 +438,7 @@ const DashboardLayout: React.FC = () => {
                     <TransactionTemplatesSettings />
                     <ExchangeRatesSettings />
                     <BackupRestoreSettings />
+                    <DesktopUpdateSettings />
                     {isLocalFirstEnabled() && <SyncSettings />}
                     {isLocalFirstEnabled() && <PinSettings />}
 

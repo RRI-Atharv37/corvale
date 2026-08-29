@@ -78,12 +78,20 @@ export const createReconciliationSession = asyncHandler(async (req: AuthRequest,
 
     // Transfer legs can't be sign-resolved from a single record (both legs share
     // type: 'transfer' with no stored direction), so they're excluded here; only
-    // income/expense transactions feed the reconciliation balance.
+    // income/expense transactions feed the reconciliation balance. When the
+    // account carries an openingBalanceDate, activity before it is already folded
+    // into openingBalance (see shared/src/balances.ts) and must not be summed
+    // again — so it's excluded with a lower date bound.
+    const dateFilter: Record<string, Date> = { $lte: new Date(statementEndDate) }
+    if (account.openingBalanceDate) {
+        dateFilter.$gte = new Date(account.openingBalanceDate)
+    }
+
     const transactions = await Transaction.find({
         ...buildScopedListFilter(userId, workspaceId),
         accountId,
         type: { $ne: 'transfer' },
-        date: { $lte: new Date(statementEndDate) },
+        date: dateFilter,
     })
 
     // 'reconciled' transactions were cleared in a prior session and still count as settled.

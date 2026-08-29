@@ -1,5 +1,5 @@
 import Saver from '../models/Saver'
-import Account from '../models/Account'
+import Account, { IAccount } from '../models/Account'
 import Transaction from '../models/Transaction'
 import { toObjectId } from './sharedUtils'
 import { buildScopedListFilter } from './workspaceUtils'
@@ -9,6 +9,7 @@ import {
     computeAccountTotalsPure,
     computeUserBalancesPure,
     CurrencyConversionOptions,
+    recomputeAccountBalance,
     UserBalanceSummary,
 } from '../../shared/src/balances'
 import { fromMinorUnits, roundMoney } from '../../shared/src/money'
@@ -120,4 +121,69 @@ export const computeUserBalances = async (
         workspaceId: null,
         conversion,
     })
+}
+
+/**
+ * Recomputes one account's balance from scratch — its opening balance and
+ * opening-balance date plus every posted, non-split transaction on it — and
+ * returns the result in **major units** (the caller stores it in the account's
+ * own `balanceUnit`). Transfer legs are resolved to in/out by creation order
+ * relative to their pair, the same technique `deleteTransactionForUser` uses,
+ * since both legs persist as `type: 'transfer'`.
+ *
+ * Shared by the REST recompute endpoint, `updateAccount` (opening-balance edits
+ * trigger a recompute) and the sync push path, so the three stay identical.
+ */
+export const recomputeAccountBalanceMajor = async (
+    account: Pick<
+        IAccount,
+        '_id' | 'type' | 'openingBalance' | 'openingBalanceDate' | 'balanceUnit' | 'workspaceId'
+    >,
+    userId: string
+): Promise<number> => {
+    const scope = buildScopedListFilter(userId, account.workspaceId?.toString() ?? null)
+
+    const transactions = await Transaction.find({
+        ...scope,
+        accountId: account._id,
+    }).select('type amount status splitTransactionId transferPairId createdAt date')
+
+    const pairIds = transactions
+        .filter((transaction) => transaction.type === 'transfer' && transaction.transferPairId)
+        .map((transaction) => transaction.transferPairId!)
+
+    const pairs = pairIds.length
+        ? await Transaction.find({ ...scope, _id: { $in: pairIds } }).select('createdAt')
+        : []
+    const pairCreatedAtById = new Map(pairs.map((pair) => [pair._id.toString(), pair.createdAt]))
+
+    const isMinor = account.balanceUnit === 'minor'
+    const openingBalanceMajor = isMinor
+        ? fromMinorUnits(account.openingBalance)
+        : account.openingBalance
+
+    return recomputeAccountBalance(
+        {
+            openingBalance: openingBalanceMajor,
+            type: account.type,
+            openingBalanceDate: account.openingBalanceDate ?? null,
+        },
+        transactions.map((transaction) => {
+            let effectiveType = transaction.type
+
+            if (transaction.type === 'transfer' && transaction.transferPairId) {
+                const pairCreatedAt = pairCreatedAtById.get(transaction.transferPairId.toString())
+                const isInbound = pairCreatedAt !== undefined && transaction.createdAt > pairCreatedAt
+                effectiveType = isInbound ? 'income' : 'transfer'
+            }
+
+            return {
+                type: effectiveType,
+                amount: transaction.amount,
+                status: transaction.status,
+                splitTransactionId: transaction.splitTransactionId?.toString() ?? null,
+                date: transaction.date,
+            }
+        })
+    )
 }

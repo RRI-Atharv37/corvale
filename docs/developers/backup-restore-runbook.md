@@ -47,6 +47,33 @@ encrypted at rest (e.g. a private bucket with server-side encryption) and restri
 whoever is actually on call for restores — treat dump access the same as production database
 access, not as a casual download.
 
+## Retention
+
+The hosted service's Privacy Policy and Terms state that operator backups are **kept for 30 days,
+then deleted**. That window has to be enforced by the storage layer, not just implied, and it is
+enforced in two separate places:
+
+- **Local staging copies** on the API host are pruned by `scripts/backup-mongo.sh` itself, via
+  `BACKUP_RETAIN_DAYS` (7 by default). These are only a holding area before upload.
+- **The off-box bucket** is *not* touched by that script. It needs its own object-lifecycle rule
+  that deletes each archive 30 days after it is written. For Google Cloud Storage:
+
+  ```bash
+  printf '{"rule":[{"action":{"type":"Delete"},"condition":{"age":30}}]}' > lifecycle.json
+  gcloud storage buckets update gs://YOUR_BACKUP_BUCKET --lifecycle-file=lifecycle.json
+  ```
+
+  Confirm it applied:
+
+  ```bash
+  gcloud storage buckets describe gs://YOUR_BACKUP_BUCKET --format="value(lifecycle)"
+  ```
+
+  On S3, R2 or Backblaze B2, use that provider's equivalent lifecycle / object-expiration policy.
+
+If you ever change the retention window, change it in the bucket policy **and** in the Privacy
+Policy and Terms of Service, so the published number stays true.
+
 ## Restoring a backup
 
 Restore into a **scratch database or a fresh scratch deployment first** — never straight into

@@ -1,4 +1,4 @@
-**Effective date:** [[EFFECTIVE_DATE]] · **Version:** 2026-08-28
+**Effective date:** 2026-08-29 · **Version:** 2026-08-29
 
 ## The short version
 
@@ -8,7 +8,7 @@ without it.
 There are no analytics cookies, no advertising cookies, and no third-party trackers. That is why
 you have never seen a cookie consent banner here — there is nothing to consent to.
 
-This page covers the hosted Corvale service at [[PRODUCT_DOMAIN]]. Self-hosted installations are
+This page covers the hosted Corvale service at corvale.app. Self-hosted installations are
 run by whoever operates them.
 
 ## The cookie we set
@@ -136,4 +136,4 @@ table above is the part that describes what is actually stored and why.
 If this page changes materially we will update the version at the top and ask you to review it
 next time you sign in.
 
-Questions: [[PRIVACY_EMAIL]]. See also the [Privacy Policy](./privacy.md).
+Questions: privacy@corvale.app. See also the [Privacy Policy](./privacy.md).

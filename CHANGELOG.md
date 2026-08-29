@@ -13,10 +13,13 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-08-27
+## [1.0.0] - 2026-08-29
 
-Gate G3 (Production/GA) closes with this release — the app is publishable and advertisable per
-the launch-gate ladder.
+Gate G3 (Production/GA) closed 2026-08-27; this is the first tagged release. Beyond the G3 work it
+also carries the v1.0.0 go-live operational track — transactional email with a hard
+email-verification gate, production hosting, and desktop/download update UX — and a second
+full-project security audit (`SEC-27`–`SEC-37`, all fixed). The app is publishable and
+advertisable per the launch-gate ladder.
 
 ### Added
 
@@ -25,6 +28,15 @@ the launch-gate ladder.
   `/transactions` (TODO.md X4)
 - Documented support process (`.github/SUPPORT.md`) and an incident-response runbook
   (`docs/developers/incident-response-runbook.md`) defining Sev-1/Sev-2/Sev-3 (TODO.md L14)
+- **Opening balance can be dated.** An account's opening balance is now stated "as of" a date
+  (`Account.openingBalanceDate`); transactions dated before it are informational only (reports and
+  trends) and no longer move the current balance, so importing or back-filling history older than
+  the account can't inflate it. Onboarding defaults the date to today; both the opening balance and
+  its date are editable after creation, each triggering a balance recompute. An account with no
+  date set keeps the previous "count everything" behaviour (TODO.md, Post-GA)
+- **Desktop app: manual "Check for updates".** A button in Settings (desktop builds only) shows the
+  installed version and checks on demand, with checking / up-to-date / update-available states, on
+  top of the existing launch-time auto-update prompt (TODO.md V15)
 
 ### Changed
 
@@ -68,6 +80,18 @@ the launch-gate ladder.
 - Sidebar/nav label for `/reports` is now "Reports & Analytics" (TODO.md X6)
 - Recurring due dates now advance in the user's real timezone instead of a hardcoded UTC offset,
   fixing an hour of drift across DST transitions (TODO.md C6, BUG-06)
+- **Email verification is now a hard gate.** Signing in with an unverified address is refused
+  (`EMAIL_NOT_VERIFIED`) and issues no session until the address is confirmed; a fresh signup still
+  lands on the in-app verify screen, and a blocked returning user can request a new link from the
+  signed-out resend form. Password-reset and verification links now expire after **10 minutes**
+  (previously 1 hour and 24 hours) (TODO.md V9)
+- **Transactional email** sends through Resend from `no-reply@send.corvale.app`, with SPF, DKIM and
+  DMARC published and verified; `SMTP_FROM` / `SMTP_REPLY_TO` defaults updated accordingly
+  (TODO.md V9)
+- **The web `/download` page is now self-updating.** It reads the published release from the
+  backend (`GET /api/v1/desktop/release-manifest`, which proxies the GitHub Releases API and caches
+  it) at runtime, instead of a hand-maintained manifest that had to be edited and redeployed for
+  every release. The built-in manifest remains only as an offline fallback (TODO.md V16)
 
 ### Fixed
 
@@ -85,9 +109,28 @@ the launch-gate ladder.
 
 ### Security
 
-None new this release. `SEC-04`/`SEC-06` (Tauri CSP, `db_open` path-traversal hardening) were
-already fixed in `v0.17.0`'s cycle; this release corrects an internal tracking error that had
-continued to list them as open.
+A second full-project security audit (Audit 2) ran before this release. All **11 findings
+(`SEC-27`–`SEC-37`)** are fixed and committed; the cross-tenant / IDOR question the audit was
+aimed at came back clean.
+
+- Boot refuses to start with a placeholder or weak `JWT_SECRET` (`SEC-27`)
+- Backup restore runs uploaded archives through the same validation/scan pipeline as receipt
+  uploads (`SEC-28`)
+- Legacy income/expense CSV exports escape spreadsheet formula-injection payloads, including after
+  an embedded newline (`SEC-29`)
+- Row-level security enforced on `Category`, `Tag`, `CategorizationRule`, `TransactionTemplate` and
+  `SyncOperation`, and on the remaining query operations (`distinct`, `estimatedDocumentCount`,
+  aggregation, …) (`SEC-30`, `SEC-36`)
+- The shipped nginx config emits real security headers (`SEC-31`)
+- Account-enumeration hardening, account-deletion completeness, and policy wording (`SEC-32`,
+  `SEC-33`)
+- Two latent injection / bypass traps removed (`SEC-34`, `SEC-35`)
+- The bundled MongoDB service now requires authentication (`SEC-37`)
+
+`SEC-04`/`SEC-06` (Tauri CSP, `db_open` path-traversal hardening) were already fixed in `v0.17.0`'s
+cycle; this release corrects an internal tracking error that had continued to list them as open.
+Installers still ship without OS-level code signing (`SEC-05`, accepted risk — see
+`docs/desktop/download.md`).
 
 ## [0.17.0] - 2026-08-25
 
