@@ -13,6 +13,17 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-30
+
+### Fixed
+
+- **Desktop app could not reach the server.** The Tauri installer is built in CI, where the
+  git-ignored `frontend/corvale/.env` does not exist, so `VITE_API_URL` fell back to its
+  `http://localhost:5000` default and every install failed at sign-in with "Network Error" /
+  "You're offline". The hosted backend URL (`https://api.corvale.app`), its origin, the docs URL,
+  and the offline-grant public key now live in `.env.desktop` — the one env file the desktop
+  build always reads (D4).
+
 ## [1.0.0] - 2026-08-29
 
 Gate G3 (Production/GA) closed 2026-08-27; this is the first tagged release. Beyond the G3 work it
