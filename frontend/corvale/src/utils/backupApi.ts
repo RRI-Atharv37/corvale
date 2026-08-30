@@ -6,7 +6,7 @@ import type {
     BackupRestoreResult,
 } from '../types/api'
 import { unwrapApiData } from './apiHelpers'
-import { downloadExportBlob } from './downloadExport'
+import { saveExportedFile } from './downloadExport'
 
 export type BackupExportFormat = 'json' | 'zip'
 
@@ -39,7 +39,7 @@ export const exportBackup = async (
     })
 
     const filename = `corvale-backup.${format === 'zip' ? 'zip' : 'json'}`
-    downloadExportBlob(blobData, filename)
+    await saveExportedFile(blobData, filename)
 }
 
 export const previewBackupRestore = async (

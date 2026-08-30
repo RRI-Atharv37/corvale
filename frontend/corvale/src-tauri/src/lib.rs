@@ -37,7 +37,7 @@ pub fn run() {
             db::db_set_key,
             db::db_reset_file,
             db::db_close,
-            backup::save_backup_file,
+            backup::save_file,
             backup::open_backup_file,
             keychain::keychain_set,
             keychain::keychain_get,
