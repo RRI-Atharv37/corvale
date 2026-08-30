@@ -11,7 +11,7 @@ import { setAccessToken } from '../utils/tokenStore'
 import { clearStoredRefreshToken, getStoredRefreshToken, storeRefreshToken } from '../utils/refreshTokenStore'
 import { clearOfflineGrant, getStoredOfflineGrant, storeOfflineGrant, verifyOfflineGrant } from '../offline/offlineGrant'
 import { isNetworkError } from '../offline/reachability'
-import { wipeLocalData } from '../offline/wipeLocalData'
+import { wipeLocalData, type WipeResult } from '../offline/wipeLocalData'
 import { exportUnsyncedOps } from '../offline/exportUnsyncedOps'
 import { handleTokenRevoked, TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
 import { getSyncStatus } from '../sync/syncEngine'
@@ -31,6 +31,14 @@ interface UserContextType {
 }
 
 export const UserContext = createContext<UserContextType | null>(null)
+
+/** BUG-30(d): a local wipe silently cleared a configured PIN - say so, since it's a real change
+ *  to how this device unlocks (harmless while the PIN feature is dormant: `pinCleared` is false). */
+const notifyIfPinCleared = ({ pinCleared }: WipeResult): void => {
+    if (pinCleared) {
+        toast.success('The local PIN on this device was removed.')
+    }
+}
 
 const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null)
@@ -77,7 +85,7 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             // Clear local session even if the server call fails (e.g. offline)
         }
         clearUser()
-        await wipeLocalData()
+        notifyIfPinCleared(await wipeLocalData())
     }, [clearUser])
 
     const logoutAllSessions = useCallback(async () => {
@@ -87,13 +95,13 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             // Clear local session even if the server call fails (e.g. offline)
         }
         clearUser()
-        await wipeLocalData()
+        notifyIfPinCleared(await wipeLocalData())
     }, [clearUser])
 
     const deleteAccount = useCallback(async (password: string) => {
         await axiosInstance.delete(API_PATHS.AUTH.DELETE_ACCOUNT, { data: { password } })
         clearUser()
-        await wipeLocalData()
+        notifyIfPinCleared(await wipeLocalData())
     }, [clearUser])
 
     const restoreSession = useCallback(async () => {

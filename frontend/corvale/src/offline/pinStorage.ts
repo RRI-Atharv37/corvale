@@ -175,6 +175,15 @@ const applyEncryptionKey = async (pin: string, salt: Uint8Array): Promise<void> 
 
 export const hasPinConfigured = (): boolean => localStorage.getItem(PIN_VERIFIER_KEY) !== null
 
+/**
+ * True when any PIN verifier is present under the current *or* the pre-rename key name. Used by
+ * `wipeLocalData` (BUG-30) to tell the user a local PIN was removed as part of a wipe/rebuild -
+ * `hasPinConfigured` alone would miss a `spndr_pin_*` verifier on a device that hasn't been
+ * through `migrateLegacyPinKeys` yet.
+ */
+export const hasAnyPinMaterial = (): boolean =>
+    localStorage.getItem(PIN_VERIFIER_KEY) !== null || localStorage.getItem(LEGACY_PIN_VERIFIER_KEY) !== null
+
 export const setupPin = async (pin: string): Promise<void> => {
     if (pin.length < MIN_PIN_LENGTH) {
         throw new Error(`PIN must be at least ${MIN_PIN_LENGTH} digits`)

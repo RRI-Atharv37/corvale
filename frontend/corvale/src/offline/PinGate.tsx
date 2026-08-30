@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import PinUnlock from './PinUnlock'
 import { LOCAL_DB_LOCKED_EVENT, hasPinConfigured, isLocalDbUnlocked, lockLocalDb, verifyStoredPin } from './pinStorage'
 import { wipeLocalData } from './wipeLocalData'
@@ -74,7 +75,10 @@ const PinGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         )
         if (!confirmed) return
 
-        await wipeLocalData()
+        const { pinCleared } = await wipeLocalData()
+        if (pinCleared) {
+            toast.success('Your PIN and local data were removed from this device. Sign in to resync.')
+        }
         navigate('/login', { replace: true })
     }
 

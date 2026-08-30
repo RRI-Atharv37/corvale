@@ -21,7 +21,9 @@ const { getLocalDb, resetLocalDbForTests, setLocalDb } = await import('../localD
 
 const fakeDb: LocalDb = {
     exec: vi.fn().mockResolvedValue(undefined),
-    select: vi.fn().mockResolvedValue([]),
+    // Default: the store holds data (localStoreIsEmpty -> false). Tests that need a
+    // present-but-empty store override this.
+    select: vi.fn().mockResolvedValue([{ total: 12 }]),
     transaction: vi.fn(async (fn) => fn(fakeDb)),
     close: vi.fn(),
 }
@@ -49,6 +51,7 @@ describe('provisionLocalDb (D5 - sign in once, then offline forever)', () => {
         getCheckpointMock.mockReset().mockResolvedValue(null)
         fetchBootstrapSnapshotMock.mockReset().mockResolvedValue(snapshot)
         seedFromBootstrapMock.mockReset().mockResolvedValue(undefined)
+        vi.mocked(fakeDb.select).mockReset().mockResolvedValue([{ total: 12 }])
     })
 
     it('does nothing when local-first is disabled', async () => {
@@ -75,13 +78,24 @@ describe('provisionLocalDb (D5 - sign in once, then offline forever)', () => {
         expect(fetchBootstrapSnapshotMock).toHaveBeenCalledWith('workspace-1')
     })
 
-    it('is a no-op once a checkpoint already exists - already provisioned, or the incremental pull loop has run', async () => {
+    it('is a no-op once a checkpoint exists and the store holds data - already provisioned, or the pull loop has run', async () => {
         getCheckpointMock.mockResolvedValue('2026-08-24T00:00:00.000Z_prev')
+        vi.mocked(fakeDb.select).mockResolvedValue([{ total: 12 }])
 
         await provisionLocalDb()
 
         expect(fetchBootstrapSnapshotMock).not.toHaveBeenCalled()
         expect(seedFromBootstrapMock).not.toHaveBeenCalled()
+    })
+
+    it('re-seeds when a checkpoint exists but the store is empty (BUG-30: rebuilt / half-seeded store)', async () => {
+        getCheckpointMock.mockResolvedValue('2026-08-24T00:00:00.000Z_prev')
+        vi.mocked(fakeDb.select).mockResolvedValue([{ total: 0 }])
+
+        await provisionLocalDb()
+
+        expect(fetchBootstrapSnapshotMock).toHaveBeenCalledWith(null)
+        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot)
     })
 
     it('swallows a bootstrap fetch failure instead of throwing out of the login flow', async () => {

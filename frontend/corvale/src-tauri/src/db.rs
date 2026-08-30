@@ -187,6 +187,41 @@ pub fn db_close(state: State<DbState>) -> Result<(), String> {
     Ok(())
 }
 
+/// Removes `<filename>`, `<filename>-wal` and `<filename>-shm` from `dir`, treating a missing file
+/// as success. Pure + `Path`-only so it's unit-testable against a temp directory without a Tauri
+/// app context. A partially-deleted set on a mid-loop error is still an improvement over the
+/// corrupt file it replaces — `db_reset_file`'s caller recreates the DB from an absent/partial
+/// path either way.
+fn remove_local_db_files(dir: &std::path::Path, filename: &str) -> std::io::Result<()> {
+    for suffix in ["", "-wal", "-shm"] {
+        let path = dir.join(format!("{filename}{suffix}"));
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(())
+}
+
+/// BUG-30 recovery: closes the live connection and deletes the local database file plus its
+/// WAL/SHM sidecars, so an unreadable store (e.g. the half-plaintext/half-ciphertext state a
+/// mistimed `PRAGMA key` left behind under BUG-31, or ordinary on-disk corruption) can be rebuilt
+/// from empty and re-seeded from `/sync/bootstrap`. The server is authoritative for synced data,
+/// so this only loses changes made offline and never pushed. `filename` is validated exactly as
+/// `db_open` validates it (SEC-06).
+#[tauri::command]
+pub fn db_reset_file(app: AppHandle, state: State<DbState>, filename: String) -> Result<(), String> {
+    crate::path_safety::sanitize_db_filename(&filename)?;
+
+    // Drop the handle before unlinking so Windows (which locks open files) can remove it.
+    *state.0.lock().map_err(to_sql_error)? = None;
+
+    let dir = app.path().app_data_dir().map_err(to_sql_error)?;
+    remove_local_db_files(&dir, &filename).map_err(to_sql_error)?;
+    Ok(())
+}
+
 // V7.1 acceptance spec / V7.3f rename shim: Tauri legacy-data-dir copy.
 //
 // The Tauri `identifier` renamed from `com.spndr.app` to `com.corvale.app` (`tauri.conf.json`),
@@ -272,6 +307,64 @@ mod db_set_key_guard_tests {
         conn.execute_batch("INSERT INTO t DEFAULT VALUES;").unwrap();
         conn.execute_batch("DROP TABLE t;").unwrap();
         assert!(!super::database_has_application_tables(&conn).unwrap());
+    }
+}
+
+#[cfg(test)]
+mod db_reset_file_tests {
+    use std::path::PathBuf;
+
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(label: &str) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "corvale-reset-test-{label}-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&path).unwrap();
+            TempDir(path)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn removes_the_database_file_and_both_sidecars() {
+        let dir = TempDir::new("all-three");
+        for name in ["corvale.sqlite3", "corvale.sqlite3-wal", "corvale.sqlite3-shm"] {
+            std::fs::write(dir.0.join(name), b"x").unwrap();
+        }
+
+        super::remove_local_db_files(&dir.0, "corvale.sqlite3").unwrap();
+
+        for name in ["corvale.sqlite3", "corvale.sqlite3-wal", "corvale.sqlite3-shm"] {
+            assert!(!dir.0.join(name).exists(), "{name} should be gone");
+        }
+    }
+
+    #[test]
+    fn is_ok_when_the_sidecars_are_absent() {
+        let dir = TempDir::new("main-only");
+        std::fs::write(dir.0.join("corvale.sqlite3"), b"x").unwrap();
+
+        super::remove_local_db_files(&dir.0, "corvale.sqlite3").unwrap();
+
+        assert!(!dir.0.join("corvale.sqlite3").exists());
+    }
+
+    #[test]
+    fn is_a_no_op_when_nothing_exists() {
+        let dir = TempDir::new("nothing");
+        assert!(super::remove_local_db_files(&dir.0, "corvale.sqlite3").is_ok());
     }
 }
 

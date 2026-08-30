@@ -16,7 +16,7 @@ import PinSetupPrompt from '../../components/onboarding/PinSetupPrompt'
  * profile that already has a PIN configured in `localStorage` from a broken earlier build.
  */
 
-vi.mock('../wipeLocalData', () => ({ wipeLocalData: vi.fn(async () => {}) }))
+vi.mock('../wipeLocalData', () => ({ wipeLocalData: vi.fn(async () => ({ pinCleared: false })) }))
 
 class FakeEncryptableDb {
     key: { passphrase: string; salt: Uint8Array } | null = null

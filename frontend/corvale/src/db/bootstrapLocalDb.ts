@@ -1,10 +1,54 @@
+import type { LocalDb } from './LocalDb'
 import { setLocalDb } from './localDbInstance'
 import { runMigrations } from './migrations/runMigrations'
 import { MIGRATIONS } from './migrations/schema'
+import { markLocalDbDamaged } from './localDbHealth'
 import { isLocalFirstEnabled } from '../utils/localFirstFlag'
 import { isLocalPinEnabled } from '../utils/localPinFlag'
 import { isTauriRuntime } from '../desktop/isTauri'
 import { migrateLegacyPinKeys, purgeLocalPinKeys } from '../offline/pinStorage'
+
+const LOCAL_DB_FILENAME = 'corvale.sqlite3'
+
+const openDriver = async (): Promise<LocalDb> => {
+  if (isTauriRuntime()) {
+    const { TauriSqlDriver } = await import('./TauriSqlDriver')
+    return TauriSqlDriver.create(LOCAL_DB_FILENAME)
+  }
+  const { SqliteWasmDriver } = await import('./SqliteWasmDriver')
+  return SqliteWasmDriver.create(LOCAL_DB_FILENAME)
+}
+
+/**
+ * Opens the real driver, runs schema migrations, then issues a trivial read against a table every
+ * migration creates. The probe matters: a half-encrypted file (the state a mistimed `PRAGMA key`
+ * could leave behind under BUG-31, or ordinary on-disk corruption) can open and even migrate while
+ * its data pages are unreadable ciphertext - the failure only surfaces on the first real `SELECT`,
+ * which is exactly where the old bare "Failed to load local data" came from. Doing it here lets
+ * `bootstrapLocalDb` classify the store as damaged before the app renders.
+ */
+const createMigratedDriver = async (): Promise<LocalDb> => {
+  const db = await openDriver()
+  await runMigrations(db, MIGRATIONS)
+  await db.select('SELECT count(*) FROM _sync_meta')
+  return db
+}
+
+/** Deletes the on-disk local store (+ its WAL/SHM sidecars) so a fresh one can be created. */
+const destroyLocalStoreFile = async (): Promise<void> => {
+  if (isTauriRuntime()) {
+    const { invoke } = await import('@tauri-apps/api/core')
+    try {
+      await invoke('db_close')
+    } catch {
+      // Not open (or already closed) - nothing to detach before the unlink.
+    }
+    await invoke('db_reset_file', { filename: LOCAL_DB_FILENAME })
+    return
+  }
+  const { SqliteWasmDriver } = await import('./SqliteWasmDriver')
+  await SqliteWasmDriver.deleteStore(LOCAL_DB_FILENAME)
+}
 
 /**
  * Chooses and installs the real `LocalDb` implementation for this runtime before the app renders
@@ -17,9 +61,9 @@ import { migrateLegacyPinKeys, purgeLocalPinKeys } from '../offline/pinStorage'
  * real app either, browser or desktop. This function is what makes `SqliteWasmDriver` (Sprint 13.4)
  * and `TauriSqlDriver` (Sprint 13.11) real rather than dead code.
  *
- * Driver creation errors (native module missing, OPFS unavailable, etc.) are swallowed so a broken
- * driver never blocks app boot - the app falls back to the lazy in-memory default, same as it
- * silently did before this function existed.
+ * BUG-30: an open/migrate/probe failure is no longer swallowed into a silent in-memory fallback.
+ * It marks the store damaged (`localDbHealth.ts`), and `LocalDbRecoveryGate` blocks the dashboard
+ * behind an explicit "rebuild from your account" flow instead of every page erroring opaquely.
  */
 export const bootstrapLocalDb = async (): Promise<void> => {
   if (!isLocalFirstEnabled()) {
@@ -47,19 +91,22 @@ export const bootstrapLocalDb = async (): Promise<void> => {
   }
 
   try {
-    if (isTauriRuntime()) {
-      const { TauriSqlDriver } = await import('./TauriSqlDriver')
-      const db = await TauriSqlDriver.create()
-      await runMigrations(db, MIGRATIONS)
-      setLocalDb(db)
-      return
-    }
-
-    const { SqliteWasmDriver } = await import('./SqliteWasmDriver')
-    const db = await SqliteWasmDriver.create()
-    await runMigrations(db, MIGRATIONS)
+    const db = await createMigratedDriver()
     setLocalDb(db)
   } catch (error) {
-    console.error('Failed to initialize the persistent local database; falling back to in-memory storage', error)
+    console.error('Local database failed to open or migrate; entering recovery mode', error)
+    markLocalDbDamaged(error instanceof Error ? error.message : String(error))
   }
+}
+
+/**
+ * BUG-30 recovery step: destroy the unreadable local store, recreate it empty, and install the
+ * fresh driver. The caller (`LocalDbRecoveryGate`) then re-seeds it from `/sync/bootstrap` and
+ * flips health back to healthy. Throws if the store still can't be created afterwards (e.g. a
+ * failing disk), leaving health `damaged` so the gate can show a retry.
+ */
+export const rebuildLocalDb = async (): Promise<void> => {
+  await destroyLocalStoreFile()
+  const db = await createMigratedDriver()
+  setLocalDb(db)
 }

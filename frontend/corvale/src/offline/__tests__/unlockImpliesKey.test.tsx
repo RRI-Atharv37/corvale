@@ -41,7 +41,7 @@ import PinGate from '../PinGate'
  */
 
 vi.mock('../wipeLocalData', () => ({
-    wipeLocalData: vi.fn(async () => {}),
+    wipeLocalData: vi.fn(async () => ({ pinCleared: false })),
 }))
 
 class FakeEncryptableDb {

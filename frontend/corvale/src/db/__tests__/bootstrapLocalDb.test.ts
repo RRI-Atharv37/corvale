@@ -20,6 +20,7 @@ const { isLocalPinEnabled } = await import('../../utils/localPinFlag')
 const { isTauriRuntime } = await import('../../desktop/isTauri')
 const { bootstrapLocalDb } = await import('../bootstrapLocalDb')
 const { getLocalDb, resetLocalDbForTests } = await import('../localDbInstance')
+const { getLocalDbHealth, resetLocalDbHealthForTests } = await import('../localDbHealth')
 
 const fakeDb = (): LocalDb => ({
   exec: vi.fn().mockResolvedValue(undefined),
@@ -31,6 +32,7 @@ const fakeDb = (): LocalDb => ({
 describe('bootstrapLocalDb', () => {
   beforeEach(() => {
     resetLocalDbForTests()
+    resetLocalDbHealthForTests()
     tauriCreate.mockReset()
     wasmCreate.mockReset()
     vi.mocked(isLocalFirstEnabled).mockReset()
@@ -137,11 +139,37 @@ describe('bootstrapLocalDb', () => {
     await expect(getLocalDb()).resolves.toBe(db)
   })
 
-  it('swallows driver creation errors instead of throwing out of app boot', async () => {
+  it('does not throw out of app boot on a driver open failure, but marks the store damaged (BUG-30)', async () => {
     vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
     vi.mocked(isTauriRuntime).mockReturnValue(true)
     tauriCreate.mockRejectedValue(new Error('native module unavailable'))
 
     await expect(bootstrapLocalDb()).resolves.toBeUndefined()
+    expect(getLocalDbHealth()).toBe('damaged')
+  })
+
+  it('marks the store damaged when the post-migration read probe fails (half-encrypted file)', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
+    vi.mocked(isTauriRuntime).mockReturnValue(true)
+    const db = fakeDb()
+    vi.mocked(db.select).mockRejectedValue(new Error('file is not a database'))
+    tauriCreate.mockResolvedValue(db)
+
+    await bootstrapLocalDb()
+
+    expect(getLocalDbHealth()).toBe('damaged')
+  })
+
+  it('leaves the store healthy on a clean open', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
+    vi.mocked(isTauriRuntime).mockReturnValue(false)
+    wasmCreate.mockResolvedValue(fakeDb())
+
+    await bootstrapLocalDb()
+
+    expect(getLocalDbHealth()).toBe('ok')
   })
 })
