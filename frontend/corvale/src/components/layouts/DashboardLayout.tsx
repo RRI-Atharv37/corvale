@@ -36,6 +36,7 @@ import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import CurrencySelect from '../Inputs/CurrencySelect'
 import Modal from '../ui/Modal'
+import ExternalLink from '../ui/ExternalLink'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
 import {
     DATE_FORMAT_OPTIONS,
@@ -336,15 +337,13 @@ const DashboardLayout: React.FC = () => {
                     <div className="flex items-center gap-2 shrink-0">
                         {isLocalFirstEnabled() && <SyncStatusBadge />}
                         <NotificationCenter />
-                        <a
+                        <ExternalLink
                             href={DOCS_URL}
-                            target="_blank"
-                            rel="noreferrer"
                             className="flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-muted hover:text-accent hover:border-accent/40 transition-colors"
                         >
                             <FiBookOpen size={16} />
                             <span className="hidden sm:inline">Docs</span>
-                        </a>
+                        </ExternalLink>
                     </div>
                 </header>
 

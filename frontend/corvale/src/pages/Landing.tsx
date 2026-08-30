@@ -4,6 +4,7 @@ import BrandLogo from '../components/ui/BrandLogo'
 import LandingProductPreview from '../components/landing/LandingProductPreview'
 import LedgerPulse from '../components/ui/LedgerPulse'
 import { AUTHOR, BRAND, PAIN_POINTS, FEATURES, STEPS } from '../utils/brand'
+import ExternalLink from '../components/ui/ExternalLink'
 import { LEGAL_DOCUMENTS } from '../legal'
 
 const Landing: React.FC = () => {
@@ -284,14 +285,12 @@ const Landing: React.FC = () => {
                     </nav>
                     <p className="text-sm text-text-secondary">
                         Made by{' '}
-                        <a
+                        <ExternalLink
                             href={AUTHOR.github}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="font-semibold text-gradient-accent hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm"
                         >
                             {AUTHOR.name}
-                        </a>
+                        </ExternalLink>
                     </p>
                 </div>
             </footer>

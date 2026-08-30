@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import ExternalLink from '../ui/ExternalLink'
 
 /**
  * A deliberately small Markdown renderer for the legal documents in `src/legal/` (M0c).
@@ -52,15 +53,13 @@ const renderInline = (text: string, keyPrefix: string): React.ReactNode[] => {
                 const href = toAppHref(rawHref)
                 if (isExternal(href)) {
                     nodes.push(
-                        <a
+                        <ExternalLink
                             key={key}
                             href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="text-accent underline underline-offset-2 hover:opacity-80"
                         >
                             {label}
-                        </a>
+                        </ExternalLink>
                     )
                 } else if (href.startsWith('#')) {
                     nodes.push(

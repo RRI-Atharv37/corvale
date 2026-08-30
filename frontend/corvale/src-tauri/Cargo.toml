@@ -21,6 +21,10 @@ tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# BUG-27: hand external URLs (docs site, GitHub, installer downloads) to the OS default browser —
+# a Tauri webview silently no-ops `target="_blank"` / `window.open`, so without this there is no
+# path out of the app.
+tauri-plugin-opener = "2"
 # BUG-30: a persistent on-disk log (app log dir) so a "Failed to load local data" in the field
 # leaves something readable for the user and the maintainer.
 tauri-plugin-log = "2"

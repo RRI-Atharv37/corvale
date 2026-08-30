@@ -18,6 +18,11 @@ matching the pushed tag for the GitHub Release body.
 - **Desktop app: duplicate password-reveal / clear buttons.** WebView2 (Edge/Chromium) draws its
   own `::-ms-reveal` / `::-ms-clear` controls next to the app's own show/hide toggle. They are now
   suppressed globally in `index.css`; the web build (Chrome) never rendered them.
+- **Desktop app: external links did nothing.** The header "Docs" link, the landing-page GitHub
+  link, and the `/download` installer links silently no-opped inside the Tauri webview, which
+  blocks `target="_blank"` navigation. External links now go through a shared `<ExternalLink>`
+  component that hands the URL to the operating system's default browser via `tauri-plugin-opener`
+  on desktop, and stays an ordinary new-tab anchor on the web.
 
 ## [1.0.2] - 2026-08-30
 

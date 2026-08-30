@@ -29,6 +29,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // BUG-27: opens external URLs in the user's default browser (external `<a>` clicks
+        // otherwise silently no-op inside the webview).
+        .plugin(tauri_plugin_opener::init())
         .manage(DbState::default())
         .invoke_handler(tauri::generate_handler![
             db::db_open,
