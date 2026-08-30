@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../utils/apiError'
 import { resetPreferredCurrency, resetDateFormat, setDateFormat, setPreferredCurrency } from '../utils/format'
 import { getCachedUser, setCachedUser } from '../offline/cachedUser'
 import { setAccessToken } from '../utils/tokenStore'
+import { clearStoredRefreshToken, getStoredRefreshToken, storeRefreshToken } from '../utils/refreshTokenStore'
 import { clearOfflineGrant, getStoredOfflineGrant, storeOfflineGrant, verifyOfflineGrant } from '../offline/offlineGrant'
 import { isNetworkError } from '../offline/reachability'
 import { wipeLocalData } from '../offline/wipeLocalData'
@@ -55,6 +56,8 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         applyUser(null)
         setAccessToken(null)
         clearOfflineGrant()
+        // Desktop keychain-held refresh token (SEC-11 / BUG-24); no-op on the web.
+        void clearStoredRefreshToken()
     }, [applyUser])
 
     const updateUser = useCallback(
@@ -66,7 +69,10 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
     const logout = useCallback(async () => {
         try {
-            await axiosInstance.post(API_PATHS.AUTH.LOGOUT)
+            // Desktop sends its keychain-held refresh token so the server can revoke it
+            // (SEC-11 / BUG-24); on the web this is null and the cookie is revoked instead.
+            const refreshToken = await getStoredRefreshToken()
+            await axiosInstance.post(API_PATHS.AUTH.LOGOUT, refreshToken ? { refreshToken } : undefined)
         } catch {
             // Clear local session even if the server call fails (e.g. offline)
         }
@@ -96,11 +102,18 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         // stored token first. The response carries a fresh token, the user, and a rolled-forward
         // offline grant in one round trip.
         try {
-            const response = await axiosInstance.post<ApiResponse<AuthPayload>>(API_PATHS.AUTH.REFRESH)
+            const storedRefreshToken = await getStoredRefreshToken()
+            const response = await axiosInstance.post<ApiResponse<AuthPayload>>(
+                API_PATHS.AUTH.REFRESH,
+                storedRefreshToken ? { refreshToken: storedRefreshToken } : undefined
+            )
             const payload = parseAuthPayload(response)
             setAccessToken(payload.token)
             applyUser(payload.user)
             storeOfflineGrant(payload.offlineGrant)
+            if (payload.refreshToken) {
+                await storeRefreshToken(payload.refreshToken)
+            }
         } catch (error) {
             // A network failure (no server response reached us) is not proof the session is
             // invalid - it just means we can't check. Fall back to the last-known cached user,
@@ -193,6 +206,9 @@ export default UserProvider
 export const setAuthSession = async (payload: AuthPayload): Promise<void> => {
     setAccessToken(payload.token)
     storeOfflineGrant(payload.offlineGrant)
+    // Desktop only (SEC-11 / BUG-24): stash the refresh token in the OS keychain so the session
+    // survives past the access-token TTL and across relaunches. No-op on the web.
+    await storeRefreshToken(payload.refreshToken)
     await provisionLocalDb()
 }
 

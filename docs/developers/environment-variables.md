@@ -135,9 +135,12 @@ or browsers reject them). Note this does **not** add CSRF protection for the aut
 that lands with the wider token-storage rework (`SEC-18`) — so treat `none` as a stopgap, not
 a long-term posture.
 
-The desktop (Tauri) app is a distinct cross-site case tracked separately (`SEC-10`/`SEC-11`
-cross-cutting note in `ROADMAP.md`) and is expected to use a non-cookie refresh path rather
-than `SameSite=None`.
+The desktop (Tauri) app is a distinct cross-site case and does not rely on the cookie at all. It
+is identified by its fixed `Origin`, receives the rotated refresh token in the auth response
+body, and stores it in the operating system's keychain (Windows Credential Manager, macOS
+Keychain, or the Linux Secret Service), then sends it back in the `POST /auth/refresh` and
+`POST /auth/logout` request bodies. This path needs no configuration and does not require
+`SameSite=None`. See [Authentication API](./authentication-api.md#desktop-clients).
 
 ## Offline session grant
 

@@ -4,6 +4,7 @@ import { TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
 import { getAccessToken, setAccessToken } from './tokenStore'
 import { storeOfflineGrant } from '../offline/offlineGrant'
 import { SESSION_EXPIRED_EVENT } from './sessionEvents'
+import { getStoredRefreshToken, storeRefreshToken } from './refreshTokenStore'
 
 const client = axios.create({
     baseURL: BASE_URL,
@@ -126,13 +127,18 @@ client.interceptors.response.use(
             isRefreshing = true
 
             try {
+                // Desktop (Tauri) clients can't use the cross-site refresh cookie, so they send
+                // the keychain-held refresh token in the body and get a rotated one back
+                // (SEC-11 / BUG-24). On the web this is null and the cookie carries the session.
+                const storedRefreshToken = await getStoredRefreshToken()
                 const refreshResponse = await axios.post(
                     `${BASE_URL}/auth/refresh`,
-                    {},
+                    storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
                     { withCredentials: true }
                 )
                 const newToken = refreshResponse.data?.data?.token as string | undefined
                 const newOfflineGrant = refreshResponse.data?.data?.offlineGrant as string | undefined
+                const rotatedRefreshToken = refreshResponse.data?.data?.refreshToken as string | undefined
 
                 if (!newToken) {
                     throw new Error('Refresh response missing token')
@@ -140,6 +146,11 @@ client.interceptors.response.use(
 
                 setAccessToken(newToken)
                 storeOfflineGrant(newOfflineGrant)
+                // Only persist a rotated token we actually received - never let an unexpected
+                // empty value wipe a still-usable keychain entry.
+                if (rotatedRefreshToken) {
+                    await storeRefreshToken(rotatedRefreshToken)
+                }
                 processRefreshQueue(newToken)
                 originalRequest.headers.Authorization = `Bearer ${newToken}`
                 return client(originalRequest)

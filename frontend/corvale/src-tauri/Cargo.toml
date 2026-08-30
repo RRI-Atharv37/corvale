@@ -28,3 +28,7 @@ pbkdf2 = "0.12"
 hmac = "0.12"
 sha2 = "0.10"
 base64 = "0.22"
+# SEC-11 / BUG-24: OS keychain for the desktop refresh token (Windows Credential Manager,
+# macOS Keychain, Linux Secret Service). `crypto-rust` keeps the Secret Service backend pure
+# Rust so it doesn't pull a second OpenSSL linkage alongside SQLCipher's vendored one.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }

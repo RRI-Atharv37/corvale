@@ -20,7 +20,7 @@ Download the installer for your platform from the project's releases page:
 - **macOS** - `.dmg` disk image
 - **Linux** - `.deb`, `.rpm`, or `.AppImage`
 
-Run the installer and launch Corvale like any other desktop application. The first launch asks you to sign in once while you're online, so it can download your data into the local database. After that, the app offers to set up a **PIN** that unlocks your local data on later launches - this is a desktop feature; the web app has no PIN. You can skip the PIN and set one later from **Settings**.
+Run the installer and launch Corvale like any other desktop application. The first launch asks you to sign in once while you're online, so it can download your data into the local database. You stay signed in after that - the app keeps your session in your operating system's keychain and refreshes it in the background, so it doesn't ask you to sign in again every time you open it. After the first sign-in, the app offers to set up a **PIN** that unlocks your local data on later launches - this is a desktop feature; the web app has no PIN. You can skip the PIN and set one later from **Settings**.
 
 ## When to use it vs. the web app
 

@@ -6,12 +6,22 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // (captured off a mocked `axios.create()`) so the refresh-attempt/no-refresh branches and the
 // SESSION_EXPIRED_EVENT/TOKEN_REVOKED_EVENT dispatch can be asserted without a live HTTP layer.
 
-const { interceptors, postMock } = vi.hoisted(() => ({
+const { interceptors, postMock, getStoredRefreshTokenMock, storeRefreshTokenMock } = vi.hoisted(() => ({
     interceptors: {
         request: { use: vi.fn() },
         response: { use: vi.fn() },
     },
     postMock: vi.fn(),
+    getStoredRefreshTokenMock: vi.fn(),
+    storeRefreshTokenMock: vi.fn(),
+}))
+
+// SEC-11 / BUG-24: on the desktop the refresh token comes from the keychain, rides in the
+// request body, and the rotated one is written back. On the web all three are inert.
+vi.mock('../refreshTokenStore', () => ({
+    getStoredRefreshToken: getStoredRefreshTokenMock,
+    storeRefreshToken: storeRefreshTokenMock,
+    clearStoredRefreshToken: vi.fn(),
 }))
 
 vi.mock('axios', async () => {
@@ -50,6 +60,10 @@ describe('axiosInstance response interceptor - session clearing (BUG-07)', () =>
     beforeEach(() => {
         setAccessToken('existing-token')
         postMock.mockReset()
+        getStoredRefreshTokenMock.mockReset()
+        getStoredRefreshTokenMock.mockResolvedValue(null)
+        storeRefreshTokenMock.mockReset()
+        storeRefreshTokenMock.mockResolvedValue(undefined)
         dispatchedEventTypes = []
         vi.spyOn(window, 'dispatchEvent').mockImplementation((event: Event) => {
             dispatchedEventTypes.push(event.type)
@@ -105,5 +119,37 @@ describe('axiosInstance response interceptor - session clearing (BUG-07)', () =>
         expect(getAccessToken()).toBe('existing-token')
         expect(dispatchedEventTypes).not.toContain(SESSION_EXPIRED_EVENT)
         expect(dispatchedEventTypes).not.toContain(TOKEN_REVOKED_EVENT)
+    })
+
+    it('refreshes with an empty body and stores nothing when no refresh token is held (web)', async () => {
+        postMock.mockResolvedValue({ data: { data: { token: 'new-access', offlineGrant: null } } })
+        const handler = getResponseErrorHandler()
+
+        await handler(makeError(401, 'jwt expired')).catch(() => undefined)
+
+        expect(postMock).toHaveBeenCalledWith(
+            expect.stringContaining('/auth/refresh'),
+            {},
+            { withCredentials: true }
+        )
+        expect(storeRefreshTokenMock).not.toHaveBeenCalled()
+    })
+
+    it('sends the keychain refresh token in the body and persists the rotated one (desktop)', async () => {
+        getStoredRefreshTokenMock.mockResolvedValue('stored-rt')
+        postMock.mockResolvedValue({
+            data: { data: { token: 'new-access', offlineGrant: null, refreshToken: 'rotated-rt' } },
+        })
+        const handler = getResponseErrorHandler()
+
+        await handler(makeError(401, 'jwt expired')).catch(() => undefined)
+
+        expect(postMock).toHaveBeenCalledWith(
+            expect.stringContaining('/auth/refresh'),
+            { refreshToken: 'stored-rt' },
+            { withCredentials: true }
+        )
+        expect(storeRefreshTokenMock).toHaveBeenCalledWith('rotated-rt')
+        expect(getAccessToken()).toBe('new-access')
     })
 })

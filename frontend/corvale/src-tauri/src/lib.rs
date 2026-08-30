@@ -1,5 +1,6 @@
 mod backup;
 mod db;
+mod keychain;
 mod path_safety;
 
 use db::DbState;
@@ -19,6 +20,9 @@ pub fn run() {
             db::db_close,
             backup::save_backup_file,
             backup::open_backup_file,
+            keychain::keychain_set,
+            keychain::keychain_get,
+            keychain::keychain_delete,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the Corvale desktop application");

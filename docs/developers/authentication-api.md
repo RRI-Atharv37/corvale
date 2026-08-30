@@ -96,7 +96,17 @@ Send a fresh verification link. **Rate-limited.** Optional auth:
 
 ## POST /auth/refresh
 
-Issue a new access token using the refresh token cookie. **Public** (no Bearer header). Rotates the refresh token on success.
+Issue a new access token using the refresh token. **Public** (no Bearer header). Rotates the refresh token on success.
+
+The refresh token normally travels in the httpOnly `corvale_refresh` cookie. The desktop app is an exception - it runs at a different origin from the API, so the cookie is never sent. It instead passes the token in the request body:
+
+```json
+{
+  "refreshToken": "…"
+}
+```
+
+The body value takes precedence over the cookie when both are present. A missing body value simply falls back to the cookie, so web clients send an empty body.
 
 ### Success response (200)
 
@@ -109,6 +119,20 @@ Issue a new access token using the refresh token cookie. **Public** (no Bearer h
 }
 ```
 
+For a desktop-app request (identified by its `Origin`), the response also carries the rotated refresh token so the app can store it in the operating system's keychain:
+
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "…"
+  }
+}
+```
+
+`POST /auth/register` and `POST /auth/login` include the same `refreshToken` field for desktop-app requests, and omit it for web requests.
+
 ### Errors
 
 | Status | Condition |
@@ -117,7 +141,7 @@ Issue a new access token using the refresh token cookie. **Public** (no Bearer h
 
 ## POST /auth/logout
 
-Revoke the current refresh token and clear the cookie. **Requires auth.**
+Revoke the current refresh token and clear the cookie. **Requires auth.** A desktop client passes the token it holds in the body as `{ "refreshToken": "…" }` so the server can revoke the right one.
 
 ## POST /auth/logout-all
 
@@ -214,6 +238,10 @@ Both fields are optional. Supported currencies are validated server-side. An inv
 - httpOnly, secure in production, sameSite `lax`
 - Expiry: `JWT_REFRESH_EXPIRY` (default: `7d`)
 - Stored hashed in the `RefreshToken` collection with rotation on each refresh
+
+### Desktop clients
+
+The cookie only works when the frontend and API share a registrable domain (see [Deployment topology](./environment-variables.md#deployment-topology)). The packaged desktop app does not, so it uses a non-cookie path instead: it receives the rotated refresh token in the response body and stores it in the OS keychain (Windows Credential Manager, macOS Keychain, or the Linux Secret Service), then presents it in the body of `POST /auth/refresh` and `POST /auth/logout`. The server only returns a token in the body when the request's `Origin` is the desktop app's; browsers cannot forge that header, so the web app can never receive the refresh token in a response body.
 
 ## Password hashing
 
