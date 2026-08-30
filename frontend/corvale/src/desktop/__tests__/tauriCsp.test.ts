@@ -83,6 +83,14 @@ describe('Strict Tauri CSP (D2, SEC-04)', () => {
         expect(connectSrc).toContain('http://ipc.localhost')
     })
 
+    it('frame-src allows blob: (the in-app PDF receipt viewer, BUG-25) but no remote origin', () => {
+        const csp = readCsp()
+        const frameSrc = csp.match(/frame-src([^;]*)/)?.[1] ?? ''
+        expect(frameSrc).toContain("'self'")
+        expect(frameSrc).toContain('blob:')
+        expect(frameSrc).not.toMatch(/https?:\/\//)
+    })
+
     it('connect-src only reaches remote origins over TLS, never plain http', () => {
         const csp = readCsp()
         const connectSrc = csp.match(/connect-src([^;]*)/)?.[1] ?? ''
