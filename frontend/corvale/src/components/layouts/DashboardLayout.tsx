@@ -59,6 +59,7 @@ import SyncSettings from '../settings/SyncSettings'
 import DesktopUpdateSettings from '../settings/DesktopUpdateSettings'
 import SyncStatusBadge from '../sync/SyncStatusBadge'
 import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
+import { isLocalPinEnabled } from '../../utils/localPinFlag'
 import { startSyncEngine, syncNow } from '../../sync/syncEngine'
 import { syncTimezoneOncePerSession } from '../../utils/timezoneSync'
 
@@ -440,7 +441,7 @@ const DashboardLayout: React.FC = () => {
                     <BackupRestoreSettings />
                     <DesktopUpdateSettings />
                     {isLocalFirstEnabled() && <SyncSettings />}
-                    {isLocalFirstEnabled() && <PinSettings />}
+                    {isLocalPinEnabled() && <PinSettings />}
 
                     <div>
                         <p className="section-label mb-3">Account</p>

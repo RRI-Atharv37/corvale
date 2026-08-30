@@ -47,6 +47,19 @@ describe('Desktop build sets VITE_LOCAL_FIRST=true (D4)', () => {
         }
     })
 
+    it('no env file enables the dormant local-lock PIN feature (BUG-31)', () => {
+        // `VITE_LOCAL_PIN` gates the whole PIN surface. It stays unset everywhere until
+        // encryption-at-rest is keyed from the OS keychain at db_open - a bare `PRAGMA key` on an
+        // already-populated plaintext DB corrupts the local store.
+        for (const relativePath of ['.env.example', '.env.desktop', '.env.test']) {
+            const contents = readSource(relativePath)
+            expect(contents).not.toMatch(/^VITE_LOCAL_PIN=true$/m)
+        }
+        if (fs.existsSync(resolve(frontendRoot, '.env'))) {
+            expect(readSource('.env')).not.toMatch(/^VITE_LOCAL_PIN=true$/m)
+        }
+    })
+
     it('plain web scripts (dev/build) are untouched and do not force desktop mode', () => {
         const pkg = JSON.parse(readSource('package.json'))
         expect(pkg.scripts.dev).toBe('vite')

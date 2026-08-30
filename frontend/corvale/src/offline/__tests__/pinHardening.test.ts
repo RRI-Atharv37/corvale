@@ -180,6 +180,47 @@ describe('PIN verifier hardening (S9, SEC-02)', () => {
 })
 
 /**
+ * BUG-31: `applyEncryptionKey` used to swallow *every* failure from `db.setEncryptionKey`,
+ * including a real one (the desktop `db_set_key` corrupting an already-populated plaintext DB).
+ * That left a stored verifier pointing at a local DB the key was never applied to - a dead PIN.
+ * `setupPin` must now surface the failure and leave nothing behind, so the UI can report it.
+ */
+describe('setupPin surfaces a failed key application and rolls back (BUG-31)', () => {
+    afterEach(() => {
+        resetLocalDbForTests()
+        localStorage.clear()
+    })
+
+    it('rejects and stores no verifier when setEncryptionKey throws', async () => {
+        class ThrowingDb {
+            async setEncryptionKey(): Promise<void> {
+                throw new Error('SQLCipher: file is not a database')
+            }
+            hasEncryptionKey(): boolean {
+                return false
+            }
+            clearEncryptionKey(): void {}
+            async exec(): Promise<void> {}
+            async select(): Promise<never[]> {
+                return []
+            }
+            async transaction<T>(fn: (tx: this) => Promise<T>): Promise<T> {
+                return fn(this)
+            }
+            async close(): Promise<void> {}
+        }
+        localStorage.clear()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setLocalDb(new ThrowingDb() as any)
+
+        await expect(setupPin('284915')).rejects.toThrow(/not a database/i)
+
+        expect(hasPinConfigured()).toBe(false)
+        expect(localStorage.getItem(PIN_SALT_KEY)).toBeNull()
+    })
+})
+
+/**
  * V7.3e rename-compat shim (FREEZE - do not rename): `VERIFIER_SALT_CONTEXT` and
  * `VERIFIER_PLAINTEXT` are PBKDF2 domain-separation inputs, not brand strings - they feed the
  * verifier derivation (`deriveVerifierSalt`/`computeVerifier`) that every existing encrypted

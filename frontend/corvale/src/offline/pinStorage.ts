@@ -159,14 +159,18 @@ const resetAttempts = (): void => {
 }
 
 const applyEncryptionKey = async (pin: string, salt: Uint8Array): Promise<void> => {
+    let db: unknown
     try {
-        const db = await getLocalDb()
-        if (hasKeySetter(db)) {
-            await db.setEncryptionKey(pin, salt)
-        }
+        db = await getLocalDb()
     } catch {
-        // Local DB unavailable (e.g. local-first disabled in this build) - the PIN still gates the UI.
+        // The local DB itself is unavailable (e.g. local-first disabled in this build) - the PIN
+        // still gates the UI. This is the only failure that's safe to swallow.
+        return
     }
+    if (!hasKeySetter(db)) return
+    // BUG-31: do NOT swallow a failure from setEncryptionKey. A swallowed error left a stored PIN
+    // verifier pointing at a local DB the key was never applied to - a dead PIN. Callers roll back.
+    await db.setEncryptionKey(pin, salt)
 }
 
 export const hasPinConfigured = (): boolean => localStorage.getItem(PIN_VERIFIER_KEY) !== null
@@ -181,7 +185,14 @@ export const setupPin = async (pin: string): Promise<void> => {
     localStorage.setItem(PIN_SALT_KEY, toBase64(salt))
     localStorage.setItem(PIN_VERIFIER_KEY, verifier)
     resetAttempts()
-    await applyEncryptionKey(pin, salt)
+    try {
+        await applyEncryptionKey(pin, salt)
+    } catch (error) {
+        // BUG-31: the key couldn't be applied to the local DB - don't leave a verifier pointing
+        // at a store this PIN doesn't actually unlock. Surface the failure to the caller.
+        clearPin()
+        throw error
+    }
 }
 
 export const verifyStoredPin = async (pin: string): Promise<boolean> => {

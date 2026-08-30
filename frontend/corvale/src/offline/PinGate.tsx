@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import PinUnlock from './PinUnlock'
 import { LOCAL_DB_LOCKED_EVENT, hasPinConfigured, isLocalDbUnlocked, lockLocalDb, verifyStoredPin } from './pinStorage'
 import { wipeLocalData } from './wipeLocalData'
-import { isLocalFirstEnabled } from '../utils/localFirstFlag'
+import { isLocalPinEnabled } from '../utils/localPinFlag'
 
 /** Tab hidden this long or more before returning re-locks the local DB (S10, SEC-03). */
 const HIDE_TIMEOUT_MS = 5 * 60 * 1000
@@ -15,11 +15,12 @@ type GateStatus = 'unlocked' | 'locked' | 'checking'
  * previous `sessionStorage`-flag gate, "unlocked" here is a *consequence* of the local DB
  * actually holding its derived encryption key (`isLocalDbUnlocked`) - a storage flag alone can
  * no longer render children with the data still sitting behind a key nobody derived this
- * session. If no PIN has been set up, or local-first is off, this is a no-op passthrough.
+ * session. If no PIN has been set up, or the PIN feature is dormant (`isLocalPinEnabled` - off in
+ * every shipped build, see BUG-31), this is a no-op passthrough.
  */
 const PinGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const navigate = useNavigate()
-    const gateActive = isLocalFirstEnabled() && hasPinConfigured()
+    const gateActive = isLocalPinEnabled() && hasPinConfigured()
     const [status, setStatus] = useState<GateStatus>(gateActive ? 'checking' : 'unlocked')
 
     useEffect(() => {

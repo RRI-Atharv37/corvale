@@ -84,14 +84,44 @@ pub fn db_open(app: AppHandle, state: State<DbState>, filename: String) -> Resul
     Ok(())
 }
 
+/// True once the connection's database holds at least one application table (anything not in the
+/// `sqlite_*` reserved namespace). BUG-31: `PRAGMA key` only *initialises* encryption on a fresh
+/// database — run against an already-populated plaintext file it leaves the file half-plaintext /
+/// half-ciphertext and permanently unreadable (SQLCipher needs `PRAGMA rekey`, or an
+/// `sqlcipher_export` copy, to encrypt data in place). `db_open` runs schema migrations before the
+/// frontend ever calls `db_set_key`, so in the current architecture there is no safe moment to
+/// apply a key this way; this guard makes `db_set_key` fail loudly instead of silently corrupting
+/// the local store. Pure + `Connection`-only so it's unit-testable without a Tauri app context.
+fn database_has_application_tables(conn: &Connection) -> rusqlite::Result<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        [],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
 /// Derives a 256-bit SQLCipher page key from the PIN via PBKDF2-HMAC-SHA256 and applies it with
 /// `PRAGMA key`, using SQLCipher's raw-key syntax (`x'<hex>'`) so the already-derived key isn't
 /// run through SQLCipher's own internal KDF a second time. A cheap read afterwards is the standard
 /// way to confirm the key was actually correct — SQLCipher only reports a bad key on first access.
+///
+/// BUG-31: refuses up front when the database already contains application data — applying a key
+/// with a bare `PRAGMA key` at that point corrupts the file. The PIN feature stays dormant
+/// (`VITE_LOCAL_PIN` unset) until the key is applied at `db_open` on a DB encrypted from creation.
 #[tauri::command]
 pub fn db_set_key(state: State<DbState>, passphrase: String, salt: Vec<u8>) -> Result<(), String> {
     let guard = state.0.lock().map_err(to_sql_error)?;
     let conn = guard.as_ref().ok_or("Database not open")?;
+
+    if database_has_application_tables(conn).map_err(to_sql_error)? {
+        return Err(
+            "Cannot enable encryption on an existing local database: a page key applied after data \
+             exists corrupts the file. This build does not support setting a PIN on an already-\
+             created local store (BUG-31)."
+                .to_string(),
+        );
+    }
 
     let mut key = [0u8; 32];
     pbkdf2::<Hmac<Sha256>>(passphrase.as_bytes(), &salt, PBKDF2_ITERATIONS, &mut key)
@@ -209,6 +239,40 @@ fn copy_legacy_db_if_missing(
     std::fs::create_dir_all(new_dir)?;
     std::fs::copy(&legacy_path, &new_path)?;
     Ok(true)
+}
+
+#[cfg(test)]
+mod db_set_key_guard_tests {
+    use rusqlite::Connection;
+
+    /// BUG-31: `db_set_key` must refuse to apply a page key once the database holds application
+    /// data — a bare `PRAGMA key` at that point corrupts the file. The guard keys off whether any
+    /// non-`sqlite_*` table exists.
+    #[test]
+    fn reports_no_application_tables_for_a_fresh_database() {
+        let conn = Connection::open_in_memory().unwrap();
+        assert!(!super::database_has_application_tables(&conn).unwrap());
+    }
+
+    #[test]
+    fn reports_application_tables_once_a_user_table_is_created() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE transactions (id TEXT PRIMARY KEY, data TEXT);")
+            .unwrap();
+        assert!(super::database_has_application_tables(&conn).unwrap());
+    }
+
+    #[test]
+    fn ignores_sqlite_internal_tables() {
+        let conn = Connection::open_in_memory().unwrap();
+        // An AUTOINCREMENT column makes SQLite create the internal `sqlite_sequence` table; the
+        // guard must not treat that reserved-namespace table as application data.
+        conn.execute_batch("CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT);")
+            .unwrap();
+        conn.execute_batch("INSERT INTO t DEFAULT VALUES;").unwrap();
+        conn.execute_batch("DROP TABLE t;").unwrap();
+        assert!(!super::database_has_application_tables(&conn).unwrap());
+    }
 }
 
 #[cfg(test)]

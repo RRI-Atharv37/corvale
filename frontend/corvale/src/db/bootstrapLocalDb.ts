@@ -2,6 +2,7 @@ import { setLocalDb } from './localDbInstance'
 import { runMigrations } from './migrations/runMigrations'
 import { MIGRATIONS } from './migrations/schema'
 import { isLocalFirstEnabled } from '../utils/localFirstFlag'
+import { isLocalPinEnabled } from '../utils/localPinFlag'
 import { isTauriRuntime } from '../desktop/isTauri'
 import { migrateLegacyPinKeys, purgeLocalPinKeys } from '../offline/pinStorage'
 
@@ -32,9 +33,18 @@ export const bootstrapLocalDb = async (): Promise<void> => {
     return
   }
 
-  // V7.3e: copy any pre-rename `spndr_pin_*` keys forward before anything reads `hasPinConfigured`,
-  // so a PIN set up before the Corvale rename still unlocks the local DB. Idempotent no-op otherwise.
-  migrateLegacyPinKeys()
+  if (!isLocalPinEnabled()) {
+    // BUG-31: the local-lock PIN feature is dormant (no shipped build sets `VITE_LOCAL_PIN`) - the
+    // desktop `db_set_key` corrupts an already-populated plaintext SQLite file, so v1.0.2/v1.0.3
+    // desktop users who set a PIN are left with an unreadable store *and* an orphaned verifier in
+    // `localStorage` that no UI can clear (PinGate/PinSettings are both gated off now). Purge it,
+    // same as the local-first-off (web) path does. Recognises the pre-rename `spndr_pin_*` names.
+    purgeLocalPinKeys()
+  } else {
+    // V7.3e: copy any pre-rename `spndr_pin_*` keys forward before anything reads
+    // `hasPinConfigured`, so a PIN set up before the Corvale rename still unlocks the local DB.
+    migrateLegacyPinKeys()
+  }
 
   try {
     if (isTauriRuntime()) {

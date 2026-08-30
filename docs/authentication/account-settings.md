@@ -21,7 +21,7 @@ The Settings modal opens with a **Profile** section, followed by these, in order
 - **Privacy and data** - your data rights and the legal documents, see [Your Data and Privacy](../legal/your-data-and-privacy.md)
 - **Delete my account** - permanent deletion, at the very bottom
 
-On builds with offline support switched on, two more sections appear before **Account**: local sync controls and your app PIN.
+On builds with offline support switched on, a **local sync** section appears before **Account**, with controls for the background sync engine.
 
 ## Profile
 

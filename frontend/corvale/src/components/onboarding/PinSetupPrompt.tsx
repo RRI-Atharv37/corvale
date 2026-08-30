@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import Modal from '../ui/Modal'
 import { MIN_PIN_LENGTH, hasPinConfigured, setupPin } from '../../offline/pinStorage'
-import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
+import { isLocalPinEnabled } from '../../utils/localPinFlag'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { BRAND } from '../../utils/brand'
 
@@ -26,7 +26,7 @@ const PinSetupPrompt: React.FC = () => {
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
-        if (!isLocalFirstEnabled()) return
+        if (!isLocalPinEnabled()) return
         if (hasPinConfigured()) return
         if (localStorage.getItem(PROMPT_SEEN_KEY)) return
 
