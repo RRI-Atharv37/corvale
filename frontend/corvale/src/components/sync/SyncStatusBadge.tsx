@@ -8,10 +8,22 @@ import { formatRelativeTime } from '../../utils/format'
 import { getLocalDb } from '../../db/localDbInstance'
 import { tableInvalidationBus } from '../../db/invalidation/tableInvalidationBus'
 import { listUnresolvedConflicts, resolveConflict, type Conflict } from '../../sync/conflicts'
+import FailedSyncOps from './FailedSyncOps'
 
-/** Online/offline + pending-op badge with a "Sync issues" conflict inbox (Sprint 13.6). */
+/** Online/offline + pending-op badge with a "Sync issues" conflict + rejected-op inbox (Sprint 13.6, BUG-32). */
 const SyncStatusBadge: React.FC = () => {
-    const { online: reportedOnline, pendingCount, conflictCount, lastSyncedAt, syncing, syncNow } = useSyncStatus()
+    const {
+        online: reportedOnline,
+        pendingCount,
+        conflictCount,
+        failedCount,
+        failedOps,
+        lastSyncedAt,
+        syncing,
+        syncNow,
+        retryOp,
+        discardOp,
+    } = useSyncStatus()
     // `navigator.onLine` (what `useSyncStatus` reports) can be true with no real route to the
     // backend (LAN-but-no-internet, captive portal); fold in the periodic reachability probe
     // so the badge doesn't claim "Online" when sync would actually fail.
@@ -21,6 +33,7 @@ const SyncStatusBadge: React.FC = () => {
     const [conflicts, setConflicts] = useState<Conflict[]>([])
     const [resolvingId, setResolvingId] = useState<string | null>(null)
     const panelRef = useRef<HTMLDivElement>(null)
+    const waitingCount = Math.max(0, pendingCount - failedCount)
 
     const loadConflicts = useCallback(async () => {
         const db = await getLocalDb()
@@ -81,7 +94,7 @@ const SyncStatusBadge: React.FC = () => {
                         {pendingCount > 9 ? '9+' : pendingCount}
                     </span>
                 )}
-                {conflictCount > 0 && (
+                {(conflictCount > 0 || failedCount > 0) && (
                     <FiAlertTriangle size={14} className="text-warning" aria-label="Sync issues" />
                 )}
             </button>
@@ -106,16 +119,27 @@ const SyncStatusBadge: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className="px-4 py-3 text-xs text-fg-muted border-b border-border-subtle">
-                        {pendingCount > 0
-                            ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to sync`
-                            : 'All changes synced'}
+                    <div className="px-4 py-3 text-xs border-b border-border-subtle space-y-1">
+                        {waitingCount > 0 && (
+                            <p className="text-fg-muted">
+                                {waitingCount} change{waitingCount === 1 ? '' : 's'} waiting to sync
+                            </p>
+                        )}
+                        {failedCount > 0 && (
+                            <p className="text-destructive font-medium">
+                                {failedCount} change{failedCount === 1 ? '' : 's'} rejected by the server — needs your attention
+                            </p>
+                        )}
+                        {waitingCount === 0 && failedCount === 0 && (
+                            <p className="text-fg-muted">All changes synced</p>
+                        )}
                     </div>
 
                     <div className="max-h-72 overflow-y-auto">
-                        {conflicts.length === 0 ? (
+                        <FailedSyncOps failedOps={failedOps} onRetry={retryOp} onDiscard={discardOp} />
+                        {conflicts.length === 0 && failedCount === 0 ? (
                             <p className="px-4 py-6 text-center text-sm text-fg-muted">No sync issues</p>
-                        ) : (
+                        ) : conflicts.length === 0 ? null : (
                             <ul className="divide-y divide-slate-800">
                                 {conflicts.map((conflict) => (
                                     <li key={conflict.id} className="px-4 py-3">

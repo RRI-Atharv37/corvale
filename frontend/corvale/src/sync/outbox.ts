@@ -43,7 +43,8 @@ export interface OutboxOp extends EnqueueInput {
  * is no server doc to reconcile against (unlike `conflict`, this was never
  * the same logical record), so it isn't routed through the conflict inbox -
  * it falls through `Outbox.flush`'s default retry-with-backoff path like
- * `rejected`, keeping the op visibly pending rather than silently dropped,
+ * `rejected` - recording `lastError` so the "Sync issues" inbox can surface it
+ * with a retry/discard action (BUG-32) - rather than being silently dropped,
  * until the local-id-regeneration flow (not yet built) resolves it.
  */
 export type PushOpStatus = 'applied' | 'conflict' | 'rejected' | 'id_conflict'
@@ -51,6 +52,12 @@ export type PushOpStatus = 'applied' | 'conflict' | 'rejected' | 'id_conflict'
 export interface PushResult {
     opId: string
     status: PushOpStatus
+    /**
+     * The server's rejection reason for a `rejected` op (BUG-32). `syncController`
+     * populates `message` on every rejected result; without it the outbox can only
+     * say "something failed". Threaded straight into `OutboxOp.lastError`.
+     */
+    message?: string
 }
 
 export interface Outbox {
@@ -58,6 +65,10 @@ export interface Outbox {
     flush(pushFn: (ops: OutboxOp[]) => Promise<PushResult[]>): Promise<void>
     listPending(): Promise<OutboxOp[]>
     markFailed(opId: string, error: string): Promise<void>
+    /** User-driven "retry now": clears the recorded error and backoff so the next flush re-sends the op. */
+    retry(opId: string): Promise<void>
+    /** User-driven "discard this change": drops a stuck op from the queue for good. */
+    discard(opId: string): Promise<void>
 }
 
 /** Pluggable persistence so the real app can back this with the local SQLite `_outbox` table. */
@@ -70,7 +81,21 @@ export interface OutboxStore {
 
 const BASE_BACKOFF_MS = 1000
 
-const computeBackoffDelay = (attempts: number): number => BASE_BACKOFF_MS * 2 ** Math.max(0, attempts - 1)
+/**
+ * Cap the exponential backoff (BUG-32). Uncapped, `2^attempts` reaches days after ~15
+ * failed pushes and years after ~20 - a transient server rejection would then never
+ * retry on its own. 5 minutes keeps a stuck op quietly recovering without hammering.
+ */
+const MAX_BACKOFF_MS = 5 * 60 * 1000
+
+const computeBackoffDelay = (attempts: number): number =>
+    Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * 2 ** Math.max(0, attempts - 1))
+
+/** Human-readable fallbacks when the server sent no `message` with a non-`applied` result (BUG-32). */
+const defaultErrorForStatus = (status: PushOpStatus): string =>
+    status === 'id_conflict'
+        ? "This change couldn't be saved: its ID is already used by another record on the server."
+        : 'The server rejected this change.'
 
 export const createMemoryOutboxStore = (): OutboxStore => {
     const ops = new Map<string, OutboxOp>()
@@ -159,6 +184,16 @@ export const createOutbox = (store: OutboxStore = createMemoryOutboxStore(), opt
 
     const listPending = (): Promise<OutboxOp[]> => store.list()
 
+    const retry = async (opId: string): Promise<void> => {
+        const [op] = (await store.list()).filter((pending) => pending.opId === opId)
+        if (!op) {
+            return
+        }
+        await store.update(opId, { attempts: 0, lastError: null, nextAttemptAt: null })
+    }
+
+    const discard = (opId: string): Promise<void> => store.remove(opId)
+
     const markFailed = async (opId: string, error: string): Promise<void> => {
         const [op] = (await store.list()).filter((pending) => pending.opId === opId)
         if (!op) {
@@ -195,10 +230,11 @@ export const createOutbox = (store: OutboxStore = createMemoryOutboxStore(), opt
             const attempts = (op?.attempts ?? 0) + 1
             await store.update(result.opId, {
                 attempts,
+                lastError: result.message ?? defaultErrorForStatus(result.status),
                 nextAttemptAt: Date.now() + computeBackoffDelay(attempts),
             })
         }
     }
 
-    return { enqueue, flush, listPending, markFailed }
+    return { enqueue, flush, listPending, markFailed, retry, discard }
 }

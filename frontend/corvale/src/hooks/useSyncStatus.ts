@@ -1,13 +1,29 @@
 import { useCallback, useEffect, useState } from 'react'
 import { tableInvalidationBus } from '../db/invalidation/tableInvalidationBus'
-import { getSyncStatus, resetLocalData, syncNow, type SyncStatus } from '../sync/syncEngine'
+import {
+    discardSyncOp,
+    getSyncStatus,
+    resetLocalData,
+    retrySyncOp,
+    syncNow,
+    type SyncStatus,
+} from '../sync/syncEngine'
 
-const DEFAULT_STATUS: SyncStatus = { online: true, pendingCount: 0, conflictCount: 0, lastSyncedAt: null }
+const DEFAULT_STATUS: SyncStatus = {
+    online: true,
+    pendingCount: 0,
+    conflictCount: 0,
+    failedCount: 0,
+    failedOps: [],
+    lastSyncedAt: null,
+}
 
 interface UseSyncStatusResult extends SyncStatus {
     syncing: boolean
     syncNow: () => Promise<void>
     resetLocalData: () => Promise<void>
+    retryOp: (opId: string) => Promise<void>
+    discardOp: (opId: string) => Promise<void>
 }
 
 /** Drives `SyncStatusBadge` and the "Sync issues" panel: online/offline, pending-op count, last-synced time. */
@@ -50,5 +66,28 @@ export const useSyncStatus = (): UseSyncStatusResult => {
         refresh()
     }, [refresh])
 
-    return { ...status, syncing, syncNow: handleSyncNow, resetLocalData: handleReset }
+    const handleRetryOp = useCallback(
+        async (opId: string) => {
+            await retrySyncOp(opId)
+            refresh()
+        },
+        [refresh]
+    )
+
+    const handleDiscardOp = useCallback(
+        async (opId: string) => {
+            await discardSyncOp(opId)
+            refresh()
+        },
+        [refresh]
+    )
+
+    return {
+        ...status,
+        syncing,
+        syncNow: handleSyncNow,
+        resetLocalData: handleReset,
+        retryOp: handleRetryOp,
+        discardOp: handleDiscardOp,
+    }
 }
