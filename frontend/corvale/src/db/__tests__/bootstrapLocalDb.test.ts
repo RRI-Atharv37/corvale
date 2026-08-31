@@ -18,9 +18,9 @@ vi.mock('../SqliteWasmDriver', () => ({
 const { isLocalFirstEnabled } = await import('../../utils/localFirstFlag')
 const { isLocalPinEnabled } = await import('../../utils/localPinFlag')
 const { isTauriRuntime } = await import('../../desktop/isTauri')
-const { bootstrapLocalDb } = await import('../bootstrapLocalDb')
+const { bootstrapLocalDb, retryLocalDbOpen } = await import('../bootstrapLocalDb')
 const { getLocalDb, resetLocalDbForTests } = await import('../localDbInstance')
-const { getLocalDbHealth, resetLocalDbHealthForTests } = await import('../localDbHealth')
+const { getLocalDbHealth, getLocalDbDamageReason, resetLocalDbHealthForTests } = await import('../localDbHealth')
 
 const fakeDb = (): LocalDb => ({
   exec: vi.fn().mockResolvedValue(undefined),
@@ -160,6 +160,30 @@ describe('bootstrapLocalDb', () => {
     await bootstrapLocalDb()
 
     expect(getLocalDbHealth()).toBe('damaged')
+  })
+
+  it('preserves the KEYCHAIN_UNAVAILABLE tag in the damage reason (SEC-40)', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
+    vi.mocked(isTauriRuntime).mockReturnValue(true)
+    tauriCreate.mockRejectedValue('KEYCHAIN_UNAVAILABLE: the login keyring is locked')
+
+    await bootstrapLocalDb()
+
+    expect(getLocalDbHealth()).toBe('damaged')
+    expect(getLocalDbDamageReason()).toContain('KEYCHAIN_UNAVAILABLE')
+  })
+
+  it('retryLocalDbOpen re-opens and installs the driver without deleting the store', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isTauriRuntime).mockReturnValue(true)
+    const db = fakeDb()
+    tauriCreate.mockResolvedValue(db)
+
+    await retryLocalDbOpen()
+
+    expect(tauriCreate).toHaveBeenCalledTimes(1)
+    await expect(getLocalDb()).resolves.toBe(db)
   })
 
   it('leaves the store healthy on a clean open', async () => {

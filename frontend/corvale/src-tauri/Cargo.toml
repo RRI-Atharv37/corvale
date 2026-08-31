@@ -39,6 +39,9 @@ pbkdf2 = "0.12"
 hmac = "0.12"
 sha2 = "0.10"
 base64 = "0.22"
+# SEC-40: CSPRNG for the device-local SQLCipher key generated on first run (db_key.rs). Already in
+# the tree transitively (keyring's `crypto-rust` backend); pinned here as a direct dependency.
+getrandom = "0.2"
 # SEC-11 / BUG-24: OS keychain for the desktop refresh token (Windows Credential Manager,
 # macOS Keychain, Linux Secret Service). `crypto-rust` keeps the Secret Service backend pure
 # Rust so it doesn't pull a second OpenSSL linkage alongside SQLCipher's vendored one.

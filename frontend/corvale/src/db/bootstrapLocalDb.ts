@@ -83,6 +83,9 @@ export const bootstrapLocalDb = async (): Promise<void> => {
     // desktop users who set a PIN are left with an unreadable store *and* an orphaned verifier in
     // `localStorage` that no UI can clear (PinGate/PinSettings are both gated off now). Purge it,
     // same as the local-first-off (web) path does. Recognises the pre-rename `spndr_pin_*` names.
+    // SEC-40: encryption at rest no longer depends on this - the desktop SQLCipher key is a
+    // device-local random key from the OS keychain, applied at `db_open`. The PIN, if it is ever
+    // re-enabled, would be a separate screen lock, not the encryption key.
     purgeLocalPinKeys()
   } else {
     // V7.3e: copy any pre-rename `spndr_pin_*` keys forward before anything reads
@@ -107,6 +110,18 @@ export const bootstrapLocalDb = async (): Promise<void> => {
  */
 export const rebuildLocalDb = async (): Promise<void> => {
   await destroyLocalStoreFile()
+  const db = await createMigratedDriver()
+  setLocalDb(db)
+}
+
+/**
+ * SEC-40 recovery step: re-attempt the open without touching the store on disk. Used when the
+ * failure was transient — the desktop SQLCipher key lives in the OS credential store, and a
+ * locked login keyring (or a keychain-access prompt the user dismissed) makes `db_open` fail with
+ * a `KEYCHAIN_UNAVAILABLE` tag until it is unlocked. Destroying the store there would throw away
+ * unsynced offline changes over a problem a retry fixes.
+ */
+export const retryLocalDbOpen = async (): Promise<void> => {
   const db = await createMigratedDriver()
   setLocalDb(db)
 }

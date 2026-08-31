@@ -1,5 +1,6 @@
 mod backup;
 mod db;
+mod db_key;
 mod keychain;
 mod path_safety;
 

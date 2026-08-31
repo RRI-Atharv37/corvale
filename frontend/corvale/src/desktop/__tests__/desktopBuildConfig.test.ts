@@ -48,9 +48,10 @@ describe('Desktop build sets VITE_LOCAL_FIRST=true (D4)', () => {
     })
 
     it('no env file enables the dormant local-lock PIN feature (BUG-31)', () => {
-        // `VITE_LOCAL_PIN` gates the whole PIN surface. It stays unset everywhere until
-        // encryption-at-rest is keyed from the OS keychain at db_open - a bare `PRAGMA key` on an
-        // already-populated plaintext DB corrupts the local store.
+        // `VITE_LOCAL_PIN` gates the whole PIN surface. Encryption-at-rest is now keyed from the
+        // OS keychain at `db_open` (SEC-40), so the PIN is no longer the encryption key - but it
+        // stays dormant regardless: it was only ever wired as a screen lock on top of the desktop
+        // `db_set_key` path, which still can't safely key an already-populated database.
         for (const relativePath of ['.env.example', '.env.desktop', '.env.test']) {
             const contents = readSource(relativePath)
             expect(contents).not.toMatch(/^VITE_LOCAL_PIN=true$/m)

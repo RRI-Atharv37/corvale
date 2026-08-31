@@ -8,7 +8,7 @@ The Corvale desktop app is the same Corvale you use online, packaged as a native
 
 The features work the same as the web app - transactions, budgets, savings goals, reports - with a few desktop-specific touches. The biggest one is genuine offline use: unlike the web app, the desktop app keeps a full local copy of your data and works with no connection.
 
-- **Native SQLite storage.** Your local copy of your data is stored in a real SQLite database on disk (encrypted with SQLCipher), rather than in browser storage.
+- **Native SQLite storage.** Your local copy of your data is stored in a real SQLite database on disk (encrypted with SQLCipher), rather than in browser storage. The encryption key is unique to that device and kept in your operating system's secure key storage - so the database file on its own is unreadable if it's copied off the machine.
 - **A real "Save As" dialog for backups.** Exporting a backup opens your operating system's native file-save window instead of triggering a browser download.
 - **Automatic updates.** The app checks for new versions and offers to install them without a manual re-download.
 
