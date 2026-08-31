@@ -1,4 +1,4 @@
-import { Types } from 'mongoose'
+import { PipelineStage, Types } from 'mongoose'
 
 import Account, { IAccount } from '../models/Account'
 import Category, { ICategory } from '../models/Category'
@@ -456,6 +456,36 @@ export const buildTransactionSort = (
             return { date: direction }
     }
 }
+
+/**
+ * SEC-58: the category join used only so `sortBy=category` can order by category name. The
+ * sub-pipeline is scoped to the caller's own categories plus the shared masters and projects
+ * `name` alone, so a co-member's personal category cannot leak through the joined document.
+ * Callers must also drop `category` from the response with a trailing `{ $project: { category: 0 } }`
+ * (it is not part of the transaction response contract — the non-sorted path returns only
+ * `categoryId`) and set `.option({ [RLS_ALLOW_LOOKUP]: true })` so the RLS guard admits the join.
+ */
+export const buildCategorySortLookupStages = (userId: string): PipelineStage[] => [
+    {
+        $lookup: {
+            from: 'categories',
+            let: { categoryId: '$categoryId' },
+            pipeline: [
+                {
+                    $match: {
+                        $expr: { $eq: ['$_id', '$$categoryId'] },
+                        userId: { $in: [null, new Types.ObjectId(userId)] },
+                    },
+                },
+                { $project: { name: 1 } },
+            ],
+            as: 'category',
+        },
+    },
+    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+]
+
+export const STRIP_CATEGORY_SORT_JOIN: PipelineStage = { $project: { category: 0 } }
 
 export const formatTransactionCsvRow = (transaction: SerializedTransaction, categoryName: string): string[] => {
     return [

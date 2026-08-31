@@ -12,6 +12,7 @@ import {
     applyTransactionToAccount,
     applyTransferToAccounts,
     assertEditableTransaction,
+    buildCategorySortLookupStages,
     buildTransactionSort,
     CSV_HEADERS,
     deleteTransactionForUser,
@@ -28,6 +29,7 @@ import {
     serializeTransaction,
     serializeTransactionPlain,
     serializeTransactions,
+    STRIP_CATEGORY_SORT_JOIN,
     attachUserFullNamesToTransactions,
     serializeTransactionWithSplits,
     SerializedTransaction,
@@ -57,6 +59,7 @@ import {
 } from '../utils/workspaceUtils'
 import { buildTagFilter, parseTagsQuery } from '../utils/tagUtils'
 import { createTransactionForUser } from '../services/transactionService'
+import { RLS_ALLOW_LOOKUP } from '../utils/rowLevelSecurity'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 
@@ -283,19 +286,12 @@ export const getTransactions = asyncHandler(async (req: AuthRequest, res: Respon
         const [results, totalCount] = await Promise.all([
             Transaction.aggregate([
                 { $match: filter },
-                {
-                    $lookup: {
-                        from: 'categories',
-                        localField: 'categoryId',
-                        foreignField: '_id',
-                        as: 'category',
-                    },
-                },
-                { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+                ...buildCategorySortLookupStages(userId),
                 { $sort: buildTransactionSort(sortBy as string, sortOrder as string) },
                 { $skip: (pageNumber - 1) * limitNumber },
                 { $limit: limitNumber },
-            ]),
+                STRIP_CATEGORY_SORT_JOIN,
+            ]).option({ [RLS_ALLOW_LOOKUP]: true }),
             Transaction.countDocuments(filter),
         ])
 
@@ -431,8 +427,10 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     }
     const nextDate = date !== undefined ? new Date(date) : transaction.date
 
+    const transactionWorkspaceId = transaction.workspaceId?.toString() ?? null
     if (accountId !== undefined) {
-        await validateAccountForTransaction(accountId, userId)
+        const account = await validateAccountForTransaction(accountId, userId)
+        assertAccountMatchesWorkspace(account.workspaceId, transactionWorkspaceId)
     }
     if (categoryId !== undefined) {
         await validateCategoryForTransaction(categoryId, userId)
@@ -465,6 +463,7 @@ export const updateTransaction = asyncHandler(async (req: AuthRequest, res: Resp
     if (date !== undefined) transaction.date = nextDate
     if (accountId !== undefined) {
         const account = await validateAccountForTransaction(accountId, userId)
+        assertAccountMatchesWorkspace(account.workspaceId, transactionWorkspaceId)
         transaction.accountId = accountId
         transaction.currency = account.currency
     }
@@ -531,17 +530,10 @@ export const filterTransactions = asyncHandler(async (req: AuthRequest, res: Res
         const sort = buildTransactionSort(sortBy as string, sortOrder as string)
         const results = await Transaction.aggregate([
             { $match: filter },
-            {
-                $lookup: {
-                    from: 'categories',
-                    localField: 'categoryId',
-                    foreignField: '_id',
-                    as: 'category',
-                },
-            },
-            { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+            ...buildCategorySortLookupStages(userId),
             { $sort: sort },
-        ])
+            STRIP_CATEGORY_SORT_JOIN,
+        ]).option({ [RLS_ALLOW_LOOKUP]: true })
 
         const data = await enrichTransactionsForWorkspace(
             workspaceId,
@@ -588,17 +580,10 @@ export const searchTransactions = asyncHandler(async (req: AuthRequest, res: Res
         const sort = buildTransactionSort(sortBy as string, sortOrder as string)
         const results = await Transaction.aggregate([
             { $match: filter },
-            {
-                $lookup: {
-                    from: 'categories',
-                    localField: 'categoryId',
-                    foreignField: '_id',
-                    as: 'category',
-                },
-            },
-            { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+            ...buildCategorySortLookupStages(userId),
             { $sort: sort },
-        ])
+            STRIP_CATEGORY_SORT_JOIN,
+        ]).option({ [RLS_ALLOW_LOOKUP]: true })
 
         const data = await enrichTransactionsForWorkspace(
             workspaceId,

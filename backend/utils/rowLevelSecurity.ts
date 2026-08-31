@@ -15,6 +15,17 @@ export interface RlsPluginOptions {
 
 export const RLS_BYPASS = 'rlsBypass'
 
+/**
+ * Aggregate-only opt-in. The RLS guard inspects outer `$match` stages, so a `$lookup` /
+ * `$graphLookup` / `$unionWith` pulls a second collection past the tenancy boundary
+ * unchecked (P6 / SEC-58). Cross-collection stages are therefore rejected under an RLS
+ * context unless the caller sets this option, asserting it has scoped the joined pipeline
+ * by hand. The outer `$match` scope check still applies; use `RLS_BYPASS` to skip both.
+ */
+export const RLS_ALLOW_LOOKUP = 'rlsAllowLookup'
+
+const CROSS_COLLECTION_STAGES = ['$lookup', '$graphLookup', '$unionWith'] as const
+
 const rlsStorage = new AsyncLocalStorage<RlsContext>()
 
 export const runWithRlsContext = <T>(context: RlsContext, fn: () => T): T => {
@@ -140,5 +151,22 @@ export const assertAggregateIsScoped = (
 ): void => {
     if (!pipelineHasOwnershipScope(pipeline, options)) {
         throw new CustomError(ERROR_MESSAGES.GENERAL.UNSCOPED_QUERY, 500)
+    }
+}
+
+export const pipelineHasCrossCollectionStage = (pipeline: unknown[]): boolean => {
+    return pipeline.some(
+        (stage) =>
+            !!stage &&
+            typeof stage === 'object' &&
+            CROSS_COLLECTION_STAGES.some(
+                (name) => name in (stage as Record<string, unknown>)
+            )
+    )
+}
+
+export const assertAggregateLookupIsReviewed = (pipeline: unknown[]): void => {
+    if (pipelineHasCrossCollectionStage(pipeline)) {
+        throw new CustomError(ERROR_MESSAGES.GENERAL.UNSCOPED_LOOKUP, 500)
     }
 }

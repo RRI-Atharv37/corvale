@@ -35,6 +35,8 @@ export const ERROR_MESSAGES = {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
         OFFLINE_GRANT_KEY_MISSING: 'OFFLINE_GRANT_PRIVATE_KEY is not defined in environment variables',
         UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
+        UNSCOPED_LOOKUP:
+            'Database query blocked: aggregate joins a second collection past the RLS boundary — scope the joined pipeline and set the rlsAllowLookup option',
         ROUTE_NOT_FOUND: 'Route not found',
         UNSAFE_REQUEST_BODY: 'Request body contains invalid characters',
     },
