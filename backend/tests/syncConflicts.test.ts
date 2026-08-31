@@ -285,3 +285,174 @@ describe('Sync API — conflict resolution', () => {
         expect(stored?.title).toBe('First device')
     })
 })
+
+/**
+ * BUG-16: the staleness check compares `baseUpdatedAt` against the server doc's
+ * `updatedAt` as an exact ISO string (millisecond resolution). Two writes to one
+ * document within the same millisecond — a second sync op, or a genuine
+ * two-device race — used to leave `updatedAt` unchanged, so the second op's
+ * "did this change out from under me?" check passed and the write was reported
+ * `applied` instead of `conflict` (a silent lost update).
+ *
+ * The fix guarantees, server-side, that every `update` op applied through
+ * /sync/push leaves the document's `updatedAt` STRICTLY greater than the value
+ * the op was based on (an atomic compare-and-set claim on `updatedAt`, plus a
+ * post-apply bump when the wall clock did not advance). No protocol change.
+ */
+describe('Sync API — BUG-16: same-millisecond concurrent writes', () => {
+    let app: Application
+    let owner: RegisteredUser
+
+    beforeEach(async () => {
+        app = createApp()
+        owner = await registerUser(app)
+    })
+
+    const pushUpdate = (
+        entity: string,
+        opId: string,
+        baseUpdatedAt: string,
+        payload: Record<string, unknown>
+    ) =>
+        request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({ ops: [{ opId, entity, operation: 'update', baseUpdatedAt, payload }] })
+
+    it('an applied account update advances updatedAt, so a second op on the old base conflicts', async () => {
+        const account = await seedAccount(owner.userId)
+        const base = account.updatedAt.toISOString()
+
+        const first = await pushUpdate('account', 'bug16-acc-1', base, {
+            _id: account._id.toString(),
+            name: 'A',
+        })
+        expect(first.body.data.results[0].status).toBe('applied')
+
+        const afterFirst = await Account.findById(account._id)
+        expect(new Date(afterFirst!.updatedAt).getTime()).toBeGreaterThan(new Date(base).getTime())
+
+        const second = await pushUpdate('account', 'bug16-acc-2', base, {
+            _id: account._id.toString(),
+            name: 'B',
+        })
+        expect(second.body.data.results[0].status).toBe('conflict')
+        expect(second.body.data.results[0].conflict.serverDoc.name).toBe('A')
+
+        const stored = await Account.findById(account._id)
+        expect(stored?.name).toBe('A')
+    })
+
+    it('an applied transaction update advances updatedAt, so a second op on the old base conflicts', async () => {
+        const account = await seedAccount(owner.userId)
+        const category = await seedCategory(owner.userId)
+        const transaction = await Transaction.create({
+            userId: owner.userId,
+            accountId: account._id,
+            categoryId: category._id,
+            type: 'expense',
+            amount: 100,
+            currency: 'USD',
+            title: 'Base title',
+            date: new Date(),
+        })
+        const base = transaction.updatedAt.toISOString()
+
+        const first = await pushUpdate('transaction', 'bug16-txn-1', base, {
+            _id: transaction._id.toString(),
+            title: 'A',
+        })
+        expect(first.body.data.results[0].status).toBe('applied')
+
+        const afterFirst = await Transaction.findById(transaction._id)
+        expect(new Date(afterFirst!.updatedAt).getTime()).toBeGreaterThan(new Date(base).getTime())
+
+        const second = await pushUpdate('transaction', 'bug16-txn-2', base, {
+            _id: transaction._id.toString(),
+            title: 'B',
+        })
+        expect(second.body.data.results[0].status).toBe('conflict')
+        expect(second.body.data.results[0].conflict.serverDoc.title).toBe('A')
+
+        const stored = await Transaction.findById(transaction._id)
+        expect(stored?.title).toBe('A')
+    })
+
+    it('an applied category update advances updatedAt, so a second op on the old base conflicts', async () => {
+        const category = await seedCategory(owner.userId, 'Base name')
+        const base = category.updatedAt.toISOString()
+
+        const first = await pushUpdate('category', 'bug16-cat-1', base, {
+            _id: category._id.toString(),
+            name: 'CatA',
+        })
+        expect(first.body.data.results[0].status).toBe('applied')
+
+        const afterFirst = await Category.findById(category._id)
+        expect(new Date(afterFirst!.updatedAt).getTime()).toBeGreaterThan(new Date(base).getTime())
+
+        const second = await pushUpdate('category', 'bug16-cat-2', base, {
+            _id: category._id.toString(),
+            name: 'CatB',
+        })
+        expect(second.body.data.results[0].status).toBe('conflict')
+        expect(second.body.data.results[0].conflict.serverDoc.name).toBe('CatA')
+
+        const stored = await Category.findById(category._id)
+        expect(stored?.name).toBe('CatA')
+    })
+
+    it('two concurrent pushes on the same doc/base resolve to exactly one applied + one conflict', async () => {
+        const account = await seedAccount(owner.userId)
+        let base = account.updatedAt.toISOString()
+
+        for (let i = 0; i < 10; i++) {
+            const opA = `race-a-${i}`
+            const opB = `race-b-${i}`
+            const nameA = `A${i}`
+            const nameB = `B${i}`
+
+            const [resA, resB] = await Promise.all([
+                pushUpdate('account', opA, base, { _id: account._id.toString(), name: nameA }),
+                pushUpdate('account', opB, base, { _id: account._id.toString(), name: nameB }),
+            ])
+
+            const results = [resA.body.data.results[0], resB.body.data.results[0]]
+            const applied = results.filter((r) => r.status === 'applied')
+            const conflicts = results.filter((r) => r.status === 'conflict')
+
+            expect(applied).toHaveLength(1)
+            expect(conflicts).toHaveLength(1)
+
+            const winnerName = applied[0].opId === opA ? nameA : nameB
+            const stored = await Account.findById(account._id)
+            expect(stored?.name).toBe(winnerName)
+            expect(new Date(stored!.updatedAt).getTime()).toBeGreaterThan(new Date(base).getTime())
+
+            base = stored!.updatedAt.toISOString()
+        }
+    })
+
+    it('a correctly-rebased follow-up update still applies (no false conflicts)', async () => {
+        const account = await seedAccount(owner.userId)
+        const base = account.updatedAt.toISOString()
+
+        const first = await pushUpdate('account', 'rebased-1', base, {
+            _id: account._id.toString(),
+            name: 'First',
+        })
+        expect(first.body.data.results[0].status).toBe('applied')
+
+        const afterFirst = await Account.findById(account._id)
+        const rebased = afterFirst!.updatedAt.toISOString()
+
+        const second = await pushUpdate('account', 'rebased-2', rebased, {
+            _id: account._id.toString(),
+            name: 'Second',
+        })
+        expect(second.body.data.results[0].status).toBe('applied')
+
+        const stored = await Account.findById(account._id)
+        expect(stored?.name).toBe('Second')
+    })
+})
