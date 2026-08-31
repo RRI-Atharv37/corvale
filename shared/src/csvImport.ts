@@ -1,5 +1,5 @@
 /**
- * CSV/OFX bank statement import: parsing, format detection, column mapping,
+ * CSV/OFX/QIF bank statement import: parsing, format detection, column mapping,
  * row mapping and duplicate-detection fingerprinting. Extracted verbatim
  * from `backend/utils/csvImportUtils.ts` (Sprint 13.10) so the frontend can
  * run the same import pipeline entirely client-side while offline.
@@ -21,7 +21,7 @@ export const IMPORT_PREVIEW_SAMPLE_ROWS = 5
  * tester exported before the rename still imports. Removes the backend/frontend atomic-deploy
  * constraint entirely. Safe to drop one release after v1.0.0. See ROADMAP's V7 compat matrix.
  */
-export type ImportFormat = 'generic' | 'chase' | 'corvale_export' | 'spndr_export' | 'ofx'
+export type ImportFormat = 'generic' | 'chase' | 'corvale_export' | 'spndr_export' | 'ofx' | 'qif'
 
 export type ColumnMappingField =
     | 'date'
@@ -40,6 +40,13 @@ export type ImportDateFormat = 'auto' | 'YMD' | 'MDY' | 'DMY'
 
 const DATE_FORMATS: readonly ImportDateFormat[] = ['auto', 'YMD', 'MDY', 'DMY']
 
+/**
+ * Field separators a delimited-text export may use (BUG-19). Comma is the historical default and
+ * the tie-breaker; `parseCsvContent` sniffs the header line when no delimiter is supplied.
+ */
+export const IMPORT_DELIMITERS = [',', ';', '\t', '|'] as const
+export type ImportDelimiter = (typeof IMPORT_DELIMITERS)[number]
+
 export interface ColumnMapping {
     date?: string
     description?: string
@@ -57,11 +64,26 @@ export interface ParsedImportRow {
     description?: string
     amount: number
     type: 'income' | 'expense'
+    /**
+     * A stable per-transaction id supplied by the source file (OFX `FITID`). When present it is
+     * an exact dedupe key — `backend/controllers/importController.ts` matches it against
+     * `Transaction.externalId` before falling back to the fuzzy date/amount/description
+     * fingerprint (BUG-21).
+     */
+    externalId?: string
 }
 
 export interface ImportRowError {
     rowIndex: number
     message: string
+}
+
+/** Shape returned by the OFX and QIF parsers (BUG-21 / BUG-23): rows plus surfaced skip reasons. */
+export interface ParsedStatementResult {
+    rows: ParsedImportRow[]
+    errors: ImportRowError[]
+    /** `<CURDEF>` for OFX; absent for QIF (the format carries no currency). Informational only. */
+    statementCurrency?: string
 }
 
 const normalizeHeader = (header: string): string =>
@@ -103,7 +125,52 @@ export const isOfxContent = (content: string): boolean => {
     return trimmed.startsWith('OFXHEADER:') || trimmed.includes('<OFX>') || trimmed.includes('<STMTTRN>')
 }
 
-export const parseCsvLine = (line: string): string[] => {
+/** QIF files open with a `!Type:` / `!Account` / `!Option:` control line (BUG-23). */
+export const isQifContent = (content: string): boolean => {
+    for (const rawLine of content.split(/\r\n|\r|\n/)) {
+        const line = rawLine.trim()
+        if (!line) {
+            continue
+        }
+        return /^!(type:|account|option:|clear:autoswitch)/i.test(line)
+    }
+    return false
+}
+
+/**
+ * Count unquoted occurrences of each candidate delimiter in the header line and return the
+ * winner; comma wins ties and the no-signal case (BUG-19).
+ */
+export const sniffDelimiter = (headerLine: string): ImportDelimiter => {
+    const counts = new Map<ImportDelimiter, number>(IMPORT_DELIMITERS.map((d) => [d, 0]))
+    let inQuotes = false
+    for (let i = 0; i < headerLine.length; i += 1) {
+        const char = headerLine[i]
+        if (char === '"') {
+            inQuotes = !inQuotes
+            continue
+        }
+        if (inQuotes) {
+            continue
+        }
+        if (counts.has(char as ImportDelimiter)) {
+            counts.set(char as ImportDelimiter, (counts.get(char as ImportDelimiter) ?? 0) + 1)
+        }
+    }
+
+    let best: ImportDelimiter = ','
+    let bestCount = counts.get(',') ?? 0
+    for (const delimiter of IMPORT_DELIMITERS) {
+        const count = counts.get(delimiter) ?? 0
+        if (count > bestCount) {
+            best = delimiter
+            bestCount = count
+        }
+    }
+    return best
+}
+
+export const parseCsvLine = (line: string, delimiter: string = ','): string[] => {
     const fields: string[] = []
     let current = ''
     let inQuotes = false
@@ -122,7 +189,7 @@ export const parseCsvLine = (line: string): string[] => {
             continue
         }
 
-        if (char === ',' && !inQuotes) {
+        if (char === delimiter && !inQuotes) {
             fields.push(current)
             current = ''
             continue
@@ -135,7 +202,13 @@ export const parseCsvLine = (line: string): string[] => {
     return fields.map((field) => field.trim())
 }
 
-export const parseCsvContent = (content: string): { headers: string[]; rows: string[][] } => {
+export interface ParsedCsvContent {
+    headers: string[]
+    rows: string[][]
+    delimiter: ImportDelimiter
+}
+
+export const parseCsvContent = (content: string, delimiter?: ImportDelimiter): ParsedCsvContent => {
     const normalized = content.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
     const lines = normalized.split('\n').filter((line) => line.trim().length > 0)
 
@@ -143,13 +216,16 @@ export const parseCsvContent = (content: string): { headers: string[]; rows: str
         throw new Error('Import file is empty')
     }
 
-    const headers = parseCsvLine(lines[0])
+    const resolvedDelimiter =
+        delimiter && IMPORT_DELIMITERS.includes(delimiter) ? delimiter : sniffDelimiter(lines[0])
+
+    const headers = parseCsvLine(lines[0], resolvedDelimiter)
     if (headers.length === 0 || headers.every((header) => header.length === 0)) {
         throw new Error('CSV file is missing a header row')
     }
 
-    const rows = lines.slice(1).map((line) => parseCsvLine(line))
-    return { headers, rows }
+    const rows = lines.slice(1).map((line) => parseCsvLine(line, resolvedDelimiter))
+    return { headers, rows, delimiter: resolvedDelimiter }
 }
 
 export const detectImportFormat = (headers: string[]): ImportFormat => {
@@ -576,13 +652,40 @@ const extractOfxTag = (block: string, tag: string): string | undefined => {
     return match?.[1]?.trim()
 }
 
-export const parseOfxContent = (content: string): ParsedImportRow[] => {
+/**
+ * Map an OFX `<TRNTYPE>` to income/expense. Returns `null` for the ambiguous / structural values
+ * (`OTHER`, `XFER`, …) so the caller falls back to the `<TRNAMT>` sign (BUG-21).
+ */
+const typeFromOfxTrnType = (trnType: string | undefined): 'income' | 'expense' | null => {
+    if (!trnType) {
+        return null
+    }
+    const normalized = trnType.trim().toUpperCase()
+    if (['CREDIT', 'DEP', 'DIRECTDEP', 'INT', 'DIV'].includes(normalized)) {
+        return 'income'
+    }
+    if (
+        ['DEBIT', 'ATM', 'POS', 'CHECK', 'PAYMENT', 'CASH', 'DIRECTDEBIT', 'REPEATPMT', 'SRVCHG', 'FEE'].includes(
+            normalized
+        )
+    ) {
+        return 'expense'
+    }
+    return null
+}
+
+export const parseOfxContent = (content: string): ParsedStatementResult => {
     const blocks = content.match(/<STMTTRN>[\s\S]*?(?=<STMTTRN>|<\/BANKTRANLIST>|$)/gi) ?? []
     if (blocks.length === 0) {
         throw new Error('No valid transactions found in OFX file')
     }
 
+    // `<CURDEF>` lives in the statement envelope, before the first <STMTTRN>.
+    const envelope = content.split(/<STMTTRN>/i)[0] ?? content
+    const statementCurrency = extractOfxTag(envelope, 'CURDEF')?.toUpperCase()
+
     const rows: ParsedImportRow[] = []
+    const errors: ImportRowError[] = []
 
     blocks.forEach((block, index) => {
         const rowIndex = index + 1
@@ -590,13 +693,17 @@ export const parseOfxContent = (content: string): ParsedImportRow[] => {
         const dateRaw = extractOfxTag(block, 'DTPOSTED') ?? extractOfxTag(block, 'DTUSER')
         const name = extractOfxTag(block, 'NAME') ?? extractOfxTag(block, 'MEMO') ?? 'Imported transaction'
         const memo = extractOfxTag(block, 'MEMO')
+        const fitId = extractOfxTag(block, 'FITID')
+        const trnType = extractOfxTag(block, 'TRNTYPE')
 
         if (!amountRaw || !dateRaw) {
+            errors.push({ rowIndex, message: 'Statement entry is missing an amount or date' })
             return
         }
 
         const signed = Number(amountRaw.replace(/,/g, ''))
         if (!Number.isFinite(signed) || signed === 0) {
+            errors.push({ rowIndex, message: 'Statement entry has an invalid or zero amount' })
             return
         }
 
@@ -605,6 +712,7 @@ export const parseOfxContent = (content: string): ParsedImportRow[] => {
         const day = dateRaw.slice(6, 8)
         const parsedDate = new Date(`${year}-${month}-${day}T12:00:00.000Z`)
         if (Number.isNaN(parsedDate.getTime())) {
+            errors.push({ rowIndex, message: 'Statement entry has an invalid date' })
             return
         }
 
@@ -614,15 +722,142 @@ export const parseOfxContent = (content: string): ParsedImportRow[] => {
             title: name.trim().slice(0, 200) || 'Imported transaction',
             description: memo?.trim() || undefined,
             amount: Math.abs(signed),
+            type: typeFromOfxTrnType(trnType) ?? inferTypeFromSignedAmount(signed),
+            externalId: fitId || undefined,
+        })
+    })
+
+    if (rows.length === 0 && errors.length === 0) {
+        throw new Error('No valid transactions found in OFX file')
+    }
+
+    return { rows, errors, statementCurrency }
+}
+
+/**
+ * Parse a QIF file (BUG-23). Line-oriented: `!Type:` control lines, then transaction records
+ * terminated by `^`. Fields used: `D` date, `T`/`U` amount, `P` payee, `M` memo, `N` cheque
+ * number / action. `L` (category) is intentionally ignored — Corvale categorises its own way.
+ */
+export const parseQifContent = (content: string): ParsedStatementResult => {
+    const lines = content.split(/\r\n|\r|\n/)
+
+    interface RawRecord {
+        date?: string
+        amount?: string
+        payee?: string
+        memo?: string
+        number?: string
+    }
+
+    const records: RawRecord[] = []
+    let current: RawRecord = {}
+    let hasCurrent = false
+
+    for (const rawLine of lines) {
+        const line = rawLine.trimEnd()
+        if (!line) {
+            continue
+        }
+        if (line.startsWith('!')) {
+            // A control line (`!Type:Bank`, `!Account`, …) also terminates any open record.
+            if (hasCurrent) {
+                records.push(current)
+                current = {}
+                hasCurrent = false
+            }
+            continue
+        }
+        if (line === '^') {
+            if (hasCurrent) {
+                records.push(current)
+            }
+            current = {}
+            hasCurrent = false
+            continue
+        }
+
+        const code = line[0]
+        const value = line.slice(1).trim()
+        hasCurrent = true
+        switch (code) {
+            case 'D':
+                current.date = value
+                break
+            case 'T':
+            case 'U':
+                // `T` and `U` carry the same value; last one wins.
+                current.amount = value
+                break
+            case 'P':
+                current.payee = value
+                break
+            case 'M':
+                current.memo = value
+                break
+            case 'N':
+                current.number = value
+                break
+            default:
+                break
+        }
+    }
+    if (hasCurrent) {
+        records.push(current)
+    }
+
+    if (records.length === 0) {
+        throw new Error('No valid transactions found in QIF file')
+    }
+
+    // QIF dates use `MM/DD/YYYY` or `MM/DD'YY` (Quicken uses `'` before a 2-digit year, and may
+    // pad a single-digit day/month with a space). Normalise, then auto-detect the token order.
+    const normalizeQifDate = (value: string): string =>
+        value.replace(/'/g, '/').replace(/\s+/g, '').replace(/\./g, '/')
+
+    const dateOrder = resolveDateOrder(
+        records.map((record) => normalizeQifDate(record.date ?? '')),
+        'auto'
+    )
+
+    const rows: ParsedImportRow[] = []
+    const errors: ImportRowError[] = []
+
+    records.forEach((record, index) => {
+        const rowIndex = index + 1
+        if (!record.date && !record.amount && !record.payee && !record.memo) {
+            return
+        }
+
+        const parsedDate = record.date ? parseDateValue(normalizeQifDate(record.date), dateOrder) : null
+        if (!parsedDate) {
+            errors.push({ rowIndex, message: 'QIF record is missing a valid date' })
+            return
+        }
+
+        const signed = record.amount != null ? parseImportAmount(record.amount) : null
+        if (signed === null || signed === 0) {
+            errors.push({ rowIndex, message: 'QIF record has an invalid or zero amount' })
+            return
+        }
+
+        const title = (record.payee || record.memo || 'Imported transaction').trim().slice(0, 200)
+
+        rows.push({
+            rowIndex,
+            date: toIsoDate(parsedDate),
+            title: title || 'Imported transaction',
+            description: record.memo?.trim() || undefined,
+            amount: Math.abs(signed),
             type: inferTypeFromSignedAmount(signed),
         })
     })
 
-    if (rows.length === 0) {
-        throw new Error('No valid transactions found in OFX file')
+    if (rows.length === 0 && errors.length === 0) {
+        throw new Error('No valid transactions found in QIF file')
     }
 
-    return rows
+    return { rows, errors }
 }
 
 export const assertImportRowLimit = (count: number): void => {
@@ -665,15 +900,20 @@ export const normalizeImportDescription = (title: string, description?: string):
         .trim()
 }
 
-/** Build a duplicate-detection fingerprint from date, amount (minor units), and description. */
+/**
+ * Build a duplicate-detection fingerprint from date, transaction type, amount (minor units) and
+ * description. `type` is part of the key (BUG-22) so an equal-magnitude refund (income) is never
+ * mistaken for the original charge (expense).
+ */
 export const buildImportFingerprint = (
     date: string,
+    type: 'income' | 'expense',
     amountMinor: number,
     title: string,
     description?: string
 ): string => {
     const normalizedDesc = normalizeImportDescription(title, description)
-    return `${date}|${amountMinor}|${normalizedDesc}`
+    return `${date}|${type}|${amountMinor}|${normalizedDesc}`
 }
 
 export const toImportIsoDate = (date: Date): string => date.toISOString().slice(0, 10)

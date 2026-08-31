@@ -14,10 +14,15 @@ import {
     previewLocalImport,
     commitLocalImport,
 } from '../../../domain/importTransactions'
-import type { ImportCommitResponse, ImportParseResponse, ImportPreviewResponse } from '../../../types/api'
+import type {
+    ImportCommitResponse,
+    ImportDelimiter,
+    ImportParseResponse,
+    ImportPreviewResponse,
+} from '../../../types/api'
 
 export interface UseImportTransactionsDataResult {
-    parseImportFile: (file: File) => Promise<ImportParseResponse>
+    parseImportFile: (file: File, delimiter?: ImportDelimiter) => Promise<ImportParseResponse>
     previewImport: (payload: ImportPreviewPayload) => Promise<ImportPreviewResponse>
     commitImport: (payload: ImportPreviewPayload) => Promise<ImportCommitResponse>
 }
@@ -36,11 +41,11 @@ export const useImportTransactionsData = (): UseImportTransactionsDataResult => 
     const localFirst = isLocalFirstEnabled()
 
     const parseImportFile = useCallback(
-        async (file: File): Promise<ImportParseResponse> => {
+        async (file: File, delimiter?: ImportDelimiter): Promise<ImportParseResponse> => {
             if (!localFirst) {
-                return parseImportFileServer(file)
+                return parseImportFileServer(file, delimiter)
             }
-            return parseLocalImportFile(file)
+            return parseLocalImportFile(file, delimiter)
         },
         [localFirst]
     )

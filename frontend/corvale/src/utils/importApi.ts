@@ -4,21 +4,23 @@ import type {
     ApiResponse,
     ColumnMapping,
     ImportCommitResponse,
+    ImportDelimiter,
     ImportDuplicateAction,
     ImportParseResponse,
     ImportPreviewResponse,
+    ImportRowError,
     ParsedImportRow,
 } from '../types/api'
 import { unwrapApiData } from './apiHelpers'
 
-export const IMPORT_ACCEPT = '.csv,.ofx,.qfx,text/csv,application/vnd.ms-excel'
+export const IMPORT_ACCEPT = '.csv,.ofx,.qfx,.qif,text/csv,application/vnd.ms-excel'
 export const IMPORT_MAX_BYTES = 2 * 1024 * 1024
 
 export const validateImportFile = (file: File): string | null => {
     const extension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''
-    const allowedExtensions = ['.csv', '.ofx', '.qfx']
+    const allowedExtensions = ['.csv', '.ofx', '.qfx', '.qif']
     if (!allowedExtensions.includes(extension)) {
-        return 'Import file must be a CSV or OFX file'
+        return 'Import file must be a CSV, OFX/QFX, or QIF file'
     }
     if (file.size > IMPORT_MAX_BYTES) {
         return 'Import file exceeds the 2 MB size limit'
@@ -26,7 +28,10 @@ export const validateImportFile = (file: File): string | null => {
     return null
 }
 
-export const parseImportFile = async (file: File): Promise<ImportParseResponse> => {
+export const parseImportFile = async (
+    file: File,
+    delimiter?: ImportDelimiter
+): Promise<ImportParseResponse> => {
     const validationError = validateImportFile(file)
     if (validationError) {
         throw new Error(validationError)
@@ -34,6 +39,9 @@ export const parseImportFile = async (file: File): Promise<ImportParseResponse> 
 
     const formData = new FormData()
     formData.append('file', file)
+    if (delimiter) {
+        formData.append('delimiter', delimiter)
+    }
 
     const response = await axiosInstance.post<ApiResponse<ImportParseResponse>>(
         API_PATHS.IMPORTS.PARSE,
@@ -50,6 +58,7 @@ export interface ImportPreviewPayload {
     rows?: string[][]
     mapping?: ColumnMapping
     parsedRows?: ParsedImportRow[]
+    parsedRowErrors?: ImportRowError[]
     rowDecisions?: Record<number, ImportDuplicateAction>
 }
 

@@ -2,13 +2,17 @@ import { CustomError } from './customError'
 import {
     IMPORT_MAX_ROWS,
     IMPORT_PREVIEW_SAMPLE_ROWS,
+    IMPORT_DELIMITERS,
     isOfxContent,
+    isQifContent,
     parseCsvLine,
+    sniffDelimiter,
     parseCsvContent as sharedParseCsvContent,
     detectImportFormat,
     suggestColumnMapping,
     mapCsvRows as sharedMapCsvRows,
     parseOfxContent as sharedParseOfxContent,
+    parseQifContent as sharedParseQifContent,
     assertImportRowLimit as sharedAssertImportRowLimit,
     parseImportMapping as sharedParseImportMapping,
     normalizeImportDescription,
@@ -19,26 +23,32 @@ import {
 import type {
     ImportFormat,
     ImportDateFormat,
+    ImportDelimiter,
     ColumnMappingField,
     ColumnMapping,
     ParsedImportRow,
+    ParsedCsvContent,
+    ParsedStatementResult,
     ImportRowError,
     ImportDuplicateAction,
     ImportDuplicateMatch,
 } from '../../shared/src/csvImport'
 
-export { IMPORT_MAX_ROWS, IMPORT_PREVIEW_SAMPLE_ROWS }
+export { IMPORT_MAX_ROWS, IMPORT_PREVIEW_SAMPLE_ROWS, IMPORT_DELIMITERS }
 export type {
     ImportFormat,
     ImportDateFormat,
+    ImportDelimiter,
     ColumnMappingField,
     ColumnMapping,
     ParsedImportRow,
+    ParsedCsvContent,
+    ParsedStatementResult,
     ImportRowError,
     ImportDuplicateAction,
     ImportDuplicateMatch,
 }
-export { isOfxContent, parseCsvLine, detectImportFormat, suggestColumnMapping }
+export { isOfxContent, isQifContent, parseCsvLine, sniffDelimiter, detectImportFormat, suggestColumnMapping }
 export { normalizeImportDescription, buildImportFingerprint, toImportIsoDate, parseImportRowDecisions }
 
 /**
@@ -59,8 +69,8 @@ const withImportError = <T>(fn: () => T): T => {
     }
 }
 
-export const parseCsvContent = (content: string): { headers: string[]; rows: string[][] } =>
-    withImportError(() => sharedParseCsvContent(content))
+export const parseCsvContent = (content: string, delimiter?: ImportDelimiter): ParsedCsvContent =>
+    withImportError(() => sharedParseCsvContent(content, delimiter))
 
 export const mapCsvRows = (
     headers: string[],
@@ -69,8 +79,11 @@ export const mapCsvRows = (
 ): { rows: ParsedImportRow[]; errors: ImportRowError[] } =>
     withImportError(() => sharedMapCsvRows(headers, rows, mapping))
 
-export const parseOfxContent = (content: string): ParsedImportRow[] =>
+export const parseOfxContent = (content: string): ParsedStatementResult =>
     withImportError(() => sharedParseOfxContent(content))
+
+export const parseQifContent = (content: string): ParsedStatementResult =>
+    withImportError(() => sharedParseQifContent(content))
 
 export const assertImportRowLimit = (count: number): void =>
     withImportError(() => sharedAssertImportRowLimit(count))

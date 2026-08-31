@@ -318,6 +318,44 @@ describe('Sync API — push ordered apply', () => {
         expect(updatedAccount?.currentBalance).toBe(-5)
     })
 
+    it('persists externalId on a transaction.create op and round-trips it through pull (BUG-21)', async () => {
+        const account = await seedAccount(owner.userId)
+        const category = await seedCategory(owner.userId)
+
+        const push = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'op-ext-1',
+                        entity: 'transaction',
+                        operation: 'create',
+                        payload: {
+                            type: 'expense',
+                            title: 'Imported from OFX',
+                            amount: 500,
+                            date: new Date().toISOString(),
+                            accountId: account._id.toString(),
+                            categoryId: category._id.toString(),
+                            externalId: 'FIT-XYZ-1',
+                        },
+                    },
+                ],
+            })
+        expect(push.body.data.results[0].status).toBe('applied')
+
+        const stored = await Transaction.findById(push.body.data.results[0].resultId)
+        expect(stored?.externalId).toBe('FIT-XYZ-1')
+
+        const pull = await request(app).get('/api/v1/sync/pull').set(authHeader(owner.token))
+        const change = pull.body.data.changes.find(
+            (c: { entity: string; doc: { _id: string } }) =>
+                c.entity === 'transaction' && c.doc._id === stored?._id.toString()
+        )
+        expect(change.doc.externalId).toBe('FIT-XYZ-1')
+    })
+
     it('applies ops in array order, not arrival order', async () => {
         const account = await seedAccount(owner.userId)
         const category = await seedCategory(owner.userId)

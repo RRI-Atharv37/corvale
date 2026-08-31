@@ -35,6 +35,12 @@ export interface ITransaction extends Document {
     clearedStatus: ClearedStatus
     reconciledAt?: Date | null
     /**
+     * Stable per-transaction id from an imported bank file (OFX `FITID`). Used as an exact
+     * dedupe key on re-import — `importController.ts` matches it against this field before the
+     * fuzzy date/amount/description fingerprint (BUG-21). Absent for manually-created rows.
+     */
+    externalId?: string
+    /**
      * Set (with `userId` rewritten to the reserved `REMOVED_MEMBER_USER_ID` sentinel - see
      * `accountDeletionUtils.ts`) when this record's creator deleted their account but the
      * workspace it lives in still has other members. The record is retained for them; this flag
@@ -77,6 +83,7 @@ const TransactionSchema = new Schema<ITransaction>(
         receiptIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' }],
         clearedStatus: { type: String, enum: CLEARED_STATUSES, default: 'pending' },
         reconciledAt: { type: Date, default: null },
+        externalId: { type: String, trim: true },
         createdByRemovedUser: { type: Boolean, default: false },
     },
     { timestamps: true }
@@ -87,6 +94,8 @@ TransactionSchema.index({ userId: 1, type: 1, date: -1 })
 TransactionSchema.index({ userId: 1, categoryId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, accountId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, tags: 1 })
+// Sparse: only imported rows carry `externalId`. Backs the re-import FITID dedupe lookup (BUG-21).
+TransactionSchema.index({ userId: 1, accountId: 1, externalId: 1 }, { sparse: true })
 TransactionSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 TransactionSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
 // Mirrors the userId-scoped report indexes above: report/dashboard aggregations run the same

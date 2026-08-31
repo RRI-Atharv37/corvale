@@ -13,8 +13,23 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
+### Added
+
+- **Import: QIF files, and semicolon / tab / pipe CSVs.** `.qif` files are now parsed directly.
+  CSV files separated by a semicolon, tab, or pipe — the default export in much of Europe — are
+  detected automatically, with a **Column separator** control in the mapping step to override the
+  guess. OFX / QFX imports now match on the bank's own transaction ID (`FITID`), so re-importing
+  the same statement finds every row even when the bank rewords the payee between exports, and a
+  skipped statement entry or a currency mismatch is surfaced instead of dropped silently.
+
 ### Fixed
 
+- **Import: a refund could be skipped as a duplicate of the original charge.** Duplicate detection
+  now includes the transaction direction, so an equal-magnitude income and expense on the same day
+  with the same description are no longer treated as the same transaction.
+- **Import: a QIF file renamed `.qfx` failed confusingly.** Such files now import via the QIF
+  parser; an `.ofx`/`.qfx` upload that is neither OFX nor QIF stops with a clear message instead of
+  being read as a garbled spreadsheet.
 - **CSV import: locale-formatted dates and amounts read wrong.** The mapping step gains a **Date
   format** control (auto / year-first / month-first / day-first) and a slash-or-dot date that
   isn't a real calendar date is now a per-row error instead of being rolled forward to another

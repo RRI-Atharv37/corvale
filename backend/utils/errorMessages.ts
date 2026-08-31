@@ -152,7 +152,7 @@ export const ERROR_MESSAGES = {
         FILE_REQUIRED: 'Import file is required',
         EMPTY_FILE: 'Import file is empty',
         MISSING_HEADERS: 'CSV file is missing a header row',
-        INVALID_FILE_TYPE: 'Import file must be a CSV or OFX file',
+        INVALID_FILE_TYPE: 'Import file must be a CSV, OFX/QFX, or QIF file',
         FILE_TOO_LARGE: 'Import file exceeds the 2 MB size limit',
         TOO_MANY_ROWS: 'Import file exceeds the 2,000 row limit',
         MAPPING_INCOMPLETE: 'Column mapping is incomplete',

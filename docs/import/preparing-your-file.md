@@ -16,9 +16,13 @@ straight to [Importing a Bank File](./importing-a-bank-file.md).
 
 | Format | Extension | Notes |
 |--------|-----------|-------|
-| Comma-separated values | `.csv` | Any layout. Corvale suggests a column mapping and lets you correct it. |
+| Delimited text | `.csv` | Any layout. Comma, semicolon, tab, or pipe separated — Corvale detects which, and you can override it. Corvale suggests a column mapping and lets you correct it. |
 | Open Financial Exchange | `.ofx` | Parsed automatically — no mapping step. |
-| Quicken Financial Exchange | `.qfx` | Read using the same parser as OFX. A `.qfx` file that isn't in OFX format won't import. |
+| Quicken Financial Exchange | `.qfx` | Read with the OFX parser, or the QIF parser if the file is really QIF. |
+| Quicken Interchange Format | `.qif` | Parsed automatically — no mapping step. |
+
+If you upload an `.ofx` or `.qfx` file that turns out not to be OFX or QIF at all,
+Corvale stops with a clear message rather than trying to read it as a spreadsheet.
 
 A few more limits apply to every file:
 
@@ -49,7 +53,8 @@ of 25, or 30 February — is reported as an error on that row rather than being
 guessed at or rolled forward.
 
 OFX and QFX files carry their dates in a fixed `YYYYMMDD` form, so there is
-nothing to adjust.
+nothing to adjust. QIF files use `MM/DD/YYYY` (or `MM/DD'YY`); Corvale reads the
+column and works out the order the same way it does for CSV.
 
 ### The Date format control
 
@@ -77,10 +82,13 @@ you can check the result and go back if it looks wrong.
 
 ### Column separator
 
-Corvale splits CSV rows on the **comma only**. Files that use a semicolon, tab,
-or pipe between columns — common in European bank exports — are read as a single
-column and won't map correctly. Re-export or re-save the file as
-comma-separated.
+Corvale detects whether your CSV uses a comma, semicolon, tab, or pipe between
+columns by looking at the header row. Semicolons are common in European bank
+exports, and they now work without any conversion.
+
+If the detected separator is wrong — the mapping step shows one giant column, or
+the values run together — use the **Column separator** dropdown in the mapping
+step to set it yourself. Corvale re-reads the file straight away.
 
 Fields may be wrapped in double quotes (`"Coffee, black"`), and a literal quote
 inside a quoted field is written as two quotes (`""`).
@@ -116,11 +124,11 @@ direction. The same number formatting rules apply to those columns.
 
 ## Convert your file first
 
-Use this recipe when your file is an XLSX or PDF, or is separated by something
-other than commas. Currency symbols, decimal commas, and day-first or year-first
-dates no longer need converting — Corvale reads them, and the preview step lets
-you confirm — but reformatting to plain `1234.56` amounts and `YYYY-MM-DD` dates
-is still the safest option if you're editing the file anyway.
+Use this recipe when your file is an XLSX or PDF. Currency symbols, decimal
+commas, semicolon or tab separators, and day-first or year-first dates no longer
+need converting — Corvale reads them, and the preview step lets you confirm — but
+reformatting to plain `1234.56` amounts and `YYYY-MM-DD` dates is still the
+safest option if you're editing the file anyway.
 
 1. **Open the file in a spreadsheet app** — Excel, Google Sheets, or LibreOffice
    Calc. XLSX opens directly; for a PDF statement, copy the transaction table and
@@ -136,9 +144,9 @@ is still the safest option if you're editing the file anyway.
    format to a plain number with no symbol.
 5. **Split large files.** If you have more than 2,000 rows, save them across
    several files.
-6. **Save as CSV.** Choose "CSV" (in Excel, "CSV UTF-8 (Comma delimited)"). If
-   your system locale produces semicolons, change your list-separator setting or
-   use Google Sheets, which always exports commas.
+6. **Save as CSV.** Choose "CSV" (in Excel, "CSV UTF-8 (Comma delimited)"). A
+   semicolon-separated export from a European locale is fine too — Corvale
+   detects it.
 7. **Import each CSV** through the wizard. See
    [Importing a Bank File](./importing-a-bank-file.md).
 

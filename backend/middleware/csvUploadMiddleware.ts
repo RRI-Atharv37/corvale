@@ -13,9 +13,12 @@ const ALLOWED_MIME_TYPES = new Set([
     'application/vnd.ms-excel',
     'application/x-ofx',
     'application/ofx',
+    'application/qif',
+    'text/qif',
+    'application/x-qw',
 ])
 
-const ALLOWED_EXTENSIONS = new Set(['.csv', '.ofx', '.qfx'])
+const ALLOWED_EXTENSIONS = new Set(['.csv', '.ofx', '.qfx', '.qif'])
 
 const isAllowedImportFile = (file: Express.Multer.File): boolean => {
     const extension = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''

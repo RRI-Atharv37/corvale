@@ -269,4 +269,38 @@ describe('Import duplicate detection', () => {
         expect(res.status).toBe(200)
         expect(res.body.data.items[0].duplicateOf).toBeUndefined()
     })
+
+    it('does not flag an equal-magnitude refund (income) as a duplicate of the original charge (expense) — BUG-22', async () => {
+        const { token } = await seedUserDirectly({ email: 'dup-type-refund@example.com' })
+        const account = await createTestAccount(token)
+        const categoryId = await getFoodMasterId(token)
+
+        // Seed an existing expense of $50 "ACME" on 2026-03-01 (negative amount → expense).
+        await seedExistingImportedTransaction(token, account._id, categoryId, 'ACME', 50, '2026-03-01')
+
+        // Import an income row of the same magnitude/date/description (a refund → positive amount).
+        const res = await previewImport(token, {
+            accountId: account._id,
+            defaultCategoryId: categoryId,
+            headers: ['Date', 'Description', 'Amount'],
+            rows: [['2026-03-01', 'ACME', '50.00']],
+            mapping: { date: 'Date', description: 'Description', amount: 'Amount' },
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.items[0].type).toBe('income')
+        expect(res.body.data.items[0].duplicateOf).toBeUndefined()
+        expect(res.body.data.summary.duplicates).toBe(0)
+
+        const commit = await commitImport(token, {
+            accountId: account._id,
+            defaultCategoryId: categoryId,
+            headers: ['Date', 'Description', 'Amount'],
+            rows: [['2026-03-01', 'ACME', '50.00']],
+            mapping: { date: 'Date', description: 'Description', amount: 'Amount' },
+        })
+        expect(commit.status).toBe(201)
+        expect(commit.body.data.imported).toBe(1)
+        expect(commit.body.data.skipped).toBe(0)
+    })
 })

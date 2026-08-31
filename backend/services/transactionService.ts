@@ -99,6 +99,7 @@ export const createTransactionForUser = async (
         status,
         workspaceId,
         splits,
+        externalId,
     } = body as {
         type: string
         title: string
@@ -113,6 +114,7 @@ export const createTransactionForUser = async (
         status?: string
         workspaceId?: unknown
         splits?: SplitInput[]
+        externalId?: string
     }
 
     if (!SUPPORTED_CREATE_TYPES.includes(type as (typeof SUPPORTED_CREATE_TYPES)[number])) {
@@ -187,6 +189,7 @@ export const createTransactionForUser = async (
             source: source?.trim(),
             paymentMethod: paymentMethod?.trim(),
             tags: finalTags,
+            externalId: typeof externalId === 'string' && externalId.trim() ? externalId.trim() : undefined,
         })
     } catch (error) {
         if (isDuplicateKeyError(error)) {

@@ -39,6 +39,8 @@ export interface LocalTransaction extends SyncableRecord {
   tags?: string[]
   paymentMethod?: string
   source?: string
+  /** OFX `FITID` from a bank-file import — an exact re-import dedupe key (BUG-21). */
+  externalId?: string
   splitTransactionId: string | null
   /** Set on both legs of a transfer (mirrors `backend/models/Transaction.ts`); null otherwise. */
   transferPairId?: string | null
