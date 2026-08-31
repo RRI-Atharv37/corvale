@@ -6,6 +6,7 @@ import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { recomputeAccountBalanceMajor, roundMoney } from '../utils/balanceUtils'
+import { toMajorUnitBalances } from '../utils/accountWireFormat'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
 import { convertAmount } from '../utils/exchangeRateUtils'
 import { fromMinorUnits, toMinorUnits } from '../../shared/src/money'
@@ -66,23 +67,12 @@ const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): numb
     return roundMoney(parsed)
 }
 
-/**
- * Balances are stored major-unit for every account created before Sprint
- * C5's migration ran, minor-unit integers after — see Account.ts's
- * balanceUnit doc comment. The API contract is unchanged by C5: every
- * response converts back to major-unit decimals here, regardless of the
- * account's internal storage form.
- */
-const getAccountBalancesMajor = (
-    account: Pick<IAccount, 'openingBalance' | 'currentBalance' | 'balanceUnit'>
-): { openingBalance: number; currentBalance: number } =>
-    account.balanceUnit === 'minor'
-        ? { openingBalance: fromMinorUnits(account.openingBalance), currentBalance: fromMinorUnits(account.currentBalance) }
-        : { openingBalance: account.openingBalance, currentBalance: account.currentBalance }
-
 const serializeAccount = (account: IAccount) => ({
     ...account.toObject(),
-    ...getAccountBalancesMajor(account),
+    // The API contract is unchanged by Sprint C5: balances are always major-unit
+    // decimals on the wire, whatever the row's internal `balanceUnit` storage
+    // form. Shared with the /sync wire format via accountWireFormat.ts.
+    ...toMajorUnitBalances(account),
 })
 
 const withConvertedBalance = (

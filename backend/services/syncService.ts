@@ -11,6 +11,7 @@ import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
 import { CustomError } from '../utils/customError'
+import { serializeAccountDocForWire } from '../utils/accountWireFormat'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { buildScopedListFilter } from '../utils/workspaceUtils'
 
@@ -63,6 +64,13 @@ interface EntityConfig {
     model: Model<Document>
     hasSoftDelete: boolean
     buildScope: (userId: string, workspaceId: string | null) => Record<string, unknown>
+    /**
+     * Optional per-entity transform applied to every plain doc before it goes
+     * on the wire (bootstrap + pull). `account` uses it to force
+     * openingBalance/currentBalance to major units regardless of the row's
+     * `balanceUnit` storage flag — see accountWireFormat.ts / BUG-17.
+     */
+    serialize?: (doc: Record<string, unknown>) => Record<string, unknown>
 }
 
 const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
@@ -70,6 +78,7 @@ const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
         model: Account as unknown as Model<Document>,
         hasSoftDelete: false,
         buildScope: (userId, workspaceId) => buildScopedListFilter(userId, workspaceId),
+        serialize: serializeAccountDocForWire,
     },
     transaction: {
         model: Transaction as unknown as Model<Document>,
@@ -214,7 +223,10 @@ export const buildBootstrapSnapshot = async (
             .find(scope)
             .sort({ updatedAt: 1, _id: 1 })) as unknown as EntityDoc[]
 
-        snapshot[RESPONSE_FIELD[entity]] = docs.map((doc) => doc.toObject())
+        snapshot[RESPONSE_FIELD[entity]] = docs.map((doc) => {
+            const plain = doc.toObject()
+            return config.serialize ? config.serialize(plain) : plain
+        })
 
         if (docs.length > 0) {
             const last = docs[docs.length - 1]
@@ -286,7 +298,7 @@ export const buildPullPage = async (
                     deletedAt: doc.deletedAt.toISOString(),
                 })
             } else {
-                changes.push({ entity, doc: plain })
+                changes.push({ entity, doc: config.serialize ? config.serialize(plain) : plain })
             }
         }
 

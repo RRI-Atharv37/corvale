@@ -57,6 +57,7 @@ import {
     updateTransactionTemplateForOp,
 } from '../services/transactionTemplateSyncService'
 import { fromMinorUnits } from '../../shared/src/money'
+import { serializeAccountDocForWire } from '../utils/accountWireFormat'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { assertWorkspaceMembership, parseOptionalWorkspaceId } from '../utils/workspaceUtils'
 
@@ -269,7 +270,13 @@ const applyGenericUpdate = async <T extends EntityDoc>(
     baseUpdatedAt: string | undefined,
     notFoundMessage: string,
     hasSoftDelete: boolean,
-    updateForOp: () => Promise<{ _id: Types.ObjectId }>
+    updateForOp: () => Promise<{ _id: Types.ObjectId }>,
+    // Defaults to the raw document. `account` overrides it so a conflict's
+    // serverDoc carries major-unit balances, matching the bootstrap/pull wire
+    // format (accountWireFormat.ts / BUG-17) — `keep-server` conflict
+    // resolution ingests this doc verbatim.
+    serializeConflictDoc: (doc: T) => Record<string, unknown> = (doc) =>
+        doc.toObject() as unknown as Record<string, unknown>
 ): Promise<ApplyOpOutcome> => {
     const id = payload._id
     if (typeof id !== 'string') {
@@ -295,7 +302,7 @@ const applyGenericUpdate = async <T extends EntityDoc>(
         return {
             status: 'conflict',
             resultId: current._id.toString(),
-            conflict: { serverDoc: current.toObject() as unknown as Record<string, unknown> },
+            conflict: { serverDoc: serializeConflictDoc(current) },
         }
     }
 
@@ -363,7 +370,8 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
                 baseUpdatedAt,
                 ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
                 false,
-                () => updateAccountForOp(userId, payload)
+                () => updateAccountForOp(userId, payload),
+                (doc) => serializeAccountDocForWire(doc.toObject() as unknown as Record<string, unknown>)
             ),
         delete: (userId, payload) => deleteAccountForOp(userId, payload),
     },

@@ -15,6 +15,12 @@ matching the pushed tag for the GitHub Release body.
 
 ### Fixed
 
+- **Sync: account balances always sent in major units.** The `/sync` bootstrap, pull, and
+  push-conflict responses now normalize `Account` opening/current balances to major-unit decimals,
+  matching the REST `/accounts` contract, regardless of whether the account row has been converted
+  to integer minor-unit storage. Without this, running the `migrate:account-balances` migration on
+  a deployment with desktop/offline clients would have made every synced balance display 100x too
+  large.
 - **Desktop app: duplicate password-reveal / clear buttons.** WebView2 (Edge/Chromium) draws its
   own `::-ms-reveal` / `::-ms-clear` controls next to the app's own show/hide toggle. They are now
   suppressed globally in `index.css`; the web build (Chrome) never rendered them.

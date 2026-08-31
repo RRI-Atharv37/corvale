@@ -22,12 +22,15 @@ export interface MigrateAccountBalancesResult {
  * and flagged, regardless of when it was created; accounts already flagged
  * 'minor' are left untouched.
  *
- * NOTE: any client syncing Account data offline (VITE_LOCAL_FIRST — see
- * ROADMAP.md's D4/local-first caveats) reads whatever unit is currently
- * stored via /api/v1/sync, with no conversion at that layer. Do not run
- * this against a deployment with active offline/desktop clients until the
- * frontend local-first engine has been updated to match — otherwise their
- * locally cached balances will read ~100x too large the next time they sync.
+ * Wire safety (BUG-17): both the REST /accounts contract
+ * (accountController.serializeAccount) and the /api/v1/sync bootstrap/pull/
+ * push-conflict paths emit Account balances as major-unit decimals with
+ * balanceUnit 'major' regardless of storage (accountWireFormat.ts). A
+ * migrated account therefore syncs down to an offline/desktop client
+ * (VITE_LOCAL_FIRST) unchanged from the client's point of view — the local
+ * engine, which assumes major units throughout, never sees the minor-unit
+ * form. This is what makes running the migration against a live deployment
+ * safe; the frontend domain engine itself was deliberately left major-only.
  */
 export const migrateAccountBalancesToMinorUnits = async (
     options: MigrateAccountBalancesOptions = {}

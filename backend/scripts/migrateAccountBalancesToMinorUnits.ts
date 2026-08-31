@@ -21,9 +21,9 @@ const main = async (): Promise<void> => {
             : 'Running account-balance minor-units migration...'
     )
     console.log(
-        'NOTE: do not run this against a deployment with active offline/desktop (VITE_LOCAL_FIRST) ' +
-            'clients until the frontend local-first engine has been updated to match — see the ' +
-            'docstring on migrateAccountBalancesToMinorUnits.ts.'
+        'NOTE: the REST and /sync wire formats both normalize Account balances to major units ' +
+            'regardless of storage (accountWireFormat.ts / BUG-17), so offline/desktop ' +
+            '(VITE_LOCAL_FIRST) clients are unaffected by this conversion.'
     )
 
     const result = await migrateAccountBalancesToMinorUnits({ dryRun })
