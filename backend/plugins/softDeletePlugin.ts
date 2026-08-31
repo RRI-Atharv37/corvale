@@ -1,6 +1,6 @@
 import { Schema, Query } from 'mongoose'
 
-import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
+import { SOFT_DELETE_BYPASS, TOMBSTONE_RETENTION_SECONDS } from '../utils/softDelete'
 
 const QUERY_OPERATIONS = [
     'find',
@@ -27,6 +27,19 @@ const shouldBypassSoftDelete = (query: Query<unknown, unknown>): boolean => {
  */
 export const softDeletePlugin = (schema: Schema): void => {
     schema.add({ deletedAt: { type: Date, default: null } })
+
+    // SEC-47: enforce the tombstone retention window at the database layer. The partial filter
+    // keeps live rows (deletedAt: null) out of the index entirely, so TTL only ever reaps rows
+    // that have actually been soft-deleted. The `purge:tombstones` CLI is kept for backfilling
+    // deployments whose index predates this.
+    schema.index(
+        { deletedAt: 1 },
+        {
+            name: 'tombstone_ttl',
+            expireAfterSeconds: TOMBSTONE_RETENTION_SECONDS,
+            partialFilterExpression: { deletedAt: { $type: 'date' } },
+        }
+    )
 
     for (const operation of QUERY_OPERATIONS) {
         schema.pre(operation, function (this: Query<unknown, unknown>, next) {

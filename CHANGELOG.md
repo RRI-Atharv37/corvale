@@ -22,8 +22,27 @@ matching the pushed tag for the GitHub Release body.
   the same statement finds every row even when the bank rewords the payee between exports, and a
   skipped statement entry or a currency mismatch is surfaced instead of dropped silently.
 
+### Changed
+
+- **Updated Privacy Policy and Cookie Policy (version 2026-09-01).** The Cookie Policy's
+  description of the on-device database was made precise: when an app PIN is set, each stored
+  record is encrypted, but a few fields used for offline search and totals (such as amounts and
+  dates) are kept readable. The protections on your data have not changed — only the wording. You
+  will be asked to review and accept the current versions the next time you sign in.
+
 ### Fixed
 
+- **Signing out no longer silently drops changes that haven't synced.** If the app is holding
+  local edits that have not reached your account yet, signing out now offers to sync them first,
+  or to discard them deliberately, instead of clearing them without asking.
+- **The "please accept the updated terms" screen no longer hides your data rights.** Sign out,
+  export, and delete-account are now available directly on that screen, so accepting new terms is
+  never a precondition for leaving or taking your data with you.
+- **Deleted records are now purged on schedule by the database itself.** The retention window for
+  deletion markers (90 days) is enforced by a database index rather than only by a manual
+  maintenance command.
+- **Closing your account now deletes its sign-in tokens outright** rather than marking them
+  revoked, so no account-linked rows remain afterward.
 - **Import: a refund could be skipped as a duplicate of the original charge.** Duplicate detection
   now includes the transaction direction, so an equal-magnitude income and expense on the same day
   with the same description are no longer treated as the same transaction.

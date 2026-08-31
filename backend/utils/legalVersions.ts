@@ -19,7 +19,11 @@
  */
 
 export const TERMS_VERSION = '2026-08-29'
-export const PRIVACY_VERSION = '2026-08-29'
+// 2026-09-01 (S31 / SEC-46): the Cookie Policy's browser-encryption wording was corrected to
+// reflect that promoted columns (amounts, dates, names) stay plaintext on the device by design.
+// The Cookie Policy is part of the privacy disclosures, so the bump rides PRIVACY_VERSION and
+// fires LegalGate re-consent.
+export const PRIVACY_VERSION = '2026-09-01'
 
 /** Shipped on every user payload so the client can compare without a second round trip. */
 export const CURRENT_LEGAL_VERSIONS = {

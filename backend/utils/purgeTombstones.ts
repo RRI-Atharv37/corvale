@@ -8,15 +8,9 @@ import Saver from '../models/Saver'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
-import { SOFT_DELETE_BYPASS } from './softDelete'
+import { SOFT_DELETE_BYPASS, TOMBSTONE_RETENTION_DAYS } from './softDelete'
 
-/**
- * Retention floor for soft-deleted (tombstoned) records, in days. Must exceed
- * the maximum realistic offline window so a device that reconnects after
- * being offline still finds the tombstone during /sync/pull rather than
- * seeing the record simply vanish with no explanation.
- */
-export const TOMBSTONE_RETENTION_DAYS = 90
+export { TOMBSTONE_RETENTION_DAYS }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SOFT_DELETABLE_MODELS: Model<any>[] = [

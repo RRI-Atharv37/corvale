@@ -30,6 +30,16 @@ export const revokeAllRefreshTokensForUser = async (userId: string): Promise<voi
     await RefreshToken.updateMany({ userId, revokedAt: null }, { revokedAt: new Date() })
 }
 
+/**
+ * SEC-49: hard-delete every refresh token for a user, used by the account-deletion cascade.
+ * Flagging them `revokedAt` only (as `revokeAllRefreshTokensForUser` does) would leave
+ * `userId`-linked rows behind for up to the token lifetime after what the privacy policy calls
+ * "a real deletion, not a hidden flag".
+ */
+export const deleteAllRefreshTokensForUser = async (userId: string): Promise<void> => {
+    await RefreshToken.deleteMany({ userId })
+}
+
 const revokeRefreshTokenFamily = async (familyId: mongoose.Types.ObjectId): Promise<void> => {
     await RefreshToken.updateMany({ familyId, revokedAt: null }, { revokedAt: new Date() })
 }

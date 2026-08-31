@@ -23,10 +23,24 @@ vi.mock('../../../utils/axiosInstance', () => ({
 }))
 
 const mockUpdateUser = vi.fn()
+const mockLogout = vi.fn().mockResolvedValue(undefined)
+const mockDeleteAccount = vi.fn().mockResolvedValue(undefined)
 let currentUser: User | null = null
 
 vi.mock('../../../hooks/useUser', () => ({
-    useUser: () => ({ user: currentUser, updateUser: mockUpdateUser }),
+    useUser: () => ({
+        user: currentUser,
+        updateUser: mockUpdateUser,
+        logout: mockLogout,
+        deleteAccount: mockDeleteAccount,
+    }),
+}))
+
+// SEC-48: the gate's own "Export my data" affordance. Its wiring is covered here; the export
+// itself has its own tests.
+const mockExportPersonalBackup = vi.fn().mockResolvedValue(undefined)
+vi.mock('../../../utils/personalBackupExport', () => ({
+    exportPersonalBackup: () => mockExportPersonalBackup(),
 }))
 
 const CURRENT = { termsVersion: '2026-08-29', privacyVersion: '2026-08-29' }
@@ -114,6 +128,33 @@ describe('LegalGate', () => {
                 expect.objectContaining({ legalAcceptance: expect.objectContaining(CURRENT) })
             )
         )
+    })
+
+    it('surfaces sign-out, export and delete-account inside the gate (SEC-48)', () => {
+        renderGate(baseUser)
+
+        expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /export my data/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /delete my account/i })).toBeInTheDocument()
+    })
+
+    it('exports without requiring acceptance first (SEC-48)', async () => {
+        const user = userEvent.setup()
+        renderGate(baseUser)
+
+        await user.click(screen.getByRole('button', { name: /export my data/i }))
+
+        await waitFor(() => expect(mockExportPersonalBackup).toHaveBeenCalledOnce())
+        expect(axiosInstance.post).not.toHaveBeenCalledWith(API_PATHS.AUTH.LEGAL_ACCEPT, {})
+    })
+
+    it('signs out without requiring acceptance first (SEC-48)', async () => {
+        const user = userEvent.setup()
+        renderGate(baseUser)
+
+        await user.click(screen.getByRole('button', { name: /sign out/i }))
+
+        await waitFor(() => expect(mockLogout).toHaveBeenCalledOnce())
     })
 
     it('does not gate before the profile has loaded', () => {
