@@ -15,6 +15,7 @@ vi.mock('../../offline/pinStorage', () => ({
   purgeLocalPinKeys: (...a: unknown[]) => purgeLocalPinKeysMock(...a),
 }))
 vi.mock('react-hot-toast', () => ({ default: { success: (...a: unknown[]) => toastSuccessMock(...a) } }))
+vi.mock('../../hooks/useUser', () => ({ useUser: () => ({ user: { _id: 'user-1' } }) }))
 
 const { default: LocalDbRecoveryGate } = await import('../LocalDbRecoveryGate')
 const { markLocalDbDamaged, resetLocalDbHealthForTests, getLocalDbHealth } = await import('../localDbHealth')
@@ -67,6 +68,8 @@ describe('LocalDbRecoveryGate (BUG-30)', () => {
     await waitFor(() => expect(screen.getByText('dashboard')).toBeInTheDocument())
     expect(rebuildLocalDbMock).toHaveBeenCalledTimes(1)
     expect(provisionLocalDbMock).toHaveBeenCalledTimes(1)
+    // SEC-38: the rebuilt store is re-seeded and stamped with the signed-in user's id.
+    expect(provisionLocalDbMock).toHaveBeenCalledWith('user-1')
     expect(getLocalDbHealth()).toBe('ok')
     expect(toastSuccessMock).toHaveBeenCalledWith('Local data rebuilt from your account.')
   })

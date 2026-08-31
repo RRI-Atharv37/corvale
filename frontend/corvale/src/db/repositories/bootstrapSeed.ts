@@ -1,6 +1,7 @@
 import type { LocalDb } from '../LocalDb'
 import { tableInvalidationBus } from '../invalidation/tableInvalidationBus'
 import { Repository, type SyncableRecord, type SyncableTableName } from './Repository'
+import { setStoredOwnerId } from '../localStoreOwner'
 import type { BootstrapSyncSnapshot } from '../../utils/syncApi'
 
 type SeedableField = Exclude<keyof BootstrapSyncSnapshot, 'checkpoint'>
@@ -21,10 +22,17 @@ const REPOSITORIES: Record<SeedableField, Repository<SyncableRecord>> = {
 /**
  * Seeds every local table from a `/sync/bootstrap` response inside a single
  * transaction, then persists its checkpoint so a subsequent `/sync/pull` can
- * resume from exactly where the bootstrap left off. Table invalidation is
- * published after commit so any mounted `useLocalQuery` hooks refetch.
+ * resume from exactly where the bootstrap left off. `ownerId` (the signed-in
+ * user's id) is recorded in the same transaction so `provisionLocalDb` can
+ * detect a store that belongs to a different account (SEC-38). Table
+ * invalidation is published after commit so any mounted `useLocalQuery` hooks
+ * refetch.
  */
-export const seedFromBootstrap = async (db: LocalDb, snapshot: BootstrapSyncSnapshot): Promise<void> => {
+export const seedFromBootstrap = async (
+  db: LocalDb,
+  snapshot: BootstrapSyncSnapshot,
+  ownerId?: string
+): Promise<void> => {
   const fields = Object.keys(REPOSITORIES) as SeedableField[]
 
   await db.transaction(async (tx) => {
@@ -40,6 +48,9 @@ export const seedFromBootstrap = async (db: LocalDb, snapshot: BootstrapSyncSnap
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       [snapshot.checkpoint]
     )
+    if (ownerId) {
+      await setStoredOwnerId(tx, ownerId)
+    }
   })
 
   for (const field of fields) {

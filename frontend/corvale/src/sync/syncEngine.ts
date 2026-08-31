@@ -172,16 +172,29 @@ export const getSyncStatus = async (): Promise<SyncStatus> => {
     }
 }
 
-/** Wipes every local table (syncable data + outbox + conflicts + checkpoint). Auth/session state is untouched. */
+/** The one table `resetLocalData` must never clear - the applied-migration marker (`runMigrations.ts`). */
+const MIGRATION_LEDGER_TABLE = '_schema_version'
+
+/**
+ * Wipes every local table except the migration ledger - syncable data, outbox, conflicts,
+ * checkpoint/owner (`_sync_meta`), and the receipt blob cache + upload queue (`_blobs`,
+ * `_receipt_uploads`). SEC-39: those last two were previously left behind, so one user's receipt
+ * images stayed cached and their queued uploads drained under the next user's token. Enumerating
+ * `sqlite_master` rather than a hand-maintained list means a table added in a future migration is
+ * cleared by default rather than missed by default. Auth/session state (outside SQLite) is
+ * untouched - `wipeLocalData` handles that.
+ */
 export const resetLocalData = async (): Promise<void> => {
     const db = await getLocalDb()
+    const tables = await db.select<{ name: string }>(
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != ?`,
+        [MIGRATION_LEDGER_TABLE]
+    )
     await db.transaction(async (tx) => {
-        for (const table of SYNCABLE_TABLES) {
-            await tx.exec(`DELETE FROM ${table}`)
+        for (const { name } of tables) {
+            await tx.exec(`DELETE FROM ${name}`)
         }
-        await tx.exec('DELETE FROM _outbox')
-        await tx.exec('DELETE FROM _conflicts')
-        await tx.exec('DELETE FROM _sync_meta')
     })
     outboxInstance = null
 
@@ -189,6 +202,7 @@ export const resetLocalData = async (): Promise<void> => {
         tableInvalidationBus.publish(table)
     }
     tableInvalidationBus.publish('_conflicts')
+    tableInvalidationBus.publish('_receipt_uploads')
 }
 
 let listenersAttached = false

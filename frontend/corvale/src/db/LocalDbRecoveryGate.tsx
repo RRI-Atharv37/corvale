@@ -4,6 +4,7 @@ import { getLocalDbDamageReason, getLocalDbHealth, markLocalDbHealthy, subscribe
 import { rebuildLocalDb } from './bootstrapLocalDb'
 import { provisionLocalDb } from './provisionLocalDb'
 import { hasAnyPinMaterial, purgeLocalPinKeys } from '../offline/pinStorage'
+import { useUser } from '../hooks/useUser'
 
 type Phase = 'idle' | 'rebuilding' | 'error'
 
@@ -18,6 +19,7 @@ type Phase = 'idle' | 'rebuilding' | 'error'
  */
 const LocalDbRecoveryGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const health = useSyncExternalStore(subscribeLocalDbHealth, getLocalDbHealth, getLocalDbHealth)
+  const { user } = useUser()
   const [phase, setPhase] = useState<Phase>('idle')
   const [step, setStep] = useState('')
 
@@ -30,7 +32,7 @@ const LocalDbRecoveryGate: React.FC<{ children: React.ReactNode }> = ({ children
       await rebuildLocalDb()
 
       setStep('Downloading your data…')
-      await provisionLocalDb()
+      await provisionLocalDb(user?._id)
 
       if (hadPin) {
         purgeLocalPinKeys()
@@ -46,7 +48,7 @@ const LocalDbRecoveryGate: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Local data rebuild failed', error)
       setPhase('error')
     }
-  }, [])
+  }, [user?._id])
 
   if (health === 'ok') {
     return <>{children}</>

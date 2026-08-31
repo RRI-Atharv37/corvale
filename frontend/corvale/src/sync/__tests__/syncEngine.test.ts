@@ -24,8 +24,11 @@ import {
     retrySyncOp,
     discardSyncOp,
     flushOutbox,
+    resetLocalData,
     resetSyncEngineForTests,
 } from '../syncEngine'
+import { putReceiptBlob, getReceiptCacheUsageBytes } from '../../db/receiptBlobCache'
+import { createReceiptUploadQueue, createSqliteReceiptUploadStore } from '../receiptUploadQueue'
 
 const setOnline = (online: boolean): void => {
     Object.defineProperty(navigator, 'onLine', { value: online, writable: true, configurable: true })
@@ -140,5 +143,78 @@ describe('syncEngine - BUG-32 failed-op surfacing', () => {
         const status = await getSyncStatus()
         expect(status.pendingCount).toBe(0)
         expect(status.failedCount).toBe(0)
+    })
+})
+
+describe('resetLocalData (SEC-38 / SEC-39: full local wipe)', () => {
+    let db: LocalDb
+
+    const countRows = async (table: string): Promise<number> => {
+        const rows = await db.select<{ n: number }>(`SELECT count(*) AS n FROM ${table}`)
+        return rows[0]?.n ?? 0
+    }
+
+    beforeEach(async () => {
+        setOnline(true)
+        db = await MemorySqliteDriver.create()
+        await runMigrations(db, MIGRATIONS)
+        setLocalDb(db)
+        resetSyncEngineForTests()
+    })
+
+    afterEach(async () => {
+        resetSyncEngineForTests()
+        resetLocalDbForTests()
+        await db.close()
+    })
+
+    it('clears syncable data, the outbox, conflicts and _sync_meta', async () => {
+        await db.exec(
+            `INSERT INTO transactions (_id, userId, accountId, categoryId, type, amount, date, data, updatedAt, _localUpdatedAt)
+             VALUES ('t1', 'user-a', 'a1', 'c1', 'expense', 100, '2026-08-01', '{}', '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z')`
+        )
+        await db.exec(`INSERT INTO _sync_meta (key, value) VALUES ('checkpoint', 'cp1'), ('ownerId', 'user-a')`)
+        await enqueueOp(db, 'transaction:t1')
+
+        await resetLocalData()
+
+        expect(await countRows('transactions')).toBe(0)
+        expect(await countRows('_outbox')).toBe(0)
+        expect(await countRows('_conflicts')).toBe(0)
+        expect(await countRows('_sync_meta')).toBe(0)
+    })
+
+    it('SEC-39: clears the receipt blob cache and the queued-upload table', async () => {
+        await putReceiptBlob(db, {
+            recordId: 'txn-1',
+            mimeType: 'image/png',
+            data: new Uint8Array([1, 2, 3, 4, 5]),
+        })
+        const queue = createReceiptUploadQueue(createSqliteReceiptUploadStore(db))
+        await queue.enqueue({
+            localBlobId: 'blob-1',
+            transactionId: 'txn-1',
+            filename: 'receipt.png',
+            mimeType: 'image/png',
+        })
+
+        expect(await getReceiptCacheUsageBytes(db)).toBeGreaterThan(0)
+        expect(await countRows('_receipt_uploads')).toBe(1)
+
+        await resetLocalData()
+
+        expect(await countRows('_blobs')).toBe(0)
+        expect(await countRows('_receipt_uploads')).toBe(0)
+        expect(await getReceiptCacheUsageBytes(db)).toBe(0)
+    })
+
+    it('preserves the applied-migration ledger so the schema is not re-migrated', async () => {
+        const before = await db.select<{ version: number }>('SELECT version FROM _schema_version WHERE id = 1')
+
+        await resetLocalData()
+
+        const after = await db.select<{ version: number }>('SELECT version FROM _schema_version WHERE id = 1')
+        expect(after[0]?.version).toBe(before[0]?.version)
+        expect(after[0]?.version).toBeGreaterThan(0)
     })
 })
