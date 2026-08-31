@@ -18,6 +18,7 @@ import {
 } from '../../shared/src/csvImport'
 import type {
     ImportFormat,
+    ImportDateFormat,
     ColumnMappingField,
     ColumnMapping,
     ParsedImportRow,
@@ -29,6 +30,7 @@ import type {
 export { IMPORT_MAX_ROWS, IMPORT_PREVIEW_SAMPLE_ROWS }
 export type {
     ImportFormat,
+    ImportDateFormat,
     ColumnMappingField,
     ColumnMapping,
     ParsedImportRow,

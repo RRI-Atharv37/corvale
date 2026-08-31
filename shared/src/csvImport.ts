@@ -31,6 +31,15 @@ export type ColumnMappingField =
     | 'credit'
     | 'type'
 
+/**
+ * Token order for slash/dot/dash-separated dates in the mapped date column (BUG-18). `auto`
+ * inspects the column and picks an order; the explicit values force it. ISO `YYYY-MM-DD` is
+ * always recognised first, regardless of this setting.
+ */
+export type ImportDateFormat = 'auto' | 'YMD' | 'MDY' | 'DMY'
+
+const DATE_FORMATS: readonly ImportDateFormat[] = ['auto', 'YMD', 'MDY', 'DMY']
+
 export interface ColumnMapping {
     date?: string
     description?: string
@@ -38,6 +47,7 @@ export interface ColumnMapping {
     debit?: string
     credit?: string
     type?: string
+    dateFormat?: ImportDateFormat
 }
 
 export interface ParsedImportRow {
@@ -231,7 +241,89 @@ export const suggestColumnMapping = (headers: string[], format: ImportFormat): C
     }
 }
 
-const parseDateValue = (value: string): Date | null => {
+/** A slash / dot / dash separated three-number date, e.g. `25/12/2026`, `2026.03.07`, `7-3-26`. */
+const NUMERIC_DATE_RE = /^(\d{1,4})[/.-](\d{1,2})[/.-](\d{1,4})$/
+
+const expandTwoDigitYear = (year: number): number => {
+    if (year >= 100) {
+        return year
+    }
+    return year + (year >= 70 ? 1900 : 2000)
+}
+
+/**
+ * Build a UTC date from calendar parts, rejecting anything out of range instead of letting
+ * `Date.UTC` roll it forward (the BUG-18 defect: `25/12/2026` read month-first became 2028-01-12).
+ */
+const buildUtcDate = (year: number, month: number, day: number): Date | null => {
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+        return null
+    }
+    const parsed = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+    if (
+        Number.isNaN(parsed.getTime()) ||
+        parsed.getUTCFullYear() !== year ||
+        parsed.getUTCMonth() !== month - 1 ||
+        parsed.getUTCDate() !== day
+    ) {
+        return null
+    }
+    return parsed
+}
+
+type ResolvedDateOrder = Exclude<ImportDateFormat, 'auto'>
+
+/**
+ * Pick a token order for the mapped date column. For `auto`: ISO / 4-digit-first values vote
+ * `YMD`, a first token > 12 votes `DMY`, a second token > 12 votes `MDY`; on no signal (or a
+ * contradiction) fall back to `MDY`, the historical default.
+ */
+const resolveDateOrder = (values: string[], requested: ImportDateFormat): ResolvedDateOrder => {
+    if (requested && requested !== 'auto') {
+        return requested
+    }
+
+    let sawDayFirst = false
+    let sawMonthSecond = false
+    let sawYearFirst = false
+
+    for (const raw of values) {
+        const trimmed = raw.trim()
+        if (!trimmed) {
+            continue
+        }
+        if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+            sawYearFirst = true
+            continue
+        }
+        const match = trimmed.match(NUMERIC_DATE_RE)
+        if (!match) {
+            continue
+        }
+        const first = Number(match[1])
+        const second = Number(match[2])
+        if (match[1].length === 4) {
+            sawYearFirst = true
+            continue
+        }
+        if (first > 12 && first <= 31) {
+            sawDayFirst = true
+        }
+        if (second > 12 && second <= 31) {
+            sawMonthSecond = true
+        }
+    }
+
+    if (sawDayFirst && !sawMonthSecond) {
+        return 'DMY'
+    }
+    if (sawYearFirst && !sawDayFirst && !sawMonthSecond) {
+        return 'YMD'
+    }
+    return 'MDY'
+}
+
+const parseDateValue = (value: string, order: ResolvedDateOrder = 'MDY'): Date | null => {
     const trimmed = value.trim()
     if (!trimmed) {
         return null
@@ -243,16 +335,31 @@ const parseDateValue = (value: string): Date | null => {
         return Number.isNaN(parsed.getTime()) ? null : parsed
     }
 
-    const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
-    if (slashMatch) {
-        let year = Number(slashMatch[3])
-        if (year < 100) {
-            year += year >= 70 ? 1900 : 2000
+    const numericMatch = trimmed.match(NUMERIC_DATE_RE)
+    if (numericMatch) {
+        const t1 = Number(numericMatch[1])
+        const t2 = Number(numericMatch[2])
+        const t3 = Number(numericMatch[3])
+
+        let year: number
+        let month: number
+        let day: number
+        if (order === 'YMD') {
+            year = expandTwoDigitYear(t1)
+            month = t2
+            day = t3
+        } else if (order === 'DMY') {
+            day = t1
+            month = t2
+            year = expandTwoDigitYear(t3)
+        } else {
+            month = t1
+            day = t2
+            year = expandTwoDigitYear(t3)
         }
-        const month = Number(slashMatch[1])
-        const day = Number(slashMatch[2])
-        const parsed = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
-        return Number.isNaN(parsed.getTime()) ? null : parsed
+        // A numeric date that doesn't resolve is rejected outright — never fall through to
+        // `new Date()`, which would guess (or roll a bad month forward) with no error (BUG-18).
+        return buildUtcDate(year, month, day)
     }
 
     const parsed = new Date(trimmed)
@@ -328,6 +435,9 @@ export const mapCsvRows = (
     const parsedRows: ParsedImportRow[] = []
     const errors: ImportRowError[] = []
 
+    const dateColumnValues = rows.map((row) => getCellValue(headers, row, mapping.date))
+    const dateOrder = resolveDateOrder(dateColumnValues, mapping.dateFormat ?? 'auto')
+
     rows.forEach((row, index) => {
         const rowIndex = index + 1
         if (row.every((cell) => cell.trim().length === 0)) {
@@ -335,7 +445,7 @@ export const mapCsvRows = (
         }
 
         const dateValue = getCellValue(headers, row, mapping.date)
-        const parsedDate = parseDateValue(dateValue)
+        const parsedDate = parseDateValue(dateValue, dateOrder)
         if (!parsedDate) {
             errors.push({ rowIndex, message: 'Invalid or missing date' })
             return
@@ -476,6 +586,10 @@ export const parseImportMapping = (value: unknown): ColumnMapping => {
             continue
         }
         result[field] = String(raw)
+    }
+
+    if (DATE_FORMATS.includes(mapping.dateFormat as ImportDateFormat)) {
+        result.dateFormat = mapping.dateFormat as ImportDateFormat
     }
 
     return result

@@ -1073,6 +1073,9 @@ export interface SavedReportRunResult {
 // as a rename-compat shim (V7.3c) — mirrors `shared/src/csvImport.ts`'s `ImportFormat`.
 export type ImportFormat = 'generic' | 'chase' | 'corvale_export' | 'spndr_export' | 'ofx'
 
+// Mirrors `shared/src/csvImport.ts`'s `ImportDateFormat` — token order for slash/dot/dash dates.
+export type ImportDateFormat = 'auto' | 'YMD' | 'MDY' | 'DMY'
+
 export interface ColumnMapping {
     date?: string
     description?: string
@@ -1080,6 +1083,7 @@ export interface ColumnMapping {
     debit?: string
     credit?: string
     type?: string
+    dateFormat?: ImportDateFormat
 }
 
 export interface ParsedImportRow {

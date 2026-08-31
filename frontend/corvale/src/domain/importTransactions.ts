@@ -18,6 +18,7 @@ import {
   toImportIsoDate,
   type ColumnMapping,
   type ImportFormat,
+  type ImportDateFormat,
   type ImportDuplicateAction,
   type ImportDuplicateMatch,
   type ParsedImportRow,
@@ -26,7 +27,14 @@ import {
 import { parseAmountToMinorUnits, fromMinorUnits } from '@shared/money'
 
 export { IMPORT_MAX_ROWS, IMPORT_PREVIEW_SAMPLE_ROWS }
-export type { ColumnMapping, ImportFormat, ImportDuplicateAction, ImportDuplicateMatch, ParsedImportRow }
+export type {
+  ColumnMapping,
+  ImportFormat,
+  ImportDateFormat,
+  ImportDuplicateAction,
+  ImportDuplicateMatch,
+  ParsedImportRow,
+}
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
 const categoriesRepo = new Repository<LocalCategory>('categories')

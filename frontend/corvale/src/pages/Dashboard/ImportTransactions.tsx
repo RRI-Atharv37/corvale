@@ -10,6 +10,7 @@ import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOn
 import { useWorkspace } from '../../hooks/useWorkspace'
 import type {
     ColumnMapping,
+    ImportDateFormat,
     ImportDuplicateAction,
     ImportParseResponse,
     ImportPreviewItem,
@@ -32,13 +33,20 @@ const STEP_LABELS: Record<WizardStep, string> = {
     done: 'Complete',
 }
 
-const MAPPING_FIELDS: { key: keyof ColumnMapping; label: string; required?: boolean }[] = [
+const MAPPING_FIELDS: { key: 'date' | 'description' | 'amount' | 'debit' | 'credit' | 'type'; label: string; required?: boolean }[] = [
     { key: 'date', label: 'Date', required: true },
     { key: 'description', label: 'Description' },
     { key: 'amount', label: 'Amount' },
     { key: 'debit', label: 'Debit' },
     { key: 'credit', label: 'Credit' },
     { key: 'type', label: 'Type (optional)' },
+]
+
+const DATE_FORMAT_OPTIONS: { value: ImportDateFormat; label: string }[] = [
+    { value: 'auto', label: 'Auto-detect' },
+    { value: 'YMD', label: 'Year first (2026-03-07)' },
+    { value: 'MDY', label: 'Month first (03/07/2026 — US)' },
+    { value: 'DMY', label: 'Day first (07/03/2026)' },
 ]
 
 const ImportTransactions = () => {
@@ -379,6 +387,32 @@ const ImportTransactions = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+
+                    <div className="sm:max-w-xs">
+                        <label className="text-[13px] text-fg-secondary">Date format</label>
+                        <div className="input-box mb-0 mt-1">
+                            <select
+                                value={mapping.dateFormat ?? 'auto'}
+                                onChange={(event) =>
+                                    setMapping((current) => ({
+                                        ...current,
+                                        dateFormat: event.target.value as ImportDateFormat,
+                                    }))
+                                }
+                                className="w-full bg-transparent outline-none"
+                            >
+                                {DATE_FORMAT_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <p className="mt-1 text-xs text-text-muted">
+                            How to read slash or dot dates. Auto-detect uses the column's own values;
+                            pick one if your file mixes formats. ISO <code>YYYY-MM-DD</code> always works.
+                        </p>
                     </div>
 
                     {parseResult.sampleRows.length > 0 && Array.isArray(parseResult.sampleRows[0]) && (

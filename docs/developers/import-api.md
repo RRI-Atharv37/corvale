@@ -39,6 +39,8 @@ Dry-runs the import without writing anything, including duplicate detection.
 
 Provide `parsedRows` for OFX imports, or `headers`+`rows`+`mapping` for CSV imports (`mapping.date` is required, plus at least one of description/amount/debit/credit). Each row is run through the user's [categorization rules](./categorization-rules-api.md); unmatched rows fall back to `defaultCategoryId`.
 
+`mapping.dateFormat` (optional) controls how slash/dot/dash dates in the mapped date column are read: `auto` (default - inferred from the column's values), `YMD`, `MDY`, or `DMY`. ISO `YYYY-MM-DD` is always recognized regardless. A slash/dot/dash value that isn't a valid calendar date is rejected as a row-level error rather than being coerced.
+
 Response includes a `summary` (`total, valid, invalid, duplicates, incomeTotal, expenseTotal`) and per-row items, each flagged with `duplicateOf` (matching existing transaction id/title/date/amount/category) when applicable.
 
 ## POST /imports/commit

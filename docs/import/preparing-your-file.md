@@ -31,31 +31,47 @@ There is no XLSX, PDF, or JSON import. If that's what your bank gives you, see
 
 ## Accepted date formats
 
-For CSV files, Corvale reads the date column in this order:
+For CSV files, Corvale reads the date column like this:
 
-1. **`YYYY-MM-DD`** (for example `2026-03-07`) — the recommended format. Anything
-   after the first 10 characters, such as a timestamp, is ignored.
-2. **`M/D/YYYY` or `M/D/YY`** (for example `3/7/2026` or `3/7/26`) — read as
-   **month first, then day**, the US convention. Two-digit years from 70 to 99
-   become 19xx; 00 to 69 become 20xx.
-3. **Anything else** is handed to a generic date reader whose behavior varies.
-   Values like `Jan 5, 2026` usually work; many others fail or are misread.
+1. **`YYYY-MM-DD`** (for example `2026-03-07`) is always recognised, whatever the
+   date format setting says. Anything after the first 10 characters, such as a
+   timestamp, is ignored.
+2. **Slash, dot, or dash dates** (for example `7/3/2026`, `07.03.2026`, or
+   `7-3-2026`) are read according to the **Date format** control in the mapping
+   step — see below. Two-digit years from 70 to 99 become 19xx; 00 to 69 become
+   20xx.
+3. **Anything else** (such as `Jan 5, 2026`) is handed to a generic date reader
+   whose behavior varies. Values like that usually work, but many others don't —
+   convert them to `YYYY-MM-DD` to be safe.
+
+A slash/dot/dash date whose numbers can't make a real calendar date — a "month"
+of 25, or 30 February — is reported as an error on that row rather than being
+guessed at or rolled forward.
 
 OFX and QFX files carry their dates in a fixed `YYYYMMDD` form, so there is
 nothing to adjust.
 
-::: warning Day-first dates are misread
-Corvale always treats a slash-separated date as **month/day/year**. A
-day-first date — common outside the US — is silently reinterpreted, with no
-error shown:
+### The Date format control
 
-- `12/06/2026` is read as **6 December 2026**, not 12 June 2026.
-- `25/12/2026` is read as **12 January 2028** (month "25" rolls forward two
-  years), not 25 December 2026.
+The mapping step has a **Date format** dropdown that tells Corvale how to read
+slash, dot, and dash dates:
 
-Before importing, convert every date in your file to `YYYY-MM-DD`. It is the
-only format Corvale reads unambiguously.
-:::
+| Option | Order | Example |
+|--------|-------|---------|
+| **Auto-detect** (default) | Corvale scans the whole date column and chooses (see below) | — |
+| **Year first** | `YYYY/MM/DD` | `2026/03/07` → 7 March 2026 |
+| **Month first (US)** | `MM/DD/YYYY` | `03/07/2026` → 7 March 2026 |
+| **Day first** | `DD/MM/YYYY` | `07/03/2026` → 7 March 2026 |
+
+Auto-detect picks an order from the column's own values: a value whose first
+number is over 12 (like `25/03/2026`) means day-first; a four-digit year first
+(like `2026/03/07`) means year-first; otherwise it uses month-first, the US
+convention.
+
+Set the dropdown explicitly when your file's dates are all ambiguous — every day
+and month is 12 or lower, like `07/03/2026` — and you know which convention your
+bank uses. The preview step shows the parsed dates before anything is saved, so
+you can check the result and go back if it looks wrong.
 
 ## Delimiter and formatting limits
 
@@ -91,8 +107,11 @@ direction.
 
 ## Convert your file first
 
-Use this recipe when your file is an XLSX or PDF, uses day-first dates, has a
-non-dollar currency symbol, or is separated by something other than commas.
+Use this recipe when your file is an XLSX or PDF, has a non-dollar currency
+symbol, or is separated by something other than commas. Day-first and year-first
+dates no longer need converting — set the **Date format** control in the wizard
+instead — but reformatting to `YYYY-MM-DD` is still the safest option if you're
+editing the file anyway.
 
 1. **Open the file in a spreadsheet app** — Excel, Google Sheets, or LibreOffice
    Calc. XLSX opens directly; for a PDF statement, copy the transaction table and
