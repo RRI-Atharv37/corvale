@@ -4,6 +4,7 @@ import { Application } from 'express'
 import { createApp } from '../app'
 import Account from '../models/Account'
 import Category from '../models/Category'
+import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import { registerUser, authHeader, RegisteredUser } from './helpers'
 
@@ -135,6 +136,141 @@ describe('Sync create — cross-tenant id ownership (SEC-13, BUG-02)', () => {
         const stillOwners = await Account.findById(ownerAccount._id)
         expect(stillOwners?.name).toBe('Owner Savings')
         expect(stillOwners?.userId.toString()).toBe(owner.userId)
+    })
+
+    it('SEC-55: a create colliding with another user\'s TOMBSTONED id is id_conflict, not a slip-through', async () => {
+        app = createApp()
+        const owner: RegisteredUser = await registerUser(app, { email: 'sync-owner-tomb-a@example.com' })
+        const attacker: RegisteredUser = await registerUser(app, { email: 'sync-attacker-tomb-a@example.com' })
+
+        const ownerAccount = await seedAccount(owner.userId)
+        const ownerCategory = await seedCategory(owner.userId)
+        const ownerTxn = await Transaction.create({
+            userId: owner.userId,
+            accountId: ownerAccount._id,
+            categoryId: ownerCategory._id,
+            type: 'expense',
+            amount: 4200,
+            currency: 'USD',
+            title: 'Owner private expense',
+            date: new Date(),
+        })
+        // Soft-delete it — the row stays in the collection with deletedAt set.
+        await request(app)
+            .delete(`/api/v1/transactions/${ownerTxn._id.toString()}`)
+            .set(authHeader(owner.token))
+
+        const attackerAccount = await seedAccount(attacker.userId)
+        const attackerCategory = await seedCategory(attacker.userId)
+
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(attacker.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'attacker-tomb-collide-1',
+                        entity: 'transaction',
+                        operation: 'create',
+                        payload: {
+                            _id: ownerTxn._id.toString(),
+                            type: 'expense',
+                            title: 'Attacker payload',
+                            amount: 100,
+                            date: new Date().toISOString(),
+                            accountId: attackerAccount._id.toString(),
+                            categoryId: attackerCategory._id.toString(),
+                        },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('id_conflict')
+        expect(res.body.data.results[0].resultId).toBeNull()
+    })
+
+    it('SEC-55: the generic-entity path also catches a tombstoned-id collision (Tag)', async () => {
+        app = createApp()
+        const owner: RegisteredUser = await registerUser(app, { email: 'sync-owner-tomb-tag@example.com' })
+        const attacker: RegisteredUser = await registerUser(app, { email: 'sync-attacker-tomb-tag@example.com' })
+
+        const ownerTag = await Tag.create({ userId: owner.userId, name: 'private-tag' })
+        await request(app).delete(`/api/v1/tags/${ownerTag._id.toString()}`).set(authHeader(owner.token))
+
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(attacker.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'attacker-tag-tomb-1',
+                        entity: 'tag',
+                        operation: 'create',
+                        payload: { _id: ownerTag._id.toString(), name: 'attacker-tag' },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('id_conflict')
+    })
+
+    it('SEC-55: a create colliding with the caller\'s OWN tombstoned id is id_conflict (cannot bind to a tombstone)', async () => {
+        app = createApp()
+        const owner: RegisteredUser = await registerUser(app, { email: 'sync-owner-tomb-b@example.com' })
+        const account = await seedAccount(owner.userId)
+        const category = await seedCategory(owner.userId)
+
+        const first = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'own-tomb-create-1',
+                        entity: 'transaction',
+                        operation: 'create',
+                        payload: {
+                            type: 'expense',
+                            title: 'Will be deleted',
+                            amount: 500,
+                            date: new Date().toISOString(),
+                            accountId: account._id.toString(),
+                            categoryId: category._id.toString(),
+                        },
+                    },
+                ],
+            })
+        const createdId = first.body.data.results[0].resultId
+        await request(app)
+            .delete(`/api/v1/transactions/${createdId}`)
+            .set(authHeader(owner.token))
+
+        const recreate = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'own-tomb-recreate-1',
+                        entity: 'transaction',
+                        operation: 'create',
+                        payload: {
+                            _id: createdId,
+                            type: 'expense',
+                            title: 'Recreate on a dead id',
+                            amount: 500,
+                            date: new Date().toISOString(),
+                            accountId: account._id.toString(),
+                            categoryId: category._id.toString(),
+                        },
+                    },
+                ],
+            })
+
+        expect(recreate.body.data.results[0].status).toBe('id_conflict')
+        expect(recreate.body.data.results[0].resultId).toBeNull()
     })
 
     it('a real accidental idempotent replay by the SAME user is still a noop, not a conflict', async () => {

@@ -119,4 +119,26 @@ describe('PIN feature is dormant without VITE_LOCAL_PIN (BUG-31)', () => {
 
         await waitFor(() => expect(screen.getByText(/secure your offline data/i)).toBeInTheDocument())
     })
+
+    it('SEC-45: PinSetupPrompt PIN inputs opt out of autocomplete', async () => {
+        vi.stubEnv('VITE_LOCAL_PIN', 'true')
+        vi.useFakeTimers()
+        try {
+            render(<PinSetupPrompt />)
+            act(() => {
+                vi.advanceTimersByTime(5000)
+            })
+        } finally {
+            vi.useRealTimers()
+        }
+
+        await waitFor(() => expect(screen.getByText(/secure your offline data/i)).toBeInTheDocument())
+        const pinInputs = Array.from(
+            document.querySelectorAll<HTMLInputElement>('input[type="password"]'),
+        )
+        expect(pinInputs.length).toBe(2)
+        for (const input of pinInputs) {
+            expect(input.getAttribute('autocomplete')).toBe('off')
+        }
+    })
 })

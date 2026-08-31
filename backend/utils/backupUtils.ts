@@ -41,7 +41,12 @@ import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
-import { isObjectStorageConfigured, putReceiptObject, receiptObjectKey } from './receiptStorage'
+import {
+    getReceiptObjectBuffer,
+    isObjectStorageConfigured,
+    putReceiptObject,
+    receiptObjectKey,
+} from './receiptStorage'
 import {
     assertValidReceiptBuffer,
     assertWithinReceiptStorageQuota,
@@ -889,9 +894,26 @@ export const createBackupZipStream = async (
 
     archive.append(JSON.stringify(payload, null, 2), { name: 'corvale-backup.json' })
 
+    // SEC-53: read every receipt from the configured storage driver. Under
+    // RECEIPT_STORAGE_DRIVER=s3 there is no local copy, so the export must fetch the bytes
+    // from object storage — and fail loudly rather than ship a ZIP that looks complete but
+    // silently omits every receipt (the `privacy.md` export promise).
+    const fromObjectStorage = isObjectStorageConfigured()
+
     for (const receipt of payload.receipts) {
         const storedFilename = String(receipt.storedFilename ?? '')
         if (!storedFilename) {
+            continue
+        }
+
+        if (fromObjectStorage) {
+            let buffer: Buffer
+            try {
+                buffer = await getReceiptObjectBuffer(receiptObjectKey(userId, storedFilename))
+            } catch {
+                throw new CustomError(ERROR_MESSAGES.BACKUP.RECEIPT_EXPORT_FAILED, 500)
+            }
+            archive.append(buffer, { name: `receipts/${storedFilename}` })
             continue
         }
 

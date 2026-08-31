@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
+import { Types } from 'mongoose'
 import app from '../app'
 import Account from '../models/Account'
 import Transaction from '../models/Transaction'
@@ -182,5 +183,35 @@ describe('Bulk transaction operations', () => {
             .send({ transactionIds: [], categoryId: '507f1f77bcf86cd799439011' })
 
         expect(categoryRes.status).toBe(400)
+    })
+
+    it('SEC-61: rejects a transactionIds array over the 500-id ceiling with 413', async () => {
+        const { token } = await seedUserDirectly({ email: 'bulk-cap@example.com' })
+        const tooMany = Array.from({ length: 501 }, () => new Types.ObjectId().toString())
+
+        const deleteRes = await request(app)
+            .post('/api/v1/transactions/bulk/delete')
+            .set(authHeader(token))
+            .send({ transactionIds: tooMany })
+        expect(deleteRes.status).toBe(413)
+
+        const categoryRes = await request(app)
+            .patch('/api/v1/transactions/bulk/category')
+            .set(authHeader(token))
+            .send({ transactionIds: tooMany, categoryId: new Types.ObjectId().toString() })
+        expect(categoryRes.status).toBe(413)
+    })
+
+    it('SEC-61: a batch at the 500-id ceiling is still accepted (bogus ids → 404, not 413)', async () => {
+        const { token } = await seedUserDirectly({ email: 'bulk-cap-ok@example.com' })
+        const exactly500 = Array.from({ length: 500 }, () => new Types.ObjectId().toString())
+
+        const res = await request(app)
+            .post('/api/v1/transactions/bulk/delete')
+            .set(authHeader(token))
+            .send({ transactionIds: exactly500 })
+        // Past the size gate: every id is a well-formed ObjectId that does not resolve to one of
+        // the caller's transactions, so this collapses to the not-found path, never 413.
+        expect(res.status).toBe(404)
     })
 })

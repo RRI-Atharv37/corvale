@@ -537,8 +537,15 @@ export const buildCsvString = (rows: string[][]): string => {
     return rows.map(buildCsvRow).join('\n')
 }
 
-export const duplicateTransactionFields = (transaction: ITransaction) => ({
-    userId: transaction.userId,
+// SEC-59: the duplicate is attributed to the caller, not the original author. In a shared
+// workspace an editor can duplicate a row a co-member created; stamping `transaction.userId`
+// would forge that member's authorship on the new row. `workspaceId` still comes from the
+// source so the copy lands in the same (personal or workspace) scope.
+export const duplicateTransactionFields = (
+    transaction: ITransaction,
+    callerUserId: string | Types.ObjectId
+) => ({
+    userId: callerUserId,
     workspaceId: transaction.workspaceId,
     accountId: transaction.accountId,
     categoryId: transaction.categoryId,

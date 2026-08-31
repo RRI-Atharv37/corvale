@@ -4,6 +4,7 @@ import { Types } from 'mongoose'
 
 import { AuthRequest } from '../middleware/authTypes'
 import { CustomError } from '../utils/customError'
+import { mapWithConcurrency } from '../utils/concurrency'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { DEFAULT_TIMEZONE, resolveDateRange } from '../utils/timezoneUtils'
 import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
@@ -723,7 +724,7 @@ export const duplicateTransaction = asyncHandler(async (req: AuthRequest, res: R
         userId
     )
 
-    const duplicate = await Transaction.create(duplicateTransactionFields(transaction))
+    const duplicate = await Transaction.create(duplicateTransactionFields(transaction, userId))
     await applyTransactionToAccount(account, duplicate.type, duplicate.amount)
 
     handleResponses(res, 201, serializeTransaction(duplicate))
@@ -797,6 +798,13 @@ export const detachReceiptFromTransaction = asyncHandler(
     }
 )
 
+// SEC-61: bulk endpoints run one ownership-validating query per id. The array is
+// caller-controlled, so it needs the same kind of ceiling the sync push has (`MAX_PUSH_OPS`),
+// and the per-id queries are fanned out with bounded concurrency rather than one unbounded
+// `Promise.all`.
+const MAX_BULK_TRANSACTION_IDS = 500
+const BULK_VALIDATION_CONCURRENCY = 20
+
 const parseBulkTransactionIds = (transactionIds: unknown): string[] => {
     if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.BULK_EMPTY, 400)
@@ -805,6 +813,9 @@ const parseBulkTransactionIds = (transactionIds: unknown): string[] => {
     const uniqueIds = [...new Set(transactionIds.map((id) => String(id).trim()).filter(Boolean))]
     if (uniqueIds.length === 0) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.BULK_EMPTY, 400)
+    }
+    if (uniqueIds.length > MAX_BULK_TRANSACTION_IDS) {
+        throw new CustomError(ERROR_MESSAGES.TRANSACTION.BULK_TOO_MANY, 413)
     }
 
     return uniqueIds
@@ -842,8 +853,10 @@ export const bulkDeleteTransactions = asyncHandler(async (req: AuthRequest, res:
 
     // Validate every id up front so a bogus or not-owned id anywhere in the batch fails the
     // whole request before any deletion happens (BUG-03) — no partial delete to roll back.
-    const transactions = await Promise.all(
-        transactionIds.map((transactionId) => resolveTransactionForBulkDelete(transactionId, userId))
+    const transactions = await mapWithConcurrency(
+        transactionIds,
+        BULK_VALIDATION_CONCURRENCY,
+        (transactionId) => resolveTransactionForBulkDelete(transactionId, userId)
     )
 
     const processedTransferPairs = new Set<string>()
@@ -880,8 +893,10 @@ export const bulkUpdateTransactionCategory = asyncHandler(
         validateRequiredFields({ categoryId }, ['categoryId'])
         await validateCategoryForTransaction(categoryId, userId)
 
-        const transactions = await Promise.all(
-            transactionIds.map((transactionId) =>
+        const transactions = await mapWithConcurrency(
+            transactionIds,
+            BULK_VALIDATION_CONCURRENCY,
+            (transactionId) =>
                 validateResourceAccess(
                     Transaction,
                     transactionId,
@@ -889,7 +904,6 @@ export const bulkUpdateTransactionCategory = asyncHandler(
                     ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND,
                     'editor'
                 )
-            )
         )
 
         for (const transaction of transactions) {

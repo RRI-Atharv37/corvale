@@ -90,8 +90,9 @@ services:
       - backend
     ports:
       # SEC-65: loopback only - served to the public through the host reverse proxy. Same
-      # reasoning as the backend service above.
-      - '127.0.0.1:8080:80'
+      # reasoning as the backend service above. Container port is 8080, not 80: the image runs
+      # nginx unprivileged (SEC-67), which cannot bind a port <1024.
+      - '127.0.0.1:8080:8080'
 
   # Optional receipt virus scanning. Enable with:
   #   docker compose --profile clamav up -d --build

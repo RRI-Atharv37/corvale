@@ -73,6 +73,19 @@ describe('nginx security headers (SEC-31, S24)', () => {
         expect(maxAge).toBeGreaterThanOrEqual(31536000)
     })
 
+    it('sends a Permissions-Policy denying the powerful features the app never uses (SEC-68)', () => {
+        const lines = conf
+            .split('\n')
+            .filter((l) => /add_header\s+Permissions-Policy/i.test(l))
+        expect(lines.length).toBeGreaterThan(0)
+        for (const line of lines) {
+            expect(line).toMatch(/\salways\s*;/)
+            for (const feature of ['camera', 'microphone', 'geolocation', 'payment', 'usb']) {
+                expect(line).toMatch(new RegExp(`${feature}=\\(\\)`))
+            }
+        }
+    })
+
     it('re-declares the security headers in every location block that sets its own add_header', () => {
         const blocksWithOwnHeader = locationBlocks(conf).filter((b) => /add_header/i.test(b))
         expect(blocksWithOwnHeader.length).toBeGreaterThan(0)
@@ -82,6 +95,7 @@ describe('nginx security headers (SEC-31, S24)', () => {
             expect(block).toMatch(/Content-Security-Policy/i)
             expect(block).toMatch(/Referrer-Policy/i)
             expect(block).toMatch(/Strict-Transport-Security/i)
+            expect(block).toMatch(/Permissions-Policy/i)
         }
     })
 

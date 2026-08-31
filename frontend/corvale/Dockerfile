@@ -34,7 +34,15 @@ ENV VITE_API_URL=$VITE_API_URL \
 
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+# SEC-67: the unprivileged nginx image runs its master + workers as the `nginx` user (uid 101)
+# and expects its listener on a high port — nginx.conf listens on 8080 to match.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+USER root
 COPY --from=build /app/dist/frontend /usr/share/nginx/html
 COPY frontend/corvale/nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+USER nginx
+EXPOSE 8080
+
+# SEC-67: liveness probe against the static /health location.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:8080/health || exit 1

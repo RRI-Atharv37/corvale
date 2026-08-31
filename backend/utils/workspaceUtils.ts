@@ -100,6 +100,10 @@ export const validateResourceAccess = async <
     notFoundMessage: string,
     minRole: WorkspaceRole = 'viewer'
 ): Promise<T> => {
+    // SEC-60: reject a malformed id here rather than letting `findById` CastError into a 500.
+    if (!Types.ObjectId.isValid(id)) {
+        throw new CustomError(notFoundMessage, 404)
+    }
     const resource = await model.findById(id)
     if (!resource) {
         throw new CustomError(notFoundMessage, 404)

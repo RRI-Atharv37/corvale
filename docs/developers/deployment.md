@@ -210,7 +210,7 @@ both containers and `CLIENT_URL` matches the public frontend URL exactly.
 ### Network exposure and the loopback binding
 
 The tracked `docker-compose.yml` publishes the `backend` and `frontend` ports on `127.0.0.1`
-only (`127.0.0.1:5000:5000`, `127.0.0.1:8080:80`). The reverse proxy runs on the host and
+only (`127.0.0.1:5000:5000`, `127.0.0.1:8080:8080`). The reverse proxy runs on the host and
 reaches them over loopback, but nothing outside the machine can. This is deliberate: the proxy
 is the only thing that should ever be internet-facing.
 
@@ -230,16 +230,31 @@ Two things to know:
 
 ## Security headers
 
-The frontend container's nginx (`frontend/corvale/nginx.conf`) sends `Content-Security-Policy`
-(`frame-ancestors 'none'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
-`Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` on every
-response. The `frame-ancestors` / `X-Frame-Options` pair is what stops the app being embedded in
-a hostile page and used for clickjacking - the CSP in `index.html` can't do this on its own,
-because `frame-ancestors` is ignored when it comes from a `<meta>` tag.
+The frontend container's nginx (`frontend/corvale/nginx.conf`) sends these on every response:
+
+- `Content-Security-Policy: frame-ancestors 'none'` and `X-Frame-Options: DENY` - together these
+  stop the app being embedded in a hostile page and used for clickjacking. The CSP in
+  `index.html` can't do this on its own, because `frame-ancestors` is ignored when it comes from
+  a `<meta>` tag.
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy` denying every powerful browser feature Corvale never uses (camera,
+  microphone, geolocation, payment, USB, and the rest). The API sends the same policy.
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`. The API sends a matching
+  `max-age`. `preload` is deliberately not sent - it commits every `corvale.app` subdomain to
+  HTTPS-only and is hard to reverse.
 
 If you serve the built frontend some other way (see [Deploying without
 Docker](#deploying-without-docker)), replicate these headers at your web server or CDN. If your
 reverse proxy adds its own headers, make sure it doesn't strip or duplicate these.
+
+## Container hardening
+
+Both application containers run as an unprivileged user, not root - the `backend` image as the
+Node image's built-in `node` user, and the `frontend` image on the `nginxinc/nginx-unprivileged`
+base (which is why nginx listens on `8080` inside the container, mapped from the host's `8080`).
+Both declare a Docker `HEALTHCHECK` against their `/health` endpoint, so `docker compose ps` and
+your orchestrator can see when a container has wedged.
 
 ## Enabling ClamAV virus scanning
 

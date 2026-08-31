@@ -50,7 +50,8 @@ describe('refreshTokenStore', () => {
             invokeMock.mockResolvedValueOnce('stored-refresh-token')
 
             await expect(getStoredRefreshToken()).resolves.toBe('stored-refresh-token')
-            expect(invokeMock).toHaveBeenCalledWith('keychain_get', { key: 'corvale_refresh_token' })
+            // SEC-42: no caller-supplied key — the command manages exactly one entry.
+            expect(invokeMock).toHaveBeenCalledWith('keychain_get')
         })
 
         it('treats an empty keychain entry as null', async () => {
@@ -66,10 +67,7 @@ describe('refreshTokenStore', () => {
 
             await storeRefreshToken('fresh-token')
 
-            expect(invokeMock).toHaveBeenCalledWith('keychain_set', {
-                key: 'corvale_refresh_token',
-                value: 'fresh-token',
-            })
+            expect(invokeMock).toHaveBeenCalledWith('keychain_set', { value: 'fresh-token' })
         })
 
         it('deletes the keychain entry when given a null/undefined token', async () => {
@@ -79,7 +77,7 @@ describe('refreshTokenStore', () => {
             await storeRefreshToken(undefined)
 
             expect(invokeMock).toHaveBeenCalledTimes(2)
-            expect(invokeMock).toHaveBeenLastCalledWith('keychain_delete', { key: 'corvale_refresh_token' })
+            expect(invokeMock).toHaveBeenLastCalledWith('keychain_delete')
         })
 
         it('clearStoredRefreshToken deletes the keychain entry', async () => {
@@ -87,7 +85,7 @@ describe('refreshTokenStore', () => {
 
             await clearStoredRefreshToken()
 
-            expect(invokeMock).toHaveBeenCalledWith('keychain_delete', { key: 'corvale_refresh_token' })
+            expect(invokeMock).toHaveBeenCalledWith('keychain_delete')
         })
 
         it('never throws when the keychain is unavailable - reads fall back to null', async () => {

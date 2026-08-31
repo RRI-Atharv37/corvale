@@ -5,6 +5,7 @@ import {
     GetObjectCommand,
     PutObjectCommand,
     S3Client,
+    type GetObjectCommandOutput,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
@@ -15,6 +16,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
  */
 export interface ReceiptObjectStorage {
     putObject(key: string, sourceFilePath: string, contentType: string): Promise<void>
+    /** Full object bytes — used by the ZIP backup export (SEC-53), which cannot redirect. */
+    getObjectBuffer(key: string): Promise<Buffer>
     getSignedDownloadUrl(key: string, expiresInSeconds: number): Promise<string>
     deleteObject(key: string): Promise<void>
 }
@@ -70,6 +73,16 @@ const buildS3Adapter = (): ReceiptObjectStorage => {
                 })
             )
         },
+        getObjectBuffer: async (key) => {
+            const response: GetObjectCommandOutput = await client.send(
+                new GetObjectCommand({ Bucket: bucket, Key: key })
+            )
+            if (!response.Body) {
+                throw new Error(`Object storage returned an empty body for ${key}`)
+            }
+            const bytes = await response.Body.transformToByteArray()
+            return Buffer.from(bytes)
+        },
         getSignedDownloadUrl: async (key, expiresInSeconds) =>
             getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
                 expiresIn: expiresInSeconds,
@@ -97,6 +110,9 @@ export const putReceiptObject = (
     sourceFilePath: string,
     contentType: string
 ): Promise<void> => getAdapter().putObject(key, sourceFilePath, contentType)
+
+export const getReceiptObjectBuffer = (key: string): Promise<Buffer> =>
+    getAdapter().getObjectBuffer(key)
 
 export const getReceiptSignedDownloadUrl = (
     key: string,

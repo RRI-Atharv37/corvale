@@ -16,9 +16,9 @@ use keyring::{Entry, Error as KeyringError};
 /// service so both entries sit together in Credential Manager / Keychain Access.
 const SERVICE: &str = "com.corvale.app";
 
-/// Fixed entry name for the one secret this module owns. Not caller-supplied — contrast the
-/// generic `keychain_{set,get,delete}` IPC commands (SEC-42); nothing in the webview can name,
-/// read, or overwrite this entry.
+/// Fixed entry name for the one secret this module owns. Not caller-supplied — like the
+/// refresh-token `keychain_{set,get,delete}` IPC commands (SEC-42), nothing in the webview can
+/// name, read, or overwrite this entry.
 const DB_KEY_ACCOUNT: &str = "local-db-key";
 
 /// Error tag prefix used when the OS credential store itself is unreachable (missing, locked, or

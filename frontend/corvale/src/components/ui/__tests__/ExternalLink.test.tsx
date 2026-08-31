@@ -74,6 +74,25 @@ describe('ExternalLink', () => {
         expect(openExternalUrl).not.toHaveBeenCalled()
     })
 
+    it('SEC-44: does not render a link or hand off a javascript: href', async () => {
+        mockIsTauriRuntime.mockReturnValue(true)
+        const user = userEvent.setup()
+        render(
+            <ExternalLink href="javascript:alert(document.cookie)">Release notes</ExternalLink>,
+        )
+
+        expect(screen.queryByRole('link')).toBeNull()
+        await user.click(screen.getByText('Release notes'))
+        expect(openExternalUrl).not.toHaveBeenCalled()
+    })
+
+    it('SEC-44: blocks data: hrefs too', () => {
+        mockIsTauriRuntime.mockReturnValue(false)
+        render(<ExternalLink href="data:text/html,<b>x</b>">A</ExternalLink>)
+        expect(screen.queryByRole('link')).toBeNull()
+        expect(screen.getByText('A')).toBeInTheDocument()
+    })
+
     it('passes through className and other anchor props', () => {
         mockIsTauriRuntime.mockReturnValue(false)
         render(

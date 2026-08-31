@@ -12,8 +12,10 @@ pub fn run() {
         // BUG-30: writes to stdout and a rotating file in the OS app-log dir
         // (`%LOCALAPPDATA%\com.corvale.app\logs` / `~/Library/Logs/com.corvale.app` /
         // `~/.local/share/com.corvale.app/logs`), so an opaque local-store failure on a user's
-        // machine leaves a readable trail. `attachConsole()` on the JS side forwards the WebView
-        // console into the same file.
+        // machine leaves a readable trail. Only Rust-side `log::*` records reach that file — the
+        // WebView console is NOT forwarded to disk (P10), and must not be: axios errors there
+        // carry `Authorization` headers. `attachConsole()` on the JS side goes the other way,
+        // surfacing these Rust records in the WebView devtools console.
         .plugin(
             tauri_plugin_log::Builder::new()
                 .target(tauri_plugin_log::Target::new(

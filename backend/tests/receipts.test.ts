@@ -84,6 +84,30 @@ describe('Receipts', () => {
         expect(res.body.message).toMatch(/JPEG|PNG|WebP|PDF/i)
     })
 
+    it('SEC-62: rejects a multipart upload with an excessive number of text fields', async () => {
+        const { token } = await registerUser(app)
+
+        let req = request(app).post('/api/v1/receipts').set(authHeader(token)).attach('receipt', FIXTURE_PNG)
+        for (let i = 0; i < 12; i += 1) {
+            req = req.field(`extra${i}`, String(i))
+        }
+        const res = await req
+
+        expect(res.status).toBe(400)
+    })
+
+    it('SEC-62: rejects a multipart upload with an oversized text field', async () => {
+        const { token } = await registerUser(app)
+
+        const res = await request(app)
+            .post('/api/v1/receipts')
+            .set(authHeader(token))
+            .attach('receipt', FIXTURE_PNG)
+            .field('blob', 'x'.repeat(128 * 1024))
+
+        expect(res.status).toBe(400)
+    })
+
     it('attaches and detaches a receipt on a transaction', async () => {
         const { token } = await registerUser(app)
         const transaction = await createTestExpense(token)

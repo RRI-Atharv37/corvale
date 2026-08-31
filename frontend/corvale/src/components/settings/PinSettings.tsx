@@ -112,6 +112,7 @@ const PinSettings: React.FC = () => {
                             <input
                                 type="password"
                                 inputMode="numeric"
+                                autoComplete="off"
                                 value={currentPin}
                                 onChange={(event) => setCurrentPin(event.target.value)}
                                 className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"
@@ -123,6 +124,7 @@ const PinSettings: React.FC = () => {
                         <input
                             type="password"
                             inputMode="numeric"
+                            autoComplete="off"
                             value={nextPin}
                             onChange={(event) => setNextPin(event.target.value)}
                             className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"
@@ -133,6 +135,7 @@ const PinSettings: React.FC = () => {
                         <input
                             type="password"
                             inputMode="numeric"
+                            autoComplete="off"
                             value={confirmPin}
                             onChange={(event) => setConfirmPin(event.target.value)}
                             className="mt-2 w-full rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary focus:border-accent/40 focus:outline-none"

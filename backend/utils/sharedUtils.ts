@@ -24,6 +24,11 @@ export const validateOwnership = async <T extends { userId: Types.ObjectId }>(
     userId: string,
     notFoundMessage: string
 ): Promise<T> => {
+    // SEC-60: a malformed id would otherwise CastError → 500. A non-ObjectId can't name a
+    // resource the caller owns, so collapse it into the not-found response like a real miss.
+    if (!Types.ObjectId.isValid(id)) {
+        throw new CustomError(notFoundMessage, 404)
+    }
     const resource = await model.findById(id)
     if (!resource) {
         throw new CustomError(notFoundMessage, 404)

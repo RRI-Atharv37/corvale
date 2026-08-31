@@ -39,6 +39,7 @@ export const ERROR_MESSAGES = {
             'Database query blocked: aggregate joins a second collection past the RLS boundary — scope the joined pipeline and set the rlsAllowLookup option',
         ROUTE_NOT_FOUND: 'Route not found',
         UNSAFE_REQUEST_BODY: 'Request body contains invalid characters',
+        INVALID_IDENTIFIER: 'Malformed identifier in request',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',
@@ -105,6 +106,7 @@ export const ERROR_MESSAGES = {
         SPLIT_MIN_COUNT: 'At least two split lines are required',
         SPLIT_REQUIRES_EXPENSE: 'Split transactions are only supported for expenses',
         BULK_EMPTY: 'At least one transaction id is required',
+        BULK_TOO_MANY: 'Too many transaction ids in one request (maximum 500)',
         BULK_CATEGORY_TRANSFER: 'Transfers cannot be bulk recategorized',
         RECEIPT_ALREADY_ATTACHED: 'Receipt is already attached to this transaction',
         RECEIPT_NOT_ATTACHED: 'Receipt is not attached to this transaction',
@@ -175,6 +177,8 @@ export const ERROR_MESSAGES = {
         ARCHIVE_UNCOMPRESSED_TOO_LARGE: 'Backup archive is too large once uncompressed',
         ARCHIVE_SUSPICIOUS_RATIO:
             'Backup archive contains an entry with a suspicious compression ratio',
+        RECEIPT_EXPORT_FAILED:
+            'Backup export failed: a receipt file could not be read from storage. No archive was produced.',
     },
     RECONCILIATION: {
         INVALID_CLEARED_STATUS: 'Invalid clearedStatus',

@@ -33,6 +33,20 @@ describe('openExternalUrl', () => {
         vi.unstubAllGlobals()
     })
 
+    it('SEC-44: refuses a non-allowlisted scheme on both runtimes', async () => {
+        const openSpy = vi.fn()
+        vi.stubGlobal('open', openSpy)
+
+        mockIsTauriRuntime.mockReturnValue(false)
+        await openExternalUrl('javascript:alert(1)')
+        mockIsTauriRuntime.mockReturnValue(true)
+        await openExternalUrl('data:text/html,x')
+
+        expect(openSpy).not.toHaveBeenCalled()
+        expect(openUrl).not.toHaveBeenCalled()
+        vi.unstubAllGlobals()
+    })
+
     it('desktop: routes through the opener plugin, not window.open', async () => {
         mockIsTauriRuntime.mockReturnValue(true)
         const openSpy = vi.fn()

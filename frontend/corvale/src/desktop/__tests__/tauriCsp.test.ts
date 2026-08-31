@@ -83,6 +83,16 @@ describe('Strict Tauri CSP (D2, SEC-04)', () => {
         expect(connectSrc).toContain('http://ipc.localhost')
     })
 
+    it('connect-src is pinned to the API origin, not a blanket https: (SEC-43)', () => {
+        const csp = readCsp()
+        const connectSrc = csp.match(/connect-src([^;]*)/)?.[1] ?? ''
+        const sources = connectSrc.trim().split(/\s+/)
+        // A bare `https:` scheme source would admit every HTTPS origin; the Tauri layer must be
+        // as tight as the index.html meta policy (which uses VITE_API_ORIGIN) on its own.
+        expect(sources).not.toContain('https:')
+        expect(connectSrc).toContain('https://api.corvale.app')
+    })
+
     it('frame-src allows blob: (the in-app PDF receipt viewer, BUG-25) but no remote origin', () => {
         const csp = readCsp()
         const frameSrc = csp.match(/frame-src([^;]*)/)?.[1] ?? ''

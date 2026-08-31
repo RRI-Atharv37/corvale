@@ -1,6 +1,7 @@
 import multer, { FileFilterCallback } from 'multer'
 import { Request } from 'express'
 
+import { MULTIPART_TEXT_LIMITS } from './multipartLimits'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 
@@ -38,7 +39,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCall
 
 export const csvUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: IMPORT_MAX_SIZE_BYTES, files: 1 },
+    limits: { fileSize: IMPORT_MAX_SIZE_BYTES, files: 1, ...MULTIPART_TEXT_LIMITS },
     fileFilter,
 })
 

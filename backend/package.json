@@ -27,7 +27,8 @@
     "migrate:email-verification:dry-run": "ts-node scripts/backfillEmailVerification.ts --dry-run",
     "migrate:account-balances": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts",
     "migrate:account-balances:dry-run": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts --dry-run",
-    "purge:tombstones": "ts-node scripts/purgeTombstones.ts"
+    "purge:tombstones": "ts-node scripts/purgeTombstones.ts",
+    "purge:tombstones:dry-run": "ts-node scripts/purgeTombstones.ts --dry-run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",

@@ -191,6 +191,37 @@ describe('Refresh token reuse detection (S11, SEC-20)', () => {
         expect(freshProtected.status).toBe(200)
     })
 
+    it('SEC-64: two concurrent rotations of the same token cannot both succeed, and the race trips reuse detection', async () => {
+        const app = createApp()
+        const email = 'sec64-race@example.com'
+        const password = 'TestPassword123!'
+        await registerUser(app, { email, password })
+
+        const agent = request.agent(app)
+        const loginRes = await agent.post('/api/v1/auth/login').send({ email, password })
+        const userId = loginRes.body.data.user._id
+        const cookie = toCookieHeader(findRefreshCookie(loginRes.headers)!)
+
+        const versionBefore = (await User.findById(userId))!.tokenVersion
+
+        const [a, b] = await Promise.all([
+            request(app).post('/api/v1/auth/refresh').set('Cookie', cookie),
+            request(app).post('/api/v1/auth/refresh').set('Cookie', cookie),
+        ])
+
+        // The atomic claim guarantees exactly one caller consumes the token.
+        expect([a.status, b.status].sort()).toEqual([200, 401])
+
+        // The loser is the reuse it is: distinct message, family-wide revocation, tokenVersion bump.
+        const loser = a.status === 401 ? a : b
+        expect(loser.body.message).not.toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID)
+        expect((await User.findById(userId))!.tokenVersion).toBeGreaterThan(versionBefore)
+
+        // The token both requests presented is spent — replaying it is now a plain reuse.
+        const stale = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie)
+        expect(stale.status).toBe(401)
+    })
+
     it('still rejects a genuinely unknown refresh token with the existing invalid-token message', async () => {
         const app = createApp()
         const res = await request(app).post('/api/v1/auth/refresh').set('Cookie', `${REFRESH_COOKIE}=never-issued`)

@@ -74,6 +74,25 @@ const isFindByIdFilter = (filter: Record<string, unknown>): boolean => {
     return isObjectIdLike(filter._id) || isIdListLookup(filter._id)
 }
 
+/**
+ * SEC-60: a sole `{ _id: <string> }` filter whose value is not a valid ObjectId — i.e.
+ * `Model.findById('<garbage from a path param>')` on a guarded model. That is malformed client
+ * input, not an unscoped-query bug, so `assertQueryIsScoped` reports it as a 400 rather than the
+ * 500 the RLS guard would otherwise raise (or the CastError Mongoose would raise on a non-guarded
+ * model). The errorMiddleware CastError branch is the backstop for the non-guarded case.
+ */
+const isMalformedIdFilter = (filter: unknown): boolean => {
+    if (!filter || typeof filter !== 'object' || Array.isArray(filter)) {
+        return false
+    }
+    const keys = Object.keys(filter as Record<string, unknown>)
+    if (keys.length !== 1 || keys[0] !== '_id') {
+        return false
+    }
+    const value = (filter as Record<string, unknown>)._id
+    return typeof value === 'string' && !Types.ObjectId.isValid(value)
+}
+
 export const filterHasOwnershipScope = (
     filter: unknown,
     options: RlsPluginOptions = {}
@@ -106,7 +125,11 @@ export const filterHasOwnershipScope = (
     }
 
     if ('$or' in scopedFilter && Array.isArray(scopedFilter.$or)) {
-        const hasTopLevelUserScope = 'userId' in scopedFilter || 'workspaceId' in scopedFilter
+        // SEC-63: mirror the plain `workspaceId` branch above — a top-level `workspaceId` is only
+        // a tenancy key when the model opts into workspace scoping.
+        const hasTopLevelUserScope =
+            'userId' in scopedFilter ||
+            (options.supportsWorkspace === true && 'workspaceId' in scopedFilter)
         if (hasTopLevelUserScope) {
             return true
         }
@@ -140,9 +163,13 @@ export const assertQueryIsScoped = (
     filter: unknown,
     options: RlsPluginOptions = {}
 ): void => {
-    if (!filterHasOwnershipScope(filter, options)) {
-        throw new CustomError(ERROR_MESSAGES.GENERAL.UNSCOPED_QUERY, 500)
+    if (filterHasOwnershipScope(filter, options)) {
+        return
     }
+    if (isMalformedIdFilter(filter)) {
+        throw new CustomError(ERROR_MESSAGES.GENERAL.INVALID_IDENTIFIER, 400)
+    }
+    throw new CustomError(ERROR_MESSAGES.GENERAL.UNSCOPED_QUERY, 500)
 }
 
 export const assertAggregateIsScoped = (

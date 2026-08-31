@@ -1,6 +1,7 @@
 import multer, { FileFilterCallback } from 'multer'
 import { Request } from 'express'
 
+import { MULTIPART_TEXT_LIMITS } from './multipartLimits'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { BACKUP_MAX_ZIP_BYTES } from '../utils/backupUtils'
@@ -22,7 +23,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCall
 
 export const backupUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: BACKUP_MAX_ZIP_BYTES, files: 1 },
+    limits: { fileSize: BACKUP_MAX_ZIP_BYTES, files: 1, ...MULTIPART_TEXT_LIMITS },
     fileFilter,
 })
 

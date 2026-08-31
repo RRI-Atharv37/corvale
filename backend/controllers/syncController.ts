@@ -92,6 +92,7 @@ type ApplyOpOutcome =
 interface OwnableDoc {
     userId: Types.ObjectId | null
     workspaceId?: Types.ObjectId | null
+    deletedAt?: Date | null
 }
 
 /**
@@ -119,9 +120,13 @@ const isOwnedByCaller = async (existing: OwnableDoc, userId: string): Promise<bo
 const applyCreateOp = async (userId: string, payload: Record<string, unknown>): Promise<ApplyOpOutcome> => {
     const clientId = payload._id
     if (typeof clientId === 'string' && Types.ObjectId.isValid(clientId)) {
-        const existing = await Transaction.findById(clientId)
+        // SEC-55: bypass the soft-delete filter (see applyGenericCreate) so a collision with a
+        // tombstoned row is caught here as an id_conflict, not missed into a duplicate-key insert.
+        const existing = await Transaction.findById(clientId).setOptions({
+            [SOFT_DELETE_BYPASS]: true,
+        })
         if (existing) {
-            if (!(await isOwnedByCaller(existing, userId))) {
+            if (existing.deletedAt != null || !(await isOwnedByCaller(existing, userId))) {
                 return { status: 'id_conflict', resultId: null }
             }
             return { status: 'noop', resultId: existing._id.toString() }
@@ -303,9 +308,13 @@ const applyGenericCreate = async <T extends MinimalSyncDoc & OwnableDoc>(
 ): Promise<ApplyOpOutcome> => {
     const clientId = payload._id
     if (typeof clientId === 'string' && Types.ObjectId.isValid(clientId)) {
-        const existing = await model.findById(clientId)
+        // SEC-55: bypass the soft-delete filter so a client id colliding with a *tombstoned* row
+        // (another user's, or the caller's own deleted one) is caught here rather than slipping
+        // past `isOwnedByCaller` into a duplicate-key insert. A create can never bind to a
+        // tombstone — the row is gone — so the client must regenerate its id.
+        const existing = await model.findById(clientId).setOptions({ [SOFT_DELETE_BYPASS]: true })
         if (existing) {
-            if (!(await isOwnedByCaller(existing, userId))) {
+            if (existing.deletedAt != null || !(await isOwnedByCaller(existing, userId))) {
                 return { status: 'id_conflict', resultId: null }
             }
             return { status: 'noop', resultId: existing._id.toString() }

@@ -1,9 +1,14 @@
 import { isTauriRuntime } from './isTauri'
 
 /**
- * BUG-30: forward the desktop WebView console into `tauri-plugin-log`'s file target so an opaque
- * field failure ("Failed to load local data" and friends) leaves a readable trail in the OS log
- * dir alongside the Rust-side logs. No-op outside the Tauri runtime (web / PWA / tests).
+ * BUG-30: surface the Rust-side `tauri-plugin-log` records in the desktop WebView devtools
+ * console, so someone debugging an opaque field failure ("Failed to load local data" and friends)
+ * sees the Rust log trail without opening the OS log file.
+ *
+ * This is Rust → WebView only (P10): `attachConsole()` does NOT pipe WebView `console.*` calls
+ * into the log file, and it must not be "fixed" to — axios errors in the console carry
+ * `Authorization` headers, which would then be written to disk. The on-disk trail comes solely
+ * from Rust `log::*` calls. No-op outside the Tauri runtime (web / PWA / tests).
  *
  * Best-effort: a failure to attach must never block app boot, so this swallows its own errors.
  */
