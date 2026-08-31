@@ -15,6 +15,13 @@ matching the pushed tag for the GitHub Release body.
 
 ### Fixed
 
+- **CSV import: locale-formatted dates and amounts read wrong.** The mapping step gains a **Date
+  format** control (auto / year-first / month-first / day-first) and a slash-or-dot date that
+  isn't a real calendar date is now a per-row error instead of being rolled forward to another
+  month or year (`25/12/2026` was becoming 12 Jan 2028). Amounts are parsed regardless of the
+  currency symbol or code around them (`€`, `£`, `₹`, `¥`, `INR …`), and the decimal separator is
+  inferred, so a European `1.234,56` reads as `1234.56` rather than `1.23456` and Indian `1,00,000`
+  grouping is handled. The preview step shows every parsed row before anything is saved.
 - **Sync: account balances always sent in major units.** The `/sync` bootstrap, pull, and
   push-conflict responses now normalize `Account` opening/current balances to major-unit decimals,
   matching the REST `/accounts` contract, regardless of whether the account row has been converted

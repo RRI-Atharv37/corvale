@@ -366,18 +366,77 @@ const parseDateValue = (value: string, order: ResolvedDateOrder = 'MDY'): Date |
     return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-const parseAmountValue = (value: string): number | null => {
+/**
+ * Parse a money value from a bank export, tolerant of locale formatting (BUG-20). Both the
+ * signed-amount column and the debit/credit columns run through this — the normalization used to
+ * be `.replace(/[$,\s]/g, '')`, which failed any non-`$` symbol and turned European `1.234,56`
+ * into `1.23456`.
+ *
+ * - Strips any surrounding non-numeric text: currency symbols (`$ € £ ₹ ¥`), ISO codes
+ *   (`INR`, `USD`), stray spaces / NBSP, a `+`.
+ * - Reads a leading `-`, a trailing `-`, or `(...)` wrapping as negative.
+ * - Infers the decimal separator: with both `.` and `,` present the rightmost is the decimal and
+ *   the other is grouping; a lone `,` followed by 1–2 digits is a decimal comma, otherwise `,` is
+ *   grouping (covers Indian `1,00,000` clusters and `1.234.567,89` dot grouping).
+ *
+ * Returns the signed number, or `null` when what remains isn't a single finite number. The import
+ * preview always shows the parsed result before commit, so a wrong inference is visible, not silent.
+ */
+export const parseImportAmount = (value: string): number | null => {
     const trimmed = value.trim()
     if (!trimmed) {
         return null
     }
 
-    const normalized = trimmed.replace(/[$,\s]/g, '').replace(/^\((.*)\)$/, '-$1')
+    let body = trimmed
+    let negative = false
+
+    const parenMatch = body.match(/^\((.*)\)$/)
+    if (parenMatch) {
+        negative = true
+        body = parenMatch[1].trim()
+    }
+    if (body.startsWith('-') || body.endsWith('-')) {
+        negative = true
+    }
+
+    const digits = body.replace(/[^\d.,]/g, '')
+    if (!digits) {
+        return null
+    }
+
+    const hasDot = digits.includes('.')
+    const hasComma = digits.includes(',')
+
+    let normalized: string
+    if (hasDot && hasComma) {
+        normalized =
+            digits.lastIndexOf(',') > digits.lastIndexOf('.')
+                ? digits.replace(/\./g, '').replace(/,/g, '.')
+                : digits.replace(/,/g, '')
+    } else if (hasComma) {
+        const parts = digits.split(',')
+        const lastPart = parts[parts.length - 1]
+        const isDecimalComma = parts.length === 2 && lastPart.length >= 1 && lastPart.length <= 2
+        normalized = isDecimalComma ? `${parts[0]}.${lastPart}` : digits.replace(/,/g, '')
+    } else {
+        normalized = digits
+    }
+
+    if (!/\d/.test(normalized) || !/^\d*\.?\d*$/.test(normalized)) {
+        return null
+    }
+
     const amount = Number(normalized)
     if (!Number.isFinite(amount)) {
         return null
     }
-    return Math.abs(amount)
+    return negative ? -amount : amount
+}
+
+const parseAmountValue = (value: string): number | null => {
+    const parsed = parseImportAmount(value)
+    return parsed === null ? null : Math.abs(parsed)
 }
 
 const inferTypeFromSignedAmount = (signedAmount: number): 'income' | 'expense' => {
@@ -462,8 +521,8 @@ export const mapCsvRows = (
 
         if (mapping.amount) {
             const rawAmount = getCellValue(headers, row, mapping.amount)
-            const signed = Number(rawAmount.replace(/[$,\s]/g, '').replace(/^\((.*)\)$/, '-$1'))
-            if (!Number.isFinite(signed) || signed === 0) {
+            const signed = parseImportAmount(rawAmount)
+            if (signed === null || signed === 0) {
                 errors.push({ rowIndex, message: 'Invalid or zero amount' })
                 return
             }

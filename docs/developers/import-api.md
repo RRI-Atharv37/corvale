@@ -41,6 +41,8 @@ Provide `parsedRows` for OFX imports, or `headers`+`rows`+`mapping` for CSV impo
 
 `mapping.dateFormat` (optional) controls how slash/dot/dash dates in the mapped date column are read: `auto` (default - inferred from the column's values), `YMD`, `MDY`, or `DMY`. ISO `YYYY-MM-DD` is always recognized regardless. A slash/dot/dash value that isn't a valid calendar date is rejected as a row-level error rather than being coerced.
 
+Amount, debit, and credit cells are parsed locale-tolerantly: a surrounding currency symbol or ISO code is stripped, `(...)` / leading or trailing `-` mean negative, and the decimal separator is inferred (with both `.` and `,` present the rightmost is the decimal; a lone `,` with one or two trailing digits is a decimal comma; otherwise `,` is a grouping separator, including Indian `1,00,000` grouping). A cell that doesn't reduce to a single finite number is a row-level error.
+
 Response includes a `summary` (`total, valid, invalid, duplicates, incomeTotal, expenseTotal`) and per-row items, each flagged with `duplicateOf` (matching existing transaction id/title/date/amount/category) when applicable.
 
 ## POST /imports/commit

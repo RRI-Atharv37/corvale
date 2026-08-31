@@ -87,31 +87,40 @@ inside a quoted field is written as two quotes (`""`).
 
 ### Currency symbols and number formatting
 
-When Corvale reads an amount, it removes a leading `$` and commas used as
-thousands separators, then reads what's left as a number.
+When Corvale reads an amount, it ignores any currency symbol or code around the
+number and reads the digits, grouping separators, and decimal point that remain.
 
-- `$1,250.00` → `1250.00` ✅
-- `-$40.00` or `(40.00)` → treated as money out ✅
-- `€40,00`, `£40.00`, `₹40.00`, `¥40` → the symbol is left in place, the amount
-  can't be read, and the row fails ❌
+- `$1,250.00`, `€1.250,00`, `£1 250.00`, `₹1,250.00`, `INR 1250` → all read as
+  `1250.00` ✅
+- `-$40.00`, `(40.00)`, `40.00-` → treated as money out ✅
+- `1,00,000.00` (Indian grouping) → read as `100000.00` ✅
 
-::: warning Decimal commas are misread
-Corvale expects a `.` for the decimal point. An amount written the European
-way — `1.234,56` — has its `.` and `,` stripped and becomes **123456**, with no
-error shown. Convert amounts to plain `1234.56` form before importing.
-:::
+Corvale works out which mark is the decimal point:
+
+- If the value has both a `.` and a `,`, the **rightmost** one is the decimal
+  point and the other is a thousands separator — so `1.234,56` is `1234.56` and
+  `1,234.56` is also `1234.56`.
+- If the value has only a `,` followed by one or two digits (`40,00`, `40,5`),
+  the comma is treated as a decimal point.
+- A lone `,` with three or more trailing digits (`1,250`) is treated as a
+  thousands separator.
+
+The preview step shows every parsed amount before anything is saved, so you can
+check the result and go back if a value looks wrong. A value Corvale can't read
+as a single number — `1.2.3`, or text with no digits — is reported as an error on
+that row.
 
 If your file has separate **debit** and **credit** columns instead of one signed
 amount column, that's fine — map both in the wizard and Corvale figures out the
-direction.
+direction. The same number formatting rules apply to those columns.
 
 ## Convert your file first
 
-Use this recipe when your file is an XLSX or PDF, has a non-dollar currency
-symbol, or is separated by something other than commas. Day-first and year-first
-dates no longer need converting — set the **Date format** control in the wizard
-instead — but reformatting to `YYYY-MM-DD` is still the safest option if you're
-editing the file anyway.
+Use this recipe when your file is an XLSX or PDF, or is separated by something
+other than commas. Currency symbols, decimal commas, and day-first or year-first
+dates no longer need converting — Corvale reads them, and the preview step lets
+you confirm — but reformatting to plain `1234.56` amounts and `YYYY-MM-DD` dates
+is still the safest option if you're editing the file anyway.
 
 1. **Open the file in a spreadsheet app** — Excel, Google Sheets, or LibreOffice
    Calc. XLSX opens directly; for a PDF statement, copy the transaction table and

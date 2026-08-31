@@ -13,8 +13,9 @@ Instead of entering historical transactions by hand, you can import them from a 
 
 Files are capped at 2 MB.
 
-Bank exports often need a little cleanup first — non-US dates, currency symbols, and
-semicolon separators all trip up the import. See [Preparing Your File](./preparing-your-file.md)
+Bank exports sometimes need a little cleanup first — a semicolon or tab separator
+stops the import, and it's worth checking the preview when your file uses non-US
+dates or number formatting. See [Preparing Your File](./preparing-your-file.md)
 for exactly what Corvale accepts and how to convert a file that doesn't fit.
 
 ## Getting started
