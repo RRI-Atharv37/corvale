@@ -2,11 +2,12 @@
 # See docs/developers/deployment.md for the full setup guide, including HTTPS, ClamAV, and
 # S3-compatible receipt storage.
 #
-# This stack serves plain HTTP on :8080 / :5000. Any internet-facing deployment MUST run behind
-# a TLS terminator that also redirects HTTP->HTTPS (Caddy does both automatically) - without it
-# session cookies and financial data cross the wire in cleartext. Also set NODE_ENV=production
-# in backend/.env so the refresh cookie is marked Secure. See the "Putting it behind HTTPS"
-# section of the deployment guide.
+# This stack serves plain HTTP on 127.0.0.1:8080 / 127.0.0.1:5000 - loopback only (SEC-65), so
+# the host's reverse proxy is the sole public entrypoint. Any internet-facing deployment MUST run
+# behind a TLS terminator that also redirects HTTP->HTTPS (Caddy does both automatically) -
+# without it session cookies and financial data cross the wire in cleartext. Also set
+# NODE_ENV=production in backend/.env so the refresh cookie is marked Secure. See the "Putting it
+# behind HTTPS" section of the deployment guide.
 #
 # Before running `docker compose up -d --build`:
 #   1. cp backend/.env.example backend/.env   and fill in real values (JWT_SECRET,
@@ -61,7 +62,13 @@ services:
     depends_on:
       - mongo
     ports:
-      - '5000:5000'
+      # SEC-65: loopback only. The host reverse proxy (Caddy/nginx - see
+      # docs/developers/deployment.md) is the sole public entrypoint. Do NOT change this to
+      # '5000:5000' / '0.0.0.0:5000:5000' on an internet-facing host: Docker's iptables DNAT
+      # rules bypass ufw, so that would expose the financial API regardless of a host firewall.
+      # If the proxy runs on a separate host, bind to the private interface in
+      # docker-compose.override.yml instead (see docker-compose.override.example.yml).
+      - '127.0.0.1:5000:5000'
     volumes:
       # Only used when RECEIPT_STORAGE_DRIVER is unset (local-disk receipts). Safe to remove
       # once RECEIPT_STORAGE_DRIVER=s3 is configured in backend/.env.
@@ -82,7 +89,9 @@ services:
     depends_on:
       - backend
     ports:
-      - '8080:80'
+      # SEC-65: loopback only - served to the public through the host reverse proxy. Same
+      # reasoning as the backend service above.
+      - '127.0.0.1:8080:80'
 
   # Optional receipt virus scanning. Enable with:
   #   docker compose --profile clamav up -d --build

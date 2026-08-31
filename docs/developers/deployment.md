@@ -207,6 +207,27 @@ subdomain like `api.corvale.example.com` - either keeps the deployment same-site
 Traefik reverse proxy works the same way; the requirement is only that TLS terminates in front of
 both containers and `CLIENT_URL` matches the public frontend URL exactly.
 
+### Network exposure and the loopback binding
+
+The tracked `docker-compose.yml` publishes the `backend` and `frontend` ports on `127.0.0.1`
+only (`127.0.0.1:5000:5000`, `127.0.0.1:8080:80`). The reverse proxy runs on the host and
+reaches them over loopback, but nothing outside the machine can. This is deliberate: the proxy
+is the only thing that should ever be internet-facing.
+
+Two things to know:
+
+- **A host firewall (`ufw`, `firewalld`) is not enough on its own.** Docker inserts its own
+  `iptables` DNAT rules that are evaluated before `ufw`'s, so a container published on
+  `0.0.0.0` stays reachable even when `ufw` claims the port is closed. Verify exposure at the
+  cloud provider's network firewall / security group as well — don't rely on the host firewall
+  alone.
+- **If the proxy runs on a different host** (not the same machine as the containers), loopback
+  won't reach it. Bind to the private-network interface instead via a
+  `docker-compose.override.yml` — copy `docker-compose.override.example.yml`, which Compose
+  merges over the tracked file automatically so `git pull` never conflicts, and change the
+  `ports:` entries there (e.g. `10.0.0.5:5000:5000`). Never bind back to `0.0.0.0` on a
+  public-facing host.
+
 ## Security headers
 
 The frontend container's nginx (`frontend/corvale/nginx.conf`) sends `Content-Security-Policy`

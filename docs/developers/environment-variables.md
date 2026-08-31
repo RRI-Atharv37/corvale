@@ -12,7 +12,7 @@ Create a `.env` file in the `backend/` folder.
 | `MONGO_URI` | Yes | - | MongoDB connection string |
 | `JWT_SECRET` | Yes | - | Secret key for signing JWT access tokens. Must be a unique random string — the server refuses to start if it is left at the `.env.example` placeholder or another well-known weak value, and when `NODE_ENV=production` it must be at least 32 characters. See [Security notes](#security-notes) |
 | `JWT_EXPIRY` | Yes | - | Access token expiry (e.g., `15m`, `1h`) |
-| `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses, reset-link console logging, and secure-cookie flags |
+| `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses and secure-cookie flags. Reset/verification link console logging is gated by `MAIL_DEV_LOG`, not this |
 | `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token expiry |
 | `REFRESH_TOKEN_COOKIE_NAME` | No | `corvale_refresh` | httpOnly cookie name for refresh tokens |
 | `REFRESH_COOKIE_SAME_SITE` | No | `lax` | `lax` \| `strict` \| `none` — see [Deployment topology](#deployment-topology) below. `none` is only accepted when `NODE_ENV=production` |
@@ -22,7 +22,8 @@ Create a `.env` file in the `backend/` folder.
 | `PASSWORD_RESET_EXPIRY_MS` | No | `600000` (10 minutes) | Password reset token lifetime |
 | `EMAIL_VERIFICATION_EXPIRY_MS` | No | `600000` (10 minutes) | Email verification token lifetime. Login is hard-blocked until the address is verified; a blocked user gets a fresh link from the unauthenticated `POST /auth/email-verification/resend` (`{ email }` body, enumeration-safe) |
 | `UNVERIFIED_ACCOUNT_TTL_SECONDS` | No | `604800` (7 days) | How long an account that never verifies its email is retained before a TTL index removes it, releasing the address (prevents indefinite account squatting). Verified accounts are never affected |
-| `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev to log reset/verification links to the console instead of emailing them. Setting it switches on real delivery, so only set it once the sending domain's SPF/DKIM/DMARC records are published and verified. Current provider is Resend (`smtp.resend.com`) |
+| `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev; with `MAIL_DEV_LOG=true` the reset/verification link is logged to the console instead of emailed. Setting it switches on real delivery, so only set it once the sending domain's SPF/DKIM/DMARC records are published and verified. Current provider is Resend (`smtp.resend.com`) |
+| `MAIL_DEV_LOG` | No | unset | Set to `true` to print the password-reset / email-verification link to the console when SMTP is not configured (local dev only). Fail-closed: unset or any other value logs only an acknowledgement line. The token is redacted from the URL even when this is on. Never set it in a deployment (SEC-69) |
 | `SMTP_PORT` | No | `587` | SMTP server port (`465` switches to implicit TLS) |
 | `SMTP_USER` | Only if `SMTP_HOST` set | unset | SMTP account username (for Resend this is the literal string `resend`) |
 | `SMTP_PASS` | Only if `SMTP_HOST` set | unset | SMTP account password (for Resend, a "Sending access" API key, `re_…`) |

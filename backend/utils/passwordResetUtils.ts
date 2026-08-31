@@ -4,6 +4,7 @@ import { ERROR_MESSAGES } from './errorMessages'
 import User from '../models/User'
 import { hashToken } from './tokenUtils'
 import { revokeAllRefreshTokensForUser } from './refreshTokenService'
+import { logMailDevLink } from './mailDevLog'
 
 const PASSWORD_RESET_EXPIRY_MS = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 600_000)
 
@@ -51,10 +52,5 @@ export const resetPasswordWithToken = async (rawToken: string, newPassword: stri
 }
 
 export const logPasswordResetLink = (email: string, resetUrl: string): void => {
-    if (process.env.NODE_ENV === 'production') {
-        console.info(`[password-reset] reset requested for ${email}`)
-        return
-    }
-
-    console.info(`[password-reset] ${email}: ${resetUrl}`)
+    logMailDevLink('password-reset', email, resetUrl)
 }

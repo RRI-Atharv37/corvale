@@ -3,6 +3,7 @@ import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import User, { IUser } from '../models/User'
 import { hashToken } from './tokenUtils'
+import { logMailDevLink } from './mailDevLog'
 
 const EMAIL_VERIFICATION_EXPIRY_MS = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 600_000)
 
@@ -42,10 +43,5 @@ export const verifyEmailWithToken = async (rawToken: string): Promise<void> => {
 }
 
 export const logEmailVerificationLink = (email: string, verifyUrl: string): void => {
-    if (process.env.NODE_ENV === 'production') {
-        console.info(`[email-verification] verification requested for ${email}`)
-        return
-    }
-
-    console.info(`[email-verification] ${email}: ${verifyUrl}`)
+    logMailDevLink('email-verification', email, verifyUrl)
 }
