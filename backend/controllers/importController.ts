@@ -38,6 +38,7 @@ import {
     parseOfxContent,
     parseQifContent,
     ParsedImportRow,
+    sanitizeParsedImportRows,
     suggestColumnMapping,
     toImportIsoDate,
 } from '../utils/csvImportUtils'
@@ -317,6 +318,10 @@ const resolveRowsAndErrors = (
     const { headers, rows, mapping, parsedRows, parsedRowErrors } = body
 
     if (Array.isArray(parsedRows) && parsedRows.length > 0) {
+        // `parsedRows` is a client round-trip of the OFX/QIF parse output — untrusted on the way
+        // back in. Validate every row server-side (SEC-52): `type` constrained to income/expense
+        // so a posted `"transfer"` can't create an orphan transfer leg.
+        const importRows = sanitizeParsedImportRows(parsedRows)
         const carried = Array.isArray(parsedRowErrors)
             ? (parsedRowErrors as unknown[])
                   .filter(
@@ -328,7 +333,7 @@ const resolveRowsAndErrors = (
                   )
                   .map((entry) => ({ rowIndex: entry.rowIndex, message: entry.message }))
             : []
-        return { importRows: parsedRows as ParsedImportRow[], rowErrors: carried }
+        return { importRows, rowErrors: carried }
     }
 
     if (!Array.isArray(headers) || !Array.isArray(rows)) {

@@ -16,6 +16,7 @@ import {
   parseOfxContent,
   parseQifContent,
   assertImportRowLimit,
+  sanitizeParsedImportRows,
   buildImportFingerprint,
   toImportIsoDate,
   type ColumnMapping,
@@ -167,7 +168,11 @@ const resolveImportRows = (
   input: BuildLocalImportInput
 ): { importRows: ParsedImportRow[]; rowErrors: ImportRowError[] } => {
   if (Array.isArray(input.parsedRows) && input.parsedRows.length > 0) {
-    return { importRows: input.parsedRows, rowErrors: input.parsedRowErrors ?? [] }
+    // Mirrors the backend SEC-52 guard: validate the parsed-row set before it drives a commit.
+    return {
+      importRows: sanitizeParsedImportRows(input.parsedRows),
+      rowErrors: input.parsedRowErrors ?? [],
+    }
   }
   if (!Array.isArray(input.headers) || !Array.isArray(input.rows)) {
     throw new Error('Column mapping is incomplete')

@@ -86,6 +86,79 @@ export interface ParsedStatementResult {
     statementCurrency?: string
 }
 
+const IMPORT_TITLE_MAX = 200
+const IMPORT_DESCRIPTION_MAX = 2000
+const IMPORT_EXTERNAL_ID_MAX = 256
+
+/**
+ * Validate a client-supplied `parsedRows` array (SEC-52). The OFX/QIF parse step returns clean
+ * rows, but the commit/preview call takes that array straight back from the client, so it is
+ * untrusted: `type` must be the transaction income/expense enum (a stray `"transfer"` would
+ * create an orphan transfer leg), `date` an ISO `YYYY-MM-DD`, `title` non-empty, `amount` a
+ * finite positive number. Throws a plain `Error` on the first bad row — the backend translates
+ * it to a 400, as with every other error out of this module.
+ */
+export const sanitizeParsedImportRows = (value: unknown): ParsedImportRow[] => {
+    if (!Array.isArray(value)) {
+        throw new Error('Parsed rows must be an array')
+    }
+
+    return value.map((raw, index) => {
+        const label = `Row ${index + 1}`
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            throw new Error(`${label} is not a valid import row`)
+        }
+        const row = raw as Record<string, unknown>
+
+        const date = typeof row.date === 'string' ? row.date.trim() : ''
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
+            throw new Error(`${label} has an invalid date`)
+        }
+
+        const title = typeof row.title === 'string' ? row.title.trim() : ''
+        if (!title) {
+            throw new Error(`${label} has no title`)
+        }
+
+        const amount = typeof row.amount === 'number' ? row.amount : Number(row.amount)
+        if (typeof row.amount !== 'number' && typeof row.amount !== 'string') {
+            throw new Error(`${label} has an invalid amount`)
+        }
+        if (!Number.isFinite(amount) || amount <= 0) {
+            throw new Error(`${label} has an invalid amount`)
+        }
+
+        if (row.type !== 'income' && row.type !== 'expense') {
+            throw new Error(`${label} has an invalid type`)
+        }
+
+        const description =
+            typeof row.description === 'string' && row.description.trim()
+                ? row.description.trim().slice(0, IMPORT_DESCRIPTION_MAX)
+                : undefined
+
+        const externalId =
+            typeof row.externalId === 'string' && row.externalId.trim()
+                ? row.externalId.trim().slice(0, IMPORT_EXTERNAL_ID_MAX)
+                : undefined
+
+        const rowIndex =
+            typeof row.rowIndex === 'number' && Number.isFinite(row.rowIndex)
+                ? row.rowIndex
+                : index + 1
+
+        return {
+            rowIndex,
+            date,
+            title: title.slice(0, IMPORT_TITLE_MAX),
+            description,
+            amount,
+            type: row.type,
+            externalId,
+        }
+    })
+}
+
 const normalizeHeader = (header: string): string =>
     header.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')
 

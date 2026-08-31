@@ -15,6 +15,7 @@ import {
     parseQifContent as sharedParseQifContent,
     assertImportRowLimit as sharedAssertImportRowLimit,
     parseImportMapping as sharedParseImportMapping,
+    sanitizeParsedImportRows as sharedSanitizeParsedImportRows,
     normalizeImportDescription,
     buildImportFingerprint,
     toImportIsoDate,
@@ -90,3 +91,6 @@ export const assertImportRowLimit = (count: number): void =>
 
 export const parseImportMapping = (value: unknown): ColumnMapping =>
     withImportError(() => sharedParseImportMapping(value))
+
+export const sanitizeParsedImportRows = (value: unknown): ParsedImportRow[] =>
+    withImportError(() => sharedSanitizeParsedImportRows(value))

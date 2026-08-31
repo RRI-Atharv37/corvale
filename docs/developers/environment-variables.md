@@ -46,6 +46,8 @@ Create a `.env` file in the `backend/` folder.
 | `BACKUP_MAX_UNCOMPRESSED_BYTES` | No | `209715200` (200 MB) | Cap on a restored backup zip's total declared uncompressed size, checked against the archive's central directory before any entry is inflated |
 | `BACKUP_MAX_ZIP_ENTRIES` | No | `10000` | Cap on the number of entries in a restored backup zip |
 | `BACKUP_MAX_COMPRESSION_RATIO` | No | `100` | Cap on any single entry's uncompressed-to-compressed size ratio in a restored backup zip |
+| `BACKUP_MAX_JSON_BYTES` | No | `10485760` (10 MB) | Cap on the backup JSON itself, applied to both a `.json` upload and the JSON entry inside a `.zip`, checked before it is parsed |
+| `BACKUP_MAX_RECORDS_PER_COLLECTION` | No | `100000` | Cap on the number of records in any one collection (transactions, accounts, …) a single restore will accept |
 | `RECEIPT_STORAGE_DRIVER` | No | unset (local disk) | Set to `s3` to store receipts in an S3-compatible bucket instead of `uploads/receipts/` on local disk. Required for any hosted deployment — local disk is ephemeral and not shared between instances |
 | `RECEIPT_S3_BUCKET` | Only if driver is `s3` | - | Bucket name receipts are stored in |
 | `RECEIPT_S3_REGION` | No | `us-east-1` | Bucket region |
