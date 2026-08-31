@@ -19,6 +19,11 @@ export const fromMinorUnits = (minorUnits: number): number => {
 
 /** Parse and validate a client-supplied amount, returning minor units. */
 export const parseAmountToMinorUnits = (value: unknown): number => {
+    // Guard before Number(): Number(false)/Number([]) both coerce to 0, so a
+    // non-numeric, non-string amount would otherwise slip through as a valid $0.
+    if (typeof value !== 'number' && typeof value !== 'string') {
+        throw new Error('Invalid amount')
+    }
     const amount = Number(value)
     if (isNaN(amount) || amount < 0) {
         throw new Error('Invalid amount')
