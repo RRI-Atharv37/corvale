@@ -15,7 +15,7 @@ import {
 import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
 import { assertWorkspaceMembership, parseOptionalWorkspaceId, validateResourceAccess } from '../utils/workspaceUtils'
 import { archiveEntityForOp, DeleteOpOutcome, getUserTimezoneForOp } from './syncEntityHelpers'
-import { fromMinorUnits } from '../../shared/src/money'
+import { fromMinorUnits } from '@shared/money'
 
 /**
  * `parseBudgetAmount` (like every other entity's amount parser) expects a

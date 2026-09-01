@@ -12,7 +12,7 @@ import { normalizeTagName } from './tagUtils'
 import { fromMinorUnits } from './moneyUtils'
 import { LISTABLE_TRANSACTION_FILTER, validateCategoryForTransaction } from './transactionUtils'
 import { parseClientAmount, validateAccountForTransaction } from './transactionUtils'
-import { matchCategorizationRule, RuleLike } from '../../shared/src/categorization'
+import { matchCategorizationRule, RuleLike } from '@shared/categorization'
 
 export interface TransactionMatchInput {
     title: string

@@ -13,7 +13,7 @@ import {
     computeBudgetProgress,
     resolveCustomPeriod as sharedResolveCustomPeriod,
     resolveMonthlyPeriod as sharedResolveMonthlyPeriod,
-} from '../../shared/src/budget'
+} from '@shared/budget'
 
 export type { BudgetProgress }
 export { computeBudgetProgress }

@@ -38,31 +38,31 @@ import {
     getTransferInDeltaMajor as sharedGetTransferInDeltaMajor,
     getTransferOutDeltaMajor as sharedGetTransferOutDeltaMajor,
     validateSplitInputs as sharedValidateSplitInputs,
-} from '../../shared/src/money'
+} from '@shared/money'
 import {
     computeAccountTotalsPure,
     computeUserBalancesPure,
     recomputeAccountBalance,
-} from '../../shared/src/balances'
+} from '@shared/balances'
 import {
     computeBudgetProgress as sharedComputeBudgetProgress,
     computeBudgetSpentMinorPure,
     resolveCustomPeriod as sharedResolveCustomPeriod,
     resolveMonthlyPeriod as sharedResolveMonthlyPeriod,
-} from '../../shared/src/budget'
+} from '@shared/budget'
 import {
     computeProjectedCompletionDatePure,
     computeSavingsGoalProgressPure,
-} from '../../shared/src/savingsGoals'
+} from '@shared/savingsGoals'
 import {
     convertAmount as sharedConvertAmount,
     endOfDayInTimezone as sharedEndOfDayInTimezone,
     startOfDayInTimezone as sharedStartOfDayInTimezone,
-} from '../../shared/src/timezone'
+} from '@shared/timezone'
 import {
     advanceNextDueDate as sharedAdvanceNextDueDate,
     matchCategorizationRule,
-} from '../../shared/src/categorization'
+} from '@shared/categorization'
 
 interface AccountLike {
     _id: string

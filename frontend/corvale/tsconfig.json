@@ -16,7 +16,13 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
-      "@shared/*": ["../../shared/src/*"]
+      "@shared/*": ["../../shared/src/*"],
+      "@/*": ["./src/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@features/*": ["./src/features/*"],
+      "@platform/*": ["./src/platform/*"],
+      "@domain/*": ["./src/domain/*"]
     }
   },
   "include": ["src", "../../shared/src"],

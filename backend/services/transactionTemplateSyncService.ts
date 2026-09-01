@@ -12,7 +12,7 @@ import {
 import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
 import { validateResourceAccess } from '../utils/workspaceUtils'
 import { DeleteOpOutcome, softDeleteEntityForOp } from './syncEntityHelpers'
-import { fromMinorUnits } from '../../shared/src/money'
+import { fromMinorUnits } from '@shared/money'
 
 /**
  * `parseTemplateAmount` expects a REST body's major-unit decimal and

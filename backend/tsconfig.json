@@ -13,10 +13,20 @@
     "moduleResolution": "node16",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false, 
+    "noEmit": false,
     "jsx": "react-jsx",
     "outDir": "../dist",
     "rootDir": "..",
+    "paths": {
+      "@shared/*": ["../shared/src/*"],
+      "@core/*": ["./src/core/*"],
+      "@infra/*": ["./src/infra/*"],
+      "@http/*": ["./src/http/*"],
+      "@modules/*": ["./src/modules/*"]
+    }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
   },
   "include": ["**/*.ts", "../shared/src/**/*.ts"],
   "exclude": ["node_modules", "dist", "../dist", "tests", "vitest.config.ts"]

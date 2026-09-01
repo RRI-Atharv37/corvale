@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import app from '../app'
 import { authHeader, seedUserDirectly } from './helpers'
-import { sniffDelimiter, parseCsvContent } from '../../shared/src/csvImport'
+import { sniffDelimiter, parseCsvContent } from '@shared/csvImport'
 
 async function createTestAccount(token: string, openingBalance = 1000, name = 'Checking') {
     const res = await request(app)

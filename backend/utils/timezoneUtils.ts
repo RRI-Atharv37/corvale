@@ -5,4 +5,4 @@ export {
     endOfDayInTimezone,
     resolveDateRange,
     dateStringInTimezone,
-} from '../../shared/src/timezone'
+} from '@shared/timezone'

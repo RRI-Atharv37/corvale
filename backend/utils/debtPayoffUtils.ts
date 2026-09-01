@@ -2,8 +2,8 @@ import {
     generatePayoffSchedule as sharedGeneratePayoffSchedule,
     orderDebtsByAvalanche,
     orderDebtsBySnowball,
-} from '../../shared/src/debtPayoff'
-import type { DebtInput, DebtPayment, PayoffMonth, PayoffPlan, PayoffStrategy } from '../../shared/src/debtPayoff'
+} from '@shared/debtPayoff'
+import type { DebtInput, DebtPayment, PayoffMonth, PayoffPlan, PayoffStrategy } from '@shared/debtPayoff'
 import { CustomError } from './customError'
 
 export type { DebtInput, DebtPayment, PayoffMonth, PayoffPlan, PayoffStrategy }

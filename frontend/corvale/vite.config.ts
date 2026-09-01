@@ -1,9 +1,23 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig, loadEnv, type Plugin } from 'vite'
+import { loadEnv, type Plugin } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+// RF1: single source for the path aliases (was duplicated in the now-deleted vitest.config.ts).
+// Ordered specific-first so `@shared/x` / `@ui/x` never fall through to the bare `@` → src rule.
+const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
+const ALIASES = [
+  { find: '@shared', replacement: r('../../shared/src') },
+  { find: '@ui', replacement: r('src/ui') },
+  { find: '@lib', replacement: r('src/lib') },
+  { find: '@features', replacement: r('src/features') },
+  { find: '@platform', replacement: r('src/platform') },
+  { find: '@domain', replacement: r('src/domain') },
+  { find: '@', replacement: r('src') },
+]
 
 /**
  * hCaptcha (L9 abuse controls) needs script/frame/connect origins the strict CSP in
@@ -130,9 +144,7 @@ export default defineConfig(({ mode }) => {
     }),
   ],
   resolve: {
-    alias: {
-      '@shared': fileURLToPath(new URL('../../shared/src', import.meta.url)),
-    },
+    alias: ALIASES,
   },
   optimizeDeps: {
     // Vite's dep pre-bundler rewrites this package's internal
@@ -154,6 +166,18 @@ export default defineConfig(({ mode }) => {
           vendor_sqlite: ['@sqlite.org/sqlite-wasm'],
         },
       },
+    },
+  },
+  // RF1: was frontend/corvale/vitest.config.ts — merged here so the alias list lives in one place.
+  test: {
+    globals: true,
+    environment: 'happy-dom',
+    setupFiles: ['./src/test/setup.ts'],
+    css: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
     },
   },
   }

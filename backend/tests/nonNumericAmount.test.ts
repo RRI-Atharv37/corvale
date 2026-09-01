@@ -3,7 +3,7 @@ import request from 'supertest'
 import app from '../app'
 import Transaction from '../models/Transaction'
 import { authHeader, seedUserDirectly } from './helpers'
-import { parseAmountToMinorUnits } from '../../shared/src/money'
+import { parseAmountToMinorUnits } from '@shared/money'
 import { parseClientAmount } from '../utils/transactionUtils'
 
 async function createAccount(token: string, openingBalance = 1000) {

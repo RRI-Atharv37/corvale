@@ -5,9 +5,9 @@ export type {
     RecurringLike,
     AutoContributionIntervalLike,
     ForecastAutoContributionLike,
-} from '../../shared/src/forecast'
+} from '@shared/forecast'
 export {
     projectRecurringOccurrences,
     projectGoalContributionDates,
     computeDiscretionaryDailyAverage,
-} from '../../shared/src/forecast'
+} from '@shared/forecast'

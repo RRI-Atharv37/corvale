@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import app from '../app'
 import { authHeader, seedUserDirectly } from './helpers'
-import { toMinorUnits } from '../../shared/src/money'
+import { toMinorUnits } from '@shared/money'
 import Transaction from '../models/Transaction'
 import Account from '../models/Account'
 

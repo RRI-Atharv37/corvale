@@ -13,8 +13,8 @@ import {
     buildBudgetEvent as sharedBuildBudgetEvent,
     buildGoalEvent as sharedBuildGoalEvent,
     buildRecurringEvents as sharedBuildRecurringEvents,
-} from '../../shared/src/calendar'
-import type { CalendarEvent, CalendarEventType } from '../../shared/src/calendar'
+} from '@shared/calendar'
+import type { CalendarEvent, CalendarEventType } from '@shared/calendar'
 
 export type { CalendarEvent, CalendarEventType }
 

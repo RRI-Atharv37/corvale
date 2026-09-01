@@ -3,7 +3,7 @@ import request from 'supertest'
 import app from '../app'
 import Transaction from '../models/Transaction'
 import { authHeader, seedUserDirectly } from './helpers'
-import { toMinorUnits } from '../../shared/src/money'
+import { toMinorUnits } from '@shared/money'
 
 /**
  * Acceptance spec for C8 (streaming CSV export for large date ranges — the remaining half of the

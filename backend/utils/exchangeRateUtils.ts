@@ -1,5 +1,5 @@
 import { CustomError } from './customError'
-import { convertAmount as sharedConvertAmount } from '../../shared/src/timezone'
+import { convertAmount as sharedConvertAmount } from '@shared/timezone'
 
 const PAIR_PATTERN = /^[A-Z]{3}_[A-Z]{3}$/
 

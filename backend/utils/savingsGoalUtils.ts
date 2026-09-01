@@ -22,7 +22,7 @@ import {
     ContributionLike,
     GoalLike,
     isAutoContributionDuePure,
-} from '../../shared/src/savingsGoals'
+} from '@shared/savingsGoals'
 
 export { computeMonthsRemaining }
 export const computeRequiredMonthlyContribution = computeRequiredMonthlyContributionPure

@@ -6,7 +6,7 @@ import Account from '../models/Account'
 import Transaction from '../models/Transaction'
 // shared/src/balances.ts does not exist yet (Sprint 13.1 deliverable); this
 // pure function has no existing equivalent anywhere in the codebase today.
-import { recomputeAccountBalance } from '../../shared/src/balances'
+import { recomputeAccountBalance } from '@shared/balances'
 import { authHeader, createSecondUser, seedUserDirectly } from './helpers'
 
 async function getFoodMasterId(token: string): Promise<string> {

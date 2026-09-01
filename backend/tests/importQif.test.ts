@@ -3,7 +3,7 @@ import request from 'supertest'
 import app from '../app'
 import Transaction from '../models/Transaction'
 import { authHeader, seedUserDirectly } from './helpers'
-import { parseQifContent, isQifContent } from '../../shared/src/csvImport'
+import { parseQifContent, isQifContent } from '@shared/csvImport'
 
 async function createTestAccount(token: string, openingBalance = 1000, name = 'Checking') {
     const res = await request(app)

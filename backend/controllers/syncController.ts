@@ -56,7 +56,7 @@ import {
     deleteTransactionTemplateForOp,
     updateTransactionTemplateForOp,
 } from '../services/transactionTemplateSyncService'
-import { fromMinorUnits } from '../../shared/src/money'
+import { fromMinorUnits } from '@shared/money'
 import { serializeAccountDocForWire } from '../utils/accountWireFormat'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { assertWorkspaceMembership, parseOptionalWorkspaceId } from '../utils/workspaceUtils'

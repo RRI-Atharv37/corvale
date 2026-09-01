@@ -1,4 +1,4 @@
-import { fromMinorUnits } from '../../shared/src/money'
+import { fromMinorUnits } from '@shared/money'
 
 interface AccountBalanceFields {
     openingBalance: number

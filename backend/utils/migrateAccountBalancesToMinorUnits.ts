@@ -1,5 +1,5 @@
 import Account from '../models/Account'
-import { toMinorUnits } from '../../shared/src/money'
+import { toMinorUnits } from '@shared/money'
 
 export interface MigrateAccountBalancesOptions {
     dryRun?: boolean

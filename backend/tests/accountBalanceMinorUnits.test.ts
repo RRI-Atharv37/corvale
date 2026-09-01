@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import app from '../app'
 import Account from '../models/Account'
-import { toMinorUnits } from '../../shared/src/money'
+import { toMinorUnits } from '@shared/money'
 import { computeUserBalances, computeAccountTotals } from '../utils/balanceUtils'
 // migrateAccountBalancesToMinorUnits does not exist yet - it is Sprint C5's deliverable
 // (ROADMAP.md "Account balance minor units", BUGS.md / TODO.md item C5). This acceptance

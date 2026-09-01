@@ -10,7 +10,7 @@ import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from './moneyUtils'
 import { dateStringInTimezone, endOfDayInTimezone, startOfDayInTimezone } from './timezoneUtils'
-import { advanceNextDueDate as sharedAdvanceNextDueDate } from '../../shared/src/categorization'
+import { advanceNextDueDate as sharedAdvanceNextDueDate } from '@shared/categorization'
 import {
     applyTransactionToAccount,
     serializeTransaction,

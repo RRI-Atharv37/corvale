@@ -9,7 +9,7 @@ import { recomputeAccountBalanceMajor, roundMoney } from '../utils/balanceUtils'
 import { toMajorUnitBalances } from '../utils/accountWireFormat'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
 import { convertAmount } from '../utils/exchangeRateUtils'
-import { fromMinorUnits, toMinorUnits } from '../../shared/src/money'
+import { fromMinorUnits, toMinorUnits } from '@shared/money'
 import {
     getUserId,
     handleResponses,

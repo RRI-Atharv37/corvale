@@ -11,8 +11,8 @@ import {
     CurrencyConversionOptions,
     recomputeAccountBalance,
     UserBalanceSummary,
-} from '../../shared/src/balances'
-import { fromMinorUnits, roundMoney } from '../../shared/src/money'
+} from '@shared/balances'
+import { fromMinorUnits, roundMoney } from '@shared/money'
 
 export { roundMoney }
 export type { AccountTotals, UserBalanceSummary, CurrencyConversionOptions }

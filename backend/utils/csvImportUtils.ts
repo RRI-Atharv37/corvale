@@ -20,7 +20,7 @@ import {
     buildImportFingerprint,
     toImportIsoDate,
     parseImportRowDecisions,
-} from '../../shared/src/csvImport'
+} from '@shared/csvImport'
 import type {
     ImportFormat,
     ImportDateFormat,
@@ -33,7 +33,7 @@ import type {
     ImportRowError,
     ImportDuplicateAction,
     ImportDuplicateMatch,
-} from '../../shared/src/csvImport'
+} from '@shared/csvImport'
 
 export { IMPORT_MAX_ROWS, IMPORT_PREVIEW_SAMPLE_ROWS, IMPORT_DELIMITERS }
 export type {

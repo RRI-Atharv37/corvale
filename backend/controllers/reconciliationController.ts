@@ -9,7 +9,7 @@ import ReconciliationSession from '../models/ReconciliationSession'
 import Account from '../models/Account'
 import { roundMoney } from '../utils/balanceUtils'
 import { getBalanceDeltaMajor } from '../utils/transactionUtils'
-import { fromMinorUnits } from '../../shared/src/money'
+import { fromMinorUnits } from '@shared/money'
 import {
     getUserId,
     validateRequiredFields,

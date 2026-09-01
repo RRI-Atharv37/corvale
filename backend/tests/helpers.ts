@@ -4,7 +4,7 @@ import { Application } from 'express'
 import { Types } from 'mongoose'
 import User from '../models/User'
 import Transaction from '../models/Transaction'
-import { toMinorUnits } from '../../shared/src/money'
+import { toMinorUnits } from '@shared/money'
 
 export interface TestUser {
     fullName: string

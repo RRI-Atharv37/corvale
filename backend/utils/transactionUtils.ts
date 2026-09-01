@@ -17,7 +17,7 @@ import {
     getTransferInDeltaMinor,
     getTransferOutDeltaMajor,
     getTransferOutDeltaMinor,
-} from '../../shared/src/money'
+} from '@shared/money'
 import { assertWorkspaceMembership, validateResourceAccess } from './workspaceUtils'
 import { WorkspaceRole } from '../models/Workspace'
 import { serializeReceipt, SerializedReceipt } from './receiptUtils'
