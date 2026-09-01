@@ -10,8 +10,8 @@ import { VitePWA } from 'vite-plugin-pwa'
  * index.html (S16/SEC-18) doesn't admit by default. Only widen the policy when the build
  * actually opts in via VITE_CAPTCHA_ENABLED - every other deployment (the default) keeps
  * today's CSP byte-for-byte. Matched string replacement rather than a templating var because
- * this needs to add sources to several existing directives plus one new directive
- * (frame-src), not substitute a single value.
+ * this needs to add hCaptcha origins to several existing directives (script-src, style-src,
+ * connect-src, frame-src) at once, not substitute a single value.
  */
 /**
  * The Tauri desktop shell (`--mode desktop`) enforces BOTH the CSP Tauri injects from
@@ -28,6 +28,9 @@ import { VitePWA } from 'vite-plugin-pwa'
  *   - `blob:` in `img-src` - receipt thumbnails render from `URL.createObjectURL(blob)` URLs
  *     (`components/transactions/ReceiptAttachments.tsx`), which `'self'` does not cover.
  * `tauri.conf.json` carries the same widenings so both layers agree. Web builds are untouched.
+ * (`frame-src 'self' blob:`, for the in-app PDF receipt viewer BUG-25 adds, is already in the
+ * base `<meta>` policy - blob: frames are same-origin and page-generated - so it needs no widening
+ * here; `tauri.conf.json` still has to list it explicitly since Tauri's policy is separate.)
  */
 const desktopCspPlugin = (): Plugin => ({
     name: 'corvale-desktop-csp',
@@ -55,8 +58,8 @@ const captchaCspPlugin = (): Plugin => ({
                 (match) => `${match.slice(0, -1)} https://hcaptcha.com https://newassets.hcaptcha.com;`
             )
             .replace(
-                "base-uri 'self';",
-                "frame-src https://newassets.hcaptcha.com; base-uri 'self';"
+                "frame-src 'self' blob:;",
+                "frame-src 'self' blob: https://newassets.hcaptcha.com;"
             ),
 })
 

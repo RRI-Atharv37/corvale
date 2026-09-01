@@ -1,6 +1,7 @@
 import multer, { FileFilterCallback } from 'multer'
 import { Request } from 'express'
 
+import { MULTIPART_TEXT_LIMITS } from './multipartLimits'
 import { CustomError } from '../utils/customError'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 
@@ -13,9 +14,12 @@ const ALLOWED_MIME_TYPES = new Set([
     'application/vnd.ms-excel',
     'application/x-ofx',
     'application/ofx',
+    'application/qif',
+    'text/qif',
+    'application/x-qw',
 ])
 
-const ALLOWED_EXTENSIONS = new Set(['.csv', '.ofx', '.qfx'])
+const ALLOWED_EXTENSIONS = new Set(['.csv', '.ofx', '.qfx', '.qif'])
 
 const isAllowedImportFile = (file: Express.Multer.File): boolean => {
     const extension = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''
@@ -35,7 +39,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCall
 
 export const csvUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: IMPORT_MAX_SIZE_BYTES, files: 1 },
+    limits: { fileSize: IMPORT_MAX_SIZE_BYTES, files: 1, ...MULTIPART_TEXT_LIMITS },
     fileFilter,
 })
 

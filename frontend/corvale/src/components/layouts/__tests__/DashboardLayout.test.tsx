@@ -24,6 +24,17 @@ vi.mock('../../../utils/timezoneSync', () => ({
     detectTimezone: vi.fn().mockReturnValue('UTC'),
 }))
 
+// SEC-46: the sign-out unsynced-changes guard. Default: nothing pending, so Logout signs out
+// straight away; overridden per-test to open the dialog.
+const { countUnsyncedChangesMock, syncBeforeSignOutMock } = vi.hoisted(() => ({
+    countUnsyncedChangesMock: vi.fn().mockResolvedValue(0),
+    syncBeforeSignOutMock: vi.fn().mockResolvedValue(0),
+}))
+vi.mock('../../../offline/signOutFlow', () => ({
+    countUnsyncedChanges: countUnsyncedChangesMock,
+    syncBeforeSignOut: syncBeforeSignOutMock,
+}))
+
 const mockUser: User = {
     _id: 'user1',
     fullName: 'Jamie Rivera',
@@ -71,5 +82,35 @@ describe('DashboardLayout navigation', () => {
 
         const link = screen.getByRole('link', { name: 'Reports & Analytics' })
         expect(link).toHaveAttribute('href', '/reports')
+    })
+})
+
+describe('DashboardLayout sign-out (SEC-46)', () => {
+    it('warns before discarding unsynced local changes on sign out', async () => {
+        countUnsyncedChangesMock.mockResolvedValueOnce(3)
+        renderWithProviders(<DashboardLayout />)
+        await waitFor(() => expect(screen.getByText('Jamie Rivera')).toBeInTheDocument())
+
+        const user = userEvent.setup()
+        await user.click(screen.getByRole('button', { name: /open settings/i }))
+        await user.click(screen.getByRole('button', { name: /^logout$/i }))
+
+        expect(
+            await screen.findByText(/3 changes on this device have not synced/i)
+        ).toBeInTheDocument()
+    })
+
+    it('signs out straight away when nothing is pending', async () => {
+        countUnsyncedChangesMock.mockResolvedValue(0)
+        renderWithProviders(<DashboardLayout />)
+        await waitFor(() => expect(screen.getByText('Jamie Rivera')).toBeInTheDocument())
+
+        const user = userEvent.setup()
+        await user.click(screen.getByRole('button', { name: /open settings/i }))
+        await user.click(screen.getByRole('button', { name: /^logout$/i }))
+
+        await waitFor(() =>
+            expect(screen.queryByText(/have not synced/i)).not.toBeInTheDocument()
+        )
     })
 })

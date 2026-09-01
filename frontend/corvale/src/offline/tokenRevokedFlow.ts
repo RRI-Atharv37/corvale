@@ -11,7 +11,7 @@ export const TOKEN_REVOKED_EVENT = 'corvale:token-revoked'
 export interface HandleTokenRevokedOptions {
     hasUnsyncedChanges: boolean
     onExportOffer: () => Promise<unknown> | unknown
-    wipe: () => Promise<void>
+    wipe: () => Promise<unknown>
 }
 
 export const handleTokenRevoked = async ({

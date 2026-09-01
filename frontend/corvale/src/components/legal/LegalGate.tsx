@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { unwrapApiData } from '../../utils/apiHelpers'
+import { exportPersonalBackup } from '../../utils/personalBackupExport'
 import { useUser } from '../../hooks/useUser'
+import DeleteAccountSettings from '../settings/DeleteAccountSettings'
 import type { ApiResponse, User } from '../../types/api'
 
 /**
@@ -21,11 +23,19 @@ import type { ApiResponse, User } from '../../types/api'
  *      `backend/utils/legalVersions.ts`, making every stored acceptance stale.
  *
  * Deliberately *not* dismissible: continuing to use the service without current terms is the
- * exact state this exists to prevent. Signing out and exporting data both remain reachable.
+ * exact state this exists to prevent.
+ *
+ * SEC-48: the privacy policy promises that export and deletion are *never* gated on anything -
+ * "Export is never restricted, in any circumstances" - and GDPR Art. 7(3)/17/20 must not be
+ * coupled to accepting new terms. So the gate carries its own sign-out, export and
+ * delete-account controls; the dashboard's Settings screen is the only thing walled off.
  */
 const LegalGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { user, updateUser } = useUser()
+    const { user, updateUser, logout } = useUser()
+    const navigate = useNavigate()
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isExporting, setIsExporting] = useState(false)
+    const [isSigningOut, setIsSigningOut] = useState(false)
 
     // Until the profile has loaded there is nothing to compare, so let children render rather
     // than flashing a consent wall at every page load.
@@ -57,6 +67,28 @@ const LegalGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             toast.error(getApiErrorMessage(err, 'Could not record your acceptance. Please try again.'))
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    const handleExport = async () => {
+        setIsExporting(true)
+        try {
+            await exportPersonalBackup()
+            toast.success('Your data export has been downloaded.')
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, 'Could not export your data. Please try again.'))
+        } finally {
+            setIsExporting(false)
+        }
+    }
+
+    const handleSignOut = async () => {
+        setIsSigningOut(true)
+        try {
+            await logout()
+            navigate('/', { replace: true })
+        } finally {
+            setIsSigningOut(false)
         }
     }
 
@@ -105,6 +137,34 @@ const LegalGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 >
                     {isSubmitting ? 'Saving...' : 'I agree'}
                 </button>
+
+                <div className="mt-6 border-t border-border-subtle pt-5">
+                    <p className="text-xs text-fg-muted">
+                        You do not have to accept to leave, take your data, or close your account.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={handleSignOut}
+                            disabled={isSigningOut}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-primary hover:border-accent/40 disabled:opacity-50"
+                        >
+                            {isSigningOut ? 'Signing out…' : 'Sign out'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-primary hover:border-accent/40 disabled:opacity-50"
+                        >
+                            {isExporting ? 'Exporting…' : 'Export my data'}
+                        </button>
+                    </div>
+
+                    <div className="mt-4">
+                        <DeleteAccountSettings />
+                    </div>
+                </div>
             </div>
         </div>
     )

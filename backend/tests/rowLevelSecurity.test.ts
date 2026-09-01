@@ -28,6 +28,17 @@ describe('Row-level security', () => {
         ).toBe(true)
     })
 
+    it('SEC-63: a top-level workspaceId alongside $or only counts when supportsWorkspace is set', () => {
+        const filter = {
+            workspaceId: new Types.ObjectId(),
+            $or: [{ status: 'posted' }, { status: 'draft' }],
+        }
+        // Mirrors the plain `workspaceId` branch: without supportsWorkspace, workspaceId is not a
+        // tenancy key and the $or clauses (both unscoped) must fail the guard.
+        expect(filterHasOwnershipScope(filter)).toBe(false)
+        expect(filterHasOwnershipScope(filter, { supportsWorkspace: true })).toBe(true)
+    })
+
     it('blocks unscoped filters', () => {
         expect(filterHasOwnershipScope({ status: 'posted' })).toBe(false)
         expect(() => assertQueryIsScoped({ status: 'posted' })).toThrow(/missing user or workspace scope/i)

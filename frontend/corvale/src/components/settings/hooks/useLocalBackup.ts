@@ -8,12 +8,10 @@ import {
     restoreLocalBackup,
     type CorvaleBackupPayload,
 } from '../../../domain/backup'
-import { downloadExportBlob } from '../../../utils/downloadExport'
+import { saveExportedFile } from '../../../utils/downloadExport'
 import { useUser } from '../../../hooks/useUser'
 import { useWorkspace } from '../../../hooks/useWorkspace'
 import type { BackupRestorePreview, BackupRestoreResult } from '../../../types/api'
-import { isTauriRuntime } from '../../../desktop/isTauri'
-import { saveBackupFileNative } from '../../../desktop/nativeBackup'
 
 export const LOCAL_BACKUP_ACCEPT = '.json,application/json'
 
@@ -64,16 +62,8 @@ export const useLocalBackup = (): UseLocalBackupResult => {
         const scopeLabel = payload.scope.workspaceId ? 'workspace' : 'personal'
         const filename = `corvale-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`
         const json = JSON.stringify(payload, null, 2)
-
-        // Desktop shell (Sprint 13.11): a real "Save As" dialog via Rust, since a Tauri webview
-        // doesn't reliably turn the browser's `<a download>` blob-URL trick into an OS save prompt.
-        if (isTauriRuntime()) {
-            await saveBackupFileNative(filename, json)
-            return
-        }
-
         const blob = new Blob([json], { type: 'application/json' })
-        downloadExportBlob(blob, filename)
+        await saveExportedFile(blob, filename)
     }, [activeWorkspaceId])
 
     const parseFile = useCallback(async (file: File): Promise<CorvaleBackupPayload> => {

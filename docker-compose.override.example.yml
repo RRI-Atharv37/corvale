@@ -16,10 +16,14 @@ services:
       # Proxy hops in front of the API (Caddy on the same host = 1) so rate
       # limiters and Secure-cookie detection see the real client protocol/IP.
       TRUST_PROXY: 1
-    # Publish only on loopback - the reverse proxy is the sole public entrypoint.
-    # `!override` replaces the base port list instead of appending to it.
-    ports: !override
-      - '127.0.0.1:5000:5000'
-  frontend:
-    ports: !override
-      - '127.0.0.1:8080:80'
+    # The tracked docker-compose.yml already binds both services to 127.0.0.1 (SEC-65), so a
+    # same-host reverse proxy needs nothing here. Only add a `ports:` override if the proxy runs
+    # on a DIFFERENT host and must reach the containers over a private network - bind to that
+    # interface, never back to 0.0.0.0 on a public-facing host. `!override` replaces the base
+    # port list instead of appending to it.
+    #
+    # ports: !override
+    #   - '10.0.0.5:5000:5000'
+  # frontend:
+  #   ports: !override
+  #     - '10.0.0.5:8080:8080'

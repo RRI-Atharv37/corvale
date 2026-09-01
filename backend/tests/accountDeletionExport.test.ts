@@ -142,7 +142,31 @@ describe('Self-service account deletion (L7)', () => {
         expect(await User.findById(userId)).toBeNull()
         expect(await Account.countDocuments({ userId })).toBe(0)
         expect(await Transaction.countDocuments({ userId })).toBe(0)
-        expect(await RefreshToken.countDocuments({ userId, revokedAt: null })).toBe(0)
+        // SEC-49: refresh tokens are hard-deleted, not just flagged revoked - no userId-linked
+        // rows survive the account.
+        expect(await RefreshToken.countDocuments({ userId })).toBe(0)
+    })
+
+    it('hard-deletes refresh tokens on account deletion rather than leaving revoked rows (SEC-49)', async () => {
+        const { token, userId } = await registerUser(app, {
+            email: 'delete-refresh-tokens@example.com',
+            password: DELETE_PASSWORD,
+        })
+
+        // A second session and a rotation, so there are both active and already-revoked rows.
+        await request(app).post('/api/v1/auth/login').send({
+            email: 'delete-refresh-tokens@example.com',
+            password: DELETE_PASSWORD,
+        })
+        expect(await RefreshToken.countDocuments({ userId })).toBeGreaterThan(0)
+
+        const res = await request(app)
+            .delete('/api/v1/auth/account')
+            .set(authHeader(token))
+            .send({ password: DELETE_PASSWORD })
+
+        expect(res.status).toBe(200)
+        expect(await RefreshToken.countDocuments({ userId })).toBe(0)
     })
 
     it('leaves shared master categories (userId: null) untouched', async () => {

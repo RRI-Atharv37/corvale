@@ -12,7 +12,7 @@ Create a `.env` file in the `backend/` folder.
 | `MONGO_URI` | Yes | - | MongoDB connection string |
 | `JWT_SECRET` | Yes | - | Secret key for signing JWT access tokens. Must be a unique random string — the server refuses to start if it is left at the `.env.example` placeholder or another well-known weak value, and when `NODE_ENV=production` it must be at least 32 characters. See [Security notes](#security-notes) |
 | `JWT_EXPIRY` | Yes | - | Access token expiry (e.g., `15m`, `1h`) |
-| `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses, reset-link console logging, and secure-cookie flags |
+| `NODE_ENV` | No | `development` | `development` \| `production` \| `test`. Controls stack traces in error responses and secure-cookie flags. Reset/verification link console logging is gated by `MAIL_DEV_LOG`, not this |
 | `JWT_REFRESH_EXPIRY` | No | `7d` | Refresh token expiry |
 | `REFRESH_TOKEN_COOKIE_NAME` | No | `corvale_refresh` | httpOnly cookie name for refresh tokens |
 | `REFRESH_COOKIE_SAME_SITE` | No | `lax` | `lax` \| `strict` \| `none` — see [Deployment topology](#deployment-topology) below. `none` is only accepted when `NODE_ENV=production` |
@@ -22,7 +22,8 @@ Create a `.env` file in the `backend/` folder.
 | `PASSWORD_RESET_EXPIRY_MS` | No | `600000` (10 minutes) | Password reset token lifetime |
 | `EMAIL_VERIFICATION_EXPIRY_MS` | No | `600000` (10 minutes) | Email verification token lifetime. Login is hard-blocked until the address is verified; a blocked user gets a fresh link from the unauthenticated `POST /auth/email-verification/resend` (`{ email }` body, enumeration-safe) |
 | `UNVERIFIED_ACCOUNT_TTL_SECONDS` | No | `604800` (7 days) | How long an account that never verifies its email is retained before a TTL index removes it, releasing the address (prevents indefinite account squatting). Verified accounts are never affected |
-| `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev to log reset/verification links to the console instead of emailing them. Setting it switches on real delivery, so only set it once the sending domain's SPF/DKIM/DMARC records are published and verified. Current provider is Resend (`smtp.resend.com`) |
+| `SMTP_HOST` | No | unset | SMTP server host. Leave unset in dev; with `MAIL_DEV_LOG=true` the reset/verification link is logged to the console instead of emailed. Setting it switches on real delivery, so only set it once the sending domain's SPF/DKIM/DMARC records are published and verified. Current provider is Resend (`smtp.resend.com`) |
+| `MAIL_DEV_LOG` | No | unset | Set to `true` to print the password-reset / email-verification link to the console when SMTP is not configured (local dev only). Fail-closed: unset or any other value logs only an acknowledgement line. The token is redacted from the URL even when this is on. Never set it in a deployment (SEC-69) |
 | `SMTP_PORT` | No | `587` | SMTP server port (`465` switches to implicit TLS) |
 | `SMTP_USER` | Only if `SMTP_HOST` set | unset | SMTP account username (for Resend this is the literal string `resend`) |
 | `SMTP_PASS` | Only if `SMTP_HOST` set | unset | SMTP account password (for Resend, a "Sending access" API key, `re_…`) |
@@ -46,6 +47,8 @@ Create a `.env` file in the `backend/` folder.
 | `BACKUP_MAX_UNCOMPRESSED_BYTES` | No | `209715200` (200 MB) | Cap on a restored backup zip's total declared uncompressed size, checked against the archive's central directory before any entry is inflated |
 | `BACKUP_MAX_ZIP_ENTRIES` | No | `10000` | Cap on the number of entries in a restored backup zip |
 | `BACKUP_MAX_COMPRESSION_RATIO` | No | `100` | Cap on any single entry's uncompressed-to-compressed size ratio in a restored backup zip |
+| `BACKUP_MAX_JSON_BYTES` | No | `10485760` (10 MB) | Cap on the backup JSON itself, applied to both a `.json` upload and the JSON entry inside a `.zip`, checked before it is parsed |
+| `BACKUP_MAX_RECORDS_PER_COLLECTION` | No | `100000` | Cap on the number of records in any one collection (transactions, accounts, …) a single restore will accept |
 | `RECEIPT_STORAGE_DRIVER` | No | unset (local disk) | Set to `s3` to store receipts in an S3-compatible bucket instead of `uploads/receipts/` on local disk. Required for any hosted deployment — local disk is ephemeral and not shared between instances |
 | `RECEIPT_S3_BUCKET` | Only if driver is `s3` | - | Bucket name receipts are stored in |
 | `RECEIPT_S3_REGION` | No | `us-east-1` | Bucket region |
@@ -90,6 +93,7 @@ Create a `.env` file in the `frontend/corvale/` folder (copy from `.env.example`
 | `VITE_API_ORIGIN` | No | `http://localhost:5000` | Same backend, origin only (no `/api/v1` path) - builds the `connect-src` directive in the page's Content-Security-Policy. Keep in sync with `VITE_API_URL`'s origin |
 | `VITE_DOCS_URL` | No | `http://localhost:5174` | URL the "Docs" link in the dashboard header opens |
 | `VITE_LOCAL_FIRST` | No | `false` | Enables the offline local-first sync engine, its settings UI, and local-store reads/writes on dashboard pages |
+| `VITE_LOCAL_PIN` | No | `false` | Enables the dormant local-lock PIN feature (PIN gate, onboarding prompt, Settings panel). Left unset in every build - applying the encryption key to an already-created local database corrupts it, so the PIN is disabled until the key is set at database creation. Also requires `VITE_LOCAL_FIRST=true` |
 | `VITE_OFFLINE_GRANT_PUBLIC_KEY` | Yes | - | EC (P-256) public key, PEM-encoded with real newlines replaced by literal `\n`, matching the backend's `OFFLINE_GRANT_PRIVATE_KEY`. Without it, offline rendering of cached data fails closed — see [Offline session grant](#offline-session-grant) below |
 | `VITE_CAPTCHA_ENABLED` | No | `false` | Renders the hCaptcha widget on Signup and sends `captchaToken` on register. Must match the backend's `CAPTCHA_ENABLED` — this only controls the UI; the backend is what enforces it. Also widens the CSP (`script-src`/`style-src`/`connect-src`/`frame-src`) to admit hCaptcha's origins; unset leaves the CSP byte-for-byte unchanged |
 | `VITE_CAPTCHA_SITE_KEY` | Only if `VITE_CAPTCHA_ENABLED=true` | - | hCaptcha *site* key (public). Pairs with the backend's `CAPTCHA_SECRET_KEY` |
@@ -135,9 +139,12 @@ or browsers reject them). Note this does **not** add CSRF protection for the aut
 that lands with the wider token-storage rework (`SEC-18`) — so treat `none` as a stopgap, not
 a long-term posture.
 
-The desktop (Tauri) app is a distinct cross-site case tracked separately (`SEC-10`/`SEC-11`
-cross-cutting note in `ROADMAP.md`) and is expected to use a non-cookie refresh path rather
-than `SameSite=None`.
+The desktop (Tauri) app is a distinct cross-site case and does not rely on the cookie at all. It
+is identified by its fixed `Origin`, receives the rotated refresh token in the auth response
+body, and stores it in the operating system's keychain (Windows Credential Manager, macOS
+Keychain, or the Linux Secret Service), then sends it back in the `POST /auth/refresh` and
+`POST /auth/logout` request bodies. This path needs no configuration and does not require
+`SameSite=None`. See [Authentication API](./authentication-api.md#desktop-clients).
 
 ## Offline session grant
 

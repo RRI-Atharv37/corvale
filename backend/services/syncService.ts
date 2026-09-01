@@ -11,6 +11,7 @@ import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
 import { CustomError } from '../utils/customError'
+import { serializeAccountDocForWire } from '../utils/accountWireFormat'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { buildScopedListFilter } from '../utils/workspaceUtils'
 
@@ -63,6 +64,13 @@ interface EntityConfig {
     model: Model<Document>
     hasSoftDelete: boolean
     buildScope: (userId: string, workspaceId: string | null) => Record<string, unknown>
+    /**
+     * Optional per-entity transform applied to every plain doc before it goes
+     * on the wire (bootstrap + pull). `account` uses it to force
+     * openingBalance/currentBalance to major units regardless of the row's
+     * `balanceUnit` storage flag — see accountWireFormat.ts / BUG-17.
+     */
+    serialize?: (doc: Record<string, unknown>) => Record<string, unknown>
 }
 
 const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
@@ -70,6 +78,7 @@ const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
         model: Account as unknown as Model<Document>,
         hasSoftDelete: false,
         buildScope: (userId, workspaceId) => buildScopedListFilter(userId, workspaceId),
+        serialize: serializeAccountDocForWire,
     },
     transaction: {
         model: Transaction as unknown as Model<Document>,
@@ -139,18 +148,48 @@ const PULL_LIMIT_MAX = 500
 const encodeCheckpoint = (cursors: SyncCursorMap): string =>
     Buffer.from(JSON.stringify({ cursors })).toString('base64url')
 
+const isValidSyncCursor = (value: unknown): value is SyncCursor => {
+    if (!value || typeof value !== 'object') {
+        return false
+    }
+    const { id, updatedAt } = value as Record<string, unknown>
+    return (
+        typeof id === 'string' &&
+        Types.ObjectId.isValid(id) &&
+        typeof updatedAt === 'string' &&
+        !Number.isNaN(new Date(updatedAt).getTime())
+    )
+}
+
 const decodeCheckpoint = (checkpoint: string | undefined): SyncCursorMap => {
     if (!checkpoint) {
         return {}
     }
+
+    // SEC-56: a base64url/JSON decode failure was already a 400, but a checkpoint that decodes
+    // cleanly yet carries a garbage cursor `id` / `updatedAt` used to blow up later in
+    // `buildCursorFilter` (`new Types.ObjectId(...)` / an Invalid Date reaching Mongoose) as an
+    // uncaught 500. Validate the shape here so every malformed cursor is one 400.
+    let parsed: { cursors?: unknown }
     try {
-        const parsed = JSON.parse(Buffer.from(checkpoint, 'base64url').toString('utf8')) as {
-            cursors?: SyncCursorMap
-        }
-        return parsed.cursors ?? {}
+        parsed = JSON.parse(Buffer.from(checkpoint, 'base64url').toString('utf8'))
     } catch {
         throw new CustomError('Invalid sync checkpoint', 400)
     }
+
+    const cursors = parsed?.cursors
+    if (cursors === undefined || cursors === null) {
+        return {}
+    }
+    if (typeof cursors !== 'object' || Array.isArray(cursors)) {
+        throw new CustomError('Invalid sync checkpoint', 400)
+    }
+    for (const cursor of Object.values(cursors as Record<string, unknown>)) {
+        if (!isValidSyncCursor(cursor)) {
+            throw new CustomError('Invalid sync checkpoint', 400)
+        }
+    }
+    return cursors as SyncCursorMap
 }
 
 const clampPullLimit = (value: unknown): number => {
@@ -214,7 +253,10 @@ export const buildBootstrapSnapshot = async (
             .find(scope)
             .sort({ updatedAt: 1, _id: 1 })) as unknown as EntityDoc[]
 
-        snapshot[RESPONSE_FIELD[entity]] = docs.map((doc) => doc.toObject())
+        snapshot[RESPONSE_FIELD[entity]] = docs.map((doc) => {
+            const plain = doc.toObject()
+            return config.serialize ? config.serialize(plain) : plain
+        })
 
         if (docs.length > 0) {
             const last = docs[docs.length - 1]
@@ -286,7 +328,7 @@ export const buildPullPage = async (
                     deletedAt: doc.deletedAt.toISOString(),
                 })
             } else {
-                changes.push({ entity, doc: plain })
+                changes.push({ entity, doc: config.serialize ? config.serialize(plain) : plain })
             }
         }
 

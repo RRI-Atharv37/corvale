@@ -246,4 +246,78 @@ describe('outbox', () => {
             expect(pendingOp.lastError).toBe('network timeout')
         })
     })
+
+    // BUG-32: a server-rejected op must record *why* it was rejected, cap its backoff so it can
+    // still recover on its own, and be individually retryable / discardable.
+    describe('BUG-32 - rejected ops surface the reason and stay recoverable', () => {
+        it('stores the server rejection message on the rejected op as lastError', async () => {
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'create', payload: {} })
+            const [{ opId }] = await outbox.listPending()
+
+            await outbox.flush(async () => [
+                { opId, status: 'rejected' as const, message: 'Account not found' },
+            ])
+
+            const [pendingOp] = await outbox.listPending()
+            expect(pendingOp.lastError).toBe('Account not found')
+            expect(pendingOp.attempts).toBe(1)
+        })
+
+        it('falls back to a readable message when the server sends none', async () => {
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'create', payload: {} })
+            const [{ opId }] = await outbox.listPending()
+
+            await outbox.flush(async () => [{ opId, status: 'id_conflict' as const }])
+
+            const [pendingOp] = await outbox.listPending()
+            expect(pendingOp.lastError).toMatch(/ID is already used|rejected/i)
+        })
+
+        it('caps the retry backoff so a stuck op still retries within minutes, not years', async () => {
+            await outbox.enqueue({ entity: 'account:acc1', operation: 'update', payload: {} })
+            const [{ opId }] = await outbox.listPending()
+
+            const rejecting = vi.fn(async () => [{ opId, status: 'rejected' as const, message: 'nope' }])
+
+            // Drive attempts way up - uncapped this would push nextAttemptAt years out.
+            for (let i = 0; i < 40; i++) {
+                await outbox.flush(rejecting)
+                vi.advanceTimersByTime(6 * 60 * 1000)
+            }
+
+            const [pendingOp] = await outbox.listPending()
+            const waitMs = (pendingOp.nextAttemptAt ?? 0) - Date.now()
+            expect(waitMs).toBeLessThanOrEqual(5 * 60 * 1000)
+        })
+
+        it('retry(opId) clears the error and backoff so the next flush re-sends the op', async () => {
+            await outbox.enqueue({ entity: 'account:acc1', operation: 'update', payload: {} })
+            const [{ opId }] = await outbox.listPending()
+
+            await outbox.flush(async () => [{ opId, status: 'rejected' as const, message: 'transient' }])
+            let [pendingOp] = await outbox.listPending()
+            expect(pendingOp.nextAttemptAt).not.toBeNull()
+
+            await outbox.retry(opId)
+            pendingOp = (await outbox.listPending())[0]
+            expect(pendingOp.lastError).toBeNull()
+            expect(pendingOp.nextAttemptAt).toBeNull()
+
+            const pushFn = vi.fn(applyAll)
+            await outbox.flush(pushFn)
+            expect(pushFn).toHaveBeenCalledTimes(1)
+            expect(await outbox.listPending()).toEqual([])
+        })
+
+        it('discard(opId) drops the stuck op from the queue', async () => {
+            await outbox.enqueue({ entity: 'account:acc1', operation: 'update', payload: {} })
+            await outbox.enqueue({ entity: 'account:acc2', operation: 'update', payload: {} })
+            const [first] = await outbox.listPending()
+
+            await outbox.discard(first.opId)
+
+            const remaining = await outbox.listPending()
+            expect(remaining.map((op) => op.entity)).toEqual(['account:acc2'])
+        })
+    })
 })

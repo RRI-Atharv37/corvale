@@ -26,6 +26,8 @@ import {
 } from '../../utils/receiptApi'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import { isTauriRuntime } from '../../desktop/isTauri'
+import ReceiptViewerModal from './ReceiptViewerModal'
 
 interface ReceiptAttachmentsProps {
     transactionId?: string | null
@@ -36,7 +38,7 @@ interface ReceiptAttachmentsProps {
     disabled?: boolean
 }
 
-const ReceiptPreviewTile = ({
+export const ReceiptPreviewTile = ({
     receipt,
     onDetach,
     onDelete,
@@ -49,6 +51,7 @@ const ReceiptPreviewTile = ({
 }) => {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
     const [loading, setLoading] = useState(isImageReceipt(receipt.mimeType))
+    const [viewerUrl, setViewerUrl] = useState<string | null>(null)
 
     useEffect(() => {
         if (!isImageReceipt(receipt.mimeType)) {
@@ -79,12 +82,23 @@ const ReceiptPreviewTile = ({
         }
     }, [receipt._id, receipt.mimeType])
 
+    // BUG-25: `window.open` is a silent no-op inside the Tauri webview, so on the desktop runtime
+    // the receipt opens in an in-app modal instead. The web build keeps opening a new tab.
+    useEffect(() => {
+        if (!viewerUrl) return undefined
+        return () => URL.revokeObjectURL(viewerUrl)
+    }, [viewerUrl])
+
     const openReceipt = async () => {
         try {
             const blob = await fetchReceiptBlob(receipt._id)
             const url = URL.createObjectURL(blob)
-            window.open(url, '_blank', 'noopener,noreferrer')
-            window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+            if (isTauriRuntime()) {
+                setViewerUrl(url)
+            } else {
+                window.open(url, '_blank', 'noopener,noreferrer')
+                window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+            }
         } catch {
             toast.error('Failed to open receipt')
         }
@@ -92,6 +106,13 @@ const ReceiptPreviewTile = ({
 
     return (
         <div className="relative rounded-lg border border-border bg-surface/50 p-2 w-[120px]">
+            <ReceiptViewerModal
+                open={Boolean(viewerUrl)}
+                url={viewerUrl}
+                mimeType={receipt.mimeType}
+                filename={receipt.originalFilename}
+                onClose={() => setViewerUrl(null)}
+            />
             <button
                 type="button"
                 onClick={() => void openReceipt()}

@@ -133,7 +133,7 @@ describe('Bank CSV/OFX import - parse & format detection', () => {
             .attach('file', Buffer.from('not a csv'), 'malware.exe')
 
         expect(res.status).toBe(400)
-        expect(res.body.message).toMatch(/csv or ofx/i)
+        expect(res.body.message).toMatch(/must be a csv/i)
     })
 
     it('rejects a CSV exceeding the 2,000 row limit', async () => {

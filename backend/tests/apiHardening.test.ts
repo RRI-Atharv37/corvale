@@ -57,6 +57,28 @@ describe('API hardening — security headers (SEC-07)', () => {
 
         expect(res.headers['strict-transport-security']).toBeTruthy()
     })
+
+    it('sends HSTS with a max-age of at least one year, matching the frontend (SEC-68)', async () => {
+        const app = createApp()
+        const res = await request(app).get('/health')
+
+        const hsts = res.headers['strict-transport-security'] ?? ''
+        const maxAge = Number(/max-age=(\d+)/.exec(hsts)?.[1] ?? '0')
+        expect(maxAge).toBeGreaterThanOrEqual(31536000)
+        expect(hsts).toMatch(/includeSubDomains/i)
+    })
+
+    it('sends a restrictive Permissions-Policy (SEC-68)', async () => {
+        const app = createApp()
+        const res = await request(app).get('/health')
+
+        const policy = res.headers['permissions-policy'] ?? ''
+        expect(policy).toBeTruthy()
+        // The app uses none of these powerful features — each must be denied to all origins.
+        for (const feature of ['camera', 'microphone', 'geolocation', 'payment', 'usb']) {
+            expect(policy).toMatch(new RegExp(`${feature}=\\(\\)`))
+        }
+    })
 })
 
 describe('API hardening — request body limit (SEC-08)', () => {

@@ -7,6 +7,9 @@
     "core:default",
     "dialog:default",
     "updater:default",
-    "process:default"
+    "process:default",
+    "log:default",
+    "opener:allow-open-url",
+    "opener:allow-default-urls"
   ]
 }

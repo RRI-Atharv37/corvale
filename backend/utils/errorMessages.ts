@@ -35,8 +35,11 @@ export const ERROR_MESSAGES = {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',
         OFFLINE_GRANT_KEY_MISSING: 'OFFLINE_GRANT_PRIVATE_KEY is not defined in environment variables',
         UNSCOPED_QUERY: 'Database query blocked: missing user or workspace scope',
+        UNSCOPED_LOOKUP:
+            'Database query blocked: aggregate joins a second collection past the RLS boundary — scope the joined pipeline and set the rlsAllowLookup option',
         ROUTE_NOT_FOUND: 'Route not found',
         UNSAFE_REQUEST_BODY: 'Request body contains invalid characters',
+        INVALID_IDENTIFIER: 'Malformed identifier in request',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',
@@ -103,6 +106,7 @@ export const ERROR_MESSAGES = {
         SPLIT_MIN_COUNT: 'At least two split lines are required',
         SPLIT_REQUIRES_EXPENSE: 'Split transactions are only supported for expenses',
         BULK_EMPTY: 'At least one transaction id is required',
+        BULK_TOO_MANY: 'Too many transaction ids in one request (maximum 500)',
         BULK_CATEGORY_TRANSFER: 'Transfers cannot be bulk recategorized',
         RECEIPT_ALREADY_ATTACHED: 'Receipt is already attached to this transaction',
         RECEIPT_NOT_ATTACHED: 'Receipt is not attached to this transaction',
@@ -152,7 +156,7 @@ export const ERROR_MESSAGES = {
         FILE_REQUIRED: 'Import file is required',
         EMPTY_FILE: 'Import file is empty',
         MISSING_HEADERS: 'CSV file is missing a header row',
-        INVALID_FILE_TYPE: 'Import file must be a CSV or OFX file',
+        INVALID_FILE_TYPE: 'Import file must be a CSV, OFX/QFX, or QIF file',
         FILE_TOO_LARGE: 'Import file exceeds the 2 MB size limit',
         TOO_MANY_ROWS: 'Import file exceeds the 2,000 row limit',
         MAPPING_INCOMPLETE: 'Column mapping is incomplete',
@@ -169,9 +173,12 @@ export const ERROR_MESSAGES = {
         FILE_REQUIRED: 'Backup file is required',
         BROKEN_REFERENCE: 'Backup contains a broken reference and cannot be restored',
         ARCHIVE_TOO_MANY_ENTRIES: 'Backup archive contains too many entries',
+        TOO_MANY_RECORDS: 'Backup contains too many records to restore',
         ARCHIVE_UNCOMPRESSED_TOO_LARGE: 'Backup archive is too large once uncompressed',
         ARCHIVE_SUSPICIOUS_RATIO:
             'Backup archive contains an entry with a suspicious compression ratio',
+        RECEIPT_EXPORT_FAILED:
+            'Backup export failed: a receipt file could not be read from storage. No archive was produced.',
     },
     RECONCILIATION: {
         INVALID_CLEARED_STATUS: 'Invalid clearedStatus',

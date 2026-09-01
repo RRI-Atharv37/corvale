@@ -36,6 +36,7 @@ import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import CurrencySelect from '../Inputs/CurrencySelect'
 import Modal from '../ui/Modal'
+import ExternalLink from '../ui/ExternalLink'
 import { DEFAULT_CURRENCY } from '../../utils/currencies'
 import {
     DATE_FORMAT_OPTIONS,
@@ -59,7 +60,10 @@ import SyncSettings from '../settings/SyncSettings'
 import DesktopUpdateSettings from '../settings/DesktopUpdateSettings'
 import SyncStatusBadge from '../sync/SyncStatusBadge'
 import { isLocalFirstEnabled } from '../../utils/localFirstFlag'
+import { isLocalPinEnabled } from '../../utils/localPinFlag'
 import { startSyncEngine, syncNow } from '../../sync/syncEngine'
+import { countUnsyncedChanges, syncBeforeSignOut } from '../../offline/signOutFlow'
+import SignOutDialog from '../sync/SignOutDialog'
 import { syncTimezoneOncePerSession } from '../../utils/timezoneSync'
 
 const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
@@ -106,6 +110,10 @@ const DashboardLayout: React.FC = () => {
     const [savingNotifications, setSavingNotifications] = useState(false)
     const [savingDisplay, setSavingDisplay] = useState(false)
     const onboardingRef = useRef<OnboardingWizardHandle>(null)
+    // SEC-46: sign-out wipes the local store, so warn before dropping unsynced local changes.
+    const [signOutDialogOpen, setSignOutDialogOpen] = useState(false)
+    const [signOutUnsyncedCount, setSignOutUnsyncedCount] = useState(0)
+    const [signOutSyncing, setSignOutSyncing] = useState(false)
 
     useEffect(() => {
         if (!isLocalFirstEnabled()) return
@@ -217,12 +225,40 @@ const DashboardLayout: React.FC = () => {
         }
     }
 
-    const handleLogout = async () => {
+    const doSignOut = async () => {
+        setSignOutDialogOpen(false)
         setSettingsOpen(false)
         closeMobile()
         await logout()
         toast.success('Logged out successfully')
         navigate('/', { replace: true })
+    }
+
+    const handleLogout = async () => {
+        const unsynced = await countUnsyncedChanges()
+        if (unsynced > 0) {
+            setSignOutUnsyncedCount(unsynced)
+            setSignOutDialogOpen(true)
+            return
+        }
+        await doSignOut()
+    }
+
+    const handleSyncAndSignOut = async () => {
+        setSignOutSyncing(true)
+        try {
+            const remaining = await syncBeforeSignOut()
+            if (remaining > 0) {
+                setSignOutUnsyncedCount(remaining)
+                toast.error(
+                    `${remaining} ${remaining === 1 ? 'change' : 'changes'} still could not sync. Discard them or cancel and try again later.`
+                )
+                return
+            }
+            await doSignOut()
+        } finally {
+            setSignOutSyncing(false)
+        }
     }
 
     const handleLogoutAll = async () => {
@@ -335,15 +371,13 @@ const DashboardLayout: React.FC = () => {
                     <div className="flex items-center gap-2 shrink-0">
                         {isLocalFirstEnabled() && <SyncStatusBadge />}
                         <NotificationCenter />
-                        <a
+                        <ExternalLink
                             href={DOCS_URL}
-                            target="_blank"
-                            rel="noreferrer"
                             className="flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-sm font-medium text-text-muted hover:text-accent hover:border-accent/40 transition-colors"
                         >
                             <FiBookOpen size={16} />
                             <span className="hidden sm:inline">Docs</span>
-                        </a>
+                        </ExternalLink>
                     </div>
                 </header>
 
@@ -440,7 +474,7 @@ const DashboardLayout: React.FC = () => {
                     <BackupRestoreSettings />
                     <DesktopUpdateSettings />
                     {isLocalFirstEnabled() && <SyncSettings />}
-                    {isLocalFirstEnabled() && <PinSettings />}
+                    {isLocalPinEnabled() && <PinSettings />}
 
                     <div>
                         <p className="section-label mb-3">Account</p>
@@ -485,6 +519,15 @@ const DashboardLayout: React.FC = () => {
                     <DeleteAccountSettings />
                 </div>
             </Modal>
+
+            <SignOutDialog
+                open={signOutDialogOpen}
+                unsyncedCount={signOutUnsyncedCount}
+                syncing={signOutSyncing}
+                onSyncAndSignOut={() => void handleSyncAndSignOut()}
+                onDiscardAndSignOut={() => void doSignOut()}
+                onCancel={() => setSignOutDialogOpen(false)}
+            />
 
             <OnboardingWizard ref={onboardingRef} />
             <PinSetupPrompt />

@@ -13,6 +13,7 @@ import {
   suggestColumnMapping,
   mapCsvRows,
   parseOfxContent,
+  parseQifContent,
   assertImportRowLimit,
 } from '@shared/csvImport'
 import { parseLocalImportFile, previewLocalImport, commitLocalImport } from '../importTransactions'
@@ -142,10 +143,38 @@ describe('shared/csvImport parity: parse & format detection', () => {
     ].join('\n')
 
     expect(isOfxContent(ofx)).toBe(true)
-    const rows = parseOfxContent(ofx)
+    const { rows, errors } = parseOfxContent(ofx)
+    expect(errors).toHaveLength(0)
     expect(rows).toHaveLength(2)
     expect(rows[0].type).toBe('expense')
     expect(rows[1].type).toBe('income')
+  })
+
+  it('extracts FITID / TRNTYPE / CURDEF and reports skipped blocks (BUG-21)', () => {
+    const ofx = [
+      'OFXHEADER:100',
+      '<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>EUR<BANKTRANLIST>',
+      '<STMTTRN><TRNTYPE>CREDIT<TRNAMT>10.00<DTPOSTED>20260105120000<NAME>Refund<FITID>F-1</STMTTRN>',
+      '<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20260106120000<NAME>Memo hold<FITID>F-2</STMTTRN>',
+      '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>',
+    ].join('\n')
+    const result = parseOfxContent(ofx)
+    expect(result.statementCurrency).toBe('EUR')
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toMatchObject({ type: 'income', externalId: 'F-1' })
+    expect(result.errors).toHaveLength(1)
+  })
+
+  it('parses a QIF file and detects a QIF renamed .qfx (BUG-23)', async () => {
+    const qif = ['!Type:Bank', 'D01/05/2026', 'T-45.50', 'PGrocery Store', '^'].join('\n')
+    const { rows, errors } = parseQifContent(qif)
+    expect(errors).toHaveLength(0)
+    expect(rows[0]).toMatchObject({ date: '2026-01-05', title: 'Grocery Store', amount: 45.5, type: 'expense' })
+
+    const asQfx = new File([qif], 'export.qfx', { type: 'application/octet-stream' })
+    const parsed = await parseLocalImportFile(asQfx)
+    expect(parsed.format).toBe('qif')
+    expect(parsed.parsedRows).toHaveLength(1)
   })
 
   it('rejects an empty file (matches server)', () => {
@@ -326,6 +355,24 @@ describe('domain/importTransactions: duplicate detection parity (backend/tests/i
     expect(preview.items[0].duplicateOf?.transactionId).toBe(existingId)
     expect(preview.items[0].duplicateAction).toBe('skip')
     expect(preview.summary.duplicates).toBe(1)
+  })
+
+  it('does not flag an equal-magnitude refund (income) as a duplicate of the original charge (expense) — BUG-22', async () => {
+    const db = await freshDb()
+    const { accountId, categoryId } = await seedAccountAndCategory(db)
+    await seedExisting(db, accountId, categoryId, 'ACME', 50, '2026-03-01')
+
+    const preview = await previewLocalImport(db, {
+      accountId,
+      defaultCategoryId: categoryId,
+      headers: ['Date', 'Description', 'Amount'],
+      rows: [['2026-03-01', 'ACME', '50.00']],
+      mapping: { date: 'Date', description: 'Description', amount: 'Amount' },
+    })
+
+    expect(preview.items[0].type).toBe('income')
+    expect(preview.items[0].duplicateOf).toBeUndefined()
+    expect(preview.summary.duplicates).toBe(0)
   })
 
   it('does not flag two same-day charges with the same amount but different descriptions as duplicates of each other', async () => {

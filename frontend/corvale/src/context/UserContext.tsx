@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import axiosInstance from '../utils/axiosInstance'
 import { API_PATHS } from '../utils/apiPaths'
@@ -8,9 +8,10 @@ import { getApiErrorMessage } from '../utils/apiError'
 import { resetPreferredCurrency, resetDateFormat, setDateFormat, setPreferredCurrency } from '../utils/format'
 import { getCachedUser, setCachedUser } from '../offline/cachedUser'
 import { setAccessToken } from '../utils/tokenStore'
+import { clearStoredRefreshToken, getStoredRefreshToken, storeRefreshToken } from '../utils/refreshTokenStore'
 import { clearOfflineGrant, getStoredOfflineGrant, storeOfflineGrant, verifyOfflineGrant } from '../offline/offlineGrant'
 import { isNetworkError } from '../offline/reachability'
-import { wipeLocalData } from '../offline/wipeLocalData'
+import { wipeLocalData, type WipeResult } from '../offline/wipeLocalData'
 import { exportUnsyncedOps } from '../offline/exportUnsyncedOps'
 import { handleTokenRevoked, TOKEN_REVOKED_EVENT } from '../offline/tokenRevokedFlow'
 import { getSyncStatus } from '../sync/syncEngine'
@@ -31,9 +32,21 @@ interface UserContextType {
 
 export const UserContext = createContext<UserContextType | null>(null)
 
+/** BUG-30(d): a local wipe silently cleared a configured PIN - say so, since it's a real change
+ *  to how this device unlocks (harmless while the PIN feature is dormant: `pinCleared` is false). */
+const notifyIfPinCleared = ({ pinCleared }: WipeResult): void => {
+    if (pinCleared) {
+        toast.success('The local PIN on this device was removed.')
+    }
+}
+
 const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null)
     const [isInitializing, setIsInitializing] = useState(true)
+    // SEC-38: set synchronously while the TOKEN_REVOKED flow is running so the SESSION_EXPIRED
+    // handler (which fires alongside it) doesn't start a second, racing wipe - the revoked flow
+    // already wipes, after offering to export unsynced changes first.
+    const revocationInProgress = useRef(false)
 
     const applyUser = useCallback((userData: User | null) => {
         setUser(userData)
@@ -55,6 +68,8 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         applyUser(null)
         setAccessToken(null)
         clearOfflineGrant()
+        // Desktop keychain-held refresh token (SEC-11 / BUG-24); no-op on the web.
+        void clearStoredRefreshToken()
     }, [applyUser])
 
     const updateUser = useCallback(
@@ -66,12 +81,15 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
     const logout = useCallback(async () => {
         try {
-            await axiosInstance.post(API_PATHS.AUTH.LOGOUT)
+            // Desktop sends its keychain-held refresh token so the server can revoke it
+            // (SEC-11 / BUG-24); on the web this is null and the cookie is revoked instead.
+            const refreshToken = await getStoredRefreshToken()
+            await axiosInstance.post(API_PATHS.AUTH.LOGOUT, refreshToken ? { refreshToken } : undefined)
         } catch {
             // Clear local session even if the server call fails (e.g. offline)
         }
         clearUser()
-        await wipeLocalData()
+        notifyIfPinCleared(await wipeLocalData())
     }, [clearUser])
 
     const logoutAllSessions = useCallback(async () => {
@@ -81,13 +99,13 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             // Clear local session even if the server call fails (e.g. offline)
         }
         clearUser()
-        await wipeLocalData()
+        notifyIfPinCleared(await wipeLocalData())
     }, [clearUser])
 
     const deleteAccount = useCallback(async (password: string) => {
         await axiosInstance.delete(API_PATHS.AUTH.DELETE_ACCOUNT, { data: { password } })
         clearUser()
-        await wipeLocalData()
+        notifyIfPinCleared(await wipeLocalData())
     }, [clearUser])
 
     const restoreSession = useCallback(async () => {
@@ -96,11 +114,18 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         // stored token first. The response carries a fresh token, the user, and a rolled-forward
         // offline grant in one round trip.
         try {
-            const response = await axiosInstance.post<ApiResponse<AuthPayload>>(API_PATHS.AUTH.REFRESH)
+            const storedRefreshToken = await getStoredRefreshToken()
+            const response = await axiosInstance.post<ApiResponse<AuthPayload>>(
+                API_PATHS.AUTH.REFRESH,
+                storedRefreshToken ? { refreshToken: storedRefreshToken } : undefined
+            )
             const payload = parseAuthPayload(response)
             setAccessToken(payload.token)
             applyUser(payload.user)
             storeOfflineGrant(payload.offlineGrant)
+            if (payload.refreshToken) {
+                await storeRefreshToken(payload.refreshToken)
+            }
         } catch (error) {
             // A network failure (no server response reached us) is not proof the session is
             // invalid - it just means we can't check. Fall back to the last-known cached user,
@@ -116,6 +141,14 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                 applyUser(cached)
             } else {
                 clearUser()
+                // SEC-38: a genuine auth rejection at boot (the server answered and the
+                // refresh cookie/token is expired or revoked) must also clear the local store,
+                // or the next account to sign in on this device reads this one's data. An
+                // offline boot where we simply can't check is not a rejection - leave the store
+                // for a later online restore, and the sign-in owner check backstops it anyway.
+                if (!offline) {
+                    notifyIfPinCleared(await wipeLocalData())
+                }
             }
             console.error('Session restore failed:', getApiErrorMessage(error))
         } finally {
@@ -129,6 +162,7 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
     useEffect(() => {
         const onTokenRevoked = () => {
+            revocationInProgress.current = true
             void (async () => {
                 let hasUnsyncedChanges = false
                 try {
@@ -137,11 +171,15 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
                 } catch {
                     // Local-first disabled / local DB unavailable - nothing to check or export.
                 }
-                await handleTokenRevoked({
-                    hasUnsyncedChanges,
-                    onExportOffer: exportUnsyncedOps,
-                    wipe: wipeLocalData,
-                })
+                try {
+                    await handleTokenRevoked({
+                        hasUnsyncedChanges,
+                        onExportOffer: exportUnsyncedOps,
+                        wipe: wipeLocalData,
+                    })
+                } finally {
+                    revocationInProgress.current = false
+                }
                 clearUser()
             })()
         }
@@ -154,6 +192,12 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         const onSessionExpired = () => {
             clearUser()
             toast.error('Your session has expired. Please sign in again.')
+            // SEC-38: an involuntary logout must also clear the local store so it can't be read by
+            // the next account on this device. Skipped when the TOKEN_REVOKED flow is handling it -
+            // that path wipes too, after offering an export of unsynced changes.
+            if (!revocationInProgress.current) {
+                void wipeLocalData().then(notifyIfPinCleared)
+            }
         }
 
         window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired)
@@ -193,7 +237,12 @@ export default UserProvider
 export const setAuthSession = async (payload: AuthPayload): Promise<void> => {
     setAccessToken(payload.token)
     storeOfflineGrant(payload.offlineGrant)
-    await provisionLocalDb()
+    // Desktop only (SEC-11 / BUG-24): stash the refresh token in the OS keychain so the session
+    // survives past the access-token TTL and across relaunches. No-op on the web.
+    await storeRefreshToken(payload.refreshToken)
+    // SEC-38: pass the signed-in user's id so provisioning wipes-and-reseeds if the local store
+    // was last seeded for a different account on this device.
+    await provisionLocalDb(payload.user._id)
 }
 
 export const parseAuthPayload = (response: ApiResponse<AuthPayload> | AuthPayload): AuthPayload => {

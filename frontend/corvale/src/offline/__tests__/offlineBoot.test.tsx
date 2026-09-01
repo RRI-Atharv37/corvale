@@ -44,7 +44,7 @@ vi.mock('../../utils/axiosInstance', () => ({
 }))
 
 vi.mock('../wipeLocalData', () => ({
-    wipeLocalData: vi.fn(async () => {}),
+    wipeLocalData: vi.fn(async () => ({ pinCleared: false })),
 }))
 
 const setOnline = (online: boolean): void => {

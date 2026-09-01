@@ -24,7 +24,7 @@ import WorkspaceInvite from '../models/WorkspaceInvite'
 import User from '../models/User'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
-import { revokeAllRefreshTokensForUser } from './refreshTokenService'
+import { deleteAllRefreshTokensForUser } from './refreshTokenService'
 import { deleteReceiptFile } from './receiptUtils'
 import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from './receiptStorage'
 import { SOFT_DELETE_BYPASS } from './softDelete'
@@ -348,6 +348,7 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
 
     await notifyRemainingMembersOfDeparture(retainedWorkspaces, userId)
 
-    await revokeAllRefreshTokensForUser(userId)
+    // SEC-49: hard-delete, not just revoke - no userId-linked rows outlive the account.
+    await deleteAllRefreshTokensForUser(userId)
     await User.deleteOne({ _id: userId })
 }

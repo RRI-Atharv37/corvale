@@ -23,16 +23,22 @@ import {
     assertImportRowLimit,
     buildImportFingerprint,
     detectImportFormat,
+    IMPORT_DELIMITERS,
     IMPORT_PREVIEW_SAMPLE_ROWS,
+    ImportDelimiter,
     ImportDuplicateAction,
     ImportDuplicateMatch,
+    ImportRowError,
     isOfxContent,
+    isQifContent,
     mapCsvRows,
     parseCsvContent,
     parseImportMapping,
     parseImportRowDecisions,
     parseOfxContent,
+    parseQifContent,
     ParsedImportRow,
+    sanitizeParsedImportRows,
     suggestColumnMapping,
     toImportIsoDate,
 } from '../utils/csvImportUtils'
@@ -50,6 +56,7 @@ interface ImportPreviewItem {
     description?: string
     amount: number
     type: 'income' | 'expense'
+    externalId?: string
     categoryId: string
     categoryName?: string
     tags?: string[]
@@ -103,6 +110,7 @@ const buildPreviewItems = async (
                     description: row.description,
                     amount: row.amount,
                     type: row.type,
+                    externalId: row.externalId,
                     categoryId,
                     categoryName,
                     tags: ruleResult ? mergeTags(undefined, ruleResult.tags) : undefined,
@@ -117,6 +125,7 @@ const buildPreviewItems = async (
                     description: row.description,
                     amount: row.amount,
                     type: row.type,
+                    externalId: row.externalId,
                     categoryId: defaultCategoryId,
                     error: error instanceof Error ? error.message : 'Failed to map row',
                 }
@@ -125,13 +134,22 @@ const buildPreviewItems = async (
     )
 }
 
+interface ExistingDuplicateMaps {
+    /** `buildImportFingerprint` key → match (fuzzy date/type/amount/description). */
+    fingerprintMap: Map<string, ImportDuplicateMatch>
+    /** `externalId` (OFX FITID) → match. Exact; checked first (BUG-21). */
+    externalIdMap: Map<string, ImportDuplicateMatch>
+}
+
 const loadExistingDuplicateMap = async (
     userId: string,
     accountId: string,
     rows: ParsedImportRow[]
-): Promise<Map<string, ImportDuplicateMatch>> => {
+): Promise<ExistingDuplicateMaps> => {
+    const fingerprintMap = new Map<string, ImportDuplicateMatch>()
+    const externalIdMap = new Map<string, ImportDuplicateMatch>()
     if (rows.length === 0) {
-        return new Map()
+        return { fingerprintMap, externalIdMap }
     }
 
     const dates = rows.map((row) => new Date(`${row.date}T12:00:00.000Z`).getTime())
@@ -140,14 +158,19 @@ const loadExistingDuplicateMap = async (
     const maxDate = new Date(Math.max(...dates))
     maxDate.setUTCHours(23, 59, 59, 999)
 
+    const externalIds = [...new Set(rows.map((row) => row.externalId).filter((id): id is string => !!id))]
+
     const existingTransactions = await Transaction.find({
         userId,
         accountId,
         status: 'posted',
         splitTransactionId: null,
-        date: { $gte: minDate, $lte: maxDate },
+        $or: [
+            { date: { $gte: minDate, $lte: maxDate } },
+            ...(externalIds.length > 0 ? [{ externalId: { $in: externalIds } }] : []),
+        ],
     })
-        .select('date amount title description categoryId')
+        .select('date amount type title description categoryId externalId')
         .populate('categoryId', 'name')
 
     const categoryNameFromDoc = (categoryId: unknown): string | undefined => {
@@ -158,31 +181,33 @@ const loadExistingDuplicateMap = async (
         return typeof name === 'string' ? name : undefined
     }
 
-    const duplicateMap = new Map<string, ImportDuplicateMatch>()
-
     for (const transaction of existingTransactions) {
         const isoDate = toImportIsoDate(transaction.date)
-        const fingerprint = buildImportFingerprint(
-            isoDate,
-            transaction.amount,
-            transaction.title,
-            transaction.description
-        )
-
-        if (duplicateMap.has(fingerprint)) {
-            continue
-        }
-
-        duplicateMap.set(fingerprint, {
+        const match: ImportDuplicateMatch = {
             transactionId: transaction._id.toString(),
             title: transaction.title,
             date: isoDate,
             amount: fromMinorUnits(transaction.amount),
             categoryName: categoryNameFromDoc(transaction.categoryId),
-        })
+        }
+
+        if (transaction.externalId && !externalIdMap.has(transaction.externalId)) {
+            externalIdMap.set(transaction.externalId, match)
+        }
+
+        const fingerprint = buildImportFingerprint(
+            isoDate,
+            transaction.type as 'income' | 'expense',
+            transaction.amount,
+            transaction.title,
+            transaction.description
+        )
+        if (!fingerprintMap.has(fingerprint)) {
+            fingerprintMap.set(fingerprint, match)
+        }
     }
 
-    return duplicateMap
+    return { fingerprintMap, externalIdMap }
 }
 
 const attachDuplicateInfo = async (
@@ -194,7 +219,7 @@ const attachDuplicateInfo = async (
     const validRows = importRows.filter((row) =>
         items.some((item) => item.rowIndex === row.rowIndex && !item.error)
     )
-    const duplicateMap = await loadExistingDuplicateMap(userId, accountId, validRows)
+    const { fingerprintMap, externalIdMap } = await loadExistingDuplicateMap(userId, accountId, validRows)
 
     return items.map((item) => {
         if (item.error) {
@@ -207,13 +232,11 @@ const attachDuplicateInfo = async (
         }
 
         const amountMinor = parseClientAmount(row.amount)
-        const fingerprint = buildImportFingerprint(
-            row.date,
-            amountMinor,
-            row.title,
-            row.description
-        )
-        const duplicateOf = duplicateMap.get(fingerprint)
+        const duplicateOf =
+            (row.externalId ? externalIdMap.get(row.externalId) : undefined) ??
+            fingerprintMap.get(
+                buildImportFingerprint(row.date, row.type, amountMinor, row.title, row.description)
+            )
 
         if (!duplicateOf) {
             return item
@@ -284,6 +307,42 @@ const mergeImportIntoTransaction = async (
     await evaluateBudgetOverLimitNotifications(userId, transaction)
 }
 
+/**
+ * Resolves the import rows + row-level errors for preview/commit. The OFX/QIF path sends
+ * `parsedRows` (+ `parsedRowErrors` from parse time, BUG-21/BUG-23) straight back; the CSV path
+ * sends `headers`/`rows`/`mapping` and is re-mapped here.
+ */
+const resolveRowsAndErrors = (
+    body: Record<string, unknown>
+): { importRows: ParsedImportRow[]; rowErrors: ImportRowError[] } => {
+    const { headers, rows, mapping, parsedRows, parsedRowErrors } = body
+
+    if (Array.isArray(parsedRows) && parsedRows.length > 0) {
+        // `parsedRows` is a client round-trip of the OFX/QIF parse output — untrusted on the way
+        // back in. Validate every row server-side (SEC-52): `type` constrained to income/expense
+        // so a posted `"transfer"` can't create an orphan transfer leg.
+        const importRows = sanitizeParsedImportRows(parsedRows)
+        const carried = Array.isArray(parsedRowErrors)
+            ? (parsedRowErrors as unknown[])
+                  .filter(
+                      (entry): entry is ImportRowError =>
+                          !!entry &&
+                          typeof entry === 'object' &&
+                          typeof (entry as ImportRowError).rowIndex === 'number' &&
+                          typeof (entry as ImportRowError).message === 'string'
+                  )
+                  .map((entry) => ({ rowIndex: entry.rowIndex, message: entry.message }))
+            : []
+        return { importRows, rowErrors: carried }
+    }
+
+    if (!Array.isArray(headers) || !Array.isArray(rows)) {
+        throw new CustomError(ERROR_MESSAGES.IMPORT.MAPPING_INCOMPLETE, 400)
+    }
+    const mapped = mapCsvRows(headers, rows, parseImportMapping(mapping))
+    return { importRows: mapped.rows, rowErrors: mapped.errors }
+}
+
 export const parseImportFile = asyncHandler(async (req: AuthRequest, res: Response) => {
     if (!req.file?.buffer) {
         throw new CustomError(ERROR_MESSAGES.IMPORT.FILE_REQUIRED, 400)
@@ -294,22 +353,40 @@ export const parseImportFile = asyncHandler(async (req: AuthRequest, res: Respon
         throw new CustomError(ERROR_MESSAGES.IMPORT.EMPTY_FILE, 400)
     }
 
-    if (isOfxContent(content)) {
-        const rows = parseOfxContent(content)
-        assertImportRowLimit(rows.length)
+    const extension = req.file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''
+    const looksOfx = isOfxContent(content)
+    const looksQif = !looksOfx && isQifContent(content)
+
+    if (looksOfx || looksQif) {
+        const parsed = looksQif ? parseQifContent(content) : parseOfxContent(content)
+        assertImportRowLimit(parsed.rows.length + parsed.errors.length)
 
         handleResponses(res, 200, {
-            format: 'ofx',
+            format: looksQif ? 'qif' : 'ofx',
             fileName: req.file.originalname,
-            totalRows: rows.length,
-            sampleRows: rows.slice(0, IMPORT_PREVIEW_SAMPLE_ROWS),
-            parsedRows: rows,
+            totalRows: parsed.rows.length,
+            sampleRows: parsed.rows.slice(0, IMPORT_PREVIEW_SAMPLE_ROWS),
+            parsedRows: parsed.rows,
+            parsedRowErrors: parsed.errors,
+            statementCurrency: parsed.statementCurrency,
             requiresMapping: false,
         })
         return
     }
 
-    const { headers, rows } = parseCsvContent(content)
+    // An .ofx/.qfx upload whose content is neither OFX nor QIF must not fall through to the CSV
+    // parser — that produced a garbled mapping screen or an opaque error (BUG-23).
+    if (extension === '.ofx' || extension === '.qfx') {
+        throw new CustomError('This file does not look like a valid OFX/QFX or QIF file', 400)
+    }
+
+    const requestedDelimiter =
+        typeof req.body?.delimiter === 'string' ? (req.body.delimiter as string) : undefined
+    const delimiter = IMPORT_DELIMITERS.includes(requestedDelimiter as ImportDelimiter)
+        ? (requestedDelimiter as ImportDelimiter)
+        : undefined
+
+    const { headers, rows, delimiter: resolvedDelimiter } = parseCsvContent(content, delimiter)
     assertImportRowLimit(rows.length)
 
     const format = detectImportFormat(headers)
@@ -323,6 +400,7 @@ export const parseImportFile = asyncHandler(async (req: AuthRequest, res: Respon
         sampleRows: rows.slice(0, IMPORT_PREVIEW_SAMPLE_ROWS),
         rows,
         suggestedMapping,
+        delimiter: resolvedDelimiter,
         requiresMapping: true,
     })
 })
@@ -331,15 +409,7 @@ export const previewImport = asyncHandler(async (req: AuthRequest, res: Response
     const userId = getUserId(req)
     validateRequiredFields(req.body, ['accountId', 'defaultCategoryId'])
 
-    const {
-        accountId,
-        defaultCategoryId,
-        workspaceId,
-        headers,
-        rows,
-        mapping,
-        parsedRows,
-    } = req.body
+    const { accountId, defaultCategoryId, workspaceId } = req.body
 
     const resolvedWorkspaceId = parseOptionalWorkspaceId(workspaceId) ?? null
     if (resolvedWorkspaceId) {
@@ -350,20 +420,7 @@ export const previewImport = asyncHandler(async (req: AuthRequest, res: Response
     assertAccountMatchesWorkspace(account.workspaceId, resolvedWorkspaceId)
     await validateCategoryForTransaction(defaultCategoryId, userId)
 
-    let importRows: ParsedImportRow[] = []
-    let rowErrors: { rowIndex: number; message: string }[] = []
-
-    if (Array.isArray(parsedRows) && parsedRows.length > 0) {
-        importRows = parsedRows
-    } else {
-        if (!Array.isArray(headers) || !Array.isArray(rows)) {
-            throw new CustomError(ERROR_MESSAGES.IMPORT.MAPPING_INCOMPLETE, 400)
-        }
-        const columnMapping = parseImportMapping(mapping)
-        const mapped = mapCsvRows(headers, rows, columnMapping)
-        importRows = mapped.rows
-        rowErrors = mapped.errors
-    }
+    const { importRows, rowErrors } = resolveRowsAndErrors(req.body)
 
     assertImportRowLimit(importRows.length + rowErrors.length)
 
@@ -403,16 +460,7 @@ export const commitImport = asyncHandler(async (req: AuthRequest, res: Response)
     const userId = getUserId(req)
     validateRequiredFields(req.body, ['accountId', 'defaultCategoryId'])
 
-    const {
-        accountId,
-        defaultCategoryId,
-        workspaceId,
-        headers,
-        rows,
-        mapping,
-        parsedRows,
-        rowDecisions: rawRowDecisions,
-    } = req.body
+    const { accountId, defaultCategoryId, workspaceId, rowDecisions: rawRowDecisions } = req.body
 
     const rowDecisions = parseImportRowDecisions(rawRowDecisions)
 
@@ -425,20 +473,7 @@ export const commitImport = asyncHandler(async (req: AuthRequest, res: Response)
     assertAccountMatchesWorkspace(account.workspaceId, resolvedWorkspaceId)
     await validateCategoryForTransaction(defaultCategoryId, userId)
 
-    let importRows: ParsedImportRow[] = []
-    let rowErrors: { rowIndex: number; message: string }[] = []
-
-    if (Array.isArray(parsedRows) && parsedRows.length > 0) {
-        importRows = parsedRows
-    } else {
-        if (!Array.isArray(headers) || !Array.isArray(rows)) {
-            throw new CustomError(ERROR_MESSAGES.IMPORT.MAPPING_INCOMPLETE, 400)
-        }
-        const columnMapping = parseImportMapping(mapping)
-        const mapped = mapCsvRows(headers, rows, columnMapping)
-        importRows = mapped.rows
-        rowErrors = mapped.errors
-    }
+    const { importRows, rowErrors } = resolveRowsAndErrors(req.body)
 
     assertImportRowLimit(importRows.length + rowErrors.length)
 
@@ -498,6 +533,7 @@ export const commitImport = asyncHandler(async (req: AuthRequest, res: Response)
             description: item.description,
             date: new Date(`${item.date}T12:00:00.000Z`),
             tags: item.tags,
+            externalId: item.externalId,
         })
 
         await applyTransactionToAccount(account, item.type, amountMinor, transaction.date)

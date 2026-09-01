@@ -32,7 +32,9 @@ Receipts are stored securely per user. Only you can access your uploaded files.
 Attached receipts show as thumbnails in the transaction modal:
 
 - **Images** display an inline preview
-- **PDFs** show a document icon with a link to open the file
+- **PDFs** show a document icon
+
+Click a thumbnail to view the receipt full size. In the web app it opens in a new browser tab; in the desktop app it opens in a viewer inside Corvale.
 
 ### Removing a receipt
 

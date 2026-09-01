@@ -41,7 +41,12 @@ import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
 import { CustomError } from './customError'
 import { ERROR_MESSAGES } from './errorMessages'
-import { isObjectStorageConfigured, putReceiptObject, receiptObjectKey } from './receiptStorage'
+import {
+    getReceiptObjectBuffer,
+    isObjectStorageConfigured,
+    putReceiptObject,
+    receiptObjectKey,
+} from './receiptStorage'
 import {
     assertValidReceiptBuffer,
     assertWithinReceiptStorageQuota,
@@ -52,7 +57,6 @@ import { scanUploadedFile } from './virusScanService'
 import { buildScopedListFilter } from './workspaceUtils'
 
 export const BACKUP_VERSION = 1 as const
-export const BACKUP_MAX_JSON_BYTES = 10 * 1024 * 1024
 export const BACKUP_MAX_ZIP_BYTES = 50 * 1024 * 1024
 
 // Read fresh on every call (not cached at module load) so tests can override via process.env,
@@ -63,6 +67,16 @@ const getBackupMaxZipEntries = (): number =>
     Number(process.env.BACKUP_MAX_ZIP_ENTRIES) || 10_000
 const getBackupMaxCompressionRatio = (): number =>
     Number(process.env.BACKUP_MAX_COMPRESSION_RATIO) || 100
+// Cap on the deserialized `corvale-backup.json`. The `.json` upload branch always checked this
+// against the raw buffer; the `.zip` branch never did (SEC-50) — the embedded JSON was bounded
+// only by BACKUP_MAX_UNCOMPRESSED_BYTES (200 MB, and also covering receipt bytes).
+const getBackupMaxJsonBytes = (): number =>
+    Number(process.env.BACKUP_MAX_JSON_BYTES) || 10 * 1024 * 1024
+// Per-section record cap (SEC-50). `parseBackupPayload` checked record *shape* but never
+// *count*, so a payload under the JSON-size cap could still hold ~1.5 M records driving that
+// many writes in one request.
+const getBackupMaxRecordsPerCollection = (): number =>
+    Number(process.env.BACKUP_MAX_RECORDS_PER_COLLECTION) || 100_000
 
 export interface BackupScope {
     workspaceId: string | null
@@ -353,10 +367,16 @@ export const parseBackupPayload = (raw: unknown): CorvaleBackupPayload => {
         'receipts',
     ] as const
 
+    const maxRecordsPerCollection = getBackupMaxRecordsPerCollection()
+
     for (const key of requiredArrays) {
         const section = backup[key]
         if (!Array.isArray(section)) {
             throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+        }
+
+        if (section.length > maxRecordsPerCollection) {
+            throw new CustomError(ERROR_MESSAGES.BACKUP.TOO_MANY_RECORDS, 400)
         }
 
         // Per-record shape check — previously the payload was trusted wholesale past the
@@ -520,7 +540,16 @@ export const restoreUserBackup = async (
     }
 
     const idMap = new Map<string, string>()
+    // SEC-51: account and category references are resolved through their own maps, which only
+    // ever hold ids created by this restore (plus the shared master categories). A crafted
+    // backup can no longer install an identity mapping (e.g. via a budget whose `id` is a
+    // victim's account ObjectId) that a later record resolves as its `accountId`/`categoryId`.
+    const accountIdMap = new Map<string, string>()
+    const categoryIdMap = new Map<string, string>()
     const masterCategoryIds = await loadMasterCategoryIds()
+    for (const masterId of masterCategoryIds) {
+        categoryIdMap.set(masterId, masterId)
+    }
     const created = emptyCounts()
 
     const userObjectId = new Types.ObjectId(userId)
@@ -529,13 +558,13 @@ export const restoreUserBackup = async (
     for (const record of backup.categories) {
         const sourceId = String(record.id)
         if (masterCategoryIds.has(sourceId)) {
-            idMap.set(sourceId, sourceId)
+            categoryIdMap.set(sourceId, sourceId)
             continue
         }
 
         const createdCategory = await Category.create({
             userId: userObjectId,
-            masterCategoryId: mapOptionalId(idMap, record.masterCategoryId, masterCategoryIds),
+            masterCategoryId: mapOptionalId(categoryIdMap, record.masterCategoryId, masterCategoryIds),
             name: record.name,
             icon: record.icon,
             color: record.color,
@@ -543,7 +572,7 @@ export const restoreUserBackup = async (
             isArchived: record.isArchived ?? false,
             sortOrder: record.sortOrder ?? 0,
         })
-        idMap.set(sourceId, createdCategory._id.toString())
+        categoryIdMap.set(sourceId, createdCategory._id.toString())
         created.categories += 1
     }
 
@@ -584,27 +613,27 @@ export const restoreUserBackup = async (
             isDefault: false,
             isArchived: record.isArchived ?? false,
         })
-        idMap.set(sourceId, createdAccount._id.toString())
+        accountIdMap.set(sourceId, createdAccount._id.toString())
         created.accounts += 1
     }
 
     for (const record of backup.budgets) {
         const sourceId = String(record.id)
-        await Budget.create({
+        const createdBudget = await Budget.create({
             userId: userObjectId,
             workspaceId: workspaceObjectId,
             name: record.name,
             periodType: record.periodType,
             periodStart: parseDate(record.periodStart),
             periodEnd: parseDate(record.periodEnd),
-            categoryId: mapOptionalId(idMap, record.categoryId, masterCategoryIds),
+            categoryId: mapOptionalId(categoryIdMap, record.categoryId, masterCategoryIds),
             amount: record.amount,
             currency: record.currency,
             rollover: record.rollover ?? false,
-            accountIds: mapIdArray(idMap, record.accountIds),
+            accountIds: mapIdArray(accountIdMap, record.accountIds),
             isArchived: record.isArchived ?? false,
         })
-        idMap.set(sourceId, sourceId)
+        idMap.set(sourceId, createdBudget._id.toString())
         created.budgets += 1
     }
 
@@ -619,7 +648,7 @@ export const restoreUserBackup = async (
             currency: record.currency,
             targetDate: record.targetDate ? parseDate(record.targetDate) : null,
             status: record.status ?? 'active',
-            accountId: mapOptionalId(idMap, record.accountId, masterCategoryIds),
+            accountId: mapOptionalId(accountIdMap, record.accountId, new Set()),
             autoContribution: record.autoContribution ?? {},
             completedAt: record.completedAt ? parseDate(record.completedAt) : null,
         })
@@ -636,8 +665,8 @@ export const restoreUserBackup = async (
             type: record.type,
             amount: record.amount,
             currency: record.currency,
-            accountId: mapRequiredId(idMap, record.accountId),
-            categoryId: mapRequiredId(idMap, record.categoryId),
+            accountId: mapRequiredId(accountIdMap, record.accountId),
+            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
             interval: record.interval,
             customIntervalDays: record.customIntervalDays,
             nextDueDate: parseDate(record.nextDueDate),
@@ -653,7 +682,7 @@ export const restoreUserBackup = async (
 
     for (const record of backup.categorizationRules) {
         const sourceId = String(record.id)
-        await CategorizationRule.create({
+        const createdCategorizationRule = await CategorizationRule.create({
             userId: userObjectId,
             name: record.name,
             matchType: record.matchType,
@@ -661,30 +690,30 @@ export const restoreUserBackup = async (
             amountMin: record.amountMin,
             amountMax: record.amountMax,
             accountId: record.accountId
-                ? mapOptionalId(idMap, record.accountId, masterCategoryIds)
+                ? mapOptionalId(accountIdMap, record.accountId, new Set())
                 : undefined,
-            categoryId: mapRequiredId(idMap, record.categoryId),
+            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
             tags: record.tags ?? [],
             priority: record.priority ?? 0,
             isActive: record.isActive ?? true,
         })
-        idMap.set(sourceId, sourceId)
+        idMap.set(sourceId, createdCategorizationRule._id.toString())
         created.categorizationRules += 1
     }
 
     for (const record of backup.transactionTemplates) {
         const sourceId = String(record.id)
-        await TransactionTemplate.create({
+        const createdTemplate = await TransactionTemplate.create({
             userId: userObjectId,
             name: record.name,
             type: record.type,
             amount: record.amount,
-            accountId: mapRequiredId(idMap, record.accountId),
-            categoryId: mapRequiredId(idMap, record.categoryId),
+            accountId: mapRequiredId(accountIdMap, record.accountId),
+            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
             tags: record.tags ?? [],
             description: record.description,
         })
-        idMap.set(sourceId, sourceId)
+        idMap.set(sourceId, createdTemplate._id.toString())
         created.transactionTemplates += 1
     }
 
@@ -752,13 +781,21 @@ export const restoreUserBackup = async (
         receiptIds?: unknown
     }[] = []
 
+    // SEC-50: build every transaction doc first (resolving refs, which can still throw a broken-
+    // reference 400), then write the batch in one `insertMany` rather than an awaited create per
+    // record. Ids are pre-generated so the deferred link-up pass can resolve them.
+    const transactionDocs: Record<string, unknown>[] = []
     for (const record of backup.transactions) {
         const sourceId = String(record.id)
-        const createdTransaction = await Transaction.create({
+        const newId = new Types.ObjectId()
+        idMap.set(sourceId, newId.toString())
+
+        transactionDocs.push({
+            _id: newId,
             userId: userObjectId,
             workspaceId: workspaceObjectId,
-            accountId: mapRequiredId(idMap, record.accountId),
-            categoryId: mapRequiredId(idMap, record.categoryId),
+            accountId: mapRequiredId(accountIdMap, record.accountId),
+            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
             type: record.type,
             status: record.status ?? 'posted',
             amount: record.amount,
@@ -770,9 +807,6 @@ export const restoreUserBackup = async (
             paymentMethod: record.paymentMethod,
             tags: record.tags ?? [],
         })
-
-        idMap.set(sourceId, createdTransaction._id.toString())
-        created.transactions += 1
 
         if (
             record.transferPairId ||
@@ -790,6 +824,14 @@ export const restoreUserBackup = async (
         }
     }
 
+    if (transactionDocs.length > 0) {
+        await Transaction.insertMany(transactionDocs)
+    }
+    created.transactions = transactionDocs.length
+
+    const deferredOps: {
+        updateOne: { filter: Record<string, unknown>; update: Record<string, unknown> }
+    }[] = []
     for (const update of deferredTransactionUpdates) {
         const newId = idMap.get(update.sourceId)
         if (!newId) {
@@ -799,38 +841,46 @@ export const restoreUserBackup = async (
         const patch: Record<string, unknown> = {}
 
         if (update.transferPairId) {
-            patch.transferPairId = mapOptionalId(idMap, update.transferPairId, masterCategoryIds)
+            patch.transferPairId = mapOptionalId(idMap, update.transferPairId, new Set())
         }
         if (update.splitTransactionId) {
-            patch.splitTransactionId = mapOptionalId(idMap, update.splitTransactionId, masterCategoryIds)
+            patch.splitTransactionId = mapOptionalId(idMap, update.splitTransactionId, new Set())
         }
         if (update.recurringPaymentId) {
-            patch.recurringPaymentId = mapOptionalId(idMap, update.recurringPaymentId, masterCategoryIds)
+            patch.recurringPaymentId = mapOptionalId(idMap, update.recurringPaymentId, new Set())
         }
         if (update.receiptIds) {
             patch.receiptIds = mapIdArray(idMap, update.receiptIds)
         }
 
         if (Object.keys(patch).length > 0) {
-            await Transaction.updateOne({ _id: newId }, { $set: patch })
+            deferredOps.push({ updateOne: { filter: { _id: newId }, update: { $set: patch } } })
         }
     }
-
-    for (const record of backup.savingsGoalContributions) {
-        await SavingsGoalContribution.create({
-            userId: userObjectId,
-            goalId: mapRequiredId(idMap, record.goalId),
-            amount: record.amount,
-            type: record.type,
-            note: record.note,
-            contributedAt: parseDate(record.contributedAt),
-        })
-        created.savingsGoalContributions += 1
+    if (deferredOps.length > 0) {
+        await Transaction.bulkWrite(deferredOps)
     }
+
+    const contributionDocs = backup.savingsGoalContributions.map((record) => ({
+        userId: userObjectId,
+        goalId: mapRequiredId(idMap, record.goalId),
+        amount: record.amount,
+        type: record.type,
+        note: record.note,
+        contributedAt: parseDate(record.contributedAt),
+    }))
+    if (contributionDocs.length > 0) {
+        await SavingsGoalContribution.insertMany(contributionDocs)
+    }
+    created.savingsGoalContributions = contributionDocs.length
 
     return {
         created,
-        idMapping: Object.fromEntries(idMap.entries()),
+        idMapping: Object.fromEntries([
+            ...accountIdMap.entries(),
+            ...categoryIdMap.entries(),
+            ...idMap.entries(),
+        ]),
     }
 }
 
@@ -844,9 +894,26 @@ export const createBackupZipStream = async (
 
     archive.append(JSON.stringify(payload, null, 2), { name: 'corvale-backup.json' })
 
+    // SEC-53: read every receipt from the configured storage driver. Under
+    // RECEIPT_STORAGE_DRIVER=s3 there is no local copy, so the export must fetch the bytes
+    // from object storage — and fail loudly rather than ship a ZIP that looks complete but
+    // silently omits every receipt (the `privacy.md` export promise).
+    const fromObjectStorage = isObjectStorageConfigured()
+
     for (const receipt of payload.receipts) {
         const storedFilename = String(receipt.storedFilename ?? '')
         if (!storedFilename) {
+            continue
+        }
+
+        if (fromObjectStorage) {
+            let buffer: Buffer
+            try {
+                buffer = await getReceiptObjectBuffer(receiptObjectKey(userId, storedFilename))
+            } catch {
+                throw new CustomError(ERROR_MESSAGES.BACKUP.RECEIPT_EXPORT_FAILED, 500)
+            }
+            archive.append(buffer, { name: `receipts/${storedFilename}` })
             continue
         }
 
@@ -870,8 +937,10 @@ export const extractBackupFromUpload = (
 ): { payload: CorvaleBackupPayload; receiptFiles: Map<string, Buffer> } => {
     const lowerName = originalFilename.toLowerCase()
 
+    const maxJsonBytes = getBackupMaxJsonBytes()
+
     if (lowerName.endsWith('.json')) {
-        if (buffer.byteLength > BACKUP_MAX_JSON_BYTES) {
+        if (buffer.byteLength > maxJsonBytes) {
             throw new CustomError(ERROR_MESSAGES.BACKUP.FILE_TOO_LARGE, 400)
         }
 
@@ -939,9 +1008,25 @@ export const extractBackupFromUpload = (
             throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
         }
 
+        // SEC-50: the `.json` branch above bounds the payload; the zip branch must too. Check
+        // the declared size from the central directory first, then the inflated buffer.
+        if (jsonEntry.header.size > maxJsonBytes) {
+            throw new CustomError(ERROR_MESSAGES.BACKUP.FILE_TOO_LARGE, 400)
+        }
+
+        let jsonBuffer: Buffer
+        try {
+            jsonBuffer = jsonEntry.getData()
+        } catch {
+            throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+        }
+        if (jsonBuffer.byteLength > maxJsonBytes) {
+            throw new CustomError(ERROR_MESSAGES.BACKUP.FILE_TOO_LARGE, 400)
+        }
+
         let parsed: unknown
         try {
-            parsed = JSON.parse(jsonEntry.getData().toString('utf8'))
+            parsed = JSON.parse(jsonBuffer.toString('utf8'))
         } catch {
             throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
         }

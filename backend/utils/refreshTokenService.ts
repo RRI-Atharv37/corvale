@@ -30,8 +30,24 @@ export const revokeAllRefreshTokensForUser = async (userId: string): Promise<voi
     await RefreshToken.updateMany({ userId, revokedAt: null }, { revokedAt: new Date() })
 }
 
+/**
+ * SEC-49: hard-delete every refresh token for a user, used by the account-deletion cascade.
+ * Flagging them `revokedAt` only (as `revokeAllRefreshTokensForUser` does) would leave
+ * `userId`-linked rows behind for up to the token lifetime after what the privacy policy calls
+ * "a real deletion, not a hidden flag".
+ */
+export const deleteAllRefreshTokensForUser = async (userId: string): Promise<void> => {
+    await RefreshToken.deleteMany({ userId })
+}
+
 const revokeRefreshTokenFamily = async (familyId: mongoose.Types.ObjectId): Promise<void> => {
     await RefreshToken.updateMany({ familyId, revokedAt: null }, { revokedAt: new Date() })
+}
+
+const detectReuse = async (record: { familyId: mongoose.Types.ObjectId; userId: mongoose.Types.ObjectId }): Promise<never> => {
+    await revokeRefreshTokenFamily(record.familyId)
+    await User.updateOne({ _id: record.userId }, { $inc: { tokenVersion: 1 } })
+    throw new CustomError(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_REUSED, 401)
 }
 
 export const rotateRefreshToken = async (rawToken: string): Promise<{ userId: string; newRefreshToken: string }> => {
@@ -42,18 +58,29 @@ export const rotateRefreshToken = async (rawToken: string): Promise<{ userId: st
         throw new CustomError(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID, 401)
     }
 
+    // Already-revoked at read time: a sequential replay of a rotated token — reuse.
     if (record.revokedAt) {
-        await revokeRefreshTokenFamily(record.familyId)
-        await User.updateOne({ _id: record.userId }, { $inc: { tokenVersion: 1 } })
-        throw new CustomError(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_REUSED, 401)
+        await detectReuse(record)
     }
 
+    // A plain expiry is not a reuse signal (SEC-20) — reject without revoking the family, and
+    // without marking the row so a second presentation is still just "expired".
     if (record.expiresAt <= new Date()) {
         throw new CustomError(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID, 401)
     }
 
-    record.revokedAt = new Date()
-    await record.save()
+    // SEC-64: claim the token atomically. `rotateRefreshToken` was a read-check-then-save, so two
+    // requests presenting the same valid token could both pass the checks above and both mint a
+    // replacement — two live sessions from one token, and family-revocation never trips. The
+    // conditional update lets exactly one concurrent caller move `revokedAt` off null; the loser
+    // sees `modifiedCount: 0` and is treated as the reuse it is.
+    const claim = await RefreshToken.updateOne(
+        { _id: record._id, revokedAt: null },
+        { $set: { revokedAt: new Date() } }
+    )
+    if (claim.modifiedCount === 0) {
+        await detectReuse(record)
+    }
 
     const newRefreshToken = await createRefreshToken(record.userId.toString(), record.familyId)
 

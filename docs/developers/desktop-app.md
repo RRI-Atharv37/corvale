@@ -6,7 +6,8 @@ title: Desktop App (Tauri)
 
 The desktop shell lives in `frontend/corvale/src-tauri/` and wraps the existing Vite build with [Tauri v2](https://tauri.app). It reuses the same React app, routes, and local-first SQLite migrations as the browser build - the only new pieces are:
 
-- `src-tauri/src/db.rs` - Rust commands (`db_open`, `db_exec`, `db_select`, `db_set_key`, `db_close`) that implement the same `LocalDb` contract as `frontend/corvale/src/db/SqliteWasmDriver.ts`, backed by `rusqlite` with SQLCipher instead of `@sqlite.org/sqlite-wasm` + OPFS.
+- `src-tauri/src/db.rs` - Rust commands (`db_open`, `db_exec`, `db_select`, `db_close`) that implement the same `LocalDb` contract as `frontend/corvale/src/db/SqliteWasmDriver.ts`, backed by `rusqlite` with SQLCipher instead of `@sqlite.org/sqlite-wasm` + OPFS.
+- `src-tauri/src/db_key.rs` - obtains the SQLCipher key from the OS credential store (see [Encryption at rest](#encryption-at-rest)).
 - `frontend/corvale/src/db/TauriSqlDriver.ts` - the TypeScript side of that same contract, calling the Rust commands via `invoke()`.
 - `src-tauri/src/backup.rs` - native "Save As" / "Open" file dialogs for backup export/import.
 - `src-tauri/src/path_safety.rs` - filename validation shared by `db_open` (see [Where the local database lives](#where-the-local-database-lives)).
@@ -62,6 +63,7 @@ Before shipping, confirm the three things Sprint 13.11 exists to deliver:
 1. **The app launches** - `tauri:build`'s installer (or `tauri:dev`) opens a window and the dashboard loads.
 2. **`TauriSqlDriver` reads and writes correctly** - sign in, create an account and a transaction, quit, and relaunch. The data should still be there (it's a real file on disk - see below), confirming native SQLite persistence rather than an in-memory fallback.
 3. **Native backup export succeeds** - Settings → Backup & restore → Export JSON should open a native OS save dialog, not a browser download.
+4. **The plaintext-to-encrypted upgrade works** - launch a build from before [Encryption at rest](#encryption-at-rest) landed, sign in and create some data, then install a current build over it. The existing data should still load, and `corvale.sqlite3` should no longer start with the bytes `SQLite format 3`.
 
 ### Where the local database lives
 
@@ -81,6 +83,23 @@ The frontend does still pass a `filename` (normally the default `corvale.sqlite3
 `src-tauri/src/path_safety.rs` validates it before it's joined onto that directory - rejecting
 path separators, `..`, drive/UNC markers, and absolute paths - so the resolved file can never
 land outside the app-data directory even if the calling frontend code were compromised.
+
+### Encryption at rest
+
+The database is encrypted with SQLCipher. `db_open` applies a `PRAGMA key` on every open, before
+migrations, using a key from `src-tauri/src/db_key.rs`:
+
+- The key is 32 random bytes, generated once on first run and stored in the operating system's
+  credential store (Windows Credential Manager, macOS Keychain, Linux Secret Service) under
+  `com.corvale.app` / `local-db-key`. It is read in Rust, never exposed over the frontend IPC
+  bridge, and is not derived from the app PIN.
+- A database created by a build from before this key existed is plaintext on disk. `db_open`
+  detects that (the plaintext SQLite file header) and re-encrypts it in place once, via
+  `sqlcipher_export` into a new keyed file that then replaces the original. An interrupted
+  re-encryption leaves the original intact and retries on the next launch.
+- If the credential store can't be reached (typically a locked Linux login keyring), `db_open`
+  fails rather than opening an unencrypted database. The app shows an "Unlock local data" screen
+  that retries once the keyring is available - it does not fall back to plaintext.
 
 ## Content Security Policy
 

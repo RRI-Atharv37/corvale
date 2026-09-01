@@ -1,3 +1,6 @@
+import { isTauriRuntime } from '../desktop/isTauri'
+import { saveFileNative } from '../desktop/nativeBackup'
+
 export type ExportFormat = 'csv' | 'json' | 'pdf'
 
 export const EXPORT_FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
@@ -39,4 +42,17 @@ export const downloadExportBlob = (blob: Blob, filename: string): void => {
 
 export const buildExportFilename = (baseName: string, format: ExportFormat): string => {
     return `${baseName}.${format}`
+}
+
+/**
+ * Save an exported blob to disk. In the Tauri desktop shell the `<a download>` blob-URL trick
+ * above is inert, so this routes through a native "Save As" dialog (BUG-26); on web it triggers
+ * the normal browser download. Resolves `false` only when the user cancels the desktop dialog.
+ */
+export const saveExportedFile = async (blob: Blob, filename: string): Promise<boolean> => {
+    if (isTauriRuntime()) {
+        return saveFileNative(filename, blob)
+    }
+    downloadExportBlob(blob, filename)
+    return true
 }

@@ -57,6 +57,7 @@ import {
     updateTransactionTemplateForOp,
 } from '../services/transactionTemplateSyncService'
 import { fromMinorUnits } from '../../shared/src/money'
+import { serializeAccountDocForWire } from '../utils/accountWireFormat'
 import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
 import { assertWorkspaceMembership, parseOptionalWorkspaceId } from '../utils/workspaceUtils'
 
@@ -91,6 +92,7 @@ type ApplyOpOutcome =
 interface OwnableDoc {
     userId: Types.ObjectId | null
     workspaceId?: Types.ObjectId | null
+    deletedAt?: Date | null
 }
 
 /**
@@ -118,9 +120,13 @@ const isOwnedByCaller = async (existing: OwnableDoc, userId: string): Promise<bo
 const applyCreateOp = async (userId: string, payload: Record<string, unknown>): Promise<ApplyOpOutcome> => {
     const clientId = payload._id
     if (typeof clientId === 'string' && Types.ObjectId.isValid(clientId)) {
-        const existing = await Transaction.findById(clientId)
+        // SEC-55: bypass the soft-delete filter (see applyGenericCreate) so a collision with a
+        // tombstoned row is caught here as an id_conflict, not missed into a duplicate-key insert.
+        const existing = await Transaction.findById(clientId).setOptions({
+            [SOFT_DELETE_BYPASS]: true,
+        })
         if (existing) {
-            if (!(await isOwnedByCaller(existing, userId))) {
+            if (existing.deletedAt != null || !(await isOwnedByCaller(existing, userId))) {
                 return { status: 'id_conflict', resultId: null }
             }
             return { status: 'noop', resultId: existing._id.toString() }
@@ -169,6 +175,64 @@ const fetchCurrentForConflictCheck = async (
     return current
 }
 
+/**
+ * BUG-16: the staleness checks in this file compare `baseUpdatedAt` against the
+ * server doc's `updatedAt` as an exact ISO string, which is only
+ * millisecond-resolution. Two writes to one document inside the same millisecond
+ * (a second sync op, or a genuine two-device race) leave `updatedAt` byte-identical,
+ * so the second op's "did this change out from under me?" check passes when it
+ * should report a conflict — a silent lost update.
+ *
+ * This wraps the entity's apply logic with an atomic compare-and-set on
+ * `updatedAt`: exactly one of N racers can move the row off `current.updatedAt`
+ * (the rest come back `conflict`), and the row is then guaranteed to land strictly
+ * past that value even when the wall clock did not advance across the apply. The
+ * `{ _id, userId, updatedAt }` filter keeps the RLS guard satisfied (it has a
+ * `userId` key) and `timestamps: false` stops Mongoose from clobbering the `$set`.
+ *
+ * If `updateForOp` throws after the claim (a malformed payload that passed client
+ * validation), `updatedAt` is left advanced with no content change and peers
+ * re-pull an identical doc once — accepted over the complexity of a rollback.
+ */
+const applyUpdateWithConcurrencyGuard = async <
+    T extends { _id: Types.ObjectId; userId: Types.ObjectId | null; updatedAt: Date }
+>(
+    model: Model<T>,
+    current: T,
+    updateForOp: () => Promise<{ _id: Types.ObjectId; updatedAt: Date }>,
+    serializeConflictDoc: (doc: T) => Record<string, unknown>
+): Promise<ApplyOpOutcome> => {
+    const bumpedAt = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1))
+
+    const claim = await model.updateOne(
+        { _id: current._id, userId: current.userId, updatedAt: current.updatedAt },
+        { $set: { updatedAt: bumpedAt } },
+        { timestamps: false }
+    )
+    if (claim.matchedCount === 0) {
+        const fresh = (await model
+            .findById(current._id)
+            .setOptions({ [SOFT_DELETE_BYPASS]: true })) as T | null
+        return {
+            status: 'conflict',
+            resultId: current._id.toString(),
+            conflict: { serverDoc: serializeConflictDoc(fresh ?? current) },
+        }
+    }
+
+    const updated = await updateForOp()
+
+    if (updated.updatedAt.getTime() < bumpedAt.getTime()) {
+        await model.updateOne(
+            { _id: updated._id, userId: current.userId, updatedAt: updated.updatedAt },
+            { $set: { updatedAt: bumpedAt } },
+            { timestamps: false }
+        )
+    }
+
+    return { status: 'applied', resultId: updated._id.toString() }
+}
+
 const applyUpdateOp = async (
     userId: string,
     payload: Record<string, unknown>,
@@ -190,8 +254,12 @@ const applyUpdateOp = async (
         }
     }
 
-    const updated = await updateTransactionForOp(userId, payload)
-    return { status: 'applied', resultId: updated._id.toString() }
+    return applyUpdateWithConcurrencyGuard(
+        Transaction,
+        current,
+        () => updateTransactionForOp(userId, payload),
+        (doc) => doc.toObject() as unknown as Record<string, unknown>
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -240,9 +308,13 @@ const applyGenericCreate = async <T extends MinimalSyncDoc & OwnableDoc>(
 ): Promise<ApplyOpOutcome> => {
     const clientId = payload._id
     if (typeof clientId === 'string' && Types.ObjectId.isValid(clientId)) {
-        const existing = await model.findById(clientId)
+        // SEC-55: bypass the soft-delete filter so a client id colliding with a *tombstoned* row
+        // (another user's, or the caller's own deleted one) is caught here rather than slipping
+        // past `isOwnedByCaller` into a duplicate-key insert. A create can never bind to a
+        // tombstone — the row is gone — so the client must regenerate its id.
+        const existing = await model.findById(clientId).setOptions({ [SOFT_DELETE_BYPASS]: true })
         if (existing) {
-            if (!(await isOwnedByCaller(existing, userId))) {
+            if (existing.deletedAt != null || !(await isOwnedByCaller(existing, userId))) {
                 return { status: 'id_conflict', resultId: null }
             }
             return { status: 'noop', resultId: existing._id.toString() }
@@ -269,7 +341,13 @@ const applyGenericUpdate = async <T extends EntityDoc>(
     baseUpdatedAt: string | undefined,
     notFoundMessage: string,
     hasSoftDelete: boolean,
-    updateForOp: () => Promise<{ _id: Types.ObjectId }>
+    updateForOp: () => Promise<{ _id: Types.ObjectId; updatedAt: Date }>,
+    // Defaults to the raw document. `account` overrides it so a conflict's
+    // serverDoc carries major-unit balances, matching the bootstrap/pull wire
+    // format (accountWireFormat.ts / BUG-17) — `keep-server` conflict
+    // resolution ingests this doc verbatim.
+    serializeConflictDoc: (doc: T) => Record<string, unknown> = (doc) =>
+        doc.toObject() as unknown as Record<string, unknown>
 ): Promise<ApplyOpOutcome> => {
     const id = payload._id
     if (typeof id !== 'string') {
@@ -295,12 +373,11 @@ const applyGenericUpdate = async <T extends EntityDoc>(
         return {
             status: 'conflict',
             resultId: current._id.toString(),
-            conflict: { serverDoc: current.toObject() as unknown as Record<string, unknown> },
+            conflict: { serverDoc: serializeConflictDoc(current) },
         }
     }
 
-    const updated = await updateForOp()
-    return { status: 'applied', resultId: updated._id.toString() }
+    return applyUpdateWithConcurrencyGuard(model, current, updateForOp, serializeConflictDoc)
 }
 
 interface EntityOpHandlers {
@@ -340,8 +417,12 @@ const applyCategoryUpdateOp = async (
         }
     }
 
-    const updated = await updateCategoryForOp(userId, payload)
-    return { status: 'applied', resultId: updated._id.toString() }
+    return applyUpdateWithConcurrencyGuard(
+        Category,
+        current,
+        () => updateCategoryForOp(userId, payload),
+        (doc) => doc.toObject() as unknown as Record<string, unknown>
+    )
 }
 
 const categoryHandlers: EntityOpHandlers = {
@@ -363,7 +444,8 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
                 baseUpdatedAt,
                 ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
                 false,
-                () => updateAccountForOp(userId, payload)
+                () => updateAccountForOp(userId, payload),
+                (doc) => serializeAccountDocForWire(doc.toObject() as unknown as Record<string, unknown>)
             ),
         delete: (userId, payload) => deleteAccountForOp(userId, payload),
     },

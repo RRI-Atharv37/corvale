@@ -8,14 +8,15 @@ Instead of entering historical transactions by hand, you can import them from a 
 
 ## Supported files
 
-- **CSV** - any comma-separated export, up to 2,000 rows. Corvale recognizes a few common layouts automatically (including its own [CSV export](../transactions/overview.md) format) and suggests a column mapping; you can adjust it if the guess is wrong.
-- **OFX / QFX** - standard bank statement formats. These are parsed automatically with no mapping step needed.
+- **CSV** - any delimited export, up to 2,000 rows. Comma, semicolon, tab, or pipe separators all work — Corvale detects which and lets you override it. Corvale recognizes a few common layouts automatically (including its own [CSV export](../transactions/overview.md) format) and suggests a column mapping; you can adjust it if the guess is wrong.
+- **OFX / QFX / QIF** - standard bank statement formats. These are parsed automatically with no mapping step needed.
 
 Files are capped at 2 MB.
 
-Bank exports often need a little cleanup first — non-US dates, currency symbols, and
-semicolon separators all trip up the import. See [Preparing Your File](./preparing-your-file.md)
-for exactly what Corvale accepts and how to convert a file that doesn't fit.
+Bank exports sometimes need a little cleanup first — it's worth checking the
+preview when your file uses non-US dates or number formatting. See
+[Preparing Your File](./preparing-your-file.md) for exactly what Corvale accepts
+and how to convert a file that doesn't fit.
 
 ## Getting started
 

@@ -9,9 +9,11 @@ import { handleResponses } from '../utils/authUtils'
 import {
     generateAccessToken,
     getRefreshTokenFromRequest,
+    getRefreshTokenFromRequestBody,
     setRefreshTokenCookie,
     clearRefreshTokenCookie,
 } from '../utils/tokenUtils'
+import { isDesktopClientRequest } from '../utils/corsOriginAllowlist'
 import { generateOfflineGrant } from '../utils/offlineGrantUtils'
 import {
     createRefreshToken,
@@ -82,7 +84,17 @@ const buildLegalAcceptance = (): LegalAcceptance => ({
     ageAttested: true,
 })
 
-const issueAuthSession = async (user: IUser, res: Response) => {
+/**
+ * `includeRefreshTokenInBody` is set for the desktop (Tauri) client only (SEC-11 / BUG-24): it is
+ * cross-site to the API and never gets the `SameSite=Lax` refresh cookie back, so it also receives
+ * the refresh token in the response body to persist in the OS keychain. The cookie is still set
+ * regardless — harmless for the desktop webview, and keeps the web path byte-identical.
+ */
+const issueAuthSession = async (
+    user: IUser,
+    res: Response,
+    options: { includeRefreshTokenInBody?: boolean } = {}
+) => {
     const accessToken = generateAccessToken(user._id.toString(), user.tokenVersion)
     const refreshToken = await createRefreshToken(user._id.toString())
     setRefreshTokenCookie(res, refreshToken)
@@ -91,6 +103,7 @@ const issueAuthSession = async (user: IUser, res: Response) => {
         token: accessToken,
         user: toPublicUser(user),
         offlineGrant: generateOfflineGrant(user._id.toString()),
+        ...(options.includeRefreshTokenInBody ? { refreshToken } : {}),
     }
 }
 
@@ -173,7 +186,9 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
 
     await dispatchEmailVerification(user)
 
-    const payload = await issueAuthSession(user, res)
+    const payload = await issueAuthSession(user, res, {
+        includeRefreshTokenInBody: isDesktopClientRequest(req),
+    })
 
     handleResponses(res, 201, payload)
 })
@@ -211,12 +226,18 @@ export const loginUser = asyncHandler(async (req: AuthRequest, res: Response): P
         throw new CustomError(ERROR_MESSAGES.AUTH.EMAIL_NOT_VERIFIED, 403)
     }
 
-    const payload = await issueAuthSession(user, res)
+    const payload = await issueAuthSession(user, res, {
+        includeRefreshTokenInBody: isDesktopClientRequest(req),
+    })
     handleResponses(res, 200, payload)
 })
 
 export const refreshAccessToken = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    const rawRefreshToken = getRefreshTokenFromRequest(req.cookies ?? {})
+    // Desktop clients present the refresh token in the request body (SEC-11 / BUG-24); the web
+    // app relies on the httpOnly cookie. Prefer the body token so a stale desktop cookie can't
+    // shadow it.
+    const rawRefreshToken =
+        getRefreshTokenFromRequestBody(req.body) ?? getRefreshTokenFromRequest(req.cookies ?? {})
 
     if (!rawRefreshToken) {
         throw new CustomError(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_MISSING, 401)
@@ -236,11 +257,13 @@ export const refreshAccessToken = asyncHandler(async (req: AuthRequest, res: Res
         token: accessToken,
         user: toPublicUser(user),
         offlineGrant: generateOfflineGrant(user._id.toString()),
+        ...(isDesktopClientRequest(req) ? { refreshToken: newRefreshToken } : {}),
     })
 })
 
 export const logoutUser = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    const rawRefreshToken = getRefreshTokenFromRequest(req.cookies ?? {})
+    const rawRefreshToken =
+        getRefreshTokenFromRequestBody(req.body) ?? getRefreshTokenFromRequest(req.cookies ?? {})
 
     if (rawRefreshToken) {
         await revokeRefreshToken(rawRefreshToken)

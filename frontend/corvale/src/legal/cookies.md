@@ -1,4 +1,4 @@
-**Effective date:** 2026-08-29 · **Version:** 2026-08-29
+**Effective date:** 2026-09-01 · **Version:** 2026-09-01
 
 ## The short version
 
@@ -60,9 +60,11 @@ website cannot read Corvale's storage. It should **not** be treated as equivalen
 storage against someone who already has access to your browser profile, your operating system
 account, or your unlocked device.
 
-Where a PIN is set, record contents are encrypted with a key derived from it (see
-[The local database](#the-local-database)). The keys in the table above are not, and neither is
-cached data when no PIN has been set.
+Where a PIN is set, the stored copy of each record is encrypted with a key derived from it (see
+[The local database](#the-local-database)) — with the exception of a few fields, such as amounts
+and dates, that are kept readable so the app can search and total your data on the device without
+a connection. The keys in the table above are not encrypted either, and neither is cached data
+when no PIN has been set.
 
 ## The local database
 
@@ -72,16 +74,17 @@ everything is there without a connection. That copy reaches us only through the 
 to your account.
 
 - **On the desktop app** the database is a SQLCipher file, so the whole file is encrypted on disk.
-- **In the browser** it lives in the browser's own private storage for this site, and the record
-  contents are encrypted with a key derived from your app PIN. That protection exists once you
-  have set a PIN. Without one, the data sits in browser storage unencrypted, the way browser
-  storage normally does.
+- **In the browser** it lives in the browser's own private storage for this site. Once you have
+  set a PIN, the stored copy of each record is encrypted with a key derived from it; a few fields
+  used for on-device search and totals (such as amounts and dates) stay readable. Without a PIN,
+  the data sits in browser storage unencrypted, the way browser storage normally does.
 - **Offline access is time-limited.** The signed offline permission slip is issued by our server,
   and the app can only render your cached data while it is still valid — 30 days by default. The
   app cannot extend it on its own; it has to reach the server to renew it.
 
 Clearing your browser's site data, signing out, or uninstalling the desktop app removes the local
-copy. Nothing on the server changes.
+copy. Nothing on the server changes. If you sign out while some changes have not synced yet,
+Corvale offers to sync them first so they are not lost.
 
 ## Third-party services
 

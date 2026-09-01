@@ -24,8 +24,8 @@ import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import {
     buildExportFilename,
-    downloadExportBlob,
     ensureExportBlob,
+    saveExportedFile,
     EXPORT_FORMAT_OPTIONS,
     type ExportFormat,
 } from '../../utils/downloadExport'
@@ -211,8 +211,10 @@ const Reports = () => {
 
             const blob = ensureExportBlob(blobData, exportFormat)
             const baseName = `corvale-report-${periodDates.startDate}-${periodDates.endDate}`
-            downloadExportBlob(blob, buildExportFilename(baseName, exportFormat))
-            toast.success('Report downloaded')
+            const saved = await saveExportedFile(blob, buildExportFilename(baseName, exportFormat))
+            if (saved) {
+                toast.success('Report downloaded')
+            }
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to export report'))
         } finally {

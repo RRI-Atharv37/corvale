@@ -55,8 +55,8 @@ import QuickAddDropdown from '../../components/transactions/QuickAddDropdown'
 import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '../../utils/workspaceScope'
 import {
     buildExportFilename,
-    downloadExportBlob,
     ensureExportBlob,
+    saveExportedFile,
     EXPORT_FORMAT_OPTIONS,
     TRANSACTION_EXPORT_TYPE_OPTIONS,
     type ExportFormat,
@@ -409,8 +409,13 @@ const Transactions = () => {
             const blob = ensureExportBlob(blobData, exportFormat)
             const dateSuffix =
                 exportStartDate && exportEndDate ? `-${exportStartDate}-${exportEndDate}` : ''
-            downloadExportBlob(blob, buildExportFilename(`transactions${dateSuffix}`, exportFormat))
-            toast.success('Transactions exported')
+            const saved = await saveExportedFile(
+                blob,
+                buildExportFilename(`transactions${dateSuffix}`, exportFormat)
+            )
+            if (saved) {
+                toast.success('Transactions exported')
+            }
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to export transactions'))
         } finally {

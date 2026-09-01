@@ -10,6 +10,8 @@ import WorkspaceReadOnlyBanner from '../../components/workspaces/WorkspaceReadOn
 import { useWorkspace } from '../../hooks/useWorkspace'
 import type {
     ColumnMapping,
+    ImportDateFormat,
+    ImportDelimiter,
     ImportDuplicateAction,
     ImportParseResponse,
     ImportPreviewItem,
@@ -32,7 +34,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
     done: 'Complete',
 }
 
-const MAPPING_FIELDS: { key: keyof ColumnMapping; label: string; required?: boolean }[] = [
+const MAPPING_FIELDS: { key: 'date' | 'description' | 'amount' | 'debit' | 'credit' | 'type'; label: string; required?: boolean }[] = [
     { key: 'date', label: 'Date', required: true },
     { key: 'description', label: 'Description' },
     { key: 'amount', label: 'Amount' },
@@ -40,6 +42,28 @@ const MAPPING_FIELDS: { key: keyof ColumnMapping; label: string; required?: bool
     { key: 'credit', label: 'Credit' },
     { key: 'type', label: 'Type (optional)' },
 ]
+
+const DATE_FORMAT_OPTIONS: { value: ImportDateFormat; label: string }[] = [
+    { value: 'auto', label: 'Auto-detect' },
+    { value: 'YMD', label: 'Year first (2026-03-07)' },
+    { value: 'MDY', label: 'Month first (03/07/2026 — US)' },
+    { value: 'DMY', label: 'Day first (07/03/2026)' },
+]
+
+const DELIMITER_OPTIONS: { value: ImportDelimiter | 'auto'; label: string }[] = [
+    { value: 'auto', label: 'Auto-detect' },
+    { value: ',', label: 'Comma  ,' },
+    { value: ';', label: 'Semicolon  ;' },
+    { value: '\t', label: 'Tab' },
+    { value: '|', label: 'Pipe  |' },
+]
+
+const DELIMITER_LABELS: Record<string, string> = {
+    ',': 'comma',
+    ';': 'semicolon',
+    '\t': 'tab',
+    '|': 'pipe',
+}
 
 const ImportTransactions = () => {
     const navigate = useNavigate()
@@ -58,6 +82,7 @@ const ImportTransactions = () => {
     const [importedCount, setImportedCount] = useState(0)
     const [mergedCount, setMergedCount] = useState(0)
     const [loading, setLoading] = useState(false)
+    const [delimiterChoice, setDelimiterChoice] = useState<ImportDelimiter | 'auto'>('auto')
 
     const workspaceFields = useMemo(
         () => buildWorkspaceBodyFields(activeWorkspaceId),
@@ -82,6 +107,7 @@ const ImportTransactions = () => {
         setRowDecisions({})
         setImportedCount(0)
         setMergedCount(0)
+        setDelimiterChoice('auto')
         if (fileInputRef.current) {
             fileInputRef.current.value = ''
         }
@@ -100,9 +126,27 @@ const ImportTransactions = () => {
             setSelectedFile(file)
             setParseResult(result)
             setMapping(result.suggestedMapping ?? {})
+            setDelimiterChoice(result.delimiter ?? 'auto')
             setStep(result.requiresMapping ? 'mapping' : 'account')
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to parse import file'))
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const reparseWithDelimiter = async (choice: ImportDelimiter | 'auto') => {
+        if (!selectedFile) {
+            return
+        }
+        setDelimiterChoice(choice)
+        setLoading(true)
+        try {
+            const result = await parseImportFile(selectedFile, choice === 'auto' ? undefined : choice)
+            setParseResult(result)
+            setMapping(result.suggestedMapping ?? {})
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to re-parse import file'))
         } finally {
             setLoading(false)
         }
@@ -123,6 +167,7 @@ const ImportTransactions = () => {
             return {
                 ...base,
                 parsedRows: parseResult.parsedRows,
+                parsedRowErrors: parseResult.parsedRowErrors,
             }
         }
 
@@ -315,13 +360,14 @@ const ImportTransactions = () => {
             {step === 'upload' && (
                 <div className="card p-6 space-y-4">
                     <p className="text-sm text-text-muted">
-                        Supported formats: generic CSV, Chase-style CSV, {BRAND.name} export CSV, and OFX/QFX
-                        bank exports. Maximum 2 MB and 2,000 rows.
+                        Supported formats: generic CSV (comma, semicolon, tab or pipe separated),
+                        Chase-style CSV, {BRAND.name} export CSV, and OFX / QFX / QIF bank exports.
+                        Maximum 2 MB and 2,000 rows.
                     </p>
                     <label className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-accent/30 bg-accent-subtle/40 px-6 py-10 cursor-pointer hover:bg-accent-subtle/60 transition-colors">
                         <IoCloudUploadOutline size={36} className="text-accent" />
                         <span className="text-sm font-medium text-text-primary">
-                            {selectedFile ? selectedFile.name : 'Choose CSV or OFX file'}
+                            {selectedFile ? selectedFile.name : 'Choose CSV, OFX/QFX or QIF file'}
                         </span>
                         <span className="text-xs text-text-muted">Click to browse</span>
                         <input
@@ -349,8 +395,38 @@ const ImportTransactions = () => {
                             Map columns
                         </h2>
                         <p className="mt-1 text-sm text-text-muted">
-                            Detected {parseResult.format} format with {parseResult.totalRows} rows.
-                            Match your file columns to transaction fields.
+                            Detected {parseResult.format} format
+                            {parseResult.delimiter
+                                ? `, ${DELIMITER_LABELS[parseResult.delimiter] ?? 'comma'}-separated`
+                                : ''}
+                            , {parseResult.totalRows} rows. Match your file columns to transaction fields.
+                        </p>
+                    </div>
+
+                    <div className="sm:max-w-xs">
+                        <label className="text-[13px] text-fg-secondary">Column separator</label>
+                        <div className="input-box mb-0 mt-1">
+                            <select
+                                aria-label="Column separator"
+                                value={delimiterChoice}
+                                disabled={loading}
+                                onChange={(event) =>
+                                    void reparseWithDelimiter(
+                                        event.target.value as ImportDelimiter | 'auto'
+                                    )
+                                }
+                                className="w-full bg-transparent outline-none"
+                            >
+                                {DELIMITER_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <p className="mt-1 text-xs text-text-muted">
+                            Auto-detect reads the header row. Change it if the columns below look
+                            wrong (one column, or values run together).
                         </p>
                     </div>
 
@@ -379,6 +455,32 @@ const ImportTransactions = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+
+                    <div className="sm:max-w-xs">
+                        <label className="text-[13px] text-fg-secondary">Date format</label>
+                        <div className="input-box mb-0 mt-1">
+                            <select
+                                value={mapping.dateFormat ?? 'auto'}
+                                onChange={(event) =>
+                                    setMapping((current) => ({
+                                        ...current,
+                                        dateFormat: event.target.value as ImportDateFormat,
+                                    }))
+                                }
+                                className="w-full bg-transparent outline-none"
+                            >
+                                {DATE_FORMAT_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <p className="mt-1 text-xs text-text-muted">
+                            How to read slash or dot dates. Auto-detect uses the column's own values;
+                            pick one if your file mixes formats. ISO <code>YYYY-MM-DD</code> always works.
+                        </p>
                     </div>
 
                     {parseResult.sampleRows.length > 0 && Array.isArray(parseResult.sampleRows[0]) && (
@@ -445,6 +547,21 @@ const ImportTransactions = () => {
                             rules run automatically; unmatched rows use the default category.
                         </p>
                     </div>
+
+                    {parseResult?.statementCurrency && (
+                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-text-muted">
+                            This statement is in <span className="font-medium">{parseResult.statementCurrency}</span>.
+                            Amounts import exactly as written — {BRAND.name} does not convert currency, so pick an
+                            account in the same currency.
+                        </div>
+                    )}
+                    {parseResult?.parsedRowErrors && parseResult.parsedRowErrors.length > 0 && (
+                        <div className="rounded-lg border border-expense/30 bg-expense/5 px-3 py-2 text-xs text-text-muted">
+                            {parseResult.parsedRowErrors.length} row
+                            {parseResult.parsedRowErrors.length === 1 ? '' : 's'} in this file could not be
+                            read and will be skipped (e.g. {parseResult.parsedRowErrors[0].message.toLowerCase()}).
+                        </div>
+                    )}
 
                     <AccountPicker value={accountId} onChange={setAccountId} required />
                     <CategoryPicker

@@ -3,7 +3,7 @@ import { getLocalDb } from '../db/localDbInstance'
 import { tableInvalidationBus } from '../db/invalidation/tableInvalidationBus'
 import { getStoredActiveWorkspaceId } from '../utils/workspaceScope'
 import { pushOutboxOps } from '../utils/syncApi'
-import { createOutbox, type Outbox, type OutboxOp, type PushResult } from './outbox'
+import { createOutbox, type Outbox, type OutboxOp, type OutboxOperation, type PushResult } from './outbox'
 import { createSqliteOutboxStore } from './sqliteOutboxStore'
 import { runPullLoop } from './pullLoop'
 import { recordConflict, listUnresolvedConflicts } from './conflicts'
@@ -67,6 +67,7 @@ const buildPushFn = (db: LocalDb) => async (ops: OutboxOp[]): Promise<PushResult
     return response.results.map((result) => ({
         opId: result.opId,
         status: result.status === 'noop' ? 'applied' : result.status,
+        message: result.message,
     }))
 }
 
@@ -89,7 +90,12 @@ const markSynced = async (db: LocalDb): Promise<void> => {
     )
 }
 
-/** Manual "Sync now": flush local changes first, then pull, so this device's own writes aren't immediately overwritten by a stale pull. */
+/**
+ * Manual "Sync now": flush local changes first, then pull, so this device's own writes aren't
+ * immediately overwritten by a stale pull. `markSynced` is skipped while any op is in the failed
+ * state (BUG-32) - bumping "Last synced just now" over an undelivered change reassures the user
+ * that everything is fine when it isn't.
+ */
 export const syncNow = async (): Promise<void> => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
         return
@@ -97,14 +103,44 @@ export const syncNow = async (): Promise<void> => {
     await flushOutbox()
     await pullChanges()
     const db = await getLocalDb()
-    await markSynced(db)
+    const outbox = await getOutbox()
+    const hasFailedOps = (await outbox.listPending()).some((op) => op.lastError !== null)
+    if (!hasFailedOps) {
+        await markSynced(db)
+    }
+}
+
+/** One outbox op the server rejected (BUG-32): still pending, but stuck until the user retries or discards it. */
+export interface FailedSyncOp {
+    opId: string
+    entity: string
+    operation: OutboxOperation
+    lastError: string
+    attempts: number
 }
 
 export interface SyncStatus {
     online: boolean
     pendingCount: number
     conflictCount: number
+    /** Count of `failedOps` - a permanently-rejected op is not a conflict, so it needs its own signal. */
+    failedCount: number
+    failedOps: FailedSyncOp[]
     lastSyncedAt: string | null
+}
+
+/** Retry a single rejected op now (clears its backoff), then flush. */
+export const retrySyncOp = async (opId: string): Promise<void> => {
+    const outbox = await getOutbox()
+    await outbox.retry(opId)
+    await flushOutbox()
+}
+
+/** Permanently drop a single rejected op. The change is not sent to the server and cannot be recovered. */
+export const discardSyncOp = async (opId: string): Promise<void> => {
+    const outbox = await getOutbox()
+    await outbox.discard(opId)
+    tableInvalidationBus.publish('_outbox')
 }
 
 export const getSyncStatus = async (): Promise<SyncStatus> => {
@@ -116,24 +152,49 @@ export const getSyncStatus = async (): Promise<SyncStatus> => {
         db.select<{ value: string }>('SELECT value FROM _sync_meta WHERE key = ?', [LAST_SYNCED_KEY]),
     ])
 
+    const failedOps: FailedSyncOp[] = pending
+        .filter((op) => op.lastError !== null)
+        .map((op) => ({
+            opId: op.opId,
+            entity: op.entity,
+            operation: op.operation,
+            lastError: op.lastError as string,
+            attempts: op.attempts,
+        }))
+
     return {
         online: typeof navigator === 'undefined' || navigator.onLine,
         pendingCount: pending.length,
         conflictCount: conflicts.length,
+        failedCount: failedOps.length,
+        failedOps,
         lastSyncedAt: lastSyncedRows[0]?.value ?? null,
     }
 }
 
-/** Wipes every local table (syncable data + outbox + conflicts + checkpoint). Auth/session state is untouched. */
+/** The one table `resetLocalData` must never clear - the applied-migration marker (`runMigrations.ts`). */
+const MIGRATION_LEDGER_TABLE = '_schema_version'
+
+/**
+ * Wipes every local table except the migration ledger - syncable data, outbox, conflicts,
+ * checkpoint/owner (`_sync_meta`), and the receipt blob cache + upload queue (`_blobs`,
+ * `_receipt_uploads`). SEC-39: those last two were previously left behind, so one user's receipt
+ * images stayed cached and their queued uploads drained under the next user's token. Enumerating
+ * `sqlite_master` rather than a hand-maintained list means a table added in a future migration is
+ * cleared by default rather than missed by default. Auth/session state (outside SQLite) is
+ * untouched - `wipeLocalData` handles that.
+ */
 export const resetLocalData = async (): Promise<void> => {
     const db = await getLocalDb()
+    const tables = await db.select<{ name: string }>(
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != ?`,
+        [MIGRATION_LEDGER_TABLE]
+    )
     await db.transaction(async (tx) => {
-        for (const table of SYNCABLE_TABLES) {
-            await tx.exec(`DELETE FROM ${table}`)
+        for (const { name } of tables) {
+            await tx.exec(`DELETE FROM ${name}`)
         }
-        await tx.exec('DELETE FROM _outbox')
-        await tx.exec('DELETE FROM _conflicts')
-        await tx.exec('DELETE FROM _sync_meta')
     })
     outboxInstance = null
 
@@ -141,6 +202,7 @@ export const resetLocalData = async (): Promise<void> => {
         tableInvalidationBus.publish(table)
     }
     tableInvalidationBus.publish('_conflicts')
+    tableInvalidationBus.publish('_receipt_uploads')
 }
 
 let listenersAttached = false

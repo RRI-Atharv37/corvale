@@ -235,6 +235,7 @@ describe('Backup restore — receipt upload pipeline (S21, SEC-28)', () => {
         const putObject = vi.fn().mockResolvedValue(undefined)
         setReceiptObjectStorage({
             putObject,
+            getObjectBuffer: vi.fn().mockResolvedValue(PNG_BYTES),
             getSignedDownloadUrl: vi.fn().mockResolvedValue('https://storage.example/signed'),
             deleteObject: vi.fn().mockResolvedValue(undefined),
         })

@@ -125,3 +125,19 @@ export const getRefreshTokenFromRequest = (cookies: Record<string, string | unde
     const token = cookies[REFRESH_TOKEN_COOKIE]
     return token ?? null
 }
+
+/**
+ * SEC-11 / BUG-24: the desktop client can't rely on the refresh cookie (cross-site to the API),
+ * so it presents the refresh token in the request body instead. Accepted from any caller — the
+ * token itself is the credential; only the desktop path (gated on `isDesktopClientRequest`) gets
+ * a rotated token back in the response body.
+ */
+export const getRefreshTokenFromRequestBody = (body: unknown): string | null => {
+    if (body && typeof body === 'object' && 'refreshToken' in body) {
+        const value = (body as Record<string, unknown>).refreshToken
+        if (typeof value === 'string' && value.length > 0) {
+            return value
+        }
+    }
+    return null
+}

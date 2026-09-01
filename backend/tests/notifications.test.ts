@@ -141,6 +141,50 @@ describe('Notifications - Phase 7.1', () => {
         expect(res.body.data.notifications[0].message).toContain('Food budget')
     })
 
+    it('formats the budget over-limit message in the budget currency, not hardcoded $', async () => {
+        const { token } = await seedUserDirectly({ email: 'notifications-budget-eur@example.com' })
+        const account = await createTestAccount(token)
+        const categoryId = await getFoodMasterId(token)
+
+        await createMonthlyBudget(token, {
+            name: 'Food budget',
+            amount: 100,
+            currency: 'EUR',
+            categoryId,
+        })
+
+        await createTestExpense(token, {
+            title: 'Groceries',
+            amount: 150,
+            date: '2026-01-15T12:00:00.000Z',
+            accountId: account._id,
+            categoryId,
+        })
+
+        const res = await request(app).get('/api/v1/notifications').set(authHeader(token))
+
+        expect(res.status).toBe(200)
+        const message = res.body.data.notifications[0].message
+        expect(message).toContain('€')
+        expect(message).not.toContain('$')
+        expect(res.body.data.notifications[0].metadata.currency).toBe('EUR')
+    })
+
+    it('formats the bill due message in the rule currency, not hardcoded $', async () => {
+        const { token } = await seedUserDirectly({ email: 'notifications-bill-eur@example.com' })
+        const dueDate = addDaysToDateStr(todayDateStr(), 2)
+
+        await createRecurringBill(token, dueDate, { currency: 'EUR' })
+
+        const res = await request(app).get('/api/v1/notifications').set(authHeader(token))
+
+        expect(res.status).toBe(200)
+        const message = res.body.data.notifications[0].message
+        expect(message).toContain('€')
+        expect(message).not.toContain('$')
+        expect(res.body.data.notifications[0].metadata.currency).toBe('EUR')
+    })
+
     it('dedupes budget over-limit notifications for the same budget period', async () => {
         const { token } = await seedUserDirectly({ email: 'notifications-budget-dedupe@example.com' })
         const account = await createTestAccount(token)

@@ -10,6 +10,7 @@ import RecurringRule from '../models/RecurringRule'
 import { ISavingsGoal } from '../models/SavingsGoal'
 import { IUser } from '../models/User'
 import { attachProgressToBudget, computeBudgetProgress, computeBudgetSpentMinor } from './budgetUtils'
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from './currencyUtils'
 import { fromMinorUnits } from './moneyUtils'
 import { endOfDayInTimezone, startOfDayInTimezone } from './timezoneUtils'
 import { buildScopedListFilter } from './workspaceUtils'
@@ -41,7 +42,8 @@ export interface SerializedNotification {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-const formatMoney = (amountMajor: number): string => `$${amountMajor.toFixed(2)}`
+const formatMoney = (amountMajor: number, currency: string): string =>
+    formatCurrencyAmount(amountMajor, currency)
 
 const getTodayDateStr = (timezone: string): string => {
     return new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date())
@@ -187,13 +189,14 @@ export const evaluateBudgetOverLimitNotifications = async (
         }
 
         const budgetLabel = budget.name?.trim() || 'Budget'
+        const currency = budget.currency || DEFAULT_CURRENCY
         const dedupeKey = `budget_over_limit:${budget._id.toString()}:${budget.periodStart.toISOString()}`
 
         await createNotificationIfNew({
             userId,
             type: 'budget_over_limit',
             title: 'Budget exceeded',
-            message: `${budgetLabel} is over budget at ${progress.percentUsed}% (${formatMoney(progress.spent)} of ${formatMoney(progress.budgetAmount)}).`,
+            message: `${budgetLabel} is over budget at ${progress.percentUsed}% (${formatMoney(progress.spent, currency)} of ${formatMoney(progress.budgetAmount, currency)}).`,
             referenceType: 'budget',
             referenceId: budget._id,
             dedupeKey,
@@ -202,6 +205,7 @@ export const evaluateBudgetOverLimitNotifications = async (
                 spent: progress.spent,
                 budgetAmount: progress.budgetAmount,
                 budgetName: budgetLabel,
+                currency,
             },
         })
     }
@@ -283,6 +287,7 @@ export const syncBillDueNotifications = async (
         const dueDateStr = rule.nextDueDate.toISOString().slice(0, 10)
         const dedupeKey = `bill_due:${rule._id.toString()}:${dueDateStr}`
         const amount = fromMinorUnits(rule.amount)
+        const currency = rule.currency || DEFAULT_CURRENCY
         const daysUntilDue = Math.max(
             0,
             Math.ceil((startOfDayInTimezone(dueDateStr, timezone).getTime() - windowStart.getTime()) / MS_PER_DAY)
@@ -298,13 +303,14 @@ export const syncBillDueNotifications = async (
             userId,
             type: 'bill_due',
             title: 'Upcoming bill',
-            message: `"${rule.title}" (${formatMoney(amount)}) is ${dueLabel}.`,
+            message: `"${rule.title}" (${formatMoney(amount, currency)}) is ${dueLabel}.`,
             referenceType: 'recurring_rule',
             referenceId: rule._id,
             dedupeKey,
             metadata: {
                 ruleTitle: rule.title,
                 amount,
+                currency,
                 dueDate: dueDateStr,
                 daysUntilDue,
             },

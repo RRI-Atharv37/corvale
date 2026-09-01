@@ -41,7 +41,7 @@ import PinGate from '../PinGate'
  */
 
 vi.mock('../wipeLocalData', () => ({
-    wipeLocalData: vi.fn(async () => {}),
+    wipeLocalData: vi.fn(async () => ({ pinCleared: false })),
 }))
 
 class FakeEncryptableDb {
@@ -88,6 +88,7 @@ describe('Unlock implies key, not a storage sentinel (S10, SEC-03)', () => {
         localStorage.clear()
         sessionStorage.clear()
         vi.stubEnv('VITE_LOCAL_FIRST', 'true')
+        vi.stubEnv('VITE_LOCAL_PIN', 'true')
         fakeDb = new FakeEncryptableDb()
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setLocalDb(fakeDb as any)

@@ -76,6 +76,15 @@ const dispatch = async (payload: WorkerPayload): Promise<unknown> => {
       db?.close()
       db = null
       return undefined
+    case 'unlink': {
+      // BUG-30 recovery: drop the OPFS-backed file so `bootstrapLocalDb` can recreate it empty.
+      db?.close()
+      db = null
+      const sqlite = await getSqlite3()
+      const poolUtil = await sqlite.installOpfsSAHPoolVfs({ name: OPFS_VFS_NAME })
+      await poolUtil.unlink(payload.filename)
+      return undefined
+    }
     case 'setEncryptionKey':
       encryptionKey = await deriveKey(payload.passphrase, new Uint8Array(payload.salt))
       return undefined

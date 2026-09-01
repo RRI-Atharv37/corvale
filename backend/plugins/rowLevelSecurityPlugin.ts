@@ -1,9 +1,11 @@
 import { Schema, Query } from 'mongoose'
 
 import {
+    RLS_ALLOW_LOOKUP,
     RLS_BYPASS,
     RlsPluginOptions,
     assertAggregateIsScoped,
+    assertAggregateLookupIsReviewed,
     assertQueryIsScoped,
     isRlsActive,
 } from '../utils/rowLevelSecurity'
@@ -72,9 +74,13 @@ export const rowLevelSecurityPlugin = (
         }
 
         try {
-            const pipeline =
+            const rawPipeline =
                 typeof aggregate.pipeline === 'function' ? aggregate.pipeline() : aggregate.pipeline
-            assertAggregateIsScoped(Array.isArray(pipeline) ? pipeline : [], options)
+            const pipeline = Array.isArray(rawPipeline) ? rawPipeline : []
+            if (aggregate.options?.[RLS_ALLOW_LOOKUP] !== true) {
+                assertAggregateLookupIsReviewed(pipeline)
+            }
+            assertAggregateIsScoped(pipeline, options)
             return next()
         } catch (error) {
             return next(error as Error)

@@ -11,18 +11,31 @@ const main = async (): Promise<void> => {
         process.exit(1)
     }
 
+    const dryRun = process.argv.includes('--dry-run')
+
     const retentionArg = process.argv.find((arg) => arg.startsWith('--retention-days='))
-    const retentionDays = retentionArg
-        ? Number(retentionArg.split('=')[1])
-        : TOMBSTONE_RETENTION_DAYS
+    const retentionRaw = retentionArg ? retentionArg.split('=')[1] : undefined
+    const retentionDays = retentionRaw !== undefined ? Number(retentionRaw) : TOMBSTONE_RETENTION_DAYS
+
+    if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
+        console.error(
+            `--retention-days must be a positive number (got "${retentionRaw}"). ` +
+                'Refusing to run: 0 or a negative value would purge every tombstone.'
+        )
+        process.exit(1)
+    }
 
     await connectDB()
 
-    console.log(`Purging tombstones older than ${retentionDays} days...`)
+    console.log(
+        dryRun
+            ? `[dry run] Tombstones older than ${retentionDays} days that WOULD be purged:`
+            : `Purging tombstones older than ${retentionDays} days...`
+    )
 
-    const results = await purgeExpiredTombstones(retentionDays)
+    const results = await purgeExpiredTombstones(retentionDays, { dryRun })
 
-    console.log('Purge complete:')
+    console.log(dryRun ? 'Dry run complete (nothing deleted):' : 'Purge complete:')
     console.log(JSON.stringify(results, null, 2))
 
     process.exit(0)

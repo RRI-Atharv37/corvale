@@ -10,6 +10,7 @@ import {
     type ReleaseAsset,
 } from '../data/releaseManifest'
 import { BRAND } from '../utils/brand'
+import ExternalLink from '../components/ui/ExternalLink'
 
 const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? 'http://localhost:5174'
 
@@ -41,13 +42,13 @@ const AlternateAssetRow: React.FC<{ asset: ReleaseAsset }> = ({ asset }) => {
     return (
         <li className="py-2">
             {asset.url ? (
-                <a
+                <ExternalLink
                     href={asset.url}
                     className="flex items-center justify-between gap-3 hover:text-accent"
                 >
                     {details}
                     <FiDownload size={14} className="shrink-0" />
-                </a>
+                </ExternalLink>
             ) : (
                 <div className="flex items-center justify-between gap-3">
                     {details}
@@ -98,14 +99,14 @@ const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean }
 
             <div className="mt-6 pt-4 border-t border-border-subtle">
                 {platform.primary.url ? (
-                    <a
+                    <ExternalLink
                         href={platform.primary.url}
                         className="btn-primary w-full text-center inline-flex items-center justify-center gap-2"
                     >
                         <FiDownload size={16} />
                         Download for {platform.label}
                         {primarySize && <span className="opacity-80">({primarySize})</span>}
-                    </a>
+                    </ExternalLink>
                 ) : (
                     <div className="flex items-center justify-center gap-2 rounded-lg border border-border-subtle px-4 py-2.5 text-sm font-medium text-text-muted">
                         <FiClock size={16} />
@@ -207,14 +208,12 @@ const Download: React.FC = () => {
                         <p className="mt-6 text-center text-sm text-text-muted">
                             Signed installers are in progress - checksums for each build will be published
                             here once they ship.{' '}
-                            <a
+                            <ExternalLink
                                 href={manifest.releaseNotesUrl}
-                                target="_blank"
-                                rel="noreferrer"
                                 className="text-accent hover:underline"
                             >
                                 Watch the releases page
-                            </a>
+                            </ExternalLink>
                             .
                         </p>
                     )}
@@ -235,14 +234,12 @@ const Download: React.FC = () => {
 
                     <p className="mt-16 text-center text-sm text-text-muted">
                         Want the full picture first?{' '}
-                        <a
+                        <ExternalLink
                             href={`${DOCS_URL}/desktop/overview`}
-                            target="_blank"
-                            rel="noreferrer"
                             className="text-accent hover:underline"
                         >
                             Desktop app docs
-                        </a>
+                        </ExternalLink>
                     </p>
                 </div>
             </main>

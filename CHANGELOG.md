@@ -13,11 +13,65 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-01
+
+### Added
+
+- **Import: QIF files, and semicolon / tab / pipe CSVs.** `.qif` files are now parsed directly.
+  CSV files separated by a semicolon, tab, or pipe — the default export in much of Europe — are
+  detected automatically, with a **Column separator** control in the mapping step to override the
+  guess. OFX / QFX imports now match on the bank's own transaction ID (`FITID`), so re-importing
+  the same statement finds every row even when the bank rewords the payee between exports, and a
+  skipped statement entry or a currency mismatch is surfaced instead of dropped silently.
+
+### Changed
+
+- **Updated Privacy Policy and Cookie Policy (version 2026-09-01).** The Cookie Policy's
+  description of the on-device database was made precise: when an app PIN is set, each stored
+  record is encrypted, but a few fields used for offline search and totals (such as amounts and
+  dates) are kept readable. The protections on your data have not changed — only the wording. You
+  will be asked to review and accept the current versions the next time you sign in.
+
 ### Fixed
 
+- **Signing out no longer silently drops changes that haven't synced.** If the app is holding
+  local edits that have not reached your account yet, signing out now offers to sync them first,
+  or to discard them deliberately, instead of clearing them without asking.
+- **The "please accept the updated terms" screen no longer hides your data rights.** Sign out,
+  export, and delete-account are now available directly on that screen, so accepting new terms is
+  never a precondition for leaving or taking your data with you.
+- **Deleted records are now purged on schedule by the database itself.** The retention window for
+  deletion markers (90 days) is enforced by a database index rather than only by a manual
+  maintenance command.
+- **Closing your account now deletes its sign-in tokens outright** rather than marking them
+  revoked, so no account-linked rows remain afterward.
+- **Import: a refund could be skipped as a duplicate of the original charge.** Duplicate detection
+  now includes the transaction direction, so an equal-magnitude income and expense on the same day
+  with the same description are no longer treated as the same transaction.
+- **Import: a QIF file renamed `.qfx` failed confusingly.** Such files now import via the QIF
+  parser; an `.ofx`/`.qfx` upload that is neither OFX nor QIF stops with a clear message instead of
+  being read as a garbled spreadsheet.
+- **CSV import: locale-formatted dates and amounts read wrong.** The mapping step gains a **Date
+  format** control (auto / year-first / month-first / day-first) and a slash-or-dot date that
+  isn't a real calendar date is now a per-row error instead of being rolled forward to another
+  month or year (`25/12/2026` was becoming 12 Jan 2028). Amounts are parsed regardless of the
+  currency symbol or code around them (`€`, `£`, `₹`, `¥`, `INR …`), and the decimal separator is
+  inferred, so a European `1.234,56` reads as `1234.56` rather than `1.23456` and Indian `1,00,000`
+  grouping is handled. The preview step shows every parsed row before anything is saved.
+- **Sync: account balances always sent in major units.** The `/sync` bootstrap, pull, and
+  push-conflict responses now normalize `Account` opening/current balances to major-unit decimals,
+  matching the REST `/accounts` contract, regardless of whether the account row has been converted
+  to integer minor-unit storage. Without this, running the `migrate:account-balances` migration on
+  a deployment with desktop/offline clients would have made every synced balance display 100x too
+  large.
 - **Desktop app: duplicate password-reveal / clear buttons.** WebView2 (Edge/Chromium) draws its
   own `::-ms-reveal` / `::-ms-clear` controls next to the app's own show/hide toggle. They are now
   suppressed globally in `index.css`; the web build (Chrome) never rendered them.
+- **Desktop app: external links did nothing.** The header "Docs" link, the landing-page GitHub
+  link, and the `/download` installer links silently no-opped inside the Tauri webview, which
+  blocks `target="_blank"` navigation. External links now go through a shared `<ExternalLink>`
+  component that hands the URL to the operating system's default browser via `tauri-plugin-opener`
+  on desktop, and stays an ordinary new-tab anchor on the web.
 
 ## [1.0.2] - 2026-08-30
 

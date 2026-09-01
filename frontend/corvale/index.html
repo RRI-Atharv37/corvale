@@ -22,6 +22,9 @@
       `/api/v1`) so it matches every path CSP's connect-src actually needs to allow, not just
       one of them: XHR/fetch calls under the API base path, and the bare-origin reachability
       probe in `src/offline/reachability.ts`.
+      `frame-src 'self' blob:` lets the in-app receipt viewer (BUG-25) render a PDF receipt in an
+      <iframe> off an ephemeral `URL.createObjectURL` blob - used by the desktop build, where
+      `window.open` is a no-op. blob: URLs only reference data the page itself created.
       `frame-ancestors` has no effect via a <meta> tag (CSP spec) - a real deployment must also
       send it (or X-Frame-Options) as an HTTP response header at the hosting/reverse-proxy layer.
       The shipped frontend/corvale/nginx.conf does this (CSP `frame-ancestors 'none'` +
@@ -30,7 +33,7 @@
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' %VITE_API_ORIGIN%; base-uri 'self'; form-action 'self'; object-src 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' %VITE_API_ORIGIN%; frame-src 'self' blob:; base-uri 'self'; form-action 'self'; object-src 'none'"
     />
     <title>Corvale — Know where every dollar went</title>
   </head>

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LocalDb } from '../LocalDb'
 
 vi.mock('../../utils/localFirstFlag', () => ({ isLocalFirstEnabled: vi.fn() }))
+vi.mock('../../utils/localPinFlag', () => ({ isLocalPinEnabled: vi.fn() }))
 vi.mock('../../desktop/isTauri', () => ({ isTauriRuntime: vi.fn() }))
 
 const tauriCreate = vi.fn()
@@ -15,9 +16,11 @@ vi.mock('../SqliteWasmDriver', () => ({
 }))
 
 const { isLocalFirstEnabled } = await import('../../utils/localFirstFlag')
+const { isLocalPinEnabled } = await import('../../utils/localPinFlag')
 const { isTauriRuntime } = await import('../../desktop/isTauri')
-const { bootstrapLocalDb } = await import('../bootstrapLocalDb')
+const { bootstrapLocalDb, retryLocalDbOpen } = await import('../bootstrapLocalDb')
 const { getLocalDb, resetLocalDbForTests } = await import('../localDbInstance')
+const { getLocalDbHealth, getLocalDbDamageReason, resetLocalDbHealthForTests } = await import('../localDbHealth')
 
 const fakeDb = (): LocalDb => ({
   exec: vi.fn().mockResolvedValue(undefined),
@@ -29,10 +32,13 @@ const fakeDb = (): LocalDb => ({
 describe('bootstrapLocalDb', () => {
   beforeEach(() => {
     resetLocalDbForTests()
+    resetLocalDbHealthForTests()
     tauriCreate.mockReset()
     wasmCreate.mockReset()
     vi.mocked(isLocalFirstEnabled).mockReset()
+    vi.mocked(isLocalPinEnabled).mockReset()
     vi.mocked(isTauriRuntime).mockReset()
+    localStorage.clear()
   })
 
   it('does nothing when local-first is disabled, leaving the lazy default driver in place', async () => {
@@ -65,8 +71,25 @@ describe('bootstrapLocalDb', () => {
     }
   })
 
-  it('does NOT purge a configured PIN when local-first is enabled', async () => {
+  it('purges an orphaned PIN when local-first is on but the PIN feature is dormant (BUG-31)', async () => {
     vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
+    vi.mocked(isTauriRuntime).mockReturnValue(false)
+    wasmCreate.mockResolvedValue(fakeDb())
+    localStorage.setItem('corvale_pin_salt', 'salt')
+    localStorage.setItem('corvale_pin_verifier', 'verifier')
+    localStorage.setItem('spndr_pin_verifier', 'legacy-verifier')
+
+    await bootstrapLocalDb()
+
+    expect(localStorage.getItem('corvale_pin_verifier')).toBeNull()
+    expect(localStorage.getItem('corvale_pin_salt')).toBeNull()
+    expect(localStorage.getItem('spndr_pin_verifier')).toBeNull()
+  })
+
+  it('does NOT purge a configured PIN when local-first AND the PIN feature are both on', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(true)
     vi.mocked(isTauriRuntime).mockReturnValue(false)
     wasmCreate.mockResolvedValue(fakeDb())
     localStorage.setItem('corvale_pin_verifier', 'verifier')
@@ -74,6 +97,20 @@ describe('bootstrapLocalDb', () => {
     await bootstrapLocalDb()
 
     expect(localStorage.getItem('corvale_pin_verifier')).toBe('verifier')
+  })
+
+  it('copies pre-rename PIN keys forward when the PIN feature is on', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(true)
+    vi.mocked(isTauriRuntime).mockReturnValue(false)
+    wasmCreate.mockResolvedValue(fakeDb())
+    localStorage.setItem('spndr_pin_salt', 'legacy-salt')
+    localStorage.setItem('spndr_pin_verifier', 'legacy-verifier')
+
+    await bootstrapLocalDb()
+
+    expect(localStorage.getItem('corvale_pin_verifier')).toBe('legacy-verifier')
+    expect(localStorage.getItem('spndr_pin_verifier')).toBeNull()
   })
 
   it('creates and installs a TauriSqlDriver under the Tauri runtime', async () => {
@@ -102,11 +139,61 @@ describe('bootstrapLocalDb', () => {
     await expect(getLocalDb()).resolves.toBe(db)
   })
 
-  it('swallows driver creation errors instead of throwing out of app boot', async () => {
+  it('does not throw out of app boot on a driver open failure, but marks the store damaged (BUG-30)', async () => {
     vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
     vi.mocked(isTauriRuntime).mockReturnValue(true)
     tauriCreate.mockRejectedValue(new Error('native module unavailable'))
 
     await expect(bootstrapLocalDb()).resolves.toBeUndefined()
+    expect(getLocalDbHealth()).toBe('damaged')
+  })
+
+  it('marks the store damaged when the post-migration read probe fails (half-encrypted file)', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
+    vi.mocked(isTauriRuntime).mockReturnValue(true)
+    const db = fakeDb()
+    vi.mocked(db.select).mockRejectedValue(new Error('file is not a database'))
+    tauriCreate.mockResolvedValue(db)
+
+    await bootstrapLocalDb()
+
+    expect(getLocalDbHealth()).toBe('damaged')
+  })
+
+  it('preserves the KEYCHAIN_UNAVAILABLE tag in the damage reason (SEC-40)', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
+    vi.mocked(isTauriRuntime).mockReturnValue(true)
+    tauriCreate.mockRejectedValue('KEYCHAIN_UNAVAILABLE: the login keyring is locked')
+
+    await bootstrapLocalDb()
+
+    expect(getLocalDbHealth()).toBe('damaged')
+    expect(getLocalDbDamageReason()).toContain('KEYCHAIN_UNAVAILABLE')
+  })
+
+  it('retryLocalDbOpen re-opens and installs the driver without deleting the store', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isTauriRuntime).mockReturnValue(true)
+    const db = fakeDb()
+    tauriCreate.mockResolvedValue(db)
+
+    await retryLocalDbOpen()
+
+    expect(tauriCreate).toHaveBeenCalledTimes(1)
+    await expect(getLocalDb()).resolves.toBe(db)
+  })
+
+  it('leaves the store healthy on a clean open', async () => {
+    vi.mocked(isLocalFirstEnabled).mockReturnValue(true)
+    vi.mocked(isLocalPinEnabled).mockReturnValue(false)
+    vi.mocked(isTauriRuntime).mockReturnValue(false)
+    wasmCreate.mockResolvedValue(fakeDb())
+
+    await bootstrapLocalDb()
+
+    expect(getLocalDbHealth()).toBe('ok')
   })
 })

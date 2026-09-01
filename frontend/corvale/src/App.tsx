@@ -16,6 +16,7 @@ import { useUser } from './hooks/useUser'
 import LoadingState from './components/ui/LoadingState'
 import Landing from './pages/Landing'
 import PinGate from './offline/PinGate'
+import LocalDbRecoveryGate from './db/LocalDbRecoveryGate'
 import LegalGate from './components/legal/LegalGate'
 import UpdatePrompt from './pwa/UpdatePrompt'
 import OfflineBanner from './pwa/OfflineBanner'
@@ -68,13 +69,15 @@ const AppRoutes = () => {
             <Route
                 element={
                     <ProtectedRoute>
-                        <PinGate>
-                            <LegalGate>
-                                <WorkspaceProvider>
-                                    <DashboardLayout />
-                                </WorkspaceProvider>
-                            </LegalGate>
-                        </PinGate>
+                        <LocalDbRecoveryGate>
+                            <PinGate>
+                                <LegalGate>
+                                    <WorkspaceProvider>
+                                        <DashboardLayout />
+                                    </WorkspaceProvider>
+                                </LegalGate>
+                            </PinGate>
+                        </LocalDbRecoveryGate>
                     </ProtectedRoute>
                 }
             >

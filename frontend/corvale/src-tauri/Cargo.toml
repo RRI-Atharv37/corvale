@@ -1,6 +1,6 @@
 [package]
 name = "corvale"
-version = "1.0.2"
+version = "1.0.3"
 description = "Corvale desktop shell — personal finance tracker"
 authors = ["Corvale"]
 edition = "2021"
@@ -13,11 +13,22 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+# `devtools`: keep the WebView inspector (Ctrl+Shift+I) available in release builds so a field
+# failure on a user's machine can actually be diagnosed (BUG-30). This project ships unsigned and
+# is not distributed through the App Store, so the feature's macOS private-API caveat doesn't apply.
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# BUG-27: hand external URLs (docs site, GitHub, installer downloads) to the OS default browser —
+# a Tauri webview silently no-ops `target="_blank"` / `window.open`, so without this there is no
+# path out of the app.
+tauri-plugin-opener = "2"
+# BUG-30: a persistent on-disk log (app log dir) so a "Failed to load local data" in the field
+# leaves something readable for the user and the maintainer.
+tauri-plugin-log = "2"
+log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # `bundled-sqlcipher-vendored-openssl` compiles SQLCipher (and its own OpenSSL) from source rather
@@ -28,3 +39,10 @@ pbkdf2 = "0.12"
 hmac = "0.12"
 sha2 = "0.10"
 base64 = "0.22"
+# SEC-40: CSPRNG for the device-local SQLCipher key generated on first run (db_key.rs). Already in
+# the tree transitively (keyring's `crypto-rust` backend); pinned here as a direct dependency.
+getrandom = "0.2"
+# SEC-11 / BUG-24: OS keychain for the desktop refresh token (Windows Credential Manager,
+# macOS Keychain, Linux Secret Service). `crypto-rust` keeps the Secret Service backend pure
+# Rust so it doesn't pull a second OpenSSL linkage alongside SQLCipher's vendored one.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }

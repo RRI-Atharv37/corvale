@@ -9,17 +9,17 @@ The import wizard guides you through uploading a file and reviewing every row be
 ## Step-by-step
 
 1. On the **Transactions** page, click **Import**.
-2. **Upload** - choose a `.csv`, `.ofx`, or `.qfx` file (up to 2 MB). If your file
-   uses non-US dates, a currency symbol other than `$`, or a separator other than
-   commas, prepare it first - see [Preparing Your File](./preparing-your-file.md).
-3. **Mapping** *(CSV files only)* - confirm which column maps to date, description, amount, and so on. Corvale pre-fills its best guess; adjust any dropdown that's wrong. OFX files skip this step since the format is already structured.
-4. **Account** - choose which account these transactions belong to, and a default category to apply to rows that don't match a [categorization rule](../categories/categorization-rules.md).
+2. **Upload** - choose a `.csv`, `.ofx`, `.qfx`, or `.qif` file (up to 2 MB). If
+   your file is an XLSX or PDF, prepare it first - see
+   [Preparing Your File](./preparing-your-file.md).
+3. **Mapping** *(CSV files only)* - confirm which column maps to date, description, amount, and so on. Corvale pre-fills its best guess; adjust any dropdown that's wrong. Use the **Column separator** control if the columns look wrong (Corvale detects comma, semicolon, tab, or pipe, but you can set it yourself). Set the **Date format** control if your dates aren't `YYYY-MM-DD` - auto-detect handles most files, but you can force day-first, month-first, or year-first. OFX, QFX, and QIF files skip this step since the format is already structured.
+4. **Account** - choose which account these transactions belong to, and a default category to apply to rows that don't match a [categorization rule](../categories/categorization-rules.md). If any rows in an OFX or QIF file couldn't be read, or the statement is in a different currency from the account, Corvale shows a note here.
 5. **Preview** - review a summary (total rows, valid rows, duplicates found, income and expense totals) and a row-by-row table.
 6. **Done** - confirm the import to create the transactions.
 
 ## Handling duplicates
 
-Corvale compares each row against your existing posted transactions on the chosen account, using the date, amount, and description to detect likely duplicates. Flagged rows show a duplicate action you can set individually or in bulk:
+Corvale compares each row against your existing posted transactions on the chosen account to detect likely duplicates. It matches on the date, whether the row is money in or money out, the amount, and the description — so a refund never looks like a duplicate of the original charge. For OFX and QFX files, Corvale also matches on the bank's own transaction ID, so re-importing the same statement reliably finds every row even if the bank changed the wording between exports. Flagged rows show a duplicate action you can set individually or in bulk:
 
 | Action | Result |
 |--------|--------|

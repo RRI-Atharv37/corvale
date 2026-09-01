@@ -8,6 +8,7 @@ export type WorkerPayload =
   | { type: 'commit' }
   | { type: 'rollback' }
   | { type: 'close' }
+  | { type: 'unlink'; filename: string }
   | { type: 'setEncryptionKey'; passphrase: string; salt: number[] }
   | { type: 'hasEncryptionKey' }
   | { type: 'clearEncryptionKey' }

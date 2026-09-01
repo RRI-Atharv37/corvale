@@ -44,6 +44,18 @@ export const parseSupportedCurrency = (value: unknown): SupportedCurrency => {
     return normalized
 }
 
+/** Formats a major-unit amount for display in generated text (e.g. notifications). Mirrors the frontend `formatCurrency` in `utils/format.ts`. */
+export const formatCurrencyAmount = (
+    amountMajor: number,
+    currency: string = DEFAULT_CURRENCY
+): string => {
+    try {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amountMajor)
+    } catch {
+        return `${currency} ${amountMajor.toFixed(2)}`
+    }
+}
+
 export const parseOptionalSupportedCurrency = (
     value: unknown,
     fallback: SupportedCurrency = DEFAULT_CURRENCY

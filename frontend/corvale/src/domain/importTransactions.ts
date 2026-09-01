@@ -8,16 +8,21 @@ import {
   IMPORT_MAX_ROWS,
   IMPORT_PREVIEW_SAMPLE_ROWS,
   isOfxContent,
+  isQifContent,
   parseCsvContent,
   detectImportFormat,
   suggestColumnMapping,
   mapCsvRows,
   parseOfxContent,
+  parseQifContent,
   assertImportRowLimit,
+  sanitizeParsedImportRows,
   buildImportFingerprint,
   toImportIsoDate,
   type ColumnMapping,
   type ImportFormat,
+  type ImportDateFormat,
+  type ImportDelimiter,
   type ImportDuplicateAction,
   type ImportDuplicateMatch,
   type ParsedImportRow,
@@ -26,7 +31,16 @@ import {
 import { parseAmountToMinorUnits, fromMinorUnits } from '@shared/money'
 
 export { IMPORT_MAX_ROWS, IMPORT_PREVIEW_SAMPLE_ROWS }
-export type { ColumnMapping, ImportFormat, ImportDuplicateAction, ImportDuplicateMatch, ParsedImportRow }
+export type {
+  ColumnMapping,
+  ImportFormat,
+  ImportDateFormat,
+  ImportDelimiter,
+  ImportDuplicateAction,
+  ImportDuplicateMatch,
+  ParsedImportRow,
+  ImportRowError,
+}
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
 const categoriesRepo = new Repository<LocalCategory>('categories')
@@ -46,30 +60,48 @@ export interface LocalImportParseResult {
   headers?: string[]
   rows?: string[][]
   parsedRows?: ParsedImportRow[]
+  parsedRowErrors?: ImportRowError[]
+  statementCurrency?: string
+  delimiter?: ImportDelimiter
   suggestedMapping?: ColumnMapping
 }
 
+const extensionOf = (fileName: string): string => fileName.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''
+
 /** Reads and parses an uploaded bank statement entirely client-side - no network round trip. */
-export const parseLocalImportFile = async (file: File): Promise<LocalImportParseResult> => {
+export const parseLocalImportFile = async (
+  file: File,
+  delimiter?: ImportDelimiter
+): Promise<LocalImportParseResult> => {
   const content = await file.text()
   if (!content.trim()) {
     throw new Error('Import file is empty')
   }
 
-  if (isOfxContent(content)) {
-    const rows = parseOfxContent(content)
-    assertImportRowLimit(rows.length)
+  const looksOfx = isOfxContent(content)
+  const looksQif = !looksOfx && isQifContent(content)
+
+  if (looksOfx || looksQif) {
+    const parsed = looksQif ? parseQifContent(content) : parseOfxContent(content)
+    assertImportRowLimit(parsed.rows.length + parsed.errors.length)
     return {
-      format: 'ofx',
+      format: looksQif ? 'qif' : 'ofx',
       fileName: file.name,
-      totalRows: rows.length,
-      sampleRows: rows.slice(0, IMPORT_PREVIEW_SAMPLE_ROWS),
-      parsedRows: rows,
+      totalRows: parsed.rows.length,
+      sampleRows: parsed.rows.slice(0, IMPORT_PREVIEW_SAMPLE_ROWS),
+      parsedRows: parsed.rows,
+      parsedRowErrors: parsed.errors,
+      statementCurrency: parsed.statementCurrency,
       requiresMapping: false,
     }
   }
 
-  const { headers, rows } = parseCsvContent(content)
+  const extension = extensionOf(file.name)
+  if (extension === '.ofx' || extension === '.qfx') {
+    throw new Error('This file does not look like a valid OFX/QFX or QIF file')
+  }
+
+  const { headers, rows, delimiter: resolvedDelimiter } = parseCsvContent(content, delimiter)
   assertImportRowLimit(rows.length)
 
   const format = detectImportFormat(headers)
@@ -83,6 +115,7 @@ export const parseLocalImportFile = async (file: File): Promise<LocalImportParse
     sampleRows: rows.slice(0, IMPORT_PREVIEW_SAMPLE_ROWS),
     rows,
     suggestedMapping,
+    delimiter: resolvedDelimiter,
     requiresMapping: true,
   }
 }
@@ -99,6 +132,7 @@ export interface ImportPreviewItem {
   tags?: string[]
   appliedRuleId?: string
   appliedRuleName?: string
+  externalId?: string
   error?: string
   duplicateOf?: ImportDuplicateMatch
   duplicateAction?: ImportDuplicateAction
@@ -125,14 +159,20 @@ export interface BuildLocalImportInput {
   rows?: string[][]
   mapping?: ColumnMapping
   parsedRows?: ParsedImportRow[]
+  /** OFX/QIF skipped-block reasons from parse time, surfaced in the preview (BUG-21/BUG-23). */
+  parsedRowErrors?: ImportRowError[]
 }
 
-/** Resolves the row set from either an already-parsed OFX payload or a headers+rows+mapping CSV payload. */
+/** Resolves the row set from either an already-parsed OFX/QIF payload or a headers+rows+mapping CSV payload. */
 const resolveImportRows = (
   input: BuildLocalImportInput
 ): { importRows: ParsedImportRow[]; rowErrors: ImportRowError[] } => {
   if (Array.isArray(input.parsedRows) && input.parsedRows.length > 0) {
-    return { importRows: input.parsedRows, rowErrors: [] }
+    // Mirrors the backend SEC-52 guard: validate the parsed-row set before it drives a commit.
+    return {
+      importRows: sanitizeParsedImportRows(input.parsedRows),
+      rowErrors: input.parsedRowErrors ?? [],
+    }
   }
   if (!Array.isArray(input.headers) || !Array.isArray(input.rows)) {
     throw new Error('Column mapping is incomplete')
@@ -141,15 +181,23 @@ const resolveImportRows = (
   return { importRows: mapped.rows, rowErrors: mapped.errors }
 }
 
+interface LocalDuplicateMaps {
+  /** `buildImportFingerprint` key → match (fuzzy date/type/amount/description). */
+  fingerprintMap: Map<string, ImportDuplicateMatch>
+  /** `externalId` (OFX FITID) → match. Exact; checked first (BUG-21). */
+  externalIdMap: Map<string, ImportDuplicateMatch>
+}
+
 /** Mirrors `backend/controllers/importController.ts`'s `loadExistingDuplicateMap`, reading local transactions instead of Mongo. */
 const buildLocalDuplicateMap = async (
   db: LocalDb,
   accountId: string,
   rows: ParsedImportRow[]
-): Promise<Map<string, ImportDuplicateMatch>> => {
-  const duplicateMap = new Map<string, ImportDuplicateMatch>()
+): Promise<LocalDuplicateMaps> => {
+  const fingerprintMap = new Map<string, ImportDuplicateMatch>()
+  const externalIdMap = new Map<string, ImportDuplicateMatch>()
   if (rows.length === 0) {
-    return duplicateMap
+    return { fingerprintMap, externalIdMap }
   }
 
   const [transactions, categories] = await Promise.all([transactionsRepo.list(db), categoriesRepo.list(db)])
@@ -161,22 +209,31 @@ const buildLocalDuplicateMap = async (
 
   for (const transaction of candidates) {
     const isoDate = toImportIsoDate(new Date(transaction.date))
-    const fingerprint = buildImportFingerprint(isoDate, transaction.amount, transaction.title, transaction.description)
-
-    if (duplicateMap.has(fingerprint)) {
-      continue
-    }
-
-    duplicateMap.set(fingerprint, {
+    const match: ImportDuplicateMatch = {
       transactionId: transaction._id,
       title: transaction.title,
       date: isoDate,
       amount: fromMinorUnits(transaction.amount),
       categoryName: categoryNameById.get(transaction.categoryId),
-    })
+    }
+
+    if (transaction.externalId && !externalIdMap.has(transaction.externalId)) {
+      externalIdMap.set(transaction.externalId, match)
+    }
+
+    const fingerprint = buildImportFingerprint(
+      isoDate,
+      transaction.type === 'income' ? 'income' : 'expense',
+      transaction.amount,
+      transaction.title,
+      transaction.description
+    )
+    if (!fingerprintMap.has(fingerprint)) {
+      fingerprintMap.set(fingerprint, match)
+    }
   }
 
-  return duplicateMap
+  return { fingerprintMap, externalIdMap }
 }
 
 /** Mirrors `backend/utils/categorizationRuleUtils.ts`'s `mergeTags`: dedupe a transaction's own tags with a matched rule's tags. */
@@ -226,6 +283,7 @@ const buildLocalPreviewItems = async (
           description: row.description,
           amount: row.amount,
           type: row.type,
+          externalId: row.externalId,
           categoryId,
           categoryName: category.name,
           tags: ruleResult ? mergeTags(undefined, ruleResult.tags) : undefined,
@@ -240,6 +298,7 @@ const buildLocalPreviewItems = async (
           description: row.description,
           amount: row.amount,
           type: row.type,
+          externalId: row.externalId,
           categoryId: defaultCategoryId,
           error: error instanceof Error ? error.message : 'Failed to map row',
         }
@@ -255,7 +314,7 @@ const attachLocalDuplicateInfo = async (
   importRows: ParsedImportRow[]
 ): Promise<ImportPreviewItem[]> => {
   const validRows = importRows.filter((row) => items.some((item) => item.rowIndex === row.rowIndex && !item.error))
-  const duplicateMap = await buildLocalDuplicateMap(db, accountId, validRows)
+  const { fingerprintMap, externalIdMap } = await buildLocalDuplicateMap(db, accountId, validRows)
 
   return items.map((item) => {
     if (item.error) {
@@ -268,8 +327,9 @@ const attachLocalDuplicateInfo = async (
     }
 
     const amountMinor = parseAmountToMinorUnits(row.amount)
-    const fingerprint = buildImportFingerprint(row.date, amountMinor, row.title, row.description)
-    const duplicateOf = duplicateMap.get(fingerprint)
+    const duplicateOf =
+      (row.externalId ? externalIdMap.get(row.externalId) : undefined) ??
+      fingerprintMap.get(buildImportFingerprint(row.date, row.type, amountMinor, row.title, row.description))
 
     if (!duplicateOf) {
       return item
@@ -465,6 +525,7 @@ export const commitLocalImport = async (db: LocalDb, input: CommitLocalImportInp
         date: new Date(`${item.date}T12:00:00.000Z`).toISOString(),
         clearedStatus: 'pending',
         tags: item.tags,
+        externalId: item.externalId,
         splitTransactionId: null,
       }
       await transactionsRepo.create(tx, doc)

@@ -1,4 +1,4 @@
-**Effective date:** 2026-08-29 · **Version:** 2026-08-29
+**Effective date:** 2026-09-01 · **Version:** 2026-09-01
 
 ## Scope — what this policy covers
 
@@ -222,6 +222,11 @@ or advertising cookies, and therefore no cookie consent banner.
 
 See the [Cookie Policy](./cookies.md) for the full detail, including what Corvale stores in your
 browser's local storage.
+
+The 2026-09-01 version of this policy accompanies a clarification in the Cookie Policy: on the
+local copy of your data held on your device, a few fields used for on-device search and totals
+(such as amounts and dates) are kept readable rather than encrypted, even when an app PIN is set.
+The protections on your data are unchanged; only the description was imprecise.
 
 ## Who else processes your data
 

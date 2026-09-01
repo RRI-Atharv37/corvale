@@ -22,6 +22,7 @@ import { isObjectStorageConfigured, setReceiptObjectStorage } from '../utils/rec
  *
  *   export interface ReceiptObjectStorage {
  *     putObject(key: string, sourceFilePath: string, contentType: string): Promise<void>
+ *     getObjectBuffer(key: string): Promise<Buffer>   // SEC-53: ZIP backup export
  *     getSignedDownloadUrl(key: string, expiresInSeconds: number): Promise<string>
  *     deleteObject(key: string): Promise<void>
  *   }
@@ -90,6 +91,7 @@ describe('Receipt storage: S3-compatible driver (L3, SEC-23)', () => {
         const putObject = vi.fn().mockResolvedValue(undefined)
         setReceiptObjectStorage({
             putObject,
+            getObjectBuffer: vi.fn().mockResolvedValue(Buffer.alloc(0)),
             getSignedDownloadUrl: vi.fn().mockResolvedValue('https://storage.example/signed'),
             deleteObject: vi.fn().mockResolvedValue(undefined),
         })
@@ -145,6 +147,7 @@ describe('Receipt storage: S3-compatible driver (L3, SEC-23)', () => {
         const deleteObject = vi.fn().mockResolvedValue(undefined)
         setReceiptObjectStorage({
             putObject: vi.fn().mockResolvedValue(undefined),
+            getObjectBuffer: vi.fn().mockResolvedValue(Buffer.alloc(0)),
             getSignedDownloadUrl: vi.fn().mockResolvedValue('https://storage.example/signed'),
             deleteObject,
         })
