@@ -19,6 +19,7 @@
     "build": "tsc",
     "postbuild": "node scripts/linkDistNodeModules.js",
     "start": "node ../dist/backend/server.js",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate:transactions": "ts-node scripts/migrateIncomeExpenseToTransactions.ts",
@@ -33,6 +34,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",
     "@aws-sdk/s3-request-presigner": "^3.1116.0",
+    "@sentry/node": "^10.70.0",
     "adm-zip": "^0.6.0",
     "archiver": "^8.0.0",
     "bcryptjs": "^3.0.2",
@@ -47,10 +49,10 @@
     "mongoose": "^8.13.2",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
-    "pdfkit": "^0.19.1",
-    "@sentry/node": "^10.70.0"
+    "pdfkit": "^0.19.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/adm-zip": "^0.5.8",
     "@types/archiver": "^8.0.0",
     "@types/cookie-parser": "^1.4.10",
@@ -62,11 +64,16 @@
     "@types/nodemailer": "^8.0.1",
     "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.2.1",
+    "eslint": "^9.39.5",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.17.1",
+    "globals": "^17.12.0",
     "mongodb-memory-server": "^11.2.0",
     "nodemon": "^3.1.9",
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.69.0",
     "vitest": "^4.1.10"
   }
 }

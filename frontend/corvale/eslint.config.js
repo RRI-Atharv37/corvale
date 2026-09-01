@@ -3,6 +3,38 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
+import importX from 'eslint-plugin-import-x'
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
+
+/**
+ * RF0 (structural refactor, Phase 1). The `no-restricted-paths` zones pin the layer boundaries
+ * from ROADMAP § *Target Repository Structure*. `src/ui`, `src/features`, `src/lib`, `src/app`
+ * and `src/platform` do not exist yet — the zones match nothing until RF6 creates them, then
+ * enforce that the design system never reaches into features, `lib/` stays a leaf, and the pure
+ * `domain/` engine takes no UI import. `src/domain` already exists and its zone is live now.
+ */
+const BOUNDARY_ZONES = [
+  {
+    target: './src/ui/**',
+    from: ['./src/features/**', './src/app/**', './src/platform/**', './src/domain/**'],
+    message: 'ui/ is the design system — it may import lib/ only, never features/, app/, platform/ or domain/.',
+  },
+  {
+    target: './src/lib/**',
+    from: ['./src/features/**', './src/app/**', './src/ui/**', './src/platform/**', './src/domain/**'],
+    message: 'lib/ holds leaf utilities — it must not import app-layer code.',
+  },
+  {
+    target: './src/domain/**',
+    from: ['./src/features/**', './src/app/**', './src/ui/**'],
+    message: 'domain/ is the pure local-first engine — no features/, app/ or ui/ imports.',
+  },
+  {
+    target: './src/platform/**',
+    from: ['./src/features/**', './src/app/**'],
+    message: 'platform/ is the local-first runtime — features/app consume it, not the reverse.',
+  },
+]
 
 export default tseslint.config(
   { ignores: ['dist', 'src-tauri/target'] },
@@ -21,6 +53,10 @@ export default tseslint.config(
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      'import-x': importX,
+    },
+    settings: {
+      'import-x/resolver-next': [createTypeScriptImportResolver({ project: './tsconfig.json' })],
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
@@ -35,6 +71,7 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      'import-x/no-restricted-paths': ['error', { zones: BOUNDARY_ZONES }],
     },
   }
 )

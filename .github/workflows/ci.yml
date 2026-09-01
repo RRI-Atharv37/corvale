@@ -42,10 +42,14 @@ jobs:
       - name: Dependency audit
         run: npm audit --audit-level=high
 
+      # RF0 (structural refactor): eslint.config.mjs enforces the module/layer import boundaries
+      # from the refactor contract. Minimal by design — no code-quality ruleset yet.
+      - name: Lint
+        run: npm run lint
+
       - name: Type-check
         run: npx tsc --noEmit
 
-      # No backend lint config exists yet (see TODO.md L6) — nothing to run here.
       # Tests are fully self-contained: tests/setup.mts sets every required env var
       # and boots an in-memory MongoDB (mongodb-memory-server), so no secrets or
       # external services are needed in CI.
