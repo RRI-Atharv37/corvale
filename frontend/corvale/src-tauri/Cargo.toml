@@ -1,6 +1,6 @@
 [package]
 name = "corvale"
-version = "1.0.2"
+version = "1.0.3"
 description = "Corvale desktop shell — personal finance tracker"
 authors = ["Corvale"]
 edition = "2021"

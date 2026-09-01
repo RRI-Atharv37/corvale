@@ -13,6 +13,8 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-01
+
 ### Added
 
 - **Import: QIF files, and semicolon / tab / pipe CSVs.** `.qif` files are now parsed directly.
