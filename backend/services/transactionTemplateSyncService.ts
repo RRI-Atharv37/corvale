@@ -1,18 +1,19 @@
 import { Types } from 'mongoose'
 
 import TransactionTemplate, { ITransactionTemplate } from '../models/TransactionTemplate'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     parseTemplateAmount,
     parseTemplateTags,
     parseTemplateType,
     validateTemplateReferences,
 } from '../utils/transactionTemplateUtils'
-import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
-import { validateResourceAccess } from '../utils/workspaceUtils'
+import { validateResourceAccess } from '@core/access/workspace'
 import { DeleteOpOutcome, softDeleteEntityForOp } from './syncEntityHelpers'
 import { fromMinorUnits } from '@shared/money'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 /**
  * `parseTemplateAmount` expects a REST body's major-unit decimal and

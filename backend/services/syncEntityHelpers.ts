@@ -1,11 +1,11 @@
 import { Document, Model, Types } from 'mongoose'
 
 import User from '../models/User'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
-import { DEFAULT_TIMEZONE } from '../utils/timezoneUtils'
-import { assertWorkspaceMembership } from '../utils/workspaceUtils'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
+import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
+import { assertWorkspaceMembership } from '@core/access/workspace'
 
 /**
  * Sprint 13.9: shared "delete" mechanics for the non-transaction sync

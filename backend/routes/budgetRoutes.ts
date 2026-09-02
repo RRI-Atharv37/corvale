@@ -8,7 +8,7 @@ import {
     getBudgets,
     updateBudget,
 } from '../controllers/budgetController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

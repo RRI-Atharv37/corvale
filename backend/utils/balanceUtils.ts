@@ -1,8 +1,7 @@
 import Saver from '../models/Saver'
 import Account, { IAccount } from '../models/Account'
 import Transaction from '../models/Transaction'
-import { toObjectId } from './sharedUtils'
-import { buildScopedListFilter } from './workspaceUtils'
+import { buildScopedListFilter } from '@core/access/workspace'
 import {
     AccountLike,
     AccountTotals,
@@ -13,6 +12,7 @@ import {
     UserBalanceSummary,
 } from '@shared/balances'
 import { fromMinorUnits, roundMoney } from '@shared/money'
+import { toObjectId } from '@core/db/objectId'
 
 export { roundMoney }
 export type { AccountTotals, UserBalanceSummary, CurrencyConversionOptions }

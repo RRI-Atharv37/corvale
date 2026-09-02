@@ -2,9 +2,9 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import Tag, { ITag } from '../models/Tag'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     dedupeInlineTagsForUser,
     isValidTagName,
@@ -12,13 +12,10 @@ import {
     pickDefaultTagColor,
     renameTagOnTransactions,
 } from '../utils/tagUtils'
-import {
-    getUserId,
-    handleResponses,
-    isDuplicateKeyError,
-    resolveClientObjectId,
-    validateRequiredFields,
-} from '../utils/sharedUtils'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 const validateUserTag = async (tagId: string, userId: string): Promise<ITag> => {
     const tag = await Tag.findById(tagId)

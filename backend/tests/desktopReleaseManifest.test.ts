@@ -9,7 +9,7 @@ import {
     setReleaseSource,
     transformGithubRelease,
 } from '../services/desktopReleaseService'
-import { CustomError } from '../utils/customError'
+import { CustomError } from '@core/errors/customError'
 
 /**
  * V16 - `/download` self-updating.

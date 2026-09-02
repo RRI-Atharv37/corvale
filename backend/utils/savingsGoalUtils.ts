@@ -9,11 +9,11 @@ import {
     IAutoContribution,
     SavingsGoalStatus,
 } from '../models/SavingsGoal'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
-import { fromMinorUnits, parseAmountToMinorUnits } from './moneyUtils'
-import { endOfDayInTimezone } from './timezoneUtils'
-import { assertAccountMatchesWorkspace, assertWorkspaceMembership } from './workspaceUtils'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { fromMinorUnits, parseAmountToMinorUnits } from '@core/money/moneyUtils'
+import { endOfDayInTimezone } from '@core/time/timezoneUtils'
+import { assertAccountMatchesWorkspace, assertWorkspaceMembership } from '@core/access/workspace'
 import {
     computeAverageMonthlyContributionPure,
     computeMonthsRemaining,

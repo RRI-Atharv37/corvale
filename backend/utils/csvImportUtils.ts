@@ -1,4 +1,4 @@
-import { CustomError } from './customError'
+import { CustomError } from '@core/errors/customError'
 import {
     IMPORT_MAX_ROWS,
     IMPORT_PREVIEW_SAMPLE_ROWS,

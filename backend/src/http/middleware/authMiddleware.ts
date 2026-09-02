@@ -4,13 +4,13 @@ dotenv.config()
 import jwt from 'jsonwebtoken'
 import { Response, NextFunction } from 'express'
 
-import User, { IUser } from '../models/User'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { AuthRequest } from './authTypes'
-import { runWithRlsContext } from '../utils/rowLevelSecurity'
+import User, { IUser } from '../../../models/User'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { runWithRlsContext } from '@core/access/rowLevelSecurity'
 
-export type { AuthRequest } from './authTypes'
+export type { AuthRequest } from '@core/auth/authTypes'
 
 /**
  * Resolves and validates the bearer token, returning the loaded user or throwing a

@@ -8,7 +8,7 @@ import Notification from '../models/Notification'
 // utils/rowLevelSecurity.ts's RLS_BYPASS query-option pattern, but applied
 // unconditionally (not gated on an RLS-style AsyncLocalStorage context) since
 // tombstoning must hide rows everywhere.
-import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
+import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
 import { authHeader, createSecondUser, seedUserDirectly } from './helpers'
 
 async function getFoodMasterId(token: string): Promise<string> {

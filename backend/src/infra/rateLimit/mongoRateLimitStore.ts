@@ -1,5 +1,5 @@
 import type { ClientRateLimitInfo, Options, Store } from 'express-rate-limit'
-import RateLimitCounter from '../models/RateLimitCounter'
+import RateLimitCounter from './rateLimitCounter.model'
 
 /**
  * express-rate-limit `Store` backed by MongoDB (SEC-26/S18), replacing the default

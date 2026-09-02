@@ -803,7 +803,7 @@ describe('Transactions', () => {
 
 describe('moneyUtils', () => {
     it('converts between major and minor units', async () => {
-        const { toMinorUnits, fromMinorUnits } = await import('../utils/moneyUtils')
+        const { toMinorUnits, fromMinorUnits } = await import('@core/money/moneyUtils')
 
         expect(toMinorUnits(10.5)).toBe(1050)
         expect(fromMinorUnits(1050)).toBe(10.5)
@@ -813,7 +813,7 @@ describe('moneyUtils', () => {
 
 describe('timezoneUtils', () => {
     it('builds timezone-aware day boundaries', async () => {
-        const { resolveDateRange } = await import('../utils/timezoneUtils')
+        const { resolveDateRange } = await import('@core/time/timezoneUtils')
 
         const utcRange = resolveDateRange('2026-01-15', '2026-01-15', 'UTC')
         expect(utcRange.start.toISOString()).toBe('2026-01-15T00:00:00.000Z')

@@ -1,10 +1,10 @@
 import crypto from 'crypto'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import User from '../models/User'
 import { hashToken } from './tokenUtils'
 import { revokeAllRefreshTokensForUser } from './refreshTokenService'
-import { logMailDevLink } from './mailDevLog'
+import { logMailDevLink } from '@infra/mail/mailDevLog'
 
 const PASSWORD_RESET_EXPIRY_MS = Number(process.env.PASSWORD_RESET_EXPIRY_MS ?? 600_000)
 

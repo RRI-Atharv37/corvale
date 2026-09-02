@@ -8,7 +8,7 @@ import {
     assertAggregateLookupIsReviewed,
     assertQueryIsScoped,
     isRlsActive,
-} from '../utils/rowLevelSecurity'
+} from './rowLevelSecurity'
 
 /**
  * Every Mongoose query operation the RLS guard hooks. Kept exported and pinned by

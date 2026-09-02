@@ -1,12 +1,12 @@
 import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { getUserId, handleResponses } from '../utils/saverpushoverUtils'
 import { computeUserBalances, roundMoney } from '../utils/balanceUtils'
 import Saver from '../models/Saver'
 import Pushover from '../models/Pushover'
-import { AuthRequest } from '../middleware/authTypes'
+import { AuthRequest } from '@core/auth/authTypes'
 
 export const pushoverToNextMonth = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)

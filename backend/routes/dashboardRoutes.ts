@@ -8,7 +8,7 @@ import {
     getNetWorthTrend,
     getBudgetOverview,
 } from '../controllers/dashboardController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

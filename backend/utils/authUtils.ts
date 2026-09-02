@@ -1,1 +1,1 @@
-export { handleResponses } from './sharedUtils'
+export { handleResponses } from '@core/http/response'

@@ -1,9 +1,9 @@
 import crypto from 'crypto'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import User, { IUser } from '../models/User'
 import { hashToken } from './tokenUtils'
-import { logMailDevLink } from './mailDevLog'
+import { logMailDevLink } from '@infra/mail/mailDevLog'
 
 const EMAIL_VERIFICATION_EXPIRY_MS = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 600_000)
 

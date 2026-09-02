@@ -5,9 +5,9 @@ import Account, { IAccount } from '../models/Account'
 import RecurringRule from '../models/RecurringRule'
 import SavingsGoal from '../models/SavingsGoal'
 import Transaction from '../models/Transaction'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     computeDiscretionaryDailyAverage,
     LowBalanceWarning,
@@ -15,14 +15,15 @@ import {
     projectGoalContributionDates,
     projectRecurringOccurrences,
 } from '../utils/forecastUtils'
-import { fromMinorUnits } from '../utils/moneyUtils'
-import { getUserId, handleResponses } from '../utils/sharedUtils'
+import { fromMinorUnits } from '@core/money/moneyUtils'
 import {
     assertWorkspaceMembership,
     buildScopedListFilter,
     parseOptionalWorkspaceId,
     validateResourceAccess,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
 
 const SUPPORTED_DAYS = [30, 60, 90]
 const DISCRETIONARY_LOOKBACK_DAYS = 90

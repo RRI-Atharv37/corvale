@@ -4,7 +4,7 @@ import app from '../app'
 import User from '../models/User'
 import { authHeader, registerUser } from './helpers'
 import { PRIVACY_VERSION, TERMS_VERSION } from '../utils/legalVersions'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
  * Acceptance spec for the consent record and 18+ attestation (M0c / M0c2).

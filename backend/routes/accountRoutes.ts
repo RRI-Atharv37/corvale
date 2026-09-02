@@ -9,7 +9,7 @@ import {
     updateAccount,
 } from '../controllers/accountController'
 import { getReconciliationSessions } from '../controllers/reconciliationController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

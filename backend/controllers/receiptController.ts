@@ -5,9 +5,9 @@ import { Types } from 'mongoose'
 
 import Receipt from '../models/Receipt'
 import Transaction from '../models/Transaction'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     assertWithinReceiptStorageQuota,
     deleteReceiptRecord,
@@ -16,15 +16,17 @@ import {
     serializeReceipt,
     validateReceiptOwnership,
 } from '../utils/receiptUtils'
-import { detectReceiptSignature } from '../utils/fileSignature'
+import { detectReceiptSignature } from '@infra/storage/fileSignature'
 import {
     getReceiptSignedDownloadUrl,
     isObjectStorageConfigured,
     putReceiptObject,
     receiptObjectKey,
-} from '../utils/receiptStorage'
-import { scanUploadedFile } from '../utils/virusScanService'
-import { getUserId, handleResponses, validateRequiredFields } from '../utils/sharedUtils'
+} from '@infra/storage/receiptStorage'
+import { scanUploadedFile } from '@infra/security/virusScanService'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { validateRequiredFields } from '@core/http/validation'
 
 export const uploadReceipt = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)

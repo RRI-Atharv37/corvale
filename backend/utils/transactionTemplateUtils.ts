@@ -1,7 +1,7 @@
 import { ITransactionTemplate, TransactionTemplateType } from '../models/TransactionTemplate'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
-import { fromMinorUnits } from './moneyUtils'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { fromMinorUnits } from '@core/money/moneyUtils'
 import { normalizeTagName } from './tagUtils'
 import { parseClientAmount, validateAccountForTransaction, validateCategoryForTransaction } from './transactionUtils'
 

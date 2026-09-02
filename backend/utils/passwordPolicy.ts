@@ -1,5 +1,5 @@
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 export const MIN_PASSWORD_LENGTH = 12
 export const MAX_PASSWORD_BYTES = 72

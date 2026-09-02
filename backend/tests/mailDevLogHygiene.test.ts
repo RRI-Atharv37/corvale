@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app'
 import { registerUser } from './helpers'
-import { redactUrlToken, isMailDevLogEnabled } from '../utils/mailDevLog'
+import { redactUrlToken, isMailDevLogEnabled } from '@infra/mail/mailDevLog'
 import { logPasswordResetLink } from '../utils/passwordResetUtils'
 import { logEmailVerificationLink } from '../utils/emailVerificationUtils'
 

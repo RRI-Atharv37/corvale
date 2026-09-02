@@ -1,7 +1,7 @@
 import PDFDocument from 'pdfkit'
 import { Response } from 'express'
 
-import { CustomError } from './customError'
+import { CustomError } from '@core/errors/customError'
 import type { CustomReportResult } from './reportUtils'
 import { customReportToCsv, flattenCustomReport } from './reportUtils'
 import {

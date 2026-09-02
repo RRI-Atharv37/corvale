@@ -1,10 +1,11 @@
 import Tag, { ITag } from '../models/Tag'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { normalizeTagName, isValidTagName, pickDefaultTagColor, renameTagOnTransactions } from '../utils/tagUtils'
-import { validateResourceAccess } from '../utils/workspaceUtils'
+import { validateResourceAccess } from '@core/access/workspace'
 import { DeleteOpOutcome, softDeleteEntityForOp } from './syncEntityHelpers'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 /**
  * Sprint 13.9: create/update/delete logic for POST /sync/push, mirroring

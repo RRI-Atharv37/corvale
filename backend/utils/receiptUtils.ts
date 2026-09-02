@@ -4,12 +4,12 @@ import path from 'path'
 import { Types } from 'mongoose'
 
 import Receipt, { IReceipt } from '../models/Receipt'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
-import { detectReceiptSignature } from './fileSignature'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { detectReceiptSignature } from '@infra/storage/fileSignature'
 import { RECEIPT_ALLOWED_MIME_TYPES, ReceiptMimeType } from './receiptMimeTypes'
-import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from './receiptStorage'
-import { validateOwnership } from './sharedUtils'
+import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from '@infra/storage/receiptStorage'
+import { validateOwnership } from '@core/access/ownership'
 
 export const RECEIPT_MAX_SIZE_BYTES = 5 * 1024 * 1024
 

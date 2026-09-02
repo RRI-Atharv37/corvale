@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express'
 
-import { AuthRequest } from './authTypes'
+import { AuthRequest } from '@core/auth/authTypes'
 
 const LEGACY_LEDGER_DEPRECATION = {
     deprecation: true,

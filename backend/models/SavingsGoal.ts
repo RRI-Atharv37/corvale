@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
-import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
+import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '@core/money/currencyUtils'
 
 export const SAVINGS_GOAL_STATUSES = ['active', 'paused', 'completed', 'archived'] as const
 export type SavingsGoalStatus = (typeof SAVINGS_GOAL_STATUSES)[number]

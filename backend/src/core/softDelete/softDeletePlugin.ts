@@ -1,6 +1,6 @@
 import { Schema, Query } from 'mongoose'
 
-import { SOFT_DELETE_BYPASS, TOMBSTONE_RETENTION_SECONDS } from '../utils/softDelete'
+import { SOFT_DELETE_BYPASS, TOMBSTONE_RETENTION_SECONDS } from './softDelete'
 
 const QUERY_OPERATIONS = [
     'find',

@@ -3,9 +3,9 @@ import { Response } from 'express'
 import { Types } from 'mongoose'
 
 import CategorizationRule, { ICategorizationRule } from '../models/CategorizationRule'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     applyCategorizationRules,
     bulkApplyCategorizationRules,
@@ -17,13 +17,10 @@ import {
     validateRuleCriteria,
 } from '../utils/categorizationRuleUtils'
 import { parseClientAmount } from '../utils/transactionUtils'
-import {
-    getUserId,
-    handleResponses,
-    isDuplicateKeyError,
-    resolveClientObjectId,
-    validateRequiredFields,
-} from '../utils/sharedUtils'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 const validateUserRule = async (ruleId: string, userId: string): Promise<ICategorizationRule> => {
     const rule = await CategorizationRule.findById(ruleId)

@@ -1,5 +1,5 @@
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

@@ -8,7 +8,7 @@ import {
     getTags,
     updateTag,
 } from '../controllers/tagController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

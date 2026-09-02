@@ -4,7 +4,7 @@ import { createApp } from '../app'
 import Account from '../models/Account'
 import Category from '../models/Category'
 import Transaction from '../models/Transaction'
-import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
+import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
 import { registerUser, authHeader, ensureTimestampAdvances, RegisteredUser } from './helpers'
 
 /**

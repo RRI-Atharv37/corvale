@@ -1,6 +1,6 @@
 import express from 'express'
 import { addSaver, withdrawSaver, getSaver } from '../controllers/saverController'
-import {protect} from '../middleware/authMiddleware'
+import {protect} from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

@@ -2,9 +2,9 @@ import asyncHandler from 'express-async-handler'
 import bcrypt from 'bcryptjs'
 import { Response } from 'express'
 import User, { IUser, LegalAcceptance } from '../models/User'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { handleResponses } from '../utils/authUtils'
 import {
     generateAccessToken,
@@ -13,7 +13,7 @@ import {
     setRefreshTokenCookie,
     clearRefreshTokenCookie,
 } from '../utils/tokenUtils'
-import { isDesktopClientRequest } from '../utils/corsOriginAllowlist'
+import { isDesktopClientRequest } from '@infra/config/corsOriginAllowlist'
 import { generateOfflineGrant } from '../utils/offlineGrantUtils'
 import {
     createRefreshToken,
@@ -33,14 +33,14 @@ import {
     logEmailVerificationLink,
     verifyEmailWithToken,
 } from '../utils/emailVerificationUtils'
-import { isSmtpConfigured, sendPasswordResetEmail, sendEmailVerificationEmail } from '../utils/mailService'
-import { parseSupportedCurrency, syncUserCurrencyData } from '../utils/currencyUtils'
-import { isValidTimezone } from '../utils/timezoneUtils'
+import { isSmtpConfigured, sendPasswordResetEmail, sendEmailVerificationEmail } from '@infra/mail/mailService'
+import { parseSupportedCurrency, syncUserCurrencyData } from '@core/money/currencyUtils'
+import { isValidTimezone } from '@core/time/timezoneUtils'
 import { parseNotificationPreferences } from '../utils/notificationUtils'
 import { parseDateFormat, parsePageSize } from '../utils/userPreferencesUtils'
-import { normalizeEmail } from '../utils/emailUtils'
+import { normalizeEmail } from '@infra/mail/emailUtils'
 import { validatePassword } from '../utils/passwordPolicy'
-import { verifyCaptcha } from '../utils/captchaService'
+import { verifyCaptcha } from '@infra/security/captchaService'
 import {
     assertAccountDeletionAllowed,
     computeAccountDeletionImpact,

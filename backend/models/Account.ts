@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
-import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
+import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '@core/money/currencyUtils'
 
 export const ACCOUNT_TYPES = ['checking', 'cash', 'credit', 'savings'] as const
 export type AccountType = (typeof ACCOUNT_TYPES)[number]

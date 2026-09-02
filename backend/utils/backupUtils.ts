@@ -39,22 +39,22 @@ import SavingsGoalContribution from '../models/SavingsGoalContribution'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     getReceiptObjectBuffer,
     isObjectStorageConfigured,
     putReceiptObject,
     receiptObjectKey,
-} from './receiptStorage'
+} from '@infra/storage/receiptStorage'
 import {
     assertValidReceiptBuffer,
     assertWithinReceiptStorageQuota,
     deleteReceiptFile,
     getReceiptFilePath,
 } from './receiptUtils'
-import { scanUploadedFile } from './virusScanService'
-import { buildScopedListFilter } from './workspaceUtils'
+import { scanUploadedFile } from '@infra/security/virusScanService'
+import { buildScopedListFilter } from '@core/access/workspace'
 
 export const BACKUP_VERSION = 1 as const
 export const BACKUP_MAX_ZIP_BYTES = 50 * 1024 * 1024

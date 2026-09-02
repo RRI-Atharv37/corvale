@@ -1,6 +1,6 @@
 import mongoose, {Document, Model, Schema, Types } from 'mongoose'
 import bcrypt from 'bcryptjs'
-import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES, SupportedCurrency } from '../utils/currencyUtils'
+import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES, SupportedCurrency } from '@core/money/currencyUtils'
 import {
     DEFAULT_DATE_FORMAT,
     DEFAULT_PAGE_SIZE,
@@ -10,7 +10,7 @@ import {
     MIN_PAGE_SIZE,
 } from '../utils/userPreferencesUtils'
 import { OnboardingStep } from '../utils/onboardingUtils'
-import { EMAIL_REGEX } from '../utils/emailUtils'
+import { EMAIL_REGEX } from '@infra/mail/emailUtils'
 
 export interface NotificationPreferences {
     billRemindersEnabled: boolean

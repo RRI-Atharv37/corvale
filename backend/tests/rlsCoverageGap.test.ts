@@ -12,7 +12,7 @@ import Budget from '../models/Budget'
 import Workspace from '../models/Workspace'
 import WorkspaceInvite from '../models/WorkspaceInvite'
 import { ensureMasterCategoriesSeeded } from '../utils/categorySeed'
-import { runWithRlsContext } from '../utils/rowLevelSecurity'
+import { runWithRlsContext } from '@core/access/rowLevelSecurity'
 import {
     computeBudgetOverview,
     computeCategoryBreakdown,

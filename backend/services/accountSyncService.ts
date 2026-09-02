@@ -1,12 +1,13 @@
 import Account, { ACCOUNT_TYPES, IAccount } from '../models/Account'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { recomputeAccountBalanceMajor, roundMoney } from '../utils/balanceUtils'
 import { toMinorUnits } from '@shared/money'
-import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
-import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
-import { assertWorkspaceMembership, parseOptionalWorkspaceId, validateResourceAccess } from '../utils/workspaceUtils'
+import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '@core/money/currencyUtils'
+import { assertWorkspaceMembership, parseOptionalWorkspaceId, validateResourceAccess } from '@core/access/workspace'
 import { archiveEntityForOp, DeleteOpOutcome } from './syncEntityHelpers'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 /**
  * Sprint 13.9: create/update/delete logic for POST /sync/push, mirroring

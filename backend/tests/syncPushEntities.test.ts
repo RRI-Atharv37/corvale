@@ -9,7 +9,7 @@ import Budget from '../models/Budget'
 import SavingsGoal from '../models/SavingsGoal'
 import RecurringRule from '../models/RecurringRule'
 import CategorizationRule from '../models/CategorizationRule'
-import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
+import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
 import { authHeader, ensureTimestampAdvances, registerUser, RegisteredUser } from './helpers'
 
 /**

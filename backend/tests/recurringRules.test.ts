@@ -5,7 +5,7 @@ import Account from '../models/Account'
 import RecurringRule from '../models/RecurringRule'
 import Transaction from '../models/Transaction'
 import { advanceNextDueDate } from '../utils/recurringRuleUtils'
-import { startOfDayInTimezone } from '../utils/timezoneUtils'
+import { startOfDayInTimezone } from '@core/time/timezoneUtils'
 import { authHeader, seedUserDirectly } from './helpers'
 
 async function getFoodMasterId(token: string): Promise<string> {

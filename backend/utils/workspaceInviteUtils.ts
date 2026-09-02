@@ -2,8 +2,8 @@ import WorkspaceInvite, { IWorkspaceInvite } from '../models/WorkspaceInvite'
 import User from '../models/User'
 import Workspace from '../models/Workspace'
 import Notification from '../models/Notification'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { createNotificationIfNew } from './notificationUtils'
 
 export interface SerializedWorkspaceInvite {

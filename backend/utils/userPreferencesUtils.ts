@@ -1,4 +1,4 @@
-import { CustomError } from './customError'
+import { CustomError } from '@core/errors/customError'
 
 export const DATE_FORMATS = ['dd/mm/yy', 'yy/mm/dd', 'mm/dd/yy'] as const
 export type DateFormat = (typeof DATE_FORMATS)[number]

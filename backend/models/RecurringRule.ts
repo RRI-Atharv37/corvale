@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
-import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '../utils/currencyUtils'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
+import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from '@core/money/currencyUtils'
 import { TRANSACTION_TYPES, TransactionType } from './Transaction'
 
 export const RECURRING_INTERVALS = [

@@ -11,7 +11,7 @@ import {
     filterHasOwnershipScope,
     pipelineHasOwnershipScope,
     runWithRlsContext,
-} from '../utils/rowLevelSecurity'
+} from '@core/access/rowLevelSecurity'
 import { authHeader, registerUser, createSecondUser } from './helpers'
 
 describe('Row-level security', () => {

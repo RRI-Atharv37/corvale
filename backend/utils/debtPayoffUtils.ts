@@ -4,7 +4,7 @@ import {
     orderDebtsBySnowball,
 } from '@shared/debtPayoff'
 import type { DebtInput, DebtPayment, PayoffMonth, PayoffPlan, PayoffStrategy } from '@shared/debtPayoff'
-import { CustomError } from './customError'
+import { CustomError } from '@core/errors/customError'
 
 export type { DebtInput, DebtPayment, PayoffMonth, PayoffPlan, PayoffStrategy }
 export { orderDebtsByAvalanche, orderDebtsBySnowball }

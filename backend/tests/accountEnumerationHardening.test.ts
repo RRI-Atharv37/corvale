@@ -4,7 +4,7 @@ import request from 'supertest'
 import { createApp } from '../app'
 import User from '../models/User'
 import { authHeader, registerUser } from './helpers'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
  * Acceptance spec for the account-enumeration hardening in Sprint S25 (SEC-32).

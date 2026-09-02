@@ -1,8 +1,8 @@
 import mongoose from 'mongoose'
 import RefreshToken from '../models/RefreshToken'
 import User from '../models/User'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { generateRefreshTokenValue, getRefreshTokenMaxAgeMs, hashToken } from './tokenUtils'
 
 export const createRefreshToken = async (userId: string, familyId?: mongoose.Types.ObjectId): Promise<string> => {

@@ -3,9 +3,9 @@ import { Response } from 'express'
 import { Types } from 'mongoose'
 
 import TransactionTemplate, { ITransactionTemplate } from '../models/TransactionTemplate'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
 import {
     parseTemplateAmount,
@@ -23,12 +23,12 @@ import {
     validateAccountForTransaction,
     validateRequiredFields,
 } from '../utils/transactionUtils'
-import { isDuplicateKeyError, resolveClientObjectId } from '../utils/sharedUtils'
 import {
     assertAccountMatchesWorkspace,
     assertWorkspaceMembership,
     parseOptionalWorkspaceId,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
 
 const validateUserTemplate = async (
     templateId: string,

@@ -6,7 +6,7 @@ import {
     markAllNotificationsRead,
     markNotificationRead,
 } from '../controllers/notificationController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

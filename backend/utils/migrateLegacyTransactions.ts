@@ -6,7 +6,7 @@ import Expense, { IExpense } from '../models/Expense'
 import Income, { IIncome } from '../models/Income'
 import Transaction, { TransactionType } from '../models/Transaction'
 import { ensureMasterCategoriesSeeded } from './categorySeed'
-import { toMinorUnits } from './moneyUtils'
+import { toMinorUnits } from '@core/money/moneyUtils'
 import { applyTransactionToAccount } from './transactionUtils'
 
 export interface MigrationOptions {

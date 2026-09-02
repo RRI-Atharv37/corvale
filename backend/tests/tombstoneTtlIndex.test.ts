@@ -9,7 +9,7 @@ import Saver from '../models/Saver'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
-import { TOMBSTONE_RETENTION_SECONDS } from '../utils/softDelete'
+import { TOMBSTONE_RETENTION_SECONDS } from '@core/softDelete/softDelete'
 
 /**
  * SEC-47: `privacy.md` promises deletion markers are purged after the retention window. Before

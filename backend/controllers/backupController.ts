@@ -1,9 +1,9 @@
 import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     createBackupZipStream,
     exportUserBackup,
@@ -12,11 +12,12 @@ import {
     previewBackupRestore,
     restoreUserBackup,
 } from '../utils/backupUtils'
-import { getUserId, handleResponses } from '../utils/sharedUtils'
 import {
     assertWorkspaceMembership,
     parseOptionalWorkspaceId,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
 
 const resolveExportScope = async (
     userId: string,

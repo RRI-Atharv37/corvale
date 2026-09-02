@@ -2,8 +2,8 @@ import multer, { FileFilterCallback } from 'multer'
 import { Request } from 'express'
 
 import { MULTIPART_TEXT_LIMITS } from './multipartLimits'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { BACKUP_MAX_ZIP_BYTES } from '../utils/backupUtils'
 
 const ALLOWED_EXTENSIONS = new Set(['.json', '.zip'])

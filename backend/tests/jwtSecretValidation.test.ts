@@ -3,7 +3,7 @@ import { createApp } from '../app'
 import {
     validateEnv,
     MIN_PRODUCTION_JWT_SECRET_LENGTH,
-} from '../utils/envValidation'
+} from '@infra/config/envValidation'
 
 /**
  * Acceptance spec for rejecting placeholder / weak `JWT_SECRET` at boot (S20, SEC-27).

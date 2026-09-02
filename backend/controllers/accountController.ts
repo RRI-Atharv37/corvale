@@ -2,27 +2,24 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import Account, { ACCOUNT_TYPES, IAccount } from '../models/Account'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { recomputeAccountBalanceMajor, roundMoney } from '../utils/balanceUtils'
 import { toMajorUnitBalances } from '../utils/accountWireFormat'
-import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '../utils/currencyUtils'
+import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '@core/money/currencyUtils'
 import { convertAmount } from '../utils/exchangeRateUtils'
 import { fromMinorUnits, toMinorUnits } from '@shared/money'
-import {
-    getUserId,
-    handleResponses,
-    isDuplicateKeyError,
-    resolveClientObjectId,
-    validateRequiredFields,
-} from '../utils/sharedUtils'
 import {
     assertWorkspaceMembership,
     buildScopedListFilter,
     parseOptionalWorkspaceId,
     validateResourceAccess,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 const unsetPreviousDefault = async (userId: string, excludeAccountId?: string): Promise<void> => {
     const filter: Record<string, unknown> = { userId, isDefault: true, isArchived: false }

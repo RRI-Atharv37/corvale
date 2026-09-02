@@ -2,7 +2,7 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 import { Document, Model, Types } from 'mongoose'
 
-import { AuthRequest } from '../middleware/authTypes'
+import { AuthRequest } from '@core/auth/authTypes'
 import Account from '../models/Account'
 import Budget from '../models/Budget'
 import Category from '../models/Category'
@@ -13,9 +13,8 @@ import Tag from '../models/Tag'
 import Transaction, { ITransaction } from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
 import SyncOperation, { SyncOpStatus } from '../models/SyncOperation'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { getUserId, handleResponses, isDuplicateKeyError, validateRequiredFields } from '../utils/sharedUtils'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     createTransactionForUser,
     createTransferForOp,
@@ -58,8 +57,12 @@ import {
 } from '../services/transactionTemplateSyncService'
 import { fromMinorUnits } from '@shared/money'
 import { serializeAccountDocForWire } from '../utils/accountWireFormat'
-import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
-import { assertWorkspaceMembership, parseOptionalWorkspaceId } from '../utils/workspaceUtils'
+import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
+import { assertWorkspaceMembership, parseOptionalWorkspaceId } from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { isDuplicateKeyError } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 const MAX_PUSH_OPS = 500
 

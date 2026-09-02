@@ -1,8 +1,8 @@
 import express from 'express'
 
 import { getSyncBootstrap, getSyncPull, pushSyncOps } from '../controllers/syncController'
-import { protect } from '../middleware/authMiddleware'
-import { createSyncPushRateLimiter } from '../middleware/rateLimitMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
+import { createSyncPushRateLimiter } from '@http/middleware/rateLimitMiddleware'
 
 export const createSyncRoutes = (): express.Router => {
     const router = express.Router()

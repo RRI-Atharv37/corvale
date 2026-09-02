@@ -15,13 +15,13 @@ import {
     type DashboardGroupBy,
 } from './dashboardUtils'
 import { buildCsvString } from './transactionUtils'
-import { CustomError } from './customError'
-import { fromMinorUnits } from './moneyUtils'
+import { CustomError } from '@core/errors/customError'
+import { fromMinorUnits } from '@core/money/moneyUtils'
 import {
     DEFAULT_TIMEZONE,
     resolveDateRange,
-} from './timezoneUtils'
-import { buildScopedListFilter } from './workspaceUtils'
+} from '@core/time/timezoneUtils'
+import { buildScopedListFilter } from '@core/access/workspace'
 
 export const REPORT_PERIOD_TYPES = ['monthly', 'yearly', 'custom'] as const
 export type ReportPeriodType = (typeof REPORT_PERIOD_TYPES)[number]

@@ -3,9 +3,9 @@ import request from 'supertest'
 import { Types } from 'mongoose'
 
 import app from '../app'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { assertAccountMatchesWorkspace } from '../utils/workspaceUtils'
-import { CustomError } from '../utils/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { assertAccountMatchesWorkspace } from '@core/access/workspace'
+import { CustomError } from '@core/errors/customError'
 import { authHeader, seedUserDirectly } from './helpers'
 
 const MISMATCH = ERROR_MESSAGES.WORKSPACE.ACCOUNT_WORKSPACE_MISMATCH

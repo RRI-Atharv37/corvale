@@ -2,13 +2,14 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import Account, { IAccount } from '../models/Account'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
 import { DebtInput, generatePayoffSchedule, PayoffStrategy } from '../utils/debtPayoffUtils'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { toMinorUnits } from '../utils/moneyUtils'
-import { getUserId, handleResponses } from '../utils/sharedUtils'
-import { assertWorkspaceMembership, buildScopedListFilter, parseOptionalWorkspaceId, validateResourceAccess } from '../utils/workspaceUtils'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { toMinorUnits } from '@core/money/moneyUtils'
+import { assertWorkspaceMembership, buildScopedListFilter, parseOptionalWorkspaceId, validateResourceAccess } from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
 
 const parseStrategy = (value: unknown): PayoffStrategy => {
     if (value !== 'snowball' && value !== 'avalanche') {

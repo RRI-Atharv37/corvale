@@ -1,6 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
 
 export const CONTRIBUTION_TYPES = ['manual', 'automatic'] as const
 export type ContributionType = (typeof CONTRIBUTION_TYPES)[number]

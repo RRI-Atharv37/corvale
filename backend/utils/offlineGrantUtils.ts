@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
  * Server-signed offline session grant (S16, SEC-18). Replaces the old plain

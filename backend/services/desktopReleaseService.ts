@@ -1,5 +1,5 @@
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
  * V16 - server-side proxy for the desktop `/download` page's release data.

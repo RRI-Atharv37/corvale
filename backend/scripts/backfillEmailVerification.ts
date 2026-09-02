@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-import connectDB from '../config/db'
+import connectDB from '@infra/db/db'
 import { backfillEmailVerification } from '../utils/backfillEmailVerification'
 
 const main = async (): Promise<void> => {

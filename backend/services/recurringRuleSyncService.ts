@@ -1,9 +1,9 @@
 import { Types } from 'mongoose'
 
 import RecurringRule, { IRecurringRule } from '../models/RecurringRule'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { parseSupportedCurrency } from '../utils/currencyUtils'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { parseSupportedCurrency } from '@core/money/currencyUtils'
 import {
     parseCustomIntervalDays,
     parseInterval,
@@ -12,10 +12,11 @@ import {
     parseTransactionType,
     validateRuleReferences,
 } from '../utils/recurringRuleUtils'
-import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
-import { assertWorkspaceMembership, parseOptionalWorkspaceId, validateResourceAccess } from '../utils/workspaceUtils'
+import { assertWorkspaceMembership, parseOptionalWorkspaceId, validateResourceAccess } from '@core/access/workspace'
 import { archiveEntityForOp, DeleteOpOutcome, getUserTimezoneForOp } from './syncEntityHelpers'
 import { fromMinorUnits } from '@shared/money'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 /**
  * `parseRecurringAmount` expects a REST body's major-unit decimal and

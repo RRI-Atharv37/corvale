@@ -12,8 +12,8 @@ import {
     getReceiptFilePath,
     getUserReceiptStorageUsageBytes,
 } from '../utils/receiptUtils'
-import { setVirusScanHandlerForTests } from '../utils/virusScanService'
-import { setReceiptObjectStorage } from '../utils/receiptStorage'
+import { setVirusScanHandlerForTests } from '@infra/security/virusScanService'
+import { setReceiptObjectStorage } from '@infra/storage/receiptStorage'
 
 /**
  * Acceptance spec for S21 / SEC-28 — backup restore must not be a side door around the

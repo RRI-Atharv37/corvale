@@ -8,7 +8,7 @@ import Saver from '../models/Saver'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
-import { SOFT_DELETE_BYPASS, TOMBSTONE_RETENTION_DAYS } from './softDelete'
+import { SOFT_DELETE_BYPASS, TOMBSTONE_RETENTION_DAYS } from '@core/softDelete/softDelete'
 
 export { TOMBSTONE_RETENTION_DAYS }
 

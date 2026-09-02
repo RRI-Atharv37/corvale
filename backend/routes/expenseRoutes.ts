@@ -13,7 +13,7 @@ import {
     generateExpenseReport,
     duplicateExpense,
 } from '../controllers/expenseController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 import {
     attachLegacyLedgerDeprecation,
     deprecateLegacyLedgerRoutes,

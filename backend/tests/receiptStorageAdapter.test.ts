@@ -6,7 +6,7 @@ import app from '../app'
 import Receipt from '../models/Receipt'
 import { authHeader, registerUser } from './helpers'
 import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
-import { isObjectStorageConfigured, setReceiptObjectStorage } from '../utils/receiptStorage'
+import { isObjectStorageConfigured, setReceiptObjectStorage } from '@infra/storage/receiptStorage'
 
 /**
  * Acceptance spec for receipts on object storage (L3, SEC-23).

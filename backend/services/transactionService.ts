@@ -1,8 +1,8 @@
 import { Types } from 'mongoose'
 
 import { ITransaction, TransactionStatus } from '../models/Transaction'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { evaluateBudgetOverLimitNotifications } from '../utils/notificationUtils'
 import { applyCategorizationRules, mergeTags } from '../utils/categorizationRuleUtils'
 import {
@@ -22,13 +22,13 @@ import {
     validateRequiredFields,
     validateSplitInputs,
 } from '../utils/transactionUtils'
-import { isDuplicateKeyError, resolveClientObjectId } from '../utils/sharedUtils'
 import {
     assertAccountMatchesWorkspace,
     assertWorkspaceMembership,
     parseOptionalWorkspaceId,
     validateResourceAccess,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 

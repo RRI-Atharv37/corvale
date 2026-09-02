@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app'
 import { authHeader, registerUser } from './helpers'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
  * Acceptance spec for global rate limiting (S4, SEC-26).

@@ -1,9 +1,9 @@
 import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
-import { AuthRequest } from '../middleware/authTypes'
+import { AuthRequest } from '@core/auth/authTypes'
 import { parseDashboardGroupBy } from '../utils/dashboardUtils'
-import { DEFAULT_TIMEZONE } from '../utils/timezoneUtils'
+import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 import {
     computeBudgetAnalysis,
     computeCrossoverPoint,
@@ -23,11 +23,12 @@ import {
     resolveReportPeriod,
 } from '../utils/reportUtils'
 import { parseExportFormat, sendCustomReportExport, type ExportFormat } from '../utils/exportUtils'
-import { getUserId, handleResponses } from '../utils/sharedUtils'
 import {
     assertWorkspaceMembership,
     parseOptionalWorkspaceId,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE

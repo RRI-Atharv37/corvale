@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { MongoRateLimitStore } from '../utils/mongoRateLimitStore'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { MongoRateLimitStore } from '@infra/rateLimit/mongoRateLimitStore'
 
 /**
  * `prefix` identifies this limiter's own budget in the shared Mongo store (SEC-26/S18) — each

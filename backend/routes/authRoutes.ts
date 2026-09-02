@@ -1,6 +1,6 @@
 import express from 'express'
-import { protect, authenticateOnly, optionalAuthenticate } from '../middleware/authMiddleware'
-import { createAuthRateLimiter } from '../middleware/rateLimitMiddleware'
+import { protect, authenticateOnly, optionalAuthenticate } from '@http/middleware/authMiddleware'
+import { createAuthRateLimiter } from '@http/middleware/rateLimitMiddleware'
 import {
     registerUser,
     loginUser,

@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
-import { applySoftDelete } from '../utils/applySoftDelete'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
+import { applySoftDelete } from '@core/softDelete/applySoftDelete'
 
 export const NOTIFICATION_TYPES = [
     'budget_over_limit',

@@ -4,7 +4,7 @@ import User from '../models/User'
 import RefreshToken from '../models/RefreshToken'
 import { createApp } from '../app'
 import { registerUser } from './helpers'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { hashToken } from '../utils/tokenUtils'
 
 /**

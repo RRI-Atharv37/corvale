@@ -27,7 +27,7 @@ import {
     computeRequiredMonthlyContribution,
     computeSavingsGoalProgress,
 } from '../utils/savingsGoalUtils'
-import { endOfDayInTimezone, startOfDayInTimezone } from '../utils/timezoneUtils'
+import { endOfDayInTimezone, startOfDayInTimezone } from '@core/time/timezoneUtils'
 import { convertAmount } from '../utils/exchangeRateUtils'
 import { ruleMatchesTransaction } from '../utils/categorizationRuleUtils'
 import { advanceNextDueDate } from '../utils/recurringRuleUtils'

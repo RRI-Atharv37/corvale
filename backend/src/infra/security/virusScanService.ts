@@ -1,8 +1,8 @@
 import fs from 'fs'
 import net from 'net'
 
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 const CLAMAV_HOST = process.env.CLAMAV_HOST ?? '127.0.0.1'
 const CLAMAV_PORT = Number(process.env.CLAMAV_PORT ?? 3310)

@@ -2,17 +2,17 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import express from 'express'
 import request from 'supertest'
 
-import { logger, setLoggerWriter } from '../utils/logger'
+import { logger, setLoggerWriter } from '@infra/observability/logger'
 import {
     setErrorTrackingClient,
     isErrorTrackingConfigured,
     captureException,
     scrubErrorEvent,
-} from '../utils/errorTracking'
+} from '@infra/observability/errorTracking'
 import type { ErrorEvent } from '@sentry/node'
-import { requestLogger } from '../middleware/requestLoggerMiddleware'
-import { errorHandler } from '../middleware/errorMiddleware'
-import { CustomError } from '../utils/customError'
+import { requestLogger } from '@http/middleware/requestLoggerMiddleware'
+import { errorHandler } from '@http/middleware/errorMiddleware'
+import { CustomError } from '@core/errors/customError'
 
 /**
  * Acceptance spec for L4 — error tracking + structured logging + uptime monitoring.

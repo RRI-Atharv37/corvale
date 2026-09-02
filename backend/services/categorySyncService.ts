@@ -1,9 +1,10 @@
 import Category, { ICategory } from '../models/Category'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { ensureMasterCategoriesSeeded, isMasterCategory } from '../utils/categorySeed'
-import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
 import { DeleteOpOutcome } from './syncEntityHelpers'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 /**
  * Sprint 13.9: create/update/delete logic for POST /sync/push, mirroring

@@ -2,11 +2,13 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import User from '../models/User'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { normalizePairKey, parsePositiveRate } from '../utils/exchangeRateUtils'
-import { getUserId, handleResponses, validateRequiredFields } from '../utils/sharedUtils'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { validateRequiredFields } from '@core/http/validation'
 
 export const getExchangeRates = asyncHandler(async (req: AuthRequest, res: Response) => {
     handleResponses(res, 200, req.user?.exchangeRates ?? {})

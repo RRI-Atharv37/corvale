@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import Transaction from '../models/Transaction'
 import Tag from '../models/Tag'
 import { purgeExpiredTombstones } from '../utils/purgeTombstones'
-import { TOMBSTONE_RETENTION_DAYS } from '../utils/softDelete'
+import { TOMBSTONE_RETENTION_DAYS } from '@core/softDelete/softDelete'
 
 /**
  * SEC-54: `purge:tombstones` is a destructive, RLS-bypassing script with no `:dry-run` counterpart

@@ -2,7 +2,7 @@ import asyncHandler from 'express-async-handler'
 import { Request, Response } from 'express'
 
 import { getLatestDesktopRelease } from '../services/desktopReleaseService'
-import { handleResponses } from '../utils/sharedUtils'
+import { handleResponses } from '@core/http/response'
 
 /**
  * V16 - public: powers the `/download` page. Returns the newest desktop release's installer list

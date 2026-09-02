@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app'
 import { registerUser } from './helpers'
-import { setMailTransport, sendPasswordResetEmail } from '../utils/mailService'
+import { setMailTransport, sendPasswordResetEmail } from '@infra/mail/mailService'
 
 /**
  * Acceptance spec for production SMTP password-reset delivery (S7).

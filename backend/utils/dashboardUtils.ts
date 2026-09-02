@@ -10,10 +10,10 @@ import {
     resolveMonthlyPeriod,
     SerializedBudget,
 } from './budgetUtils'
-import { CustomError } from './customError'
-import { fromMinorUnits } from './moneyUtils'
-import { DEFAULT_TIMEZONE, resolveDateRange } from './timezoneUtils'
-import { buildScopedListFilter } from './workspaceUtils'
+import { CustomError } from '@core/errors/customError'
+import { fromMinorUnits } from '@core/money/moneyUtils'
+import { DEFAULT_TIMEZONE, resolveDateRange } from '@core/time/timezoneUtils'
+import { buildScopedListFilter } from '@core/access/workspace'
 
 export const DASHBOARD_GROUP_BY_VALUES = ['day', 'week', 'month'] as const
 export type DashboardGroupBy = (typeof DASHBOARD_GROUP_BY_VALUES)[number]

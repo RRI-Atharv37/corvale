@@ -2,7 +2,7 @@ import express from 'express'
 import {addIncome, getIncome, deleteIncome, downloadIncome, updateIncome, getIncomeById, filterIncomeByDate,
     //  getTotalIncome,
       searchIncome, duplicateIncome, groupIncomeByCategory} from '../controllers/incomeController'
-import {protect} from '../middleware/authMiddleware'
+import {protect} from '@http/middleware/authMiddleware'
 import {
     attachLegacyLedgerDeprecation,
     deprecateLegacyLedgerRoutes,

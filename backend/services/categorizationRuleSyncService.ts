@@ -1,8 +1,8 @@
 import { Types } from 'mongoose'
 
 import CategorizationRule, { ICategorizationRule } from '../models/CategorizationRule'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     parseMatchType,
     parseOptionalAmountBound,
@@ -10,10 +10,11 @@ import {
     parseRuleTags,
     validateRuleCriteria,
 } from '../utils/categorizationRuleUtils'
-import { isDuplicateKeyError, resolveClientObjectId, validateRequiredFields } from '../utils/sharedUtils'
-import { validateResourceAccess } from '../utils/workspaceUtils'
+import { validateResourceAccess } from '@core/access/workspace'
 import { DeleteOpOutcome, softDeleteEntityForOp } from './syncEntityHelpers'
 import { fromMinorUnits } from '@shared/money'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 /**
  * `parseOptionalAmountBound` expects a REST body's major-unit decimal and

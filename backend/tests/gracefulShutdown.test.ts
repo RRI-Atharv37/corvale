@@ -7,7 +7,7 @@ import {
     DEFAULT_DRAIN_TIMEOUT_MS,
     drainAndExit,
     registerGracefulShutdown,
-} from '../utils/gracefulShutdown'
+} from '@infra/config/gracefulShutdown'
 
 /**
  * Acceptance spec for graceful shutdown (L8, SEC-25's shutdown half).

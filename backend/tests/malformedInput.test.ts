@@ -2,10 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import request from 'supertest'
 import { createApp } from '../app'
-import { errorHandler } from '../middleware/errorMiddleware'
-import * as errorTracking from '../utils/errorTracking'
+import { errorHandler } from '@http/middleware/errorMiddleware'
+import * as errorTracking from '@infra/observability/errorTracking'
 import { authHeader, registerUser } from './helpers'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
  * S35d — malformed client input must be a 4xx, never a 500 (no stack, no false Sentry incident).

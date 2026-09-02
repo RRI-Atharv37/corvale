@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, beforeAll } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app'
 import User from '../models/User'
-import { setCaptchaVerifier } from '../utils/captchaService'
+import { setCaptchaVerifier } from '@infra/security/captchaService'
 
 /**
  * Acceptance spec for signup abuse controls (L9 second half).

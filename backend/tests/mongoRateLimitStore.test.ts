@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { MongoRateLimitStore } from '../utils/mongoRateLimitStore'
-import RateLimitCounter from '../models/RateLimitCounter'
+import { MongoRateLimitStore } from '@infra/rateLimit/mongoRateLimitStore'
+import RateLimitCounter from '@infra/rateLimit/rateLimitCounter.model'
 
 /**
  * Acceptance spec for the shared-store rate limiter (S18, SEC-26).

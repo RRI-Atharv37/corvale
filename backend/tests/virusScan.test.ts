@@ -9,8 +9,8 @@ import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
 import {
     isVirusScanEnabled,
     setVirusScanHandlerForTests,
-} from '../utils/virusScanService'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+} from '@infra/security/virusScanService'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 const FIXTURE_PNG = path.join(__dirname, 'fixtures', 'sample-receipt.png')
 

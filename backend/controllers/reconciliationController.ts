@@ -1,9 +1,9 @@
 import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import Transaction, { CLEARED_STATUSES } from '../models/Transaction'
 import ReconciliationSession from '../models/ReconciliationSession'
 import Account from '../models/Account'
@@ -11,14 +11,12 @@ import { roundMoney } from '../utils/balanceUtils'
 import { getBalanceDeltaMajor } from '../utils/transactionUtils'
 import { fromMinorUnits } from '@shared/money'
 import {
-    getUserId,
-    validateRequiredFields,
-} from '../utils/sharedUtils'
-import {
     assertWorkspaceMembership,
     buildScopedListFilter,
     validateResourceAccess,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { validateRequiredFields } from '@core/http/validation'
 
 export const updateClearedStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)

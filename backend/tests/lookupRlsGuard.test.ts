@@ -3,7 +3,7 @@ import { Types } from 'mongoose'
 
 import app from '../app'
 import Transaction from '../models/Transaction'
-import { RLS_BYPASS, RLS_ALLOW_LOOKUP, runWithRlsContext } from '../utils/rowLevelSecurity'
+import { RLS_BYPASS, RLS_ALLOW_LOOKUP, runWithRlsContext } from '@core/access/rowLevelSecurity'
 import { registerUser } from './helpers'
 
 const UNSCOPED = /missing user or workspace scope/i

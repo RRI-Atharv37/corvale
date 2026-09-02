@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-import connectDB from '../config/db'
+import connectDB from '@infra/db/db'
 import { migrateLegacyLedgerToTransactions } from '../utils/migrateLegacyTransactions'
 
 const main = async (): Promise<void> => {

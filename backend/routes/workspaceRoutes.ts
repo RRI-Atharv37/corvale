@@ -13,8 +13,8 @@ import {
     updateWorkspace,
     updateWorkspaceMemberRole,
 } from '../controllers/workspaceController'
-import { protect } from '../middleware/authMiddleware'
-import { createWorkspaceInviteRateLimiter } from '../middleware/rateLimitMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
+import { createWorkspaceInviteRateLimiter } from '@http/middleware/rateLimitMiddleware'
 
 export const createWorkspaceRoutes = (): express.Router => {
     const router = express.Router()

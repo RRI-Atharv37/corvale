@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
-import { errorHandler } from '../middleware/errorMiddleware'
-import { CustomError } from '../utils/customError'
+import { errorHandler } from '@http/middleware/errorMiddleware'
+import { CustomError } from '@core/errors/customError'
 
 const createErrorTestApp = (): express.Application => {
     const app = express()

@@ -8,7 +8,7 @@ import app from '../app'
 import Transaction from '../models/Transaction'
 import { authHeader, registerUser } from './helpers'
 import { RECEIPT_UPLOAD_ROOT, getReceiptFilePath } from '../utils/receiptUtils'
-import { setReceiptObjectStorage, type ReceiptObjectStorage } from '../utils/receiptStorage'
+import { setReceiptObjectStorage, type ReceiptObjectStorage } from '@infra/storage/receiptStorage'
 import { createBackupZipStream, exportUserBackup } from '../utils/backupUtils'
 
 /**

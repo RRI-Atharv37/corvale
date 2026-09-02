@@ -1,8 +1,8 @@
 import crypto from 'crypto'
 import jwt, { SignOptions } from 'jsonwebtoken'
 import { Response } from 'express'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 export interface AccessTokenPayload {
     id: string

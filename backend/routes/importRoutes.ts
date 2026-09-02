@@ -5,9 +5,9 @@ import {
     parseImportFile,
     previewImport,
 } from '../controllers/importController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 import { csvUpload, handleCsvUploadError } from '../middleware/csvUploadMiddleware'
-import { sanitizeBody } from '../middleware/sanitizeBodyMiddleware'
+import { sanitizeBody } from '@http/middleware/sanitizeBodyMiddleware'
 
 const router = express.Router()
 

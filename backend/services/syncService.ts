@@ -10,10 +10,10 @@ import SavingsGoalContribution from '../models/SavingsGoalContribution'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
 import TransactionTemplate from '../models/TransactionTemplate'
-import { CustomError } from '../utils/customError'
+import { CustomError } from '@core/errors/customError'
 import { serializeAccountDocForWire } from '../utils/accountWireFormat'
-import { SOFT_DELETE_BYPASS } from '../utils/softDelete'
-import { buildScopedListFilter } from '../utils/workspaceUtils'
+import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
+import { buildScopedListFilter } from '@core/access/workspace'
 
 /**
  * Sprint 13.3 sync surface: bootstrap (full snapshot) + pull (checkpoint

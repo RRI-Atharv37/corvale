@@ -1,9 +1,9 @@
 import express from 'express'
 
 import { deleteReceipt, getReceiptFile, uploadReceipt } from '../controllers/receiptController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 import { handleReceiptUploadError, receiptUpload } from '../middleware/receiptUploadMiddleware'
-import { sanitizeBody } from '../middleware/sanitizeBodyMiddleware'
+import { sanitizeBody } from '@http/middleware/sanitizeBodyMiddleware'
 
 const router = express.Router()
 

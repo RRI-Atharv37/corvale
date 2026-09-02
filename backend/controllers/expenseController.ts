@@ -2,8 +2,8 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import Expense from '../models/Expense'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { buildCsvString } from '../utils/transactionUtils'
 import {
     aggregateExpenses,
@@ -13,7 +13,7 @@ import {
     validateOwnership,
     validateRequiredFields,
 } from '../utils/expenseUtils'
-import { AuthRequest } from '../middleware/authTypes'
+import { AuthRequest } from '@core/auth/authTypes'
 
 export const addExpense = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)

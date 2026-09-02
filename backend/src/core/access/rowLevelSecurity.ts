@@ -1,8 +1,8 @@
 import { AsyncLocalStorage } from 'async_hooks'
 import { Types } from 'mongoose'
 
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import { CustomError } from '../errors/customError'
+import { ERROR_MESSAGES } from '../errors/errorMessages'
 
 export interface RlsContext {
     userId: string

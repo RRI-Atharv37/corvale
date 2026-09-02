@@ -4,8 +4,8 @@ import { Types } from 'mongoose'
 import app from '../app'
 import Tag from '../models/Tag'
 import Transaction from '../models/Transaction'
-import { QUERY_OPERATIONS } from '../plugins/rowLevelSecurityPlugin'
-import { runWithRlsContext } from '../utils/rowLevelSecurity'
+import { QUERY_OPERATIONS } from '@core/access/rowLevelSecurityPlugin'
+import { runWithRlsContext } from '@core/access/rowLevelSecurity'
 import { registerUser } from './helpers'
 
 const UNSCOPED = /missing user or workspace scope/i

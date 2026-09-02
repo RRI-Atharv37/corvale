@@ -1,4 +1,4 @@
-import { getRefreshCookieSameSite } from './tokenUtils'
+import { getRefreshCookieSameSite } from '../../../utils/tokenUtils'
 
 const REQUIRED_ENV_VARS = [
     'MONGO_URI',

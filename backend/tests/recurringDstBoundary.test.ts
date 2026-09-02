@@ -5,7 +5,7 @@ import RecurringRule from '../models/RecurringRule'
 import Transaction from '../models/Transaction'
 import { advanceNextDueDate, generateDraftsForRule } from '../utils/recurringRuleUtils'
 import { resolveMonthlyPeriod } from '../utils/budgetUtils'
-import { startOfDayInTimezone, endOfDayInTimezone } from '../utils/timezoneUtils'
+import { startOfDayInTimezone, endOfDayInTimezone } from '@core/time/timezoneUtils'
 import { authHeader, seedUserDirectly } from './helpers'
 
 // BUG-06 (Gate G3, Sprint C6): advanceNextDueDate hardcodes the timezone to 'UTC' when advancing

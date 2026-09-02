@@ -6,15 +6,14 @@ import User, { IUser } from '../models/User'
 import Account, { ACCOUNT_TYPES } from '../models/Account'
 import Budget from '../models/Budget'
 import SavingsGoal from '../models/SavingsGoal'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { roundMoney } from '../utils/balanceUtils'
-import { DEFAULT_CURRENCY, parseOptionalSupportedCurrency } from '../utils/currencyUtils'
-import { parseAmountToMinorUnits } from '../utils/moneyUtils'
+import { DEFAULT_CURRENCY, parseOptionalSupportedCurrency } from '@core/money/currencyUtils'
+import { parseAmountToMinorUnits } from '@core/money/moneyUtils'
 import { resolveMonthlyPeriod } from '../utils/budgetUtils'
-import { DEFAULT_TIMEZONE } from '../utils/timezoneUtils'
-import { getUserId, handleResponses, validateRequiredFields } from '../utils/sharedUtils'
+import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 import {
     ONBOARDING_STEPS,
     OnboardingStep,
@@ -22,6 +21,9 @@ import {
     isOnboardingStep,
     nextOnboardingStep,
 } from '../utils/onboardingUtils'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { validateRequiredFields } from '@core/http/validation'
 
 const loadUser = async (userId: string): Promise<IUser> => {
     const user = await User.findById(userId)

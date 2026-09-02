@@ -1,8 +1,8 @@
 import { Model, Types } from 'mongoose'
 
-import Workspace, { IWorkspace, WORKSPACE_ROLES, WorkspaceRole } from '../models/Workspace'
-import { CustomError } from './customError'
-import { ERROR_MESSAGES } from './errorMessages'
+import Workspace, { IWorkspace, WORKSPACE_ROLES, WorkspaceRole } from '../../../models/Workspace'
+import { CustomError } from '../errors/customError'
+import { ERROR_MESSAGES } from '../errors/errorMessages'
 
 const ROLE_RANK: Record<WorkspaceRole, number> = {
     viewer: 1,

@@ -1,7 +1,7 @@
 import mongoose, {Document, Types, Schema, Model } from "mongoose"
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
-import { applySoftDelete } from '../utils/applySoftDelete'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
+import { applySoftDelete } from '@core/softDelete/applySoftDelete'
 
 export interface ISaver extends Document {
     _id: Types.ObjectId

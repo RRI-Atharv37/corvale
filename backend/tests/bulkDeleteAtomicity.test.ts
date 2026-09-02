@@ -4,7 +4,7 @@ import app from '../app'
 import Account from '../models/Account'
 import Transaction from '../models/Transaction'
 import { authHeader, seedUserDirectly } from './helpers'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
  * Acceptance spec for bulk-delete atomicity (C3, BUG-03, SEC-14 folded in as S6).

@@ -3,15 +3,13 @@ import { Response } from 'express'
 import { Types } from 'mongoose'
 
 import Category, { ICategory } from '../models/Category'
-import { AuthRequest } from '../middleware/authTypes'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { AuthRequest } from '@core/auth/authTypes'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { ensureMasterCategoriesSeeded, isMasterCategory } from '../utils/categorySeed'
-import {
-    getUserId,
-    handleResponses,
-    validateRequiredFields,
-} from '../utils/sharedUtils'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { validateRequiredFields } from '@core/http/validation'
 
 const unsetPreviousDefault = async (userId: string, excludeCategoryId?: string): Promise<void> => {
     const filter: Record<string, unknown> = {

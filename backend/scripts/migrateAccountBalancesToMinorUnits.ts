@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-import connectDB from '../config/db'
+import connectDB from '@infra/db/db'
 import { migrateAccountBalancesToMinorUnits } from '../utils/migrateAccountBalancesToMinorUnits'
 
 const main = async (): Promise<void> => {

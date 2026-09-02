@@ -7,7 +7,7 @@ import {
     skipOnboarding,
     startOnboarding,
 } from '../controllers/onboardingController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

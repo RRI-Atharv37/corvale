@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { logger } from '../utils/logger'
-import { captureException } from '../utils/errorTracking'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { logger } from '@infra/observability/logger'
+import { captureException } from '@infra/observability/errorTracking'
 
 export const errorHandler = (
     err: Error,

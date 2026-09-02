@@ -1,6 +1,6 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
 
 export const SYNC_OP_STATUSES = ['applied', 'noop', 'conflict', 'rejected', 'id_conflict', 'pending'] as const
 export type SyncOpStatus = (typeof SYNC_OP_STATUSES)[number]

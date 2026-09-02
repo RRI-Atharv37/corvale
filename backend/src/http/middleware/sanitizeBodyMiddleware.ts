@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
-import { CustomError } from '../utils/customError'
-import { ERROR_MESSAGES } from '../utils/errorMessages'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 const hasOperatorKey = (value: unknown): boolean => {
     if (Array.isArray(value)) {

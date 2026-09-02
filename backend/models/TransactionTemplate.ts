@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
-import { applySoftDelete } from '../utils/applySoftDelete'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
+import { applySoftDelete } from '@core/softDelete/applySoftDelete'
 import { TRANSACTION_TYPES, TransactionType } from './Transaction'
 
 const TEMPLATE_TYPES = TRANSACTION_TYPES.filter((type) => type !== 'transfer') as Exclude<

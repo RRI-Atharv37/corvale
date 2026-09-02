@@ -1,6 +1,6 @@
 import mongoose, {Document, Types, Schema, Model } from "mongoose"
 
-import { applyRowLevelSecurity } from '../utils/applyRowLevelSecurity'
+import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
 
 export interface IPushover extends Document {
     _id: Types.ObjectId

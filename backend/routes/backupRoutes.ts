@@ -1,9 +1,9 @@
 import express from 'express'
 
 import { commitRestore, exportBackup, previewRestore } from '../controllers/backupController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 import { backupUpload, handleBackupUploadError } from '../middleware/backupUploadMiddleware'
-import { sanitizeBody } from '../middleware/sanitizeBodyMiddleware'
+import { sanitizeBody } from '@http/middleware/sanitizeBodyMiddleware'
 
 const router = express.Router()
 

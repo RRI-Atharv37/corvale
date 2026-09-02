@@ -1,8 +1,8 @@
 import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
-import { AuthRequest } from '../middleware/authTypes'
-import { DEFAULT_TIMEZONE } from '../utils/timezoneUtils'
+import { AuthRequest } from '@core/auth/authTypes'
+import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 import {
     computeCashFlowSeries,
     computeCategoryBreakdown,
@@ -12,11 +12,12 @@ import {
     resolveDashboardQuery,
 } from '../utils/dashboardUtils'
 import { computeUserBalances } from '../utils/balanceUtils'
-import { getUserId, handleResponses } from '../utils/sharedUtils'
 import {
     assertWorkspaceMembership,
     parseOptionalWorkspaceId,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE

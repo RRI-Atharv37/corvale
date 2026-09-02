@@ -2,9 +2,9 @@ import asyncHandler from 'express-async-handler'
 import { Response } from 'express'
 
 import SavedReport, { ISavedReportConfig } from '../models/SavedReport'
-import { AuthRequest } from '../middleware/authTypes'
+import { AuthRequest } from '@core/auth/authTypes'
 import { parseDashboardGroupBy } from '../utils/dashboardUtils'
-import { CustomError } from '../utils/customError'
+import { CustomError } from '@core/errors/customError'
 import {
     executeCustomReportQuery,
     parseCustomReportChartType,
@@ -13,20 +13,17 @@ import {
     parseReportPeriodType,
     resolveReportPeriod,
 } from '../utils/reportUtils'
-import { DEFAULT_TIMEZONE } from '../utils/timezoneUtils'
-import {
-    getUserId,
-    handleResponses,
-    isDuplicateKeyError,
-    resolveClientObjectId,
-    validateRequiredFields,
-} from '../utils/sharedUtils'
+import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 import {
     assertWorkspaceMembership,
     buildScopedListFilter,
     parseOptionalWorkspaceId,
     validateResourceAccess,
-} from '../utils/workspaceUtils'
+} from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
+import { handleResponses } from '@core/http/response'
+import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
+import { validateRequiredFields } from '@core/http/validation'
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE

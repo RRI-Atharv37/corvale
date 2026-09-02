@@ -14,7 +14,7 @@ import {
     resumeSavingsGoal,
     updateSavingsGoal,
 } from '../controllers/savingsGoalController'
-import { protect } from '../middleware/authMiddleware'
+import { protect } from '@http/middleware/authMiddleware'
 
 const router = express.Router()
 

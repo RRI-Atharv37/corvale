@@ -1,10 +1,10 @@
 import { Types } from 'mongoose'
-import Account from '../models/Account'
-import Budget from '../models/Budget'
-import RecurringRule from '../models/RecurringRule'
-import SavingsGoal from '../models/SavingsGoal'
-import Transaction from '../models/Transaction'
-import { CustomError } from './customError'
+import Account from '../../../models/Account'
+import Budget from '../../../models/Budget'
+import RecurringRule from '../../../models/RecurringRule'
+import SavingsGoal from '../../../models/SavingsGoal'
+import Transaction from '../../../models/Transaction'
+import { CustomError } from '../errors/customError'
 
 export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'KRW', 'INR'] as const
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number]
