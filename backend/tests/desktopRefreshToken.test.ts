@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import User from '../models/User'
-import RefreshToken from '../models/RefreshToken'
-import { createApp } from '../app'
+import { User } from '@modules/users'
+import { RefreshToken } from '@modules/auth'
+import { createApp } from '@http/app'
 import { registerUser } from './helpers'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
-import { hashToken } from '../utils/tokenUtils'
+import { hashToken } from "@modules/auth/tokenUtils";
 
 /**
  * BUG-24 / SEC-11: the packaged desktop (Tauri) app is cross-site to `api.corvale.app`, so the

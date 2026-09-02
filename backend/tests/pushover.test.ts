@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Saver from '../models/Saver'
-import Pushover from '../models/Pushover'
+import app from '@http/app'
+import { Saver } from '@modules/savers'
+import { Pushover } from '@modules/savers'
 import { authHeader, createPostedTransaction, registerUser } from './helpers'
 
 describe('Pushover', () => {

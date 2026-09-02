@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Transaction from '../models/Transaction'
-import Saver from '../models/Saver'
-import Notification from '../models/Notification'
+import app from '@http/app'
+import { Transaction } from '@modules/transactions'
+import { Saver } from '@modules/savers'
+import { Notification } from '@modules/notifications'
 // softDeletePlugin/SOFT_DELETE_BYPASS mirror plugins/rowLevelSecurityPlugin.ts +
 // utils/rowLevelSecurity.ts's RLS_BYPASS query-option pattern, but applied
 // unconditionally (not gated on an RLS-style AsyncLocalStorage context) since

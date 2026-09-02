@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import { mapCsvRows } from '../utils/csvImportUtils'
+import app from '@http/app'
 import { authHeader, seedUserDirectly } from './helpers'
+import { mapCsvRows } from "@modules/import/csvImportUtils";
 
 /**
  * BUG-20 — amount parsing stripped only `$` and commas, so a non-`$` currency symbol failed the

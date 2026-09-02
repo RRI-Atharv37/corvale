@@ -2,10 +2,10 @@ import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
 
-import app from '../app'
-import Account from '../models/Account'
-import Budget from '../models/Budget'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
+import { Budget } from '@modules/budgets'
+import { Transaction } from '@modules/transactions'
 import { authHeader, registerUser, seedUserDirectly } from './helpers'
 
 /**

@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
 import mongoose from 'mongoose'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import { authHeader, registerUser } from './helpers'
 
 /**

@@ -1,4 +1,4 @@
-import Account from '../models/Account'
+import { Account } from '@modules/accounts'
 import { toMinorUnits } from '@shared/money'
 
 export interface MigrateAccountBalancesOptions {

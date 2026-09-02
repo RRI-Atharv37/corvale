@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
-import app from '../app'
-import Account from '../models/Account'
-import Expense from '../models/Expense'
-import Income from '../models/Income'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
+import { Expense } from '@modules/legacy'
+import { Income } from '@modules/legacy'
+import { Transaction } from '@modules/transactions'
 import {
     assertQueryIsScoped,
     filterHasOwnershipScope,

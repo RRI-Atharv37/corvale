@@ -2,9 +2,9 @@ import { describe, it, expect, afterEach } from 'vitest'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import request from 'supertest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import { verifyUserByEmail } from './helpers'
-import { generateOfflineGrant, getOfflineGrantDays, OFFLINE_GRANT_ALGORITHM } from '../utils/offlineGrantUtils'
+import { generateOfflineGrant, getOfflineGrantDays, OFFLINE_GRANT_ALGORITHM } from "@modules/auth/offlineGrantUtils";
 
 /**
  * Acceptance spec for the server-signed offline session grant (S16, SEC-18).

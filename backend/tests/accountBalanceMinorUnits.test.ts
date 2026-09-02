@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Account from '../models/Account'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
 import { toMinorUnits } from '@shared/money'
-import { computeUserBalances, computeAccountTotals } from '../utils/balanceUtils'
 // migrateAccountBalancesToMinorUnits does not exist yet - it is Sprint C5's deliverable
 // (ROADMAP.md "Account balance minor units", BUGS.md / TODO.md item C5). This acceptance
 // suite (T3) defines what C5 must satisfy: Account.openingBalance/currentBalance move from
@@ -13,6 +12,7 @@ import { computeUserBalances, computeAccountTotals } from '../utils/balanceUtils
 // throughout - only the internal Account document representation changes.
 import { migrateAccountBalancesToMinorUnits } from '../utils/migrateAccountBalancesToMinorUnits'
 import { authHeader, seedUserDirectly } from './helpers'
+import { computeUserBalances, computeAccountTotals } from "@modules/accounts/accountBalance";
 
 async function createTestAccount(
     token: string,

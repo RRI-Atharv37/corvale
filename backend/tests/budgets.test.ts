@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Transaction } from '@modules/transactions'
 import { authHeader, seedUserDirectly } from './helpers'
 
 async function getFoodMasterId(token: string): Promise<string> {
@@ -578,7 +578,7 @@ describe('Budgets - split transaction attribution', () => {
 
 describe('budgetUtils', () => {
     it('computes progress from minor units', async () => {
-        const { computeBudgetProgress } = await import('../utils/budgetUtils')
+        const { computeBudgetProgress } = await import('@modules/budgets/budgetUtils')
 
         const under = computeBudgetProgress(10000, 7500)
         expect(under.spent).toBe(75)
@@ -594,7 +594,7 @@ describe('budgetUtils', () => {
     })
 
     it('resolves monthly and custom periods in UTC', async () => {
-        const { resolveMonthlyPeriod, resolveCustomPeriod } = await import('../utils/budgetUtils')
+        const { resolveMonthlyPeriod, resolveCustomPeriod } = await import('@modules/budgets/budgetUtils')
 
         const monthly = resolveMonthlyPeriod(2026, 1, 'UTC')
         expect(monthly.periodStart.toISOString()).toBe('2026-01-01T00:00:00.000Z')

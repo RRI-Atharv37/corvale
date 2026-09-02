@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
+import app from '@http/app'
 import { authHeader, seedUserDirectly } from './helpers'
 
 /**
@@ -433,7 +433,7 @@ describe('Forecast API - workspace scoping', () => {
 
 describe('forecastUtils', () => {
     it('projects recurring occurrence dates within a range', async () => {
-        const { projectRecurringOccurrences } = await import('../utils/forecastUtils')
+        const { projectRecurringOccurrences } = await import('@modules/forecast/forecastUtils')
 
         const start = new Date('2026-01-01T00:00:00.000Z')
         const end = new Date('2026-01-31T23:59:59.999Z')
@@ -449,7 +449,7 @@ describe('forecastUtils', () => {
     })
 
     it('computes a discretionary daily average from minor-unit historical spend', async () => {
-        const { computeDiscretionaryDailyAverage } = await import('../utils/forecastUtils')
+        const { computeDiscretionaryDailyAverage } = await import('@modules/forecast/forecastUtils')
 
         expect(computeDiscretionaryDailyAverage(9000, 90)).toBe(100)
         expect(computeDiscretionaryDailyAverage(0, 90)).toBe(0)

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
-import User from '../models/User'
-import RefreshToken from '../models/RefreshToken'
+import { createApp } from '@http/app'
+import { User } from '@modules/users'
+import { RefreshToken } from '@modules/auth'
 import { authHeader, registerUser } from './helpers'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 

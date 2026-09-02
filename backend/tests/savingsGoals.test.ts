@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import SavingsGoal from '../models/SavingsGoal'
+import app from '@http/app'
+import { SavingsGoal } from '@modules/savings-goals'
 import { authHeader, seedUserDirectly } from './helpers'
 
 async function createTestAccount(token: string, name = 'Savings', openingBalance = 5000) {
@@ -634,7 +634,7 @@ describe('savingsGoalUtils', () => {
         const {
             computeRequiredMonthlyContribution,
             computeMonthsRemaining,
-        } = await import('../utils/savingsGoalUtils')
+        } = await import('@modules/savings-goals/savingsGoalUtils')
 
         const targetDate = new Date('2026-12-31T23:59:59.999Z')
         const now = new Date('2026-08-12T12:00:00.000Z')
@@ -653,7 +653,7 @@ describe('savingsGoalUtils', () => {
     })
 
     it('detects auto-contribution due state by interval', async () => {
-        const { isAutoContributionDue } = await import('../utils/savingsGoalUtils')
+        const { isAutoContributionDue } = await import('@modules/savings-goals/savingsGoalUtils')
 
         const now = new Date('2026-08-15T12:00:00.000Z')
 
@@ -698,7 +698,7 @@ describe('savingsGoalUtils', () => {
     })
 
     it('computes projected completion date from auto-contribution rate', async () => {
-        const { computeProjectedCompletionDate } = await import('../utils/savingsGoalUtils')
+        const { computeProjectedCompletionDate } = await import('@modules/savings-goals/savingsGoalUtils')
         const { Types } = await import('mongoose')
 
         const goal = await SavingsGoal.create({

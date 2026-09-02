@@ -4,9 +4,9 @@ import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
 
-import app from '../app'
+import app from '@http/app'
 import { authHeader, registerUser } from './helpers'
-import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
+import { RECEIPT_UPLOAD_ROOT } from "@modules/receipts/receiptUtils";
 
 afterEach(() => {
     if (fs.existsSync(RECEIPT_UPLOAD_ROOT)) {

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { Types } from 'mongoose'
 
-import app from '../app'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Transaction } from '@modules/transactions'
 import { RLS_BYPASS, RLS_ALLOW_LOOKUP, runWithRlsContext } from '@core/access/rowLevelSecurity'
 import { registerUser } from './helpers'
 

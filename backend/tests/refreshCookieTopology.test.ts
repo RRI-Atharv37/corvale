@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 
 /**
  * Acceptance spec for cross-origin refresh-cookie topology (S13, SEC-11).

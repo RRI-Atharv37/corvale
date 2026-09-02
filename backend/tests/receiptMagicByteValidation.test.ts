@@ -2,10 +2,10 @@ import fs from 'fs'
 import path from 'path'
 import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Receipt from '../models/Receipt'
+import app from '@http/app'
+import { Receipt } from '@modules/receipts'
 import { authHeader, registerUser } from './helpers'
-import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
+import { RECEIPT_UPLOAD_ROOT } from "@modules/receipts/receiptUtils";
 
 /**
  * Acceptance spec for receipt magic-byte validation (S14, SEC-15).

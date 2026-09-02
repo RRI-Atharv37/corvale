@@ -4,12 +4,12 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
 
-import app from '../app'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Transaction } from '@modules/transactions'
 import { authHeader, registerUser } from './helpers'
-import { RECEIPT_UPLOAD_ROOT, getReceiptFilePath } from '../utils/receiptUtils'
 import { setReceiptObjectStorage, type ReceiptObjectStorage } from '@infra/storage/receiptStorage'
-import { createBackupZipStream, exportUserBackup } from '../utils/backupUtils'
+import { RECEIPT_UPLOAD_ROOT, getReceiptFilePath } from "@modules/receipts/receiptUtils";
+import { createBackupZipStream, exportUserBackup } from "@modules/backup/backupUtils";
 
 /**
  * SEC-53: the ZIP backup export must read every receipt from the *configured* storage driver,

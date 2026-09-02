@@ -4,16 +4,12 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
 
-import app from '../app'
-import Receipt from '../models/Receipt'
+import app from '@http/app'
+import { Receipt } from '@modules/receipts'
 import { authHeader, registerUser } from './helpers'
-import {
-    RECEIPT_UPLOAD_ROOT,
-    getReceiptFilePath,
-    getUserReceiptStorageUsageBytes,
-} from '../utils/receiptUtils'
 import { setVirusScanHandlerForTests } from '@infra/security/virusScanService'
 import { setReceiptObjectStorage } from '@infra/storage/receiptStorage'
+import { RECEIPT_UPLOAD_ROOT, getReceiptFilePath, getUserReceiptStorageUsageBytes } from "@modules/receipts/receiptUtils";
 
 /**
  * Acceptance spec for S21 / SEC-28 — backup restore must not be a side door around the

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Account from '../models/Account'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
+import { Transaction } from '@modules/transactions'
 import { authHeader, createSecondUser, seedUserDirectly } from './helpers'
 
 async function createTestAccount(token: string, openingBalance = 1000, name = 'Checking') {

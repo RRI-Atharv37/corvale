@@ -1,0 +1,47 @@
+import crypto from 'crypto'
+import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { IUser, User } from '@modules/users'
+import { hashToken } from './tokenUtils'
+import { logMailDevLink } from '@infra/mail/mailDevLog'
+
+const EMAIL_VERIFICATION_EXPIRY_MS = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MS ?? 600_000)
+
+export const generateEmailVerificationToken = (): string => {
+    return crypto.randomBytes(32).toString('hex')
+}
+
+export const buildEmailVerificationUrl = (token: string): string => {
+    const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:5173'
+    return `${clientUrl}/verify-email?token=${token}`
+}
+
+export const createEmailVerificationForUser = async (user: IUser): Promise<string> => {
+    const rawToken = generateEmailVerificationToken()
+    user.emailVerificationTokenHash = hashToken(rawToken)
+    user.emailVerificationExpires = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRY_MS)
+    await user.save()
+
+    return rawToken
+}
+
+export const verifyEmailWithToken = async (rawToken: string): Promise<void> => {
+    const tokenHash = hashToken(rawToken)
+    const user = await User.findOne({
+        emailVerificationTokenHash: tokenHash,
+        emailVerificationExpires: { $gt: new Date() },
+    })
+
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_INVALID, 400)
+    }
+
+    user.isEmailVerified = true
+    user.emailVerificationTokenHash = undefined
+    user.emailVerificationExpires = undefined
+    await user.save()
+}
+
+export const logEmailVerificationLink = (email: string, verifyUrl: string): void => {
+    logMailDevLink('email-verification', email, verifyUrl)
+}

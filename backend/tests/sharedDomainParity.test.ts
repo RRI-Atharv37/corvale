@@ -1,37 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { Types } from 'mongoose'
 
-import Account, { AccountType } from '../models/Account'
-import Budget from '../models/Budget'
-import CategorizationRule from '../models/CategorizationRule'
-import SavingsGoal from '../models/SavingsGoal'
-import SavingsGoalContribution from '../models/SavingsGoalContribution'
-import Transaction from '../models/Transaction'
+import { AccountType, Account } from '@modules/accounts'
+import { Budget } from '@modules/budgets'
+import { CategorizationRule } from '@modules/categorization-rules'
+import { SavingsGoal } from '@modules/savings-goals'
+import { SavingsGoalContribution } from '@modules/savings-goals'
+import { Transaction } from '@modules/transactions'
 import { seedUserDirectly } from './helpers'
-
-import { computeAccountTotals, computeUserBalances, roundMoney } from '../utils/balanceUtils'
-import {
-    getBalanceDeltaMajor,
-    getTransferInDeltaMajor,
-    getTransferOutDeltaMajor,
-    validateSplitInputs,
-} from '../utils/transactionUtils'
-import {
-    computeBudgetProgress,
-    computeBudgetSpentMinor,
-    resolveCustomPeriod,
-    resolveMonthlyPeriod,
-} from '../utils/budgetUtils'
-import {
-    computeProjectedCompletionDate,
-    computeRequiredMonthlyContribution,
-    computeSavingsGoalProgress,
-} from '../utils/savingsGoalUtils'
 import { endOfDayInTimezone, startOfDayInTimezone } from '@core/time/timezoneUtils'
-import { convertAmount } from '../utils/exchangeRateUtils'
-import { ruleMatchesTransaction } from '../utils/categorizationRuleUtils'
-import { advanceNextDueDate } from '../utils/recurringRuleUtils'
-
 import {
     roundMoney as sharedRoundMoney,
     getBalanceDeltaMajor as sharedGetBalanceDeltaMajor,
@@ -63,6 +40,16 @@ import {
     advanceNextDueDate as sharedAdvanceNextDueDate,
     matchCategorizationRule,
 } from '@shared/categorization'
+import { computeAccountTotals, computeUserBalances } from "@modules/accounts/accountBalance";
+import { validateSplitInputs } from "@modules/transactions/transactionUtils";
+import { computeBudgetSpentMinor, resolveCustomPeriod, resolveMonthlyPeriod } from "@modules/budgets/budgetUtils";
+import { computeProjectedCompletionDate, computeRequiredMonthlyContribution, computeSavingsGoalProgress } from "@modules/savings-goals/savingsGoalUtils";
+import { convertAmount } from "@modules/exchange-rates/exchangeRateUtils";
+import { ruleMatchesTransaction } from "@modules/categorization-rules/categorizationRuleUtils";
+import { advanceNextDueDate } from "@modules/recurring/recurringRuleUtils";
+import { roundMoney } from "@shared/money";
+import { getBalanceDeltaMajor, getTransferInDeltaMajor, getTransferOutDeltaMajor } from "@modules/transactions/transactionUtils";
+import { computeBudgetProgress } from "@modules/budgets/budgetUtils";
 
 interface AccountLike {
     _id: string

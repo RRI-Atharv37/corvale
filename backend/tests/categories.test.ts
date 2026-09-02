@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Category from '../models/Category'
-import { MASTER_CATEGORY_DEFINITIONS } from '../utils/categorySeed'
+import app from '@http/app'
+import { Category } from '@modules/categories'
 import { authHeader, createSecondUser, registerUser, seedUserDirectly } from './helpers'
+import { MASTER_CATEGORY_DEFINITIONS } from "@modules/categories/categorySeed";
 
 async function getFoodMasterId(token: string): Promise<string> {
     const res = await request(app).get('/api/v1/categories').set(authHeader(token))

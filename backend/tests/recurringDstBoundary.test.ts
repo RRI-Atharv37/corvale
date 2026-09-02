@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import RecurringRule from '../models/RecurringRule'
-import Transaction from '../models/Transaction'
-import { advanceNextDueDate, generateDraftsForRule } from '../utils/recurringRuleUtils'
-import { resolveMonthlyPeriod } from '../utils/budgetUtils'
+import app from '@http/app'
+import { RecurringRule } from '@modules/recurring'
+import { Transaction } from '@modules/transactions'
 import { startOfDayInTimezone, endOfDayInTimezone } from '@core/time/timezoneUtils'
 import { authHeader, seedUserDirectly } from './helpers'
+import { advanceNextDueDate, generateDraftsForRule } from "@modules/recurring/recurringRuleUtils";
+import { resolveMonthlyPeriod } from "@modules/budgets/budgetUtils";
 
 // BUG-06 (Gate G3, Sprint C6): advanceNextDueDate hardcodes the timezone to 'UTC' when advancing
 // a recurring rule's nextDueDate, so the stored "local midnight" instant drifts by the DST delta

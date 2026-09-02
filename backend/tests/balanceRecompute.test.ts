@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
-import app from '../app'
-import Account from '../models/Account'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
+import { Transaction } from '@modules/transactions'
 // shared/src/balances.ts does not exist yet (Sprint 13.1 deliverable); this
 // pure function has no existing equivalent anywhere in the codebase today.
 import { recomputeAccountBalance } from '@shared/balances'

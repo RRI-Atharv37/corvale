@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import User from '../models/User'
+import app from '@http/app'
+import { User } from '@modules/users'
 import { authHeader, registerUser } from './helpers'
-import { PRIVACY_VERSION, TERMS_VERSION } from '../utils/legalVersions'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { PRIVACY_VERSION, TERMS_VERSION } from "@modules/users/legalVersions";
 
 /**
  * Acceptance spec for the consent record and 18+ attestation (M0c / M0c2).

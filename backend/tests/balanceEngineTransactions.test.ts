@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Income from '../models/Income'
-import Expense from '../models/Expense'
+import app from '@http/app'
+import { Income } from '@modules/legacy'
+import { Expense } from '@modules/legacy'
 import { authHeader, registerUser } from './helpers'
 
 /**

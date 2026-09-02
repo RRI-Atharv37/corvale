@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import RecurringRule from '../models/RecurringRule'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { RecurringRule } from '@modules/recurring'
+import { Transaction } from '@modules/transactions'
 import { authHeader, seedUserDirectly } from './helpers'
 
 const JAN_2026_MONTHLY = { periodType: 'monthly', year: 2026, month: 1 }

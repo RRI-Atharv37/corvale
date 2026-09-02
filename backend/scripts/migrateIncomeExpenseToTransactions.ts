@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import connectDB from '@infra/db/db'
-import { migrateLegacyLedgerToTransactions } from '../utils/migrateLegacyTransactions'
+import { migrateLegacyLedgerToTransactions } from "@modules/legacy/migrateLegacyTransactions";
 
 const main = async (): Promise<void> => {
     const dryRun = process.argv.includes('--dry-run')

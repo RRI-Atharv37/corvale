@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Notification from '../models/Notification'
+import app from '@http/app'
+import { Notification } from '@modules/notifications'
 import { authHeader, createSecondUser, seedUserDirectly } from './helpers'
 
 const JAN_2026 = { startDate: '2026-01-01', endDate: '2026-01-31' }

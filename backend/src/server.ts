@@ -1,11 +1,11 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import app from '../app'
+import app from '@http/app'
 import connectDB from '@infra/db/db'
-import { ensureMasterCategoriesSeeded } from '../utils/categorySeed'
 import { registerGracefulShutdown } from '@infra/config/gracefulShutdown'
 import { initErrorTracking } from '@infra/observability/errorTracking'
+import { ensureMasterCategoriesSeeded } from "@modules/categories/categorySeed";
 
 initErrorTracking()
 

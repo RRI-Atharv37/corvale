@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { roundMoney } from '../utils/balanceUtils'
+import { roundMoney } from "@shared/money";
 
 describe('balanceUtils', () => {
     it('roundMoney handles floating-point precision', () => {

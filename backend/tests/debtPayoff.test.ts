@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
+import app from '@http/app'
 import { authHeader, seedUserDirectly } from './helpers'
 
 /**
@@ -290,7 +290,7 @@ describe('Debt payoff planner - scoping', () => {
 
 describe('debtPayoffUtils', () => {
     it('orders debts by ascending balance for snowball', async () => {
-        const { orderDebtsBySnowball } = await import('../utils/debtPayoffUtils')
+        const { orderDebtsBySnowball } = await import('@modules/debts/debtPayoffUtils')
 
         const ordered = orderDebtsBySnowball([
             { accountId: 'a', balanceMinor: 200000, interestRate: 5, minimumPaymentMinor: 4000 },
@@ -301,7 +301,7 @@ describe('debtPayoffUtils', () => {
     })
 
     it('orders debts by descending interest rate for avalanche', async () => {
-        const { orderDebtsByAvalanche } = await import('../utils/debtPayoffUtils')
+        const { orderDebtsByAvalanche } = await import('@modules/debts/debtPayoffUtils')
 
         const ordered = orderDebtsByAvalanche([
             { accountId: 'a', balanceMinor: 200000, interestRate: 5, minimumPaymentMinor: 4000 },
@@ -312,7 +312,7 @@ describe('debtPayoffUtils', () => {
     })
 
     it('generates a payoff schedule for a single zero-interest debt', async () => {
-        const { generatePayoffSchedule } = await import('../utils/debtPayoffUtils')
+        const { generatePayoffSchedule } = await import('@modules/debts/debtPayoffUtils')
 
         const plan = generatePayoffSchedule(
             [{ accountId: 'a', balanceMinor: 30000, interestRate: 0, minimumPaymentMinor: 5000 }] as never,

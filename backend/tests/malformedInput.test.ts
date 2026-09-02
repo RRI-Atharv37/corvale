@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import request from 'supertest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import { errorHandler } from '@http/middleware/errorMiddleware'
 import * as errorTracking from '@infra/observability/errorTracking'
 import { authHeader, registerUser } from './helpers'

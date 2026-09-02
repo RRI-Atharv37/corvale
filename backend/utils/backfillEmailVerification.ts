@@ -1,4 +1,4 @@
-import User from '../models/User'
+import { User } from '@modules/users'
 
 export interface BackfillOptions {
     dryRun?: boolean

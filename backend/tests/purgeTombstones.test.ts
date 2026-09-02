@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 
-import Transaction from '../models/Transaction'
-import Tag from '../models/Tag'
+import { Transaction } from '@modules/transactions'
+import { Tag } from '@modules/tags'
 import { purgeExpiredTombstones } from '../utils/purgeTombstones'
 import { TOMBSTONE_RETENTION_DAYS } from '@core/softDelete/softDelete'
 

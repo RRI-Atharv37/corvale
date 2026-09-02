@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import {
     validateEnv,
     MIN_PRODUCTION_JWT_SECRET_LENGTH,

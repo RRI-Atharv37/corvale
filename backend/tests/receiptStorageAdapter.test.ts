@@ -2,11 +2,11 @@ import fs from 'fs'
 import path from 'path'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Receipt from '../models/Receipt'
+import app from '@http/app'
+import { Receipt } from '@modules/receipts'
 import { authHeader, registerUser } from './helpers'
-import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
 import { isObjectStorageConfigured, setReceiptObjectStorage } from '@infra/storage/receiptStorage'
+import { RECEIPT_UPLOAD_ROOT } from "@modules/receipts/receiptUtils";
 
 /**
  * Acceptance spec for receipts on object storage (L3, SEC-23).

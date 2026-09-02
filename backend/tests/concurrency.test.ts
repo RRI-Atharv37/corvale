@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapWithConcurrency } from '../utils/concurrency'
+import { mapWithConcurrency } from '@core/db/concurrency'
 
 describe('mapWithConcurrency (SEC-61)', () => {
     it('preserves input order in the result', async () => {

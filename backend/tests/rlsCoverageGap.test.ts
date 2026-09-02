@@ -1,24 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Types } from 'mongoose'
 
-import app from '../app'
-import Category from '../models/Category'
-import Tag from '../models/Tag'
-import CategorizationRule from '../models/CategorizationRule'
-import TransactionTemplate from '../models/TransactionTemplate'
-import SyncOperation from '../models/SyncOperation'
-import Transaction from '../models/Transaction'
-import Budget from '../models/Budget'
-import Workspace from '../models/Workspace'
-import WorkspaceInvite from '../models/WorkspaceInvite'
-import { ensureMasterCategoriesSeeded } from '../utils/categorySeed'
+import app from '@http/app'
+import { Category } from '@modules/categories'
+import { Tag } from '@modules/tags'
+import { CategorizationRule } from '@modules/categorization-rules'
+import { TransactionTemplate } from '@modules/transaction-templates'
+import { SyncOperation } from '@modules/sync'
+import { Transaction } from '@modules/transactions'
+import { Budget } from '@modules/budgets'
+import { Workspace } from '@modules/workspaces'
+import { WorkspaceInvite } from '@modules/workspaces'
 import { runWithRlsContext } from '@core/access/rowLevelSecurity'
-import {
-    computeBudgetOverview,
-    computeCategoryBreakdown,
-} from '../utils/dashboardUtils'
-import { computeLargestExpenses, computeBudgetAnalysis } from '../utils/reportUtils'
 import { registerUser, createSecondUser } from './helpers'
+import { ensureMasterCategoriesSeeded } from "@modules/categories/categorySeed";
+import { computeBudgetOverview, computeCategoryBreakdown } from "@modules/dashboard/dashboardUtils";
+import { computeLargestExpenses, computeBudgetAnalysis } from "@modules/reports/reportUtils";
 
 const UNSCOPED = /missing user or workspace scope/i
 

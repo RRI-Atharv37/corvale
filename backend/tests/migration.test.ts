@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
-import app from '../app'
-import Account from '../models/Account'
-import Category from '../models/Category'
-import Expense from '../models/Expense'
-import Income from '../models/Income'
-import Transaction from '../models/Transaction'
-import { ensureMasterCategoriesSeeded } from '../utils/categorySeed'
-import { migrateLegacyLedgerToTransactions } from '../utils/migrateLegacyTransactions'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
+import { Category } from '@modules/categories'
+import { Expense } from '@modules/legacy'
+import { Income } from '@modules/legacy'
+import { Transaction } from '@modules/transactions'
 import { authHeader, registerUser, seedUserDirectly } from './helpers'
+import { ensureMasterCategoriesSeeded } from "@modules/categories/categorySeed";
+import { migrateLegacyLedgerToTransactions } from "@modules/legacy/migrateLegacyTransactions";
 
 async function seedLegacyLedger(userId: Types.ObjectId) {
     await ensureMasterCategoriesSeeded()

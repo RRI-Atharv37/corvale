@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, beforeAll } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
-import User from '../models/User'
+import { createApp } from '@http/app'
+import { User } from '@modules/users'
 import { setCaptchaVerifier } from '@infra/security/captchaService'
 
 /**

@@ -1,15 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 
-import { createApp } from '../app'
-import {
-    clearReleaseCache,
-    getLatestDesktopRelease,
-    setReleaseClock,
-    setReleaseSource,
-    transformGithubRelease,
-} from '../services/desktopReleaseService'
+import { createApp } from '@http/app'
 import { CustomError } from '@core/errors/customError'
+import { clearReleaseCache, getLatestDesktopRelease, setReleaseClock, setReleaseSource, transformGithubRelease } from "@modules/desktop/desktopRelease.service";
 
 /**
  * V16 - `/download` self-updating.

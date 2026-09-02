@@ -1,9 +1,9 @@
 import request from 'supertest'
 import { Application } from 'express'
-import { createApp } from '../app'
-import Account from '../models/Account'
-import Category from '../models/Category'
-import Transaction from '../models/Transaction'
+import { createApp } from '@http/app'
+import { Account } from '@modules/accounts'
+import { Category } from '@modules/categories'
+import { Transaction } from '@modules/transactions'
 import { registerUser, authHeader, RegisteredUser } from './helpers'
 
 /**

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
+import app from '@http/app'
 import { authHeader, seedUserDirectly } from './helpers'
 
 /**
@@ -286,7 +286,7 @@ describe('Subscriptions API - workspace scoping', () => {
 
 describe('subscriptionUtils', () => {
     it('determines subscription eligibility by type, status, and interval', async () => {
-        const { isSubscriptionEligible } = await import('../utils/subscriptionUtils')
+        const { isSubscriptionEligible } = await import('@modules/subscriptions/subscriptionUtils')
 
         expect(isSubscriptionEligible({ type: 'expense', isActive: true, isArchived: false, interval: 'monthly' } as never)).toBe(true)
         expect(isSubscriptionEligible({ type: 'expense', isActive: true, isArchived: false, interval: 'yearly' } as never)).toBe(false)
@@ -296,7 +296,7 @@ describe('subscriptionUtils', () => {
     })
 
     it('computes annual and monthly cost in minor units', async () => {
-        const { computeAnnualCostMinor, computeMonthlyCostMinor } = await import('../utils/subscriptionUtils')
+        const { computeAnnualCostMinor, computeMonthlyCostMinor } = await import('@modules/subscriptions/subscriptionUtils')
 
         expect(computeAnnualCostMinor(1599, 'monthly')).toBe(19188)
         expect(computeMonthlyCostMinor(1599, 'monthly')).toBe(1599)

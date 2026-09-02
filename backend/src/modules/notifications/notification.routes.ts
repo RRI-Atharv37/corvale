@@ -1,0 +1,18 @@
+import express from 'express'
+
+import {
+    dismissNotification,
+    getNotifications,
+    markAllNotificationsRead,
+    markNotificationRead,
+} from './notification.controller'
+import { protect } from '@http/middleware/authMiddleware'
+
+const router = express.Router()
+
+router.get('/', protect, getNotifications)
+router.patch('/read-all', protect, markAllNotificationsRead)
+router.patch('/:notificationId/read', protect, markNotificationRead)
+router.patch('/:notificationId/dismiss', protect, dismissNotification)
+
+export default router

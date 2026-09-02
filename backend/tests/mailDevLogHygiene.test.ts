@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import { registerUser } from './helpers'
 import { redactUrlToken, isMailDevLogEnabled } from '@infra/mail/mailDevLog'
-import { logPasswordResetLink } from '../utils/passwordResetUtils'
-import { logEmailVerificationLink } from '../utils/emailVerificationUtils'
+import { logPasswordResetLink } from "@modules/auth/passwordResetUtils";
+import { logEmailVerificationLink } from "@modules/auth/emailVerificationUtils";
 
 /**
  * Acceptance spec for SEC-69 (S34): password-reset and email-verification URLs — which carry a

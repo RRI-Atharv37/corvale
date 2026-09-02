@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import bcrypt from 'bcryptjs'
 import request from 'supertest'
-import { createApp } from '../app'
-import User from '../models/User'
+import { createApp } from '@http/app'
+import { User } from '@modules/users'
 import { authHeader, registerUser } from './helpers'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 

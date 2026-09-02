@@ -2,13 +2,13 @@ import fs from 'fs'
 import path from 'path'
 import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Workspace from '../models/Workspace'
-import Transaction from '../models/Transaction'
-import Notification from '../models/Notification'
+import app from '@http/app'
+import { Workspace } from '@modules/workspaces'
+import { Transaction } from '@modules/transactions'
+import { Notification } from '@modules/notifications'
 import { authHeader, registerUser } from './helpers'
-import { RECEIPT_UPLOAD_ROOT } from '../utils/receiptUtils'
-import { REMOVED_MEMBER_USER_ID } from '../utils/accountDeletionUtils'
+import { RECEIPT_UPLOAD_ROOT } from "@modules/receipts/receiptUtils";
+import { REMOVED_MEMBER_USER_ID } from "@modules/users/accountDeletionUtils";
 
 /**
  * Acceptance spec for the workspace-record-retention redesign of account deletion.

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
+import app from '@http/app'
 import { authHeader, registerUser } from './helpers'
-import { escapeCsvValue, buildCsvString } from '../utils/transactionUtils'
+import { escapeCsvValue, buildCsvString } from "@modules/transactions/transactionUtils";
 
 /**
  * Acceptance spec for CSV formula-injection neutralization (C4, SEC-17, BUG-11).

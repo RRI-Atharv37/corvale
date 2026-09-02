@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
-import User from '../models/User'
-import Account from '../models/Account'
+import { createApp } from '@http/app'
+import { User } from '@modules/users'
+import { Account } from '@modules/accounts'
 import { authHeader, registerUser } from './helpers'
 
 /**

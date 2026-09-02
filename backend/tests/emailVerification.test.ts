@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import { authHeader } from './helpers'
-import User from '../models/User'
+import { User } from '@modules/users'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { setMailTransport } from '@infra/mail/mailService'
 import { backfillEmailVerification } from '../utils/backfillEmailVerification'
-import { createEmailVerificationForUser } from '../utils/emailVerificationUtils'
+import { createEmailVerificationForUser } from "@modules/auth/emailVerificationUtils";
 
 /**
  * Email verification (pulled forward from L9's G2 scope, built alongside S7 since both need

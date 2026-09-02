@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Transaction } from '@modules/transactions'
 import { authHeader, seedUserDirectly } from './helpers'
 import { parseAmountToMinorUnits } from '@shared/money'
-import { parseClientAmount } from '../utils/transactionUtils'
+import { parseClientAmount } from "@modules/transactions/transactionUtils";
 
 async function createAccount(token: string, openingBalance = 1000) {
     const res = await request(app)

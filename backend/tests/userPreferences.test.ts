@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Account from '../models/Account'
-import Budget from '../models/Budget'
-import RecurringRule from '../models/RecurringRule'
-import SavingsGoal from '../models/SavingsGoal'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
+import { Budget } from '@modules/budgets'
+import { RecurringRule } from '@modules/recurring'
+import { SavingsGoal } from '@modules/savings-goals'
+import { Transaction } from '@modules/transactions'
 import { authHeader, registerUser } from './helpers'
 
 async function getIncomeMasterId(token: string): Promise<string> {

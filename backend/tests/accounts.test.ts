@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Account from '../models/Account'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
 import { authHeader, createSecondUser, registerUser } from './helpers'
 
 describe('Accounts', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import { registerUser } from './helpers'
 import { setMailTransport, sendPasswordResetEmail } from '@infra/mail/mailService'
 

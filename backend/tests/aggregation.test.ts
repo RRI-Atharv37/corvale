@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Expense from '../models/Expense'
+import app from '@http/app'
+import { Expense } from '@modules/legacy'
 import { authHeader, registerUser } from './helpers'
 
 describe('Expense aggregation', () => {

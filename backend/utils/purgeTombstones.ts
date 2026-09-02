@@ -1,13 +1,13 @@
 import { Model } from 'mongoose'
 
-import CategorizationRule from '../models/CategorizationRule'
-import Notification from '../models/Notification'
-import Receipt from '../models/Receipt'
-import SavedReport from '../models/SavedReport'
-import Saver from '../models/Saver'
-import Tag from '../models/Tag'
-import Transaction from '../models/Transaction'
-import TransactionTemplate from '../models/TransactionTemplate'
+import { CategorizationRule } from '@modules/categorization-rules'
+import { Notification } from '@modules/notifications'
+import { Receipt } from '@modules/receipts'
+import { SavedReport } from '@modules/reports'
+import { Saver } from '@modules/savers'
+import { Tag } from '@modules/tags'
+import { Transaction } from '@modules/transactions'
+import { TransactionTemplate } from '@modules/transaction-templates'
 import { SOFT_DELETE_BYPASS, TOMBSTONE_RETENTION_DAYS } from '@core/softDelete/softDelete'
 
 export { TOMBSTONE_RETENTION_DAYS }

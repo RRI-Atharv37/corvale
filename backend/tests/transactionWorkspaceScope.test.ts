@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import { Types } from 'mongoose'
 
-import app from '../app'
+import app from '@http/app'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { assertAccountMatchesWorkspace } from '@core/access/workspace'
 import { CustomError } from '@core/errors/customError'

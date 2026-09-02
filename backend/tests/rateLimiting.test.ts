@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app'
+import { createApp } from '@http/app'
 import { authHeader, registerUser } from './helpers'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 

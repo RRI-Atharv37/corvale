@@ -2,8 +2,8 @@ import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import { Application } from 'express'
 import { Types } from 'mongoose'
-import User from '../models/User'
-import Transaction from '../models/Transaction'
+import { User } from '@modules/users'
+import { Transaction } from '@modules/transactions'
 import { toMinorUnits } from '@shared/money'
 
 export interface TestUser {

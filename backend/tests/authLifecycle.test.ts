@@ -2,13 +2,13 @@ import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
-import User from '../models/User'
-import RefreshToken from '../models/RefreshToken'
-import { createApp } from '../app'
+import { User } from '@modules/users'
+import { RefreshToken } from '@modules/auth'
+import { createApp } from '@http/app'
 import { authHeader, registerUser } from './helpers'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
-import { hashToken } from '../utils/tokenUtils'
-import { createPasswordResetForUser } from '../utils/passwordResetUtils'
+import { hashToken } from "@modules/auth/tokenUtils";
+import { createPasswordResetForUser } from "@modules/auth/passwordResetUtils";
 
 const REFRESH_COOKIE = 'corvale_refresh'
 

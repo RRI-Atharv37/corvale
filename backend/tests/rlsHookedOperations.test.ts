@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { Types } from 'mongoose'
 
-import app from '../app'
-import Tag from '../models/Tag'
-import Transaction from '../models/Transaction'
+import app from '@http/app'
+import { Tag } from '@modules/tags'
+import { Transaction } from '@modules/transactions'
 import { QUERY_OPERATIONS } from '@core/access/rowLevelSecurityPlugin'
 import { runWithRlsContext } from '@core/access/rowLevelSecurity'
 import { registerUser } from './helpers'

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Notification from '../models/Notification'
-import User from '../models/User'
+import app from '@http/app'
+import { Notification } from '@modules/notifications'
+import { User } from '@modules/users'
 import { authHeader, createSecondUser, seedUserDirectly } from './helpers'
 
 async function getFoodMasterId(token: string): Promise<string> {

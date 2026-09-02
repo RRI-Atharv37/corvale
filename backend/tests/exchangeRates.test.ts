@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import User from '../models/User'
+import app from '@http/app'
+import { User } from '@modules/users'
 import { authHeader, seedUserDirectly } from './helpers'
 
 /**

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 
-import { AuthRequest } from '@core/auth/authTypes'
+import { AuthRequest } from '@http/middleware/authTypes'
 import { logger } from '@infra/observability/logger'
 
 const UNLOGGED_PATHS = new Set(['/health', '/ready'])

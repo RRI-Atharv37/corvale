@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import User from '../models/User'
-import Account from '../models/Account'
-import Transaction from '../models/Transaction'
-import Category from '../models/Category'
-import RefreshToken from '../models/RefreshToken'
+import app from '@http/app'
+import { User } from '@modules/users'
+import { Account } from '@modules/accounts'
+import { Transaction } from '@modules/transactions'
+import { Category } from '@modules/categories'
+import { RefreshToken } from '@modules/auth'
 import { authHeader, registerUser } from './helpers'
 
 /**

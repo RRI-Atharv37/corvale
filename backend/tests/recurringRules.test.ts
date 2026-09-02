@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
-import Account from '../models/Account'
-import RecurringRule from '../models/RecurringRule'
-import Transaction from '../models/Transaction'
-import { advanceNextDueDate } from '../utils/recurringRuleUtils'
+import app from '@http/app'
+import { Account } from '@modules/accounts'
+import { RecurringRule } from '@modules/recurring'
+import { Transaction } from '@modules/transactions'
 import { startOfDayInTimezone } from '@core/time/timezoneUtils'
 import { authHeader, seedUserDirectly } from './helpers'
+import { advanceNextDueDate } from "@modules/recurring/recurringRuleUtils";
 
 async function getFoodMasterId(token: string): Promise<string> {
     const res = await request(app).get('/api/v1/categories').set(authHeader(token))

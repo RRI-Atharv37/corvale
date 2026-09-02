@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import app from '../app'
+import app from '@http/app'
 import { authHeader, seedUserDirectly } from './helpers'
 import { toMinorUnits } from '@shared/money'
-import Transaction from '../models/Transaction'
-import Account from '../models/Account'
+import { Transaction } from '@modules/transactions'
+import { Account } from '@modules/accounts'
 
 /**
  * G2's "load sanity check on the report and backup endpoints" (L12): not a throughput

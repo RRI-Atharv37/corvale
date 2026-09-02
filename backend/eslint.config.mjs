@@ -24,9 +24,14 @@ const BOUNDARY_ZONES = [
         message: 'infra/ holds external clients: it may import @core only, never modules/ or http/.',
     },
     {
+        // A feature module may reach into `http/middleware` — `*.routes.ts` wires `protect`,
+        // the rate limiters and `sanitizeBody`, and that is the one http→module edge the
+        // placement contract (ROADMAP § Target Repository Structure) sanctions. It must never
+        // import the app shell itself (`http/app.ts`) or the mount table (`http/routes.ts`) —
+        // the shell wires modules, not the reverse.
         target: './src/modules/**',
-        from: './src/http/**',
-        message: 'A feature module must not import from http/ — the app shell wires modules, not the reverse.',
+        from: ['./src/http/app.ts', './src/http/routes.ts', './src/http/health.routes.ts'],
+        message: 'A feature module must not import the app shell or the route mount table — the shell wires modules, not the reverse. (http/middleware is fine — routes wire it.)',
     },
 ]
 

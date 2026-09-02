@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import request from 'supertest'
-import app from '../app'
+import app from '@http/app'
 import { registerUser, authHeader } from './helpers'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
