@@ -10,7 +10,7 @@
     "preview": "vitepress preview"
   },
   "devDependencies": {
-    "@types/node": "^22.13.10",
+    "@types/node": "^26.4.0",
     "vitepress": "^1.6.3"
   }
 }
