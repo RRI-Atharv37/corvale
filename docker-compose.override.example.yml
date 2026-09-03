@@ -1,5 +1,5 @@
 # Copy to docker-compose.override.yml for a production deployment behind a
-# TLS-terminating reverse proxy (see Caddyfile + docs/developers/deployment.md).
+# TLS-terminating reverse proxy (see Caddyfile + docs/developers/guides/deployment.md).
 # Compose merges this over docker-compose.yml automatically, so the tracked file
 # stays untouched and `git pull` never conflicts.
 #

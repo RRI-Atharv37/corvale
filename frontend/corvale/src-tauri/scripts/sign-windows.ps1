@@ -5,7 +5,7 @@
 # The actual certificate is never committed - .github/workflows/release.yml imports it from
 # the WINDOWS_CERTIFICATE / WINDOWS_CERTIFICATE_PASSWORD secrets into the current user's
 # certificate store and exports its thumbprint as WINDOWS_CERTIFICATE_THUMBPRINT before the
-# build step runs. See docs/developers/desktop-app.md for the full release-signing setup.
+# build step runs. See docs/developers/guides/desktop-app.md for the full release-signing setup.
 
 param(
     [Parameter(Mandatory = $true, Position = 0)]

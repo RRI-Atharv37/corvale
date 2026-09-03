@@ -31,4 +31,4 @@ Both are fully supported - use whichever fits your workflow. The desktop app is 
 - [Getting the Desktop App](./download.md)
 - [Automatic Updates](./auto-updates.md)
 - [Backup and Restore Overview](../backup-restore/overview.md)
-- [Building the Desktop App](../developers/desktop-app.md)
+- [Building the Desktop App](../developers/guides/desktop-app.md)

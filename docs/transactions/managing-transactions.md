@@ -52,7 +52,7 @@ Deleting a transfer removes **both legs** of the linked pair and restores both a
 
 ## Duplicating a transaction
 
-From the API, you can duplicate an existing transaction to pre-fill a new entry. The web UI focuses on create/edit/delete; duplication is available for integrations via the [Transactions API](../developers/transactions-api.md).
+From the API, you can duplicate an existing transaction to pre-fill a new entry. The web UI focuses on create/edit/delete; duplication is available for integrations via the [Transactions API](../developers/api/transactions-api.md).
 
 ## CSV export
 

@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest'
  */
 
 const testDir = dirname(fileURLToPath(import.meta.url))
-const frontendRoot = resolve(testDir, '../../..')
+const frontendRoot = resolve(testDir, '../../../..')
 const TAURI_CONF_PATH = resolve(frontendRoot, 'src-tauri/tauri.conf.json')
 
 interface TauriConfig {

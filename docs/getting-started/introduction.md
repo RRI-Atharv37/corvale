@@ -37,7 +37,7 @@ Corvale groups your finances into clear areas:
 
 ## Who this documentation is for
 
-This guide walks you through every feature available in Corvale today. If you are setting up the project on your own machine, start with [Installation](../getting-started/installation.md). If you are integrating with the API, see the [Developers](../developers/overview.md) section.
+This guide walks you through every feature available in Corvale today. If you are setting up the project on your own machine, start with [Installation](../getting-started/installation.md). If you are integrating with the API, see the [Developers](../developers/guides/overview.md) section.
 
 ## Next steps
 

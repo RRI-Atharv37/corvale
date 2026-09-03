@@ -70,7 +70,7 @@ export const validateEnv = (env: NodeJS.ProcessEnv = process.env): void => {
     if (isKnownPlaceholderSecret(env.OFFLINE_GRANT_PRIVATE_KEY as string)) {
         throw new Error(
             'OFFLINE_GRANT_PRIVATE_KEY is still set to the .env.example placeholder. Generate a real ' +
-                'EC keypair — see docs/developers/environment-variables.md#offline-session-grant.'
+                'EC keypair — see docs/developers/guides/environment-variables.md#offline-session-grant.'
         )
     }
 

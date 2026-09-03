@@ -36,4 +36,4 @@ Every update is cryptographically signed before release. The app only installs a
 
 - [Desktop App Overview](./overview.md)
 - [Getting the Desktop App](./download.md)
-- [Building the Desktop App](../developers/desktop-app.md)
+- [Building the Desktop App](../developers/guides/desktop-app.md)

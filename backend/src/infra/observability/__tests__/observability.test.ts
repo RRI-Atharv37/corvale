@@ -46,7 +46,7 @@ import { CustomError } from '@core/errors/customError'
  *     - forwards only 5xx errors to `captureException` (4xx client errors are not reported)
  *
  * Uptime monitoring itself has no application code -- /health and /ready already exist
- * (S1/SEC-25) and are documented in docs/developers/environment-variables.md as the
+ * (S1/SEC-25) and are documented in docs/developers/guides/environment-variables.md as the
  * endpoints an external uptime monitor should poll.
  */
 

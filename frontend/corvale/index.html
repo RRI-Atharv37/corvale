@@ -29,7 +29,7 @@
       send it (or X-Frame-Options) as an HTTP response header at the hosting/reverse-proxy layer.
       The shipped frontend/corvale/nginx.conf does this (CSP `frame-ancestors 'none'` +
       X-Frame-Options: DENY, plus nosniff / Referrer-Policy / HSTS); a non-nginx host must
-      replicate those headers - see docs/developers/deployment.md "Security headers".
+      replicate those headers - see docs/developers/guides/deployment.md "Security headers".
     -->
     <meta
       http-equiv="Content-Security-Policy"

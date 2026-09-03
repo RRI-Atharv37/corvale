@@ -1,7 +1,7 @@
 # Reverse proxy for the Corvale self-hosting stack (docker-compose.yml).
 # Runs on the host, outside Compose. Terminates TLS (automatic Let's Encrypt) and
 # routes the frontend and API under one registrable domain so the SameSite=Lax
-# refresh cookie works. See docs/developers/deployment.md.
+# refresh cookie works. See docs/developers/guides/deployment.md.
 #
 # Point both names at this host's public IP (DNS-only, not proxied), then:
 #   sudo cp Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy

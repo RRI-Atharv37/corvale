@@ -19,7 +19,7 @@ commands from inside each directory, not the repo root:
 ## Getting set up
 
 **Backend** (`backend/`) needs a `backend/.env` — see
-`docs/developers/environment-variables.md` for the full list; `MONGO_URI`, `JWT_SECRET`,
+`docs/developers/guides/environment-variables.md` for the full list; `MONGO_URI`, `JWT_SECRET`,
 `JWT_EXPIRY`, and `CLIENT_URL` are required.
 
 **Frontend** (`frontend/corvale/`) needs a `frontend/corvale/.env` copied from `.env.example`

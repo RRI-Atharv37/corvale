@@ -37,5 +37,5 @@ instructions instead.
   complaint — are handled through the privacy route, not here, and that route does have a stated
   response window.
 - Running your own deployment? The
-  [incident response runbook](../docs/developers/incident-response-runbook.md) is the
+  [incident response runbook](../docs/developers/guides/incident-response-runbook.md) is the
   operational playbook for outages and data corruption.

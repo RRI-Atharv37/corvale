@@ -47,4 +47,4 @@ The nine master categories (Food, Transport, and so on) are system-defined. You 
 
 - [Categories Overview](./overview.md)
 - [Creating Categories](./creating-categories.md)
-- [Categories API](../developers/categories-api.md)
+- [Categories API](../developers/api/categories-api.md)

@@ -56,4 +56,4 @@ extra reassurance before running it.
 
 - [Desktop App Overview](./overview.md)
 - [Automatic Updates](./auto-updates.md)
-- [Building the Desktop App](../developers/desktop-app.md)
+- [Building the Desktop App](../developers/guides/desktop-app.md)

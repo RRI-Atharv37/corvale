@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest'
  */
 
 const testDir = dirname(fileURLToPath(import.meta.url))
-const frontendRoot = resolve(testDir, '../../..')
+const frontendRoot = resolve(testDir, '../../../..')
 
 const readSource = (relativePath: string): string => fs.readFileSync(resolve(frontendRoot, relativePath), 'utf8')
 

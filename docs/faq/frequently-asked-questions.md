@@ -216,11 +216,11 @@ Open **Settings** and use **Backup & restore** to export a JSON or ZIP file, or 
 - **Backend:** TypeScript, Node.js, Express, MongoDB, JWT
 - **Frontend:** React, Vite, TypeScript, Tailwind CSS, Axios
 
-See the [Developers](../developers/overview.md) section for more details.
+See the [Developers](../developers/guides/overview.md) section for more details.
 
 ### I upgraded from an older version. Where is my data?
 
-Run the migration script from `backend/`: `npm run migrate:transactions`. See [Data Migration](../developers/data-migration.md) for details.
+Run the migration script from `backend/`: `npm run migrate:transactions`. See [Data Migration](../developers/guides/data-migration.md) for details.
 
 ### Where can I report bugs?
 

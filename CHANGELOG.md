@@ -111,7 +111,7 @@ advertisable per the launch-gate ladder.
 - Transaction duplicate button, per-rule "generate drafts", and a Posted/Draft status filter on
   `/transactions` (TODO.md X4)
 - Documented support process (`.github/SUPPORT.md`) and an incident-response runbook
-  (`docs/developers/incident-response-runbook.md`) defining Sev-1/Sev-2/Sev-3 (TODO.md L14)
+  (`docs/developers/guides/incident-response-runbook.md`) defining Sev-1/Sev-2/Sev-3 (TODO.md L14)
 - **Opening balance can be dated.** An account's opening balance is now stated "as of" a date
   (`Account.openingBalanceDate`); transactions dated before it are informational only (reports and
   trends) and no longer move the current balance, so importing or back-filling history older than
@@ -236,4 +236,4 @@ Installers still ship without OS-level code signing (`SEC-05`, accepted risk —
   than pursued — see `docs/desktop/download.md` for what the resulting "unknown publisher"
   warning looks like and how to get past it. `bundle.windows.signCommand` and
   `bundle.macOS.signingIdentity` pick up real credentials automatically if they're ever added as
-  CI secrets (`docs/developers/desktop-app.md`), with no further code change needed.
+  CI secrets (`docs/developers/guides/desktop-app.md`), with no further code change needed.

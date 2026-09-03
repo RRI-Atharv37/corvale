@@ -5,7 +5,7 @@
 #
 # Vite bakes VITE_* variables into the built JS at build time, not at container start — so they
 # arrive as build ARGs here, not as runtime environment variables. See
-# docs/developers/deployment.md for how docker-compose.yml wires these from a root .env file.
+# docs/developers/guides/deployment.md for how docker-compose.yml wires these from a root .env file.
 FROM node:20-alpine AS build
 WORKDIR /app
 

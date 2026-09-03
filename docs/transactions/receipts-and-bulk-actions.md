@@ -64,4 +64,4 @@ Bulk category change does **not** apply to transfers. Select only income or expe
 
 - [Transactions Overview](./overview.md)
 - [Managing Transactions](./managing-transactions.md)
-- [Receipts API](../developers/receipts-api.md)
+- [Receipts API](../developers/api/receipts-api.md)

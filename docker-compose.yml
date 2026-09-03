@@ -1,5 +1,5 @@
 # Self-hosting stack for Corvale: MongoDB + the Express API + the built frontend behind nginx.
-# See docs/developers/deployment.md for the full setup guide, including HTTPS, ClamAV, and
+# See docs/developers/guides/deployment.md for the full setup guide, including HTTPS, ClamAV, and
 # S3-compatible receipt storage.
 #
 # This stack serves plain HTTP on 127.0.0.1:8080 / 127.0.0.1:5000 - loopback only (SEC-65), so
@@ -57,13 +57,13 @@ services:
       # Overrides backend/.env's CLIENT_URL (which most people leave pointed at :5173 for their
       # normal non-Docker `npm run dev`) with this stack's actual frontend origin, so CORS
       # admits it. Change this if you're serving the frontend container from a different host
-      # or port (e.g. behind a reverse proxy - see docs/developers/deployment.md).
+      # or port (e.g. behind a reverse proxy - see docs/developers/guides/deployment.md).
       CLIENT_URL: http://localhost:8080
     depends_on:
       - mongo
     ports:
       # SEC-65: loopback only. The host reverse proxy (Caddy/nginx - see
-      # docs/developers/deployment.md) is the sole public entrypoint. Do NOT change this to
+      # docs/developers/guides/deployment.md) is the sole public entrypoint. Do NOT change this to
       # '5000:5000' / '0.0.0.0:5000:5000' on an internet-facing host: Docker's iptables DNAT
       # rules bypass ufw, so that would expose the financial API regardless of a host firewall.
       # If the proxy runs on a separate host, bind to the private interface in

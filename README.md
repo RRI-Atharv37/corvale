@@ -191,7 +191,7 @@ JWT_REFRESH_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
 ```
 
-See [Environment Variables](docs/developers/environment-variables.md) for the full list, including refresh-token, rate-limit, and receipt virus-scan settings.
+See [Environment Variables](docs/developers/guides/environment-variables.md) for the full list, including refresh-token, rate-limit, and receipt virus-scan settings.
 
 **Frontend** - copy the example file:
 
