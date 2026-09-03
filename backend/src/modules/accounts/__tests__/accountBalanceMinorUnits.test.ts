@@ -10,7 +10,7 @@ import { toMinorUnits } from '@shared/money'
 // already uses (see moneyUtils.ts / migrateLegacyTransactions.ts for the established pattern this
 // migration should follow). The API contract (request/response bodies) stays major-unit floats
 // throughout - only the internal Account document representation changes.
-import { migrateAccountBalancesToMinorUnits } from '../../../../utils/migrateAccountBalancesToMinorUnits'
+import { migrateAccountBalancesToMinorUnits } from '@migrations/accountBalanceMinorUnits'
 import { authHeader, seedUserDirectly } from '@tests/helpers'
 import { computeUserBalances, computeAccountTotals } from "@modules/accounts/accountBalance";
 

@@ -2,7 +2,7 @@ import request from 'supertest'
 import { Application } from 'express'
 import { createApp } from '@http/app'
 import { Account } from '@modules/accounts'
-import { migrateAccountBalancesToMinorUnits } from '../../../../utils/migrateAccountBalancesToMinorUnits'
+import { migrateAccountBalancesToMinorUnits } from '@migrations/accountBalanceMinorUnits'
 import { authHeader, ensureTimestampAdvances, registerUser, RegisteredUser } from '@tests/helpers'
 
 /**

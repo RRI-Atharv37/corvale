@@ -5,7 +5,7 @@ import { authHeader } from '@tests/helpers'
 import { User } from '@modules/users'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { setMailTransport } from '@infra/mail/mailService'
-import { backfillEmailVerification } from '../../../../utils/backfillEmailVerification'
+import { backfillEmailVerification } from '@migrations/emailVerificationBackfill'
 import { createEmailVerificationForUser } from "@modules/auth/emailVerificationUtils";
 
 /**

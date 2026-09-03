@@ -6,7 +6,8 @@ import { defineConfig } from 'vitest/config'
  * RF1: the `@shared/*` alias (and the `@core`/`@infra`/`@http`/`@modules` slots the relocation
  * fills in RF2/RF3) must resolve here exactly as they do in `tsconfig.json`. `tsc` paths don't
  * reach Vitest, so they are restated as `resolve.alias`. RF4 adds `@tests/*` for the co-located
- * suites that still reach the shared harness under `tests/`.
+ * suites that still reach the shared harness under `tests/`; RF5 adds `@migrations/*` for the
+ * one-shot data-migration logic a few of those suites exercise directly.
  */
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
@@ -18,6 +19,7 @@ export default defineConfig({
             '@infra': r('./src/infra'),
             '@http': r('./src/http'),
             '@modules': r('./src/modules'),
+            '@migrations': r('./src/migrations'),
             '@tests': r('./tests'),
         },
     },

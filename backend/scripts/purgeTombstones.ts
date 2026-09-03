@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import connectDB from '@infra/db/db'
-import { purgeExpiredTombstones, TOMBSTONE_RETENTION_DAYS } from '../utils/purgeTombstones'
+import { purgeExpiredTombstones, TOMBSTONE_RETENTION_DAYS } from '@migrations/tombstonePurge'
 
 const main = async (): Promise<void> => {
     if (!process.env.MONGO_URI) {

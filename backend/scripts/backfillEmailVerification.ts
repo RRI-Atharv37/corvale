@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import connectDB from '@infra/db/db'
-import { backfillEmailVerification } from '../utils/backfillEmailVerification'
+import { backfillEmailVerification } from '@migrations/emailVerificationBackfill'
 
 const main = async (): Promise<void> => {
     const dryRun = process.argv.includes('--dry-run')

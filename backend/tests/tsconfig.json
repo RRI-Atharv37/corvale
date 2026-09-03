@@ -16,7 +16,6 @@
     "**/*.ts",
     "**/*.mts",
     "../src/**/*.ts",
-    "../utils/**/*.ts",
     "../../shared/src/**/*.ts"
   ],
   "exclude": ["../node_modules", "../dist", "../../dist"]

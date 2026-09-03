@@ -21,7 +21,7 @@ export interface IAccount extends Document {
      * (a decimal, e.g. 12.50) for every account created before Sprint C5's migration ran,
      * 'minor' (an integer, e.g. 1250) for one that's been converted, mirroring how
      * Transaction.amount is always minor units. New accounts default to 'major' unchanged
-     * (see accountController.createAccount) so migrateAccountBalancesToMinorUnits.ts has a
+     * (see accountController.createAccount) so migrations/accountBalanceMinorUnits.ts has a
      * stable, idempotent flag to convert against; every read/write of these two fields must
      * branch on balanceUnit rather than assuming one or the other.
      */

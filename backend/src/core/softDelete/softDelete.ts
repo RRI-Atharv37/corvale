@@ -13,7 +13,7 @@ export const SOFT_DELETE_BYPASS = 'softDeleteBypass'
  *
  * SEC-47: enforced by a partial TTL index on `deletedAt` (see softDeletePlugin),
  * not only by the `purge:tombstones` CLI. Lives here - the leaf constants file -
- * so both the plugin and `purgeTombstones.ts` can import it without a cycle.
+ * so both the plugin and `migrations/tombstonePurge.ts` can import it without a cycle.
  */
 export const TOMBSTONE_RETENTION_DAYS = 90
 

@@ -23,6 +23,7 @@
       "@infra/*": ["./src/infra/*"],
       "@http/*": ["./src/http/*"],
       "@modules/*": ["./src/modules/*"],
+      "@migrations/*": ["./src/migrations/*"],
       "@tests/*": ["./tests/*"]
     }
   },
