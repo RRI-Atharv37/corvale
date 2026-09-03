@@ -8,7 +8,8 @@ import { computeLocalDashboardSummary, type DashboardSummary as LocalDashboardSu
 import { useUser } from '@/app/providers/useUser'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
-import type { ApiResponse, DashboardSummary as ServerDashboardSummary } from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { DashboardSummary as ServerDashboardSummary } from '@features/dashboard/types'
 
 interface PeriodQuery {
     startDate: string

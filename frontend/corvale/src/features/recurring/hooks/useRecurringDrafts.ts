@@ -5,7 +5,8 @@ import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
 import { syncNow } from '@platform/sync/syncEngine'
-import type { ApiResponse, Transaction } from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { Transaction } from '@features/transactions/types'
 
 export interface UseRecurringDraftsResult {
     drafts: Transaction[]

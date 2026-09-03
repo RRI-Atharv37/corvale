@@ -4,7 +4,8 @@ import { renderWithProviders, screen, waitFor, userEvent } from '@/test/test-uti
 import DashboardLayout from '../DashboardLayout'
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
-import type { ApiResponse, AuthPayload, User } from '@lib/types/api'
+import type { ApiResponse, User } from '@lib/types/api'
+import type { AuthPayload } from '@features/auth/types'
 
 vi.mock('@lib/axiosInstance', () => ({
     default: {

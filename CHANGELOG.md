@@ -5,7 +5,7 @@ All notable changes to Corvale are documented in this file. The format follows
 in git and published via `.github/workflows/release.yml` (TODO.md D8).
 
 Releases before this file existed are recorded only as git tags with no changelog entries — see
-[TODO.completed.md](./TODO.completed.md) for what shipped in each phase.
+[TODO.completed.md](./.project/TODO.completed.md) for what shipped in each phase.
 
 Before tagging a release, rename `## [Unreleased]` below to `## [MAJOR.MINOR.PATCH] - YYYY-MM-DD`
 and start a fresh `## [Unreleased]` section above it — the release workflow extracts the section

@@ -21,13 +21,8 @@ import { useCategorizationRulesData, type CategorizationRuleInput } from './hook
 import { useAccountsData } from '@features/accounts/hooks/useAccountsData'
 import { useCategoriesData } from './hooks/useCategoriesData'
 import { useTagsData } from '@features/tags/hooks/useTagsData'
-import type {
-    Account,
-    CategorizationMatchType,
-    CategorizationRule,
-    CategorizationRuleFormData,
-    CategorizationRuleTestResult,
-} from '@lib/types/api'
+import type { Account } from '@features/accounts/types'
+import type { CategorizationMatchType, CategorizationRule, CategorizationRuleFormData, CategorizationRuleTestResult } from '@features/categories/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency } from '@lib/format'
 

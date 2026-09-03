@@ -1,10 +1,6 @@
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS, BASE_URL } from '@lib/apiPaths'
-import type {
-    ApiResponse,
-    BackupRestorePreview,
-    BackupRestoreResult,
-} from '@lib/types/api'
+import type { ApiResponse, BackupRestorePreview, BackupRestoreResult } from '@lib/types/api'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { saveExportedFile } from '@platform/desktop/downloadExport'
 

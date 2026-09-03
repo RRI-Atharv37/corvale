@@ -26,13 +26,7 @@ import { usePageSize } from '@/app/hooks/usePaginatedList'
 import { useUser } from '@/app/providers/useUser'
 import { useSavingsGoalsData, type SavingsGoalPayload } from './hooks/useSavingsGoalsData'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
-import type {
-    AutoContributionInterval,
-    SavingsGoal,
-    SavingsGoalContribution,
-    SavingsGoalFormData,
-    SavingsGoalStatus,
-} from '@lib/types/api'
+import type { AutoContributionInterval, SavingsGoal, SavingsGoalContribution, SavingsGoalFormData, SavingsGoalStatus } from '@features/savings-goals/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import {
     formatContributionDate,

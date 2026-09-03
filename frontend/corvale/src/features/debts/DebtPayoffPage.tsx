@@ -20,7 +20,7 @@ import AccountMultiSelect from '@features/budgets/components/AccountMultiSelect'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import WorkspaceReadOnlyBanner from '@features/workspaces/components/WorkspaceReadOnlyBanner'
 import { useDebtPayoffData } from './hooks/useDebtPayoffData'
-import type { DebtPayoffPlan, DebtPayoffStrategy } from '@lib/types/api'
+import type { DebtPayoffPlan, DebtPayoffStrategy } from '@features/debts/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency } from '@lib/format'
 import {

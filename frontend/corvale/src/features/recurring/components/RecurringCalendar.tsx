@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
-import type { RecurringRule, Transaction } from '@lib/types/api'
+import type { RecurringRule } from '@features/recurring/types'
+import type { Transaction } from '@features/transactions/types'
 import { formatCurrency, toDateInputValue } from '@lib/format'
 import {
     buildCalendarGrid,

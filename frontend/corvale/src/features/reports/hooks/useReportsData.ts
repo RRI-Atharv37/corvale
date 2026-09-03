@@ -30,27 +30,11 @@ import {
 } from '@domain/reports'
 import type { LocalDb } from '@platform/db/LocalDb'
 import type { LocalRecurringRule, LocalTransaction } from '@domain/types'
-import type {
-    ApiResponse,
-    BudgetAnalysisReport,
-    BudgetOverviewResponse,
-    CategoryBreakdownItem,
-    ClearedStatus,
-    CrossoverPointReport,
-    DashboardCashFlowResponse,
-    DashboardGroupBy,
-    IncomeVsExpenseResponse,
-    LargestExpensesResponse,
-    NetWorthTrendResponse,
-    PeriodAverages,
-    RecurringRule,
-    RecurringTotalsReport,
-    SavedReport,
-    SavingsRateReport,
-    SpendingAnalysisReport,
-    SpendingTrendsResponse,
-    Transaction,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { BudgetOverviewResponse, CategoryBreakdownItem, DashboardCashFlowResponse, DashboardGroupBy, NetWorthTrendResponse } from '@features/dashboard/types'
+import type { RecurringRule } from '@features/recurring/types'
+import type { BudgetAnalysisReport, CrossoverPointReport, IncomeVsExpenseResponse, LargestExpensesResponse, PeriodAverages, RecurringTotalsReport, SavedReport, SavingsRateReport, SpendingAnalysisReport, SpendingTrendsResponse } from '@features/reports/types'
+import type { ClearedStatus, Transaction } from '@features/transactions/types'
 
 export interface ReportsData {
     averages: PeriodAverages

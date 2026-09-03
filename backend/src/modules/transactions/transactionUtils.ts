@@ -102,6 +102,29 @@ export const attachUserFullNamesToTransactions = async (
     }))
 }
 
+export const enrichTransactionsForWorkspace = async <T extends SerializedTransaction>(
+    workspaceId: string | null,
+    transactions: T[]
+): Promise<T[]> => {
+    if (!workspaceId) {
+        return transactions
+    }
+
+    return attachUserFullNamesToTransactions(transactions) as Promise<T[]>
+}
+
+export const enrichTransactionForWorkspace = async <T extends SerializedTransaction>(
+    workspaceId: string | null | undefined,
+    transaction: T
+): Promise<T> => {
+    if (!workspaceId) {
+        return transaction
+    }
+
+    const [enriched] = await attachUserFullNamesToTransactions([transaction])
+    return enriched as T
+}
+
 export const parseClientAmount = (value: unknown): number => {
     try {
         return parseAmountToMinorUnits(value)

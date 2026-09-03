@@ -8,7 +8,7 @@ import {
     Tooltip,
 } from 'recharts'
 
-import type { CategoryBreakdownItem } from '@lib/types/api'
+import type { CategoryBreakdownItem } from '@features/dashboard/types'
 import { formatCurrency } from '@lib/format'
 import { CHART_CATEGORY_COLORS, CHART_COLORS, chartTooltipProps } from './chartTheme'
 

@@ -1,12 +1,7 @@
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
-import type {
-    ApiResponse,
-    Workspace,
-    WorkspaceInvite,
-    WorkspaceInviteFormData,
-    WorkspaceInviteRole,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { Workspace, WorkspaceInvite, WorkspaceInviteFormData, WorkspaceInviteRole } from '@features/workspaces/types'
 import { unwrapApiData } from '@lib/apiHelpers'
 
 export const fetchWorkspaces = async (): Promise<Workspace[]> => {

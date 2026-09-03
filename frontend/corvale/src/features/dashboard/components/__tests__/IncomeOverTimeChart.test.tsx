@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@/test/test-utils'
 import IncomeOverTimeChart from '../IncomeOverTimeChart'
 import { formatCurrency } from '@lib/format'
-import type { CashFlowPoint } from '@lib/types/api'
+import type { CashFlowPoint } from '@features/dashboard/types'
 
 // X8 (Gate G3): IncomeOverTimeChart renders a bare Recharts <svg> with no accessible name or
 // description. Acceptance spec: the chart exposes a role="img" text alternative summarizing income

@@ -30,15 +30,7 @@ import {
     type ExportFormat,
 } from '@platform/desktop/downloadExport'
 import { useReportsData } from './hooks/useReportsData'
-import type {
-    BudgetAnalysisReport,
-    CrossoverPointReport,
-    IncomeVsExpenseResponse,
-    ReportMetricKey,
-    ReportPeriodType,
-    SpendingAnalysisReport,
-    SpendingTrendsResponse,
-} from '@lib/types/api'
+import type { BudgetAnalysisReport, CrossoverPointReport, IncomeVsExpenseResponse, ReportMetricKey, ReportPeriodType, SpendingAnalysisReport, SpendingTrendsResponse } from '@features/reports/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import {
     formatContributionDate,
@@ -64,7 +56,7 @@ import NetWorthChart from '@features/dashboard/components/NetWorthChart'
 import BudgetOverviewChart from '@features/dashboard/components/BudgetOverviewChart'
 import DashboardCalendarCard from '@features/dashboard/components/DashboardCalendarCard'
 import ThisMonthChart from '@features/dashboard/components/ThisMonthChart'
-import type { DashboardGroupBy } from '@lib/types/api'
+import type { DashboardGroupBy } from '@features/dashboard/types'
 
 const resolveGroupByFromDates = (startDate: string, endDate: string): DashboardGroupBy => {
     const start = new Date(`${startDate}T12:00:00`)

@@ -13,15 +13,10 @@ import {
 import { Link, useSearchParams } from 'react-router-dom'
 import PageHeader from '@ui/PageHeader'
 import AsyncContent from '@ui/AsyncContent'
-import Modal from '@ui/Modal'
 import Pagination from '@ui/Pagination'
 import ConfirmDialog from '@ui/ConfirmDialog'
-import FormField, { TextAreaField } from '@ui/forms/FormField'
-import CategoryPicker from '@features/categories/components/CategoryPicker'
-import TagPicker from '@features/tags/components/TagPicker'
+import FormField from '@ui/forms/FormField'
 import TagChip from '@features/tags/components/TagChip'
-import AccountPicker from '@features/accounts/components/AccountPicker'
-import ReceiptAttachments from './components/ReceiptAttachments'
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
 import { usePageSize } from '@/app/hooks/usePaginatedList'
@@ -36,15 +31,8 @@ import {
     type StatusFilter,
     type TypeFilter,
 } from './hooks/useTransactionsData'
-import type {
-    ApiResponse,
-    Receipt,
-    SplitLineFormData,
-    Transaction,
-    TransactionFormData,
-    TransactionType,
-    TransferFormData,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { Transaction, TransactionFormData, TransferFormData } from '@features/transactions/types'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency, formatDisplayDate, toDateInputValue } from '@lib/format'
@@ -52,6 +40,20 @@ import { attachReceiptToTransaction, uploadReceipt } from './receiptApi'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import WorkspaceReadOnlyBanner from '@features/workspaces/components/WorkspaceReadOnlyBanner'
 import QuickAddDropdown from './components/QuickAddDropdown'
+import TransactionFormModal from './components/TransactionFormModal'
+import TransferModal from './components/TransferModal'
+import BulkCategoryModal from './components/BulkCategoryModal'
+import {
+    amountColor,
+    amountPrefix,
+    emptyForm,
+    emptySplitLine,
+    emptyTransferForm,
+    SORT_OPTIONS,
+    STATUS_OPTIONS,
+    transactionUserLabel,
+    TYPE_TABS,
+} from './transactionsPageHelpers'
 import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import {
     buildExportFilename,
@@ -62,57 +64,6 @@ import {
     type ExportFormat,
     type TransactionExportType,
 } from '@platform/desktop/downloadExport'
-
-const emptySplitLine = (): SplitLineFormData => ({ categoryId: '', amount: '' })
-
-const emptyForm = (type: 'income' | 'expense' = 'expense'): TransactionFormData => ({
-    type,
-    title: '',
-    amount: '',
-    date: toDateInputValue(new Date()),
-    accountId: '',
-    categoryId: '',
-    description: '',
-    source: '',
-    paymentMethod: '',
-    tags: [],
-    splitEnabled: false,
-    splits: [emptySplitLine(), emptySplitLine()],
-})
-
-const emptyTransferForm = (): TransferFormData => ({
-    title: '',
-    amount: '',
-    date: toDateInputValue(new Date()),
-    fromAccountId: '',
-    toAccountId: '',
-    description: '',
-})
-
-const TYPE_TABS: { value: TypeFilter; label: string }[] = [
-    { value: '', label: 'All' },
-    { value: 'income', label: 'Income' },
-    { value: 'expense', label: 'Expense' },
-    { value: 'transfer', label: 'Transfer' },
-]
-
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-    { value: '', label: 'All' },
-    { value: 'posted', label: 'Posted' },
-    { value: 'draft', label: 'Draft' },
-]
-
-const SORT_OPTIONS: { value: SortField; label: string }[] = [
-    { value: 'date', label: 'Date' },
-    { value: 'amount', label: 'Amount' },
-    { value: 'category', label: 'Category' },
-]
-
-const transactionUserLabel = (type: TransactionType, name: string): string => {
-    if (type === 'income') return `Received by ${name}`
-    if (type === 'expense') return `Paid by ${name}`
-    return `By ${name}`
-}
 
 const Transactions = () => {
     const { activeWorkspaceId, canEdit, isPersonal, activeWorkspace } = useWorkspace()
@@ -152,7 +103,7 @@ const Transactions = () => {
     const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false)
     const [bulkCategoryId, setBulkCategoryId] = useState('')
     const [bulkSubmitting, setBulkSubmitting] = useState(false)
-    const [attachedReceipts, setAttachedReceipts] = useState<Receipt[]>([])
+    const [attachedReceipts, setAttachedReceipts] = useState<NonNullable<Transaction['receipts']>>([])
     const [pendingReceiptFiles, setPendingReceiptFiles] = useState<File[]>([])
     const [exportType, setExportType] = useState<TransactionExportType>('both')
     const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
@@ -441,12 +392,12 @@ const Transactions = () => {
 
         if (usingSplits) {
             const totalAmount = Number(form.amount)
-            const splitTotal = form.splits.reduce((sum, line) => sum + Number(line.amount || 0), 0)
+            const splitSum = form.splits.reduce((sum, line) => sum + Number(line.amount || 0), 0)
             if (form.splits.some((line) => !line.categoryId || !line.amount)) {
                 toast.error('Each split line needs a category and amount')
                 return
             }
-            if (Math.abs(splitTotal - totalAmount) > 0.001) {
+            if (Math.abs(splitSum - totalAmount) > 0.001) {
                 toast.error('Split amounts must equal the total amount')
                 return
             }
@@ -556,7 +507,7 @@ const Transactions = () => {
         }
     }
 
-    const updateSplitLine = (index: number, patch: Partial<SplitLineFormData>) => {
+    const updateSplitLine = (index: number, patch: Partial<TransactionFormData['splits'][number]>) => {
         setForm((current) => ({
             ...current,
             splits: current.splits.map((line, i) => (i === index ? { ...line, ...patch } : line)),
@@ -684,18 +635,6 @@ const Transactions = () => {
     const hasActiveFilters = Boolean(searchQuery || dateFilterActive || tagFilter.length > 0 || statusFilter)
     const hasAdvancedFilters = Boolean(dateFilterActive || tagFilter.length > 0 || statusFilter)
     const hasNonDefaultSort = sortBy !== 'date' || sortOrder !== 'desc'
-
-    const amountColor = (type: TransactionType): string => {
-        if (type === 'income') return 'text-accent'
-        if (type === 'expense') return 'text-expense'
-        return 'text-violet-400'
-    }
-
-    const amountPrefix = (type: TransactionType): string => {
-        if (type === 'income') return '+'
-        if (type === 'expense') return '−'
-        return ''
-    }
 
     return (
         <div>
@@ -1210,306 +1149,37 @@ const Transactions = () => {
                 )}
             </AsyncContent>
 
-            <Modal
+            <TransactionFormModal
                 open={formOpen}
                 onClose={closeForm}
-                size="lg"
-                title={
-                    editingId
-                        ? 'Edit transaction'
-                        : form.type === 'income'
-                          ? 'Add income'
-                          : 'Add expense'
-                }
-            >
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {!editingId && (
-                        <div>
-                            <label className="text-[13px] text-fg-secondary">Type</label>
-                            <div className="input-box mb-0 mt-1">
-                                <select
-                                    value={form.type}
-                                    onChange={(e) =>
-                                        setForm((f) => ({
-                                            ...f,
-                                            type: e.target.value as 'income' | 'expense',
-                                            categoryId: '',
-                                        }))
-                                    }
-                                    disabled={submitting}
-                                    className="w-full bg-transparent outline-none text-fg"
-                                >
-                                    <option value="income" className="bg-surface">
-                                        Income
-                                    </option>
-                                    <option value="expense" className="bg-surface">
-                                        Expense
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-                    )}
-                    <FormField
-                        label="Title"
-                        value={form.title}
-                        onChange={(v) => setForm((f) => ({ ...f, title: v }))}
-                        placeholder={form.type === 'income' ? 'Salary, freelance, etc.' : 'Groceries, rent, etc.'}
-                        required
-                        disabled={submitting}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                            label="Amount"
-                            type="number"
-                            value={form.amount}
-                            onChange={(v) => setForm((f) => ({ ...f, amount: v }))}
-                            placeholder="0.00"
-                            required
-                            disabled={submitting}
-                            min="0"
-                            step="0.01"
-                        />
-                        <FormField
-                            label="Date"
-                            type="date"
-                            value={form.date}
-                            onChange={(v) => setForm((f) => ({ ...f, date: v }))}
-                            required
-                            disabled={submitting}
-                        />
-                    </div>
-                    <AccountPicker
-                        value={form.accountId}
-                        onChange={(accountId) => setForm((f) => ({ ...f, accountId }))}
-                        accountsData={lookups?.accounts.filter((a) => !a.isArchived)}
-                        required
-                        disabled={submitting}
-                    />
-                    {form.type === 'expense' && !editingId && (
-                        <label className="flex items-center gap-2 text-sm text-fg-secondary">
-                            <input
-                                type="checkbox"
-                                checked={form.splitEnabled}
-                                onChange={(e) =>
-                                    setForm((f) => ({
-                                        ...f,
-                                        splitEnabled: e.target.checked,
-                                        categoryId: e.target.checked ? '' : f.categoryId,
-                                    }))
-                                }
-                                disabled={submitting}
-                                className="rounded border-border bg-surface"
-                            />
-                            Split across categories
-                        </label>
-                    )}
-                    {form.splitEnabled && form.type === 'expense' && !editingId ? (
-                        <div className="space-y-3 rounded-lg border border-border p-3">
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm text-fg-secondary">Split lines</p>
-                                <button
-                                    type="button"
-                                    onClick={addSplitLine}
-                                    disabled={submitting}
-                                    className="text-xs text-accent hover:text-accent"
-                                >
-                                    + Add line
-                                </button>
-                            </div>
-                            {form.splits.map((line, index) => (
-                                <div key={index} className="grid grid-cols-[1fr_120px_auto] gap-2 items-end">
-                                    <CategoryPicker
-                                        value={line.categoryId}
-                                        onChange={(categoryId) => updateSplitLine(index, { categoryId })}
-                                        categoriesData={lookups?.categories}
-                                        required
-                                        disabled={submitting}
-                                        label={index === 0 ? 'Category' : undefined}
-                                    />
-                                    <FormField
-                                        label={index === 0 ? 'Amount' : ' '}
-                                        type="number"
-                                        value={line.amount}
-                                        onChange={(v) => updateSplitLine(index, { amount: v })}
-                                        placeholder="0.00"
-                                        required
-                                        disabled={submitting}
-                                        min="0"
-                                        step="0.01"
-                                    />
-                                    {form.splits.length > 2 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => removeSplitLine(index)}
-                                            disabled={submitting}
-                                            className="p-2 text-fg-muted hover:text-expense"
-                                            aria-label="Remove split line"
-                                        >
-                                            <IoTrash size={14} />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            <p
-                                className={[
-                                    'text-xs',
-                                    Math.abs(splitDiff) < 0.001 ? 'text-fg-muted' : 'text-warning',
-                                ].join(' ')}
-                            >
-                                Split total: {splitTotal.toFixed(2)}
-                                {Math.abs(splitDiff) >= 0.001
-                                    ? ` (${splitDiff > 0 ? 'remaining' : 'over'} ${Math.abs(splitDiff).toFixed(2)})`
-                                    : ' · matches total'}
-                            </p>
-                        </div>
-                    ) : (
-                        <CategoryPicker
-                            value={form.categoryId}
-                            onChange={(categoryId) => setForm((f) => ({ ...f, categoryId }))}
-                            masterCategoryId={form.type === 'income' ? incomeMasterId : undefined}
-                            categoriesData={lookups?.categories}
-                            required
-                            disabled={submitting}
-                        />
-                    )}
-                    {form.type === 'income' ? (
-                        <FormField
-                            label="Source"
-                            value={form.source}
-                            onChange={(v) => setForm((f) => ({ ...f, source: v }))}
-                            placeholder="Employer or client"
-                            disabled={submitting}
-                        />
-                    ) : (
-                        <>
-                            <FormField
-                                label="Payment method"
-                                value={form.paymentMethod}
-                                onChange={(v) => setForm((f) => ({ ...f, paymentMethod: v }))}
-                                placeholder="Card, cash, UPI, etc."
-                                disabled={submitting}
-                            />
-                            <TagPicker
-                                value={form.tags}
-                                onChange={(tags) => setForm((f) => ({ ...f, tags }))}
-                                tagsData={lookups?.tags}
-                                onTagsChange={refetchLookups}
-                                disabled={submitting}
-                            />
-                        </>
-                    )}
-                    <TextAreaField
-                        label="Notes"
-                        value={form.description}
-                        onChange={(v) => setForm((f) => ({ ...f, description: v }))}
-                        placeholder="Optional notes"
-                        disabled={submitting}
-                    />
-                    {!form.splitEnabled && (
-                        <ReceiptAttachments
-                            transactionId={editingId}
-                            receipts={attachedReceipts}
-                            onChange={setAttachedReceipts}
-                            pendingFiles={pendingReceiptFiles}
-                            onPendingFilesChange={setPendingReceiptFiles}
-                            disabled={submitting}
-                        />
-                    )}
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={closeForm}
-                            disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
-                        >
-                            {submitting ? 'Saving...' : editingId ? 'Update' : 'Add transaction'}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+                onSubmit={handleSubmit}
+                form={form}
+                setForm={setForm}
+                editingId={editingId}
+                submitting={submitting}
+                lookups={lookups}
+                incomeMasterId={incomeMasterId}
+                updateSplitLine={updateSplitLine}
+                addSplitLine={addSplitLine}
+                removeSplitLine={removeSplitLine}
+                splitTotal={splitTotal}
+                splitDiff={splitDiff}
+                attachedReceipts={attachedReceipts}
+                onAttachedReceiptsChange={setAttachedReceipts}
+                pendingReceiptFiles={pendingReceiptFiles}
+                onPendingReceiptFilesChange={setPendingReceiptFiles}
+                refetchLookups={refetchLookups}
+            />
 
-            <Modal open={transferOpen} onClose={closeTransfer} size="lg" title="Transfer between accounts">
-                <form onSubmit={handleTransferSubmit} className="space-y-4">
-                    <FormField
-                        label="Title"
-                        value={transferForm.title}
-                        onChange={(v) => setTransferForm((f) => ({ ...f, title: v }))}
-                        placeholder="Move to savings, pay credit card, etc."
-                        required
-                        disabled={transferSubmitting}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                            label="Amount"
-                            type="number"
-                            value={transferForm.amount}
-                            onChange={(v) => setTransferForm((f) => ({ ...f, amount: v }))}
-                            placeholder="0.00"
-                            required
-                            disabled={transferSubmitting}
-                            min="0"
-                            step="0.01"
-                        />
-                        <FormField
-                            label="Date"
-                            type="date"
-                            value={transferForm.date}
-                            onChange={(v) => setTransferForm((f) => ({ ...f, date: v }))}
-                            required
-                            disabled={transferSubmitting}
-                        />
-                    </div>
-                    <AccountPicker
-                        value={transferForm.fromAccountId}
-                        onChange={(fromAccountId) =>
-                            setTransferForm((f) => ({ ...f, fromAccountId }))
-                        }
-                        accountsData={lookups?.accounts.filter((a) => !a.isArchived)}
-                        label="From account"
-                        required
-                        disabled={transferSubmitting}
-                    />
-                    <AccountPicker
-                        value={transferForm.toAccountId}
-                        onChange={(toAccountId) => setTransferForm((f) => ({ ...f, toAccountId }))}
-                        accountsData={lookups?.accounts.filter((a) => !a.isArchived)}
-                        label="To account"
-                        required
-                        disabled={transferSubmitting}
-                    />
-                    <TextAreaField
-                        label="Notes"
-                        value={transferForm.description}
-                        onChange={(v) => setTransferForm((f) => ({ ...f, description: v }))}
-                        placeholder="Optional notes"
-                        disabled={transferSubmitting}
-                    />
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={closeTransfer}
-                            disabled={transferSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={transferSubmitting}
-                            className="flex-1 px-4 py-2 btn-accent disabled:opacity-50"
-                        >
-                            {transferSubmitting ? 'Transferring...' : 'Transfer'}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+            <TransferModal
+                open={transferOpen}
+                onClose={closeTransfer}
+                onSubmit={handleTransferSubmit}
+                transferForm={transferForm}
+                setTransferForm={setTransferForm}
+                submitting={transferSubmitting}
+                accounts={lookups?.accounts.filter((a) => !a.isArchived)}
+            />
 
             <ConfirmDialog
                 open={deleteTarget !== null}
@@ -1533,49 +1203,19 @@ const Transactions = () => {
                 loading={bulkSubmitting}
             />
 
-            <Modal
+            <BulkCategoryModal
                 open={bulkCategoryOpen}
                 onClose={() => {
                     setBulkCategoryOpen(false)
                     setBulkCategoryId('')
                 }}
-                title="Change category"
-                size="md"
-            >
-                <form onSubmit={handleBulkCategoryChange} className="space-y-4">
-                    <p className="text-sm text-fg-muted">
-                        Apply a new category to {selectedIds.length} selected transaction
-                        {selectedIds.length === 1 ? '' : 's'}. Transfers are excluded.
-                    </p>
-                    <CategoryPicker
-                        value={bulkCategoryId}
-                        onChange={setBulkCategoryId}
-                        categoriesData={lookups?.categories}
-                        required
-                        disabled={bulkSubmitting}
-                    />
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setBulkCategoryOpen(false)
-                                setBulkCategoryId('')
-                            }}
-                            disabled={bulkSubmitting}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-border text-fg-secondary hover:border-border transition-colors disabled:opacity-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={bulkSubmitting || !bulkCategoryId}
-                            className="flex-1 px-4 py-2 text-sm font-medium rounded-lg btn-accent transition-colors disabled:opacity-50"
-                        >
-                            {bulkSubmitting ? 'Updating...' : 'Update category'}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+                onSubmit={handleBulkCategoryChange}
+                selectedCount={selectedIds.length}
+                categoryId={bulkCategoryId}
+                onCategoryIdChange={setBulkCategoryId}
+                submitting={bulkSubmitting}
+                categoriesData={lookups?.categories}
+            />
         </div>
     )
 }

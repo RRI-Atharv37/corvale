@@ -33,14 +33,9 @@ import { useRecurringDrafts } from './hooks/useRecurringDrafts'
 import { useAccountsData } from '@features/accounts/hooks/useAccountsData'
 import { useCategoriesData } from '@features/categories/hooks/useCategoriesData'
 import { useTagsData } from '@features/tags/hooks/useTagsData'
-import type {
-    CategoriesResponse,
-    RecurringRule,
-    RecurringRuleFormData,
-    RecurringRuleType,
-    RecurringInterval,
-    Transaction,
-} from '@lib/types/api'
+import type { CategoriesResponse } from '@features/categories/types'
+import type { RecurringRule, RecurringRuleFormData, RecurringRuleType, RecurringInterval } from '@features/recurring/types'
+import type { Transaction } from '@features/transactions/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency, formatDisplayDate, getCurrentMonthYear, toDateInputValue } from '@lib/format'
 import { CategoryIcon } from '@lib/categoryIcons'

@@ -5,7 +5,8 @@ import { renderWithProviders, screen, waitFor, within, userEvent } from '@/test/
 import Workspaces from '../WorkspacesPage'
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
-import type { User, Workspace, WorkspaceInvite } from '@lib/types/api'
+import type { User } from '@lib/types/api'
+import type { Workspace, WorkspaceInvite } from '@features/workspaces/types'
 
 // T4: Workspaces.tsx had zero prior coverage - create/switch/invite/accept/decline/role-gating/
 // remove/leave were all untested. Everything here goes through axiosInstance directly (workspace

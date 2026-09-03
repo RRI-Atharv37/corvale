@@ -17,7 +17,7 @@ import { DISCLAIMERS } from '@lib/disclaimers'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import WorkspaceReadOnlyBanner from '@features/workspaces/components/WorkspaceReadOnlyBanner'
 import { useForecastData } from './hooks/useForecastData'
-import type { ForecastAccount } from '@lib/types/api'
+import type { ForecastAccount } from '@features/forecast/types'
 import { formatCurrency, formatDisplayDate } from '@lib/format'
 import {
     axisTick,

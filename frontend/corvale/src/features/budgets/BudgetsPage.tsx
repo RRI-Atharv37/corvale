@@ -15,13 +15,8 @@ import { useUser } from '@/app/providers/useUser'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import WorkspaceReadOnlyBanner from '@features/workspaces/components/WorkspaceReadOnlyBanner'
 import { useBudgetsData, type BudgetPayload } from './hooks/useBudgetsData'
-import type {
-    Budget,
-    BudgetFormData,
-    BudgetPeriodType,
-    BudgetScopeType,
-    CategoriesResponse,
-} from '@lib/types/api'
+import type { Budget, BudgetFormData, BudgetPeriodType, BudgetScopeType } from '@features/budgets/types'
+import type { CategoriesResponse } from '@features/categories/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatBudgetPeriod, getCurrentMonthYear, toDateInputValue } from '@lib/format'
 import { CategoryIcon } from '@lib/categoryIcons'

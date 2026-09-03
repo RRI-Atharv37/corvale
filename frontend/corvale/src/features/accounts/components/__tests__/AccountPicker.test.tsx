@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { renderWithProviders, screen } from '@/test/test-utils'
 import AccountPicker from '../AccountPicker'
-import type { Account } from '@lib/types/api'
+import type { Account } from '@features/accounts/types'
 
 // X7 (Gate G3): AccountPicker renders a bare sibling <label> with no htmlFor and a <select> with
 // no id, so the label is not programmatically associated. Acceptance spec for X7.

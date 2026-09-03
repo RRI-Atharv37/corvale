@@ -1,4 +1,4 @@
-import type { RecurringInterval, RecurringRule } from '@lib/types/api'
+import type { RecurringInterval, RecurringRule } from '@features/recurring/types'
 import { toDateInputValue } from '@lib/format'
 
 export const INTERVAL_OPTIONS: { value: RecurringInterval; label: string }[] = [

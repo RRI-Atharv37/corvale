@@ -9,13 +9,10 @@ import { API_PATHS } from '@lib/apiPaths'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { BRAND } from '@lib/brand'
-import type {
-    AccountType,
-    ApiResponse,
-    CategoriesResponse,
-    OnboardingStatus,
-    OnboardingStep,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { AccountType } from '@features/accounts/types'
+import type { CategoriesResponse } from '@features/categories/types'
+import type { OnboardingStatus, OnboardingStep } from '@features/onboarding/types'
 
 export interface OnboardingWizardHandle {
     replay: () => void

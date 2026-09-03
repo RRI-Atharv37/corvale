@@ -10,7 +10,8 @@ import { getApiErrorMessage } from '@lib/apiError'
 import { buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import { useUser } from '@/app/providers/useUser'
 import { useWorkspace } from '@/app/providers/useWorkspace'
-import type { ApiResponse, CalendarEvent } from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { CalendarEvent } from '@features/calendar/types'
 import type { LocalDb } from '@platform/db/LocalDb'
 
 export interface UseCalendarDataResult {

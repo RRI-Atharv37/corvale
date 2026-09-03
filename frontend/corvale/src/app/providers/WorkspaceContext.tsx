@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react'
-import type { Workspace, WorkspaceRole } from '@lib/types/api'
+import type { Workspace, WorkspaceRole } from '@features/workspaces/types'
 import { fetchWorkspaces } from '@features/workspaces/workspaceApi'
 import { getApiErrorMessage } from '@lib/apiError'
 import {

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@/test/test-utils'
 import userEvent from '@testing-library/user-event'
 import CategoryPicker from '../CategoryPicker'
-import type { CategoriesResponse } from '@lib/types/api'
+import type { CategoriesResponse } from '@features/categories/types'
 
 // V4 (pre-v1.0.0): CategoryPicker is an ARIA 1.2 editable combobox, not a native <select>+<optgroup>.
 // This file is the acceptance spec for that rebuild. It also carries forward the X7/X8 (Gate G3)

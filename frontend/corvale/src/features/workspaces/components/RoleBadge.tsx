@@ -1,5 +1,5 @@
 import React from 'react'
-import type { WorkspaceRole } from '@lib/types/api'
+import type { WorkspaceRole } from '@features/workspaces/types'
 
 interface RoleBadgeProps {
     role: WorkspaceRole

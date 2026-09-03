@@ -1,7 +1,7 @@
 import React from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
-import type { BudgetOverviewItem } from '@lib/types/api'
+import type { BudgetOverviewItem } from '@features/dashboard/types'
 import { formatCurrency } from '@lib/format'
 import {
     axisTick,

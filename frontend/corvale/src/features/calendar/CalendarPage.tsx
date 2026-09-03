@@ -6,7 +6,7 @@ import AsyncContent from '@ui/AsyncContent'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import WorkspaceReadOnlyBanner from '@features/workspaces/components/WorkspaceReadOnlyBanner'
 import { useCalendarData } from './hooks/useCalendarData'
-import type { CalendarEvent, CalendarEventType } from '@lib/types/api'
+import type { CalendarEvent, CalendarEventType } from '@features/calendar/types'
 import { formatCurrency, toDateInputValue } from '@lib/format'
 import { buildCalendarGrid, WEEKDAY_LABELS } from '@features/recurring/recurringUtils'
 

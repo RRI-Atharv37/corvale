@@ -2,20 +2,21 @@ import express from 'express'
 
 import {
     attachReceiptToTransaction,
-    bulkDeleteTransactions,
-    bulkUpdateTransactionCategory,
     createTransaction,
     createTransfer,
     deleteTransaction,
     detachReceiptFromTransaction,
-    downloadTransactions,
     duplicateTransaction,
-    filterTransactions,
     getTransactionById,
-    getTransactions,
-    searchTransactions,
     updateTransaction,
 } from './transaction.controller'
+import {
+    downloadTransactions,
+    filterTransactions,
+    getTransactions,
+    searchTransactions,
+} from './transactionQuery.controller'
+import { bulkDeleteTransactions, bulkUpdateTransactionCategory } from './transactionBulk.controller'
 import { updateClearedStatus } from '@modules/reconciliation/reconciliation.controller'
 import { protect } from '@http/middleware/authMiddleware'
 

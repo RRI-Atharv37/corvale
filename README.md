@@ -265,7 +265,7 @@ Run locally with `npm run dev` inside [`./docs`](./docs). Covers:
 
 Source lives in [`./docs`](./docs) (VitePress). Build for production with `npm run build` inside that folder.
 
-Phases **0–12** are complete with **480 backend tests** across 41 files, zero regressions. See [ROADMAP.md](./ROADMAP.md) for the full phase-by-phase roadmap and architectural detail.
+Phases **0–12** are complete with **480 backend tests** across 41 files, zero regressions. See [ROADMAP.md](./.project/ROADMAP.md) for the full phase-by-phase roadmap and architectural detail.
 
 ---
 

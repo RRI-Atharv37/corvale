@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { RecurringRule, Transaction } from '@lib/types/api'
+import type { RecurringRule } from '@features/recurring/types'
+import type { Transaction } from '@features/transactions/types'
 import { formatCurrency, formatDisplayDate, getCurrentMonthYear, toDateInputValue } from '@lib/format'
 import {
     buildCalendarGrid,

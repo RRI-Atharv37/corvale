@@ -1,4 +1,4 @@
-import { ApiResponse } from './types/api'
+import { ApiResponse } from '@lib/types/api'
 
 export const unwrapApiData = <T>(response: ApiResponse<T> | T): T => {
     if (response && typeof response === 'object' && 'success' in response && 'data' in response) {

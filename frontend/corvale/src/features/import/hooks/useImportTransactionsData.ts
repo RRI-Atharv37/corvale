@@ -14,12 +14,7 @@ import {
     previewLocalImport,
     commitLocalImport,
 } from '@domain/importTransactions'
-import type {
-    ImportCommitResponse,
-    ImportDelimiter,
-    ImportParseResponse,
-    ImportPreviewResponse,
-} from '@lib/types/api'
+import type { ImportCommitResponse, ImportDelimiter, ImportParseResponse, ImportPreviewResponse } from '@features/import/types'
 
 export interface UseImportTransactionsDataResult {
     parseImportFile: (file: File, delimiter?: ImportDelimiter) => Promise<ImportParseResponse>

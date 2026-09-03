@@ -17,14 +17,9 @@ import { getApiErrorMessage } from '@lib/apiError'
 import { useUser } from '@/app/providers/useUser'
 import { useOnlineStatus } from '@platform/offline/useOnlineStatus'
 import { syncNow } from '@platform/sync/syncEngine'
-import type {
-    Account,
-    ApiResponse,
-    AutoContributionInterval,
-    ContributionType,
-    SavingsGoal,
-    SavingsGoalContribution,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { Account } from '@features/accounts/types'
+import type { AutoContributionInterval, ContributionType, SavingsGoal, SavingsGoalContribution } from '@features/savings-goals/types'
 import type { LocalAccount, LocalSavingsGoal, LocalSavingsGoalContribution } from '@domain/types'
 import type { LocalDb } from '@platform/db/LocalDb'
 

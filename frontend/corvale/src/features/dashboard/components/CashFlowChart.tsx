@@ -11,7 +11,7 @@ import {
     YAxis,
 } from 'recharts'
 
-import type { CashFlowPoint, DashboardGroupBy } from '@lib/types/api'
+import type { CashFlowPoint, DashboardGroupBy } from '@features/dashboard/types'
 import { formatCurrency } from '@lib/format'
 import {
     axisTick,

@@ -18,7 +18,10 @@ import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '@lib/worksp
 import { useUser } from '@/app/providers/useUser'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import { useCategoriesData } from '@features/categories/hooks/useCategoriesData'
-import type { Account, ApiResponse, Budget, BudgetPeriodType, CategoriesResponse } from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { Account } from '@features/accounts/types'
+import type { Budget, BudgetPeriodType } from '@features/budgets/types'
+import type { CategoriesResponse } from '@features/categories/types'
 import type { LocalAccount, LocalBudget } from '@domain/types'
 import type { LocalDb } from '@platform/db/LocalDb'
 

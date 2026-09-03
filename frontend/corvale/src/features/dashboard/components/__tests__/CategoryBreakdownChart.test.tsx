@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@/test/test-utils'
 import CategoryBreakdownChart from '../CategoryBreakdownChart'
 import { formatCurrency } from '@lib/format'
-import type { CategoryBreakdownItem } from '@lib/types/api'
+import type { CategoryBreakdownItem } from '@features/dashboard/types'
 
 // X8 (Gate G3): CategoryBreakdownChart renders a bare Recharts <svg> pie with no accessible name
 // or description - a screen-reader user gets an unlabeled graphic and none of the underlying

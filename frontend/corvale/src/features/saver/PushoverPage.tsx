@@ -8,13 +8,8 @@ import { DISCLAIMERS } from '@lib/disclaimers'
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
 import { useAsyncData } from '@/app/hooks/useAsyncData'
-import type {
-    ApiResponse,
-    PushoverRolloverResponse,
-    PushoverSnapshot,
-    SaverDetails,
-    SaverResponse,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { PushoverRolloverResponse, PushoverSnapshot, SaverDetails, SaverResponse } from '@features/saver/types'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency, formatDisplayDateTime } from '@lib/format'

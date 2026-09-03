@@ -13,13 +13,8 @@ import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { useUser } from '@/app/providers/useUser'
 import { bulkApplyLocalCategorizationRules, findMatchingLocalRule } from '@domain/categorizationRules'
-import type {
-    ApiResponse,
-    CategorizationMatchType,
-    CategorizationRule,
-    CategorizationRuleBulkApplyResult,
-    CategorizationRuleTestResult,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { CategorizationMatchType, CategorizationRule, CategorizationRuleBulkApplyResult, CategorizationRuleTestResult } from '@features/categories/types'
 import type { LocalCategorizationRule } from '@domain/types'
 import type { LocalDb } from '@platform/db/LocalDb'
 import type { TransactionMatchInput } from '@shared/categorization'

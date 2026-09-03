@@ -11,7 +11,8 @@ import { useWorkspace } from '@/app/providers/useWorkspace'
 import { buildWorkspaceBodyFields } from '@lib/workspaceScope'
 import { getApiErrorMessage } from '@lib/apiError'
 import { toDateInputValue } from '@lib/format'
-import type { ApiResponse, CategoriesResponse } from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { CategoriesResponse } from '@features/categories/types'
 import { unwrapApiData } from '@lib/apiHelpers'
 
 interface QuickTransactionModalProps {

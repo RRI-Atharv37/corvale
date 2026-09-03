@@ -28,15 +28,8 @@ import { buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import { useUser } from '@/app/providers/useUser'
 import type { LocalAccount, LocalTransaction } from '@domain/types'
 import type { LocalDb } from '@platform/db/LocalDb'
-import type {
-    ApiResponse,
-    BulkCategoryResponse,
-    BulkDeleteResponse,
-    ClearedStatus,
-    PaginatedTransactions,
-    PaginationMeta,
-    Transaction,
-} from '@lib/types/api'
+import type { ApiResponse, PaginationMeta } from '@lib/types/api'
+import type { BulkCategoryResponse, BulkDeleteResponse, ClearedStatus, PaginatedTransactions, Transaction } from '@features/transactions/types'
 
 const transactionsRepo = new Repository<LocalTransaction>('transactions')
 const accountsRepo = new Repository<LocalAccount>('accounts')

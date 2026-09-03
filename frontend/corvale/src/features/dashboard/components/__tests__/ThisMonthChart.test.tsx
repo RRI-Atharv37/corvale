@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@/test/test-utils'
 import ThisMonthChart from '../ThisMonthChart'
 import { formatCurrency } from '@lib/format'
-import type { CashFlowPoint } from '@lib/types/api'
+import type { CashFlowPoint } from '@features/dashboard/types'
 
 // X8 (Gate G3): ThisMonthChart renders a bare Recharts <svg> with no accessible name or
 // description. Acceptance spec: the chart exposes a role="img" text alternative summarizing

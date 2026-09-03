@@ -1,16 +1,7 @@
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
-import type {
-    ApiResponse,
-    ColumnMapping,
-    ImportCommitResponse,
-    ImportDelimiter,
-    ImportDuplicateAction,
-    ImportParseResponse,
-    ImportPreviewResponse,
-    ImportRowError,
-    ParsedImportRow,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { ColumnMapping, ImportCommitResponse, ImportDelimiter, ImportDuplicateAction, ImportParseResponse, ImportPreviewResponse, ImportRowError, ParsedImportRow } from '@features/import/types'
 import { unwrapApiData } from '@lib/apiHelpers'
 
 export const IMPORT_ACCEPT = '.csv,.ofx,.qfx,.qif,text/csv,application/vnd.ms-excel'

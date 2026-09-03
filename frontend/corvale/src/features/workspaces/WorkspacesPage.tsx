@@ -13,12 +13,7 @@ import RoleBadge from './components/RoleBadge'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import { useUser } from '@/app/providers/useUser'
 import { BRAND } from '@lib/brand'
-import type {
-    Workspace,
-    WorkspaceInvite,
-    WorkspaceInviteFormData,
-    WorkspaceInviteRole,
-} from '@lib/types/api'
+import type { Workspace, WorkspaceInvite, WorkspaceInviteFormData, WorkspaceInviteRole } from '@features/workspaces/types'
 import {
     acceptWorkspaceInvite,
     createWorkspace,

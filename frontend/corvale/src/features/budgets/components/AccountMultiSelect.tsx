@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Account } from '@lib/types/api'
+import type { Account } from '@features/accounts/types'
 import { formatCurrency } from '@lib/format'
 
 interface AccountMultiSelectProps {

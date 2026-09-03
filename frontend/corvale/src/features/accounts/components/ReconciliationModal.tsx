@@ -10,7 +10,8 @@ import { useAsyncData } from '@/app/hooks/useAsyncData'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency, toDateInputValue } from '@lib/format'
-import type { Account, ReconciliationSession, Transaction } from '@lib/types/api'
+import type { Account, ReconciliationSession } from '@features/accounts/types'
+import type { Transaction } from '@features/transactions/types'
 
 interface ReconciliationModalProps {
     account: Account

@@ -5,7 +5,8 @@ import ProfileSettings from '../ProfileSettings'
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
 import toast from 'react-hot-toast'
-import type { ApiResponse, AuthPayload, User } from '@lib/types/api'
+import type { ApiResponse, User } from '@lib/types/api'
+import type { AuthPayload } from '@features/auth/types'
 
 vi.mock('@lib/axiosInstance', () => ({
     default: {

@@ -10,7 +10,7 @@ import {
     YAxis,
 } from 'recharts'
 
-import type { BalanceBreakdown, NetWorthPoint } from '@lib/types/api'
+import type { BalanceBreakdown, NetWorthPoint } from '@features/dashboard/types'
 import { formatCurrency } from '@lib/format'
 import {
     axisTick,

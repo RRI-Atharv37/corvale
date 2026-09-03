@@ -18,7 +18,8 @@ import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '@lib/worksp
 import { DEFAULT_CURRENCY } from '@lib/currencies'
 import { useUser } from '@/app/providers/useUser'
 import { useWorkspace } from '@/app/providers/useWorkspace'
-import type { Account, AccountType, ApiResponse } from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { Account, AccountType } from '@features/accounts/types'
 import type { LocalAccount } from '@domain/types'
 import type { LocalDb } from '@platform/db/LocalDb'
 

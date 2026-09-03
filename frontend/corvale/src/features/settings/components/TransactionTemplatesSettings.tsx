@@ -5,11 +5,7 @@ import { useTransactionTemplatesData } from '../hooks/useTransactionTemplatesDat
 import { useAccountsData } from '@features/accounts/hooks/useAccountsData'
 import { useCategoriesData } from '@features/categories/hooks/useCategoriesData'
 import { useTagsData } from '@features/tags/hooks/useTagsData'
-import type {
-    TransactionTemplate,
-    TransactionTemplateFormData,
-    TransactionTemplateType,
-} from '@lib/types/api'
+import type { TransactionTemplate, TransactionTemplateFormData, TransactionTemplateType } from '@features/transactions/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency } from '@lib/format'
 import Modal from '@ui/Modal'

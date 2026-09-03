@@ -19,17 +19,9 @@ import {
 import { IoBookmark, IoPlay, IoTrash } from 'react-icons/io5'
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
-import type {
-    ApiResponse,
-    CustomReportChartType,
-    CustomReportDataType,
-    CustomReportQueryResult,
-    CustomReportSplitBy,
-    DashboardGroupBy,
-    ReportPeriodType,
-    SavedReport,
-    SavedReportRunResult,
-} from '@lib/types/api'
+import type { ApiResponse } from '@lib/types/api'
+import type { DashboardGroupBy } from '@features/dashboard/types'
+import type { CustomReportChartType, CustomReportDataType, CustomReportQueryResult, CustomReportSplitBy, ReportPeriodType, SavedReport, SavedReportRunResult } from '@features/reports/types'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency } from '@lib/format'

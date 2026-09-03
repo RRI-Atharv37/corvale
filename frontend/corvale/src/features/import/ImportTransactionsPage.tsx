@@ -8,15 +8,7 @@ import AccountPicker from '@features/accounts/components/AccountPicker'
 import CategoryPicker from '@features/categories/components/CategoryPicker'
 import WorkspaceReadOnlyBanner from '@features/workspaces/components/WorkspaceReadOnlyBanner'
 import { useWorkspace } from '@/app/providers/useWorkspace'
-import type {
-    ColumnMapping,
-    ImportDateFormat,
-    ImportDelimiter,
-    ImportDuplicateAction,
-    ImportParseResponse,
-    ImportPreviewItem,
-    ImportPreviewResponse,
-} from '@lib/types/api'
+import type { ColumnMapping, ImportDateFormat, ImportDelimiter, ImportDuplicateAction, ImportParseResponse, ImportPreviewItem, ImportPreviewResponse } from '@features/import/types'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency, formatDisplayDate } from '@lib/format'
 import { BRAND } from '@lib/brand'

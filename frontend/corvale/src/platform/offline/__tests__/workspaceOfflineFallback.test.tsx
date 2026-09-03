@@ -5,7 +5,8 @@ import { useWorkspace } from '@/app/providers/useWorkspace'
 import axiosInstance from '@lib/axiosInstance'
 import { fetchWorkspaces } from '@features/workspaces/workspaceApi'
 import { ACTIVE_WORKSPACE_STORAGE_KEY } from '@lib/workspaceScope'
-import type { User, Workspace } from '@lib/types/api'
+import type { User } from '@lib/types/api'
+import type { Workspace } from '@features/workspaces/types'
 
 // Pins the fix for a bug in WorkspaceContext: it currently
 // clears the stored `activeWorkspaceId` whenever `refetchWorkspaces()` produces a list
