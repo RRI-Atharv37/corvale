@@ -4,8 +4,8 @@ import { render, screen, within } from '@testing-library/react'
 import type { RenderOptions } from '@testing-library/react'
 import type { UserEvent } from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import UserProvider from '../context/UserContext'
-import WorkspaceProvider from '../context/WorkspaceContext'
+import UserProvider from '@/app/providers/UserContext'
+import WorkspaceProvider from '@/app/providers/WorkspaceContext'
 
 interface RenderWithProvidersOptions extends Omit<RenderOptions, 'wrapper'> {
   route?: string

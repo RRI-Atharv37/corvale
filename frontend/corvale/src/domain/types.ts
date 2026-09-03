@@ -1,5 +1,5 @@
 import type { AccountType, TransactionStatus, TransactionType } from '@shared/types'
-import type { SyncableRecord } from '../db/repositories/Repository'
+import type { SyncableRecord } from '@platform/db/repositories/Repository'
 
 /**
  * Local-store record shapes: what `JSON.parse(row.data)` yields for each

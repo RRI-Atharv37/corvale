@@ -1,5 +1,5 @@
-import type { LocalDb } from '../db/LocalDb'
-import { Repository } from '../db/repositories/Repository'
+import type { LocalDb } from '@platform/db/LocalDb'
+import { Repository } from '@platform/db/repositories/Repository'
 import { buildBudgetEvent, buildGoalEvent, buildRecurringEvents, type CalendarEvent } from '@shared/calendar'
 import { resolveDateRange } from '@shared/timezone'
 import type { LocalBudget, LocalRecurringRule, LocalSavingsGoal } from './types'

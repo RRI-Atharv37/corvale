@@ -1,6 +1,6 @@
-import type { LocalDb } from '../db/LocalDb'
-import { Repository } from '../db/repositories/Repository'
-import { generateLocalObjectId } from '../db/generateLocalId'
+import type { LocalDb } from '@platform/db/LocalDb'
+import { Repository } from '@platform/db/repositories/Repository'
+import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import type {
   LocalAccount,
   LocalBudget,
@@ -13,7 +13,7 @@ import type {
   LocalTransaction,
   LocalTransactionTemplate,
 } from './types'
-import type { BackupEntityCounts, BackupRestorePreview, BackupRestoreResult } from '../types/api'
+import type { BackupEntityCounts, BackupRestorePreview, BackupRestoreResult } from '@lib/types/api'
 
 /**
  * Local (SQLite) port of `backend/utils/backupUtils.ts` for Sprint 13.10 - generates the exact same

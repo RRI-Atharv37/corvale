@@ -1,5 +1,5 @@
-import type { LocalDb } from '../db/LocalDb'
-import { Repository } from '../db/repositories/Repository'
+import type { LocalDb } from '@platform/db/LocalDb'
+import { Repository } from '@platform/db/repositories/Repository'
 import { generatePayoffSchedule, type DebtInput, type PayoffMonth, type PayoffStrategy } from '@shared/debtPayoff'
 import { toMinorUnits } from '@shared/money'
 import type { LocalAccount } from './types'

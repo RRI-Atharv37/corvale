@@ -1,5 +1,5 @@
-import type { LocalDb } from '../db/LocalDb'
-import { getLocalUserPrefs } from '../db/localUserPrefs'
+import type { LocalDb } from '@platform/db/LocalDb'
+import { getLocalUserPrefs } from '@platform/db/localUserPrefs'
 import { convertAmount as sharedConvertAmount } from '@shared/timezone'
 
 export interface LocalConversionResult {

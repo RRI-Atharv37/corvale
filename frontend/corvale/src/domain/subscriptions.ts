@@ -1,5 +1,5 @@
-import type { LocalDb } from '../db/LocalDb'
-import { Repository } from '../db/repositories/Repository'
+import type { LocalDb } from '@platform/db/LocalDb'
+import { Repository } from '@platform/db/repositories/Repository'
 import { computeAnnualCostMinor, computeMonthlyCostMinor, isSubscriptionEligible } from '@shared/subscriptions'
 import { fromMinorUnits, roundMoney } from '@shared/money'
 import type { RecurringInterval } from '@shared/types'

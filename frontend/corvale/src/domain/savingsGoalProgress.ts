@@ -1,5 +1,5 @@
-import type { LocalDb } from '../db/LocalDb'
-import { Repository } from '../db/repositories/Repository'
+import type { LocalDb } from '@platform/db/LocalDb'
+import { Repository } from '@platform/db/repositories/Repository'
 import { computeSavingsGoalProgressPure, type GoalLike, type SavingsGoalProgress } from '@shared/savingsGoals'
 import type { LocalSavingsGoal, LocalSavingsGoalContribution } from './types'
 

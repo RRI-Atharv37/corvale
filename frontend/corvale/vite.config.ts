@@ -177,7 +177,7 @@ export default defineConfig(({ mode }) => {
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
+      exclude: ['src/app/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
     },
   },
   }

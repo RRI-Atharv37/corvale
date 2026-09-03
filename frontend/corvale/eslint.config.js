@@ -7,11 +7,15 @@ import importX from 'eslint-plugin-import-x'
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
 
 /**
- * RF0 (structural refactor, Phase 1). The `no-restricted-paths` zones pin the layer boundaries
- * from ROADMAP § *Target Repository Structure*. `src/ui`, `src/features`, `src/lib`, `src/app`
- * and `src/platform` do not exist yet — the zones match nothing until RF6 creates them, then
- * enforce that the design system never reaches into features, `lib/` stays a leaf, and the pure
- * `domain/` engine takes no UI import. `src/domain` already exists and its zone is live now.
+ * RF0/RF6 (structural refactor, Phase 1). The `no-restricted-paths` zones pin the layer
+ * boundaries from ROADMAP § *Target Repository Structure*: the design system (`ui/`) never
+ * reaches into features/app/platform/domain, `lib/` stays a leaf, the pure `domain/` engine
+ * takes no UI import, and `platform/` is consumed by features/app rather than the reverse.
+ * RF6 created the dirs and (user decision) relocated every offending file so all four zones
+ * pass as `error` on production code. The zones apply to production modules only — a test that
+ * renders a provider or a feature page is not an architecture violation, so the test-file glob
+ * block at the end of this config turns the rule off for tests. RF15 tightens further once RF14
+ * normalises the layering.
  */
 const BOUNDARY_ZONES = [
   {
@@ -72,6 +76,14 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       'import-x/no-restricted-paths': ['error', { zones: BOUNDARY_ZONES }],
+    },
+  },
+  {
+    // Boundary zones guard production layering; test modules legitimately import across layers
+    // (a feature test renders providers, a platform test imports a page). See the note above.
+    files: ['**/__tests__/**', '**/*.test.{ts,tsx}'],
+    rules: {
+      'import-x/no-restricted-paths': 'off',
     },
   }
 )

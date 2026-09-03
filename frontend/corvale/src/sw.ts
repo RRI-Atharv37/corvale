@@ -1,7 +1,7 @@
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { clientsClaim } from 'workbox-core'
-import { OUTBOX_SYNC_TAG, LEGACY_OUTBOX_SYNC_TAG, FLUSH_OUTBOX_MESSAGE } from './pwa/constants'
+import { OUTBOX_SYNC_TAG, LEGACY_OUTBOX_SYNC_TAG, FLUSH_OUTBOX_MESSAGE } from '@platform/pwa/constants'
 
 /**
  * Custom service worker (vite-plugin-pwa `injectManifest` strategy) rather than `generateSW`,

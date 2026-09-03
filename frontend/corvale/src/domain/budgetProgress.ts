@@ -1,5 +1,5 @@
-import type { LocalDb } from '../db/LocalDb'
-import { Repository } from '../db/repositories/Repository'
+import type { LocalDb } from '@platform/db/LocalDb'
+import { Repository } from '@platform/db/repositories/Repository'
 import { computeBudgetProgress, computeBudgetSpentMinorPure, type BudgetProgress } from '@shared/budget'
 import type { LocalBudget, LocalTransaction } from './types'
 
