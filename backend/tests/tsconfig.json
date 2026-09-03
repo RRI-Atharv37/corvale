@@ -1,9 +1,23 @@
 {
+  // RF4: the test type-check project. Vitest resolves modules through Vite/esbuild (bundler
+  // semantics), not Node16 — so this config uses `moduleResolution: "bundler"` to match how the
+  // suites actually run, which also lets the co-located `await import('@modules/x/xUtils')` calls
+  // and extensionless relative specifiers resolve. The build (`npm run build`, ../tsconfig.json)
+  // stays on Node16 and is unaffected. Not a CI gate — CI type-checks ../tsconfig.json and runs
+  // vitest; this project is for editor/IDE feedback on the suites.
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "types": ["vitest/globals", "node"]
   },
-  "include": ["**/*.ts", "**/*.mts", "../**/*.ts", "../../shared/src/**/*.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.mts",
+    "../src/**/*.ts",
+    "../utils/**/*.ts",
+    "../../shared/src/**/*.ts"
+  ],
   "exclude": ["../node_modules", "../dist", "../../dist"]
 }

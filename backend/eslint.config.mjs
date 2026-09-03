@@ -74,4 +74,12 @@ export default tseslint.config(
             'import-x/no-restricted-paths': ['error', { zones: BOUNDARY_ZONES }],
         },
     },
+    {
+        // RF4: co-located suites live under `src/**/__tests__/` and legitimately import across
+        // module and layer boundaries (an integration test drives several modules; a `core/`
+        // plugin test seeds real module models). The boundary zones guard production code only —
+        // `architecture.test.ts` already skips `__tests__/` for the same reason.
+        files: ['**/__tests__/**', 'tests/**'],
+        rules: { 'import-x/no-restricted-paths': 'off' },
+    },
 )
