@@ -97,7 +97,9 @@ Unit tests for a module live in that module's `__tests__/` folder. Unit tests fo
 ### The layer contract
 
 Each layer may import only from the layers below it. This is enforced by ESLint import zones and by
-`tests/system/architecture.test.ts`.
+`tests/system/architecture.test.ts`. The table below is a summary; the full contract, including what
+each layer must **never** contain and how the boundaries are enforced, is on the
+[Architecture &amp; Layering Contract](./architecture.md) page.
 
 | Layer | Holds | May import |
 |-------|-------|-----------|
@@ -256,6 +258,7 @@ update, and delete. The frontend `domain/` engines wrap the same functions over 
 
 ## Related pages
 
+- [Architecture &amp; Layering Contract](./architecture.md)
 - [Developer Overview](./overview.md)
 - [API Overview](./api-overview.md)
 - [Data Migration](./data-migration.md)

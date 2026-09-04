@@ -11,9 +11,11 @@ import { Tag } from '@modules/tags'
 import { Transaction } from '@modules/transactions'
 import { TransactionTemplate } from '@modules/transaction-templates'
 import { CustomError } from '@core/errors/customError'
+import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { serializeAccountDocForWire } from '@core/money/accountWireFormat'
 import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
 import { buildScopedListFilter } from '@core/access/workspace'
+import { assertWorkspaceMembership } from '@modules/workspaces/access'
 
 /**
  * Sprint 13.3 sync surface: bootstrap (full snapshot) + pull (checkpoint
@@ -373,4 +375,22 @@ export const computeCurrentCheckpoint = async (
     }
 
     return encodeCheckpoint(cursors)
+}
+
+/**
+ * Sync endpoints don't distinguish "workspace doesn't exist" from "you're not a member" — both
+ * collapse to 403 so a caller can't probe for the existence of workspaces they don't belong to.
+ */
+export const assertWorkspaceReadable = async (
+    workspaceId: string,
+    userId: string
+): Promise<void> => {
+    try {
+        await assertWorkspaceMembership(workspaceId, userId, 'viewer')
+    } catch (error) {
+        if (error instanceof CustomError && error.statusCode === 404) {
+            throw new CustomError(ERROR_MESSAGES.WORKSPACE.NOT_A_MEMBER, 403)
+        }
+        throw error
+    }
 }

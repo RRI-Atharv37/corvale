@@ -10,7 +10,60 @@ import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescrip
  * stray import. The target directories (`src/core`, `src/infra`, `src/http`, `src/modules`) do
  * not exist yet — the zones below match nothing until RF2/RF3 create them, then bite. General
  * code-quality linting on the backend is deliberately out of scope here.
+ *
+ * RF15 (Phase 3) adds the intra-module contract on top: a `*.controller.ts` runs no Mongoose
+ * query of its own and does no minor-unit money math (both belong in `*.service.ts` or a domain
+ * file); a `*.service.ts` never touches Express. Enforced as an `error` for every module — the
+ * `CONTROLLERS_WITH_LEGACY_DB_ACCESS` list is the set RF14 has NOT yet normalized, and it may
+ * only shrink (`architecture.test.ts` fails on a stale entry).
  */
+
+// Mongoose query/mutation surface — mirrors QUERY_OPERATIONS in rowLevelSecurityPlugin.ts.
+const MONGOOSE_QUERY_METHODS =
+    'find|findOne|findById|findByIdAndUpdate|findOneAndUpdate|findByIdAndDelete|findOneAndDelete|' +
+    'findOneAndReplace|create|aggregate|updateOne|updateMany|replaceOne|deleteOne|deleteMany|' +
+    'countDocuments|estimatedDocumentCount|insertMany|bulkWrite|distinct'
+
+// A `Foo.find(` / `Budget.create(` style call — capitalised receiver identifier so `arr.find(`,
+// `Promise.all(`, `Object.assign(` etc. don't match.
+const MONGOOSE_CALL_SELECTOR =
+    `CallExpression[callee.type='MemberExpression']` +
+    `[callee.object.type='Identifier'][callee.object.name=/^[A-Z]/]` +
+    `[callee.property.name=/^(${MONGOOSE_QUERY_METHODS})$/]`
+
+// Controllers RF14 has not reached yet — thin-CRUD modules where the money-bearing pass was
+// deliberately skipped (TODO.md § RF14). Every entry still runs its own Mongoose calls. This list
+// may only get shorter.
+const CONTROLLERS_WITH_LEGACY_DB_ACCESS = [
+    'src/modules/auth/auth.controller.ts',
+    'src/modules/calendar/calendar.controller.ts',
+    'src/modules/categories/category.controller.ts',
+    'src/modules/categorization-rules/categorizationRule.controller.ts',
+    'src/modules/debts/debt.controller.ts',
+    'src/modules/exchange-rates/exchangeRate.controller.ts',
+    'src/modules/legacy/expense.controller.ts',
+    'src/modules/legacy/income.controller.ts',
+    'src/modules/notifications/notification.controller.ts',
+    'src/modules/onboarding/onboarding.controller.ts',
+    'src/modules/receipts/receipt.controller.ts',
+    'src/modules/reconciliation/reconciliation.controller.ts',
+    'src/modules/recurring/recurringRule.controller.ts',
+    'src/modules/savers/pushover.controller.ts',
+    'src/modules/savers/saver.controller.ts',
+    'src/modules/subscriptions/subscription.controller.ts',
+    'src/modules/tags/tag.controller.ts',
+    'src/modules/transaction-templates/transactionTemplate.controller.ts',
+    'src/modules/users/user.controller.ts',
+    'src/modules/workspaces/workspace.controller.ts',
+]
+
+const CONTROLLER_MONEY_MATH_IMPORTS = [
+    '@shared/money',
+    '@shared/balances',
+    '@shared/budget',
+    '@shared/savingsGoals',
+    '@shared/forecast',
+]
 const BOUNDARY_ZONES = [
     {
         target: './src/core/**',
@@ -72,6 +125,58 @@ export default tseslint.config(
             'no-redeclare': 'off',
             'no-dupe-class-members': 'off',
             'import-x/no-restricted-paths': ['error', { zones: BOUNDARY_ZONES }],
+        },
+    },
+    {
+        // RF15: the controller half of the intra-module contract — no self-issued Mongoose query,
+        // no minor-unit money math.
+        files: ['src/modules/**/*.controller.ts'],
+        ignores: CONTROLLERS_WITH_LEGACY_DB_ACCESS,
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: MONGOOSE_CALL_SELECTOR,
+                    message:
+                        'RF14/RF15 contract: a *.controller.ts runs no Mongoose query of its own — move it into the module *.service.ts.',
+                },
+            ],
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: CONTROLLER_MONEY_MATH_IMPORTS.map((name) => ({
+                        name,
+                        message:
+                            'RF14/RF15 contract: minor-unit money math belongs in the module service or a domain file, not the controller.',
+                    })),
+                },
+            ],
+        },
+    },
+    {
+        // RF15: a *.service.ts is Express-free (it takes plain inputs, never req/res).
+        files: ['src/modules/**/*.service.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: "TSTypeReference[typeName.name=/^(Request|Response|NextFunction)$/]",
+                    message:
+                        'RF14/RF15 contract: a *.service.ts takes plain arguments — no Express Request/Response/NextFunction.',
+                },
+            ],
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: 'express',
+                            message:
+                                'RF14/RF15 contract: a *.service.ts must not import Express — keep the HTTP layer in the controller.',
+                        },
+                    ],
+                },
+            ],
         },
     },
     {

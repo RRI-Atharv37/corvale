@@ -150,3 +150,115 @@ describe('architecture — route mount table (RF0 guard, latent until RF3)', () 
         )
     })
 })
+
+/**
+ * RF15 (Phase 3) — the intra-module contract. A `*.controller.ts` runs no Mongoose query of its
+ * own and does no minor-unit money math; a `*.service.ts` never touches Express. `eslint.config.mjs`
+ * enforces the same thing as a lint error — this is the redundant, CI-cheap backstop and the home
+ * of the ratchet: `CONTROLLERS_WITH_LEGACY_DB_ACCESS` is the set RF14 has not yet normalized and it
+ * may only shrink.
+ */
+const moduleFiles = (suffix: string): string[] => {
+    const out: string[] = []
+    for (const mod of listDirs(MODULES_DIR)) {
+        const dir = join(MODULES_DIR, mod)
+        for (const entry of readdirSync(dir)) {
+            if (entry.endsWith(suffix) && statSync(join(dir, entry)).isFile()) {
+                out.push(join(dir, entry))
+            }
+        }
+    }
+    return out
+}
+
+const relPosix = (file: string): string => relative(BACKEND_ROOT, file).split(/[\\/]/).join('/')
+
+// Kept byte-identical to CONTROLLERS_WITH_LEGACY_DB_ACCESS in eslint.config.mjs.
+const CONTROLLERS_WITH_LEGACY_DB_ACCESS = [
+    'src/modules/auth/auth.controller.ts',
+    'src/modules/calendar/calendar.controller.ts',
+    'src/modules/categories/category.controller.ts',
+    'src/modules/categorization-rules/categorizationRule.controller.ts',
+    'src/modules/debts/debt.controller.ts',
+    'src/modules/exchange-rates/exchangeRate.controller.ts',
+    'src/modules/legacy/expense.controller.ts',
+    'src/modules/legacy/income.controller.ts',
+    'src/modules/notifications/notification.controller.ts',
+    'src/modules/onboarding/onboarding.controller.ts',
+    'src/modules/receipts/receipt.controller.ts',
+    'src/modules/reconciliation/reconciliation.controller.ts',
+    'src/modules/recurring/recurringRule.controller.ts',
+    'src/modules/savers/pushover.controller.ts',
+    'src/modules/savers/saver.controller.ts',
+    'src/modules/subscriptions/subscription.controller.ts',
+    'src/modules/tags/tag.controller.ts',
+    'src/modules/transaction-templates/transactionTemplate.controller.ts',
+    'src/modules/users/user.controller.ts',
+    'src/modules/workspaces/workspace.controller.ts',
+].sort()
+
+const MONGOOSE_CALL_RE =
+    /\b[A-Z][A-Za-z]+\.(find|findOne|findById|findByIdAndUpdate|findOneAndUpdate|findByIdAndDelete|findOneAndDelete|findOneAndReplace|create|aggregate|updateOne|updateMany|replaceOne|deleteOne|deleteMany|countDocuments|estimatedDocumentCount|insertMany|bulkWrite|distinct)\(/
+
+describe('architecture — intra-module contract (RF15)', () => {
+    it('a normalized *.controller.ts issues no Mongoose query of its own', () => {
+        const offenders = moduleFiles('.controller.ts')
+            .filter((file) => MONGOOSE_CALL_RE.test(readFileSync(file, 'utf8')))
+            .map(relPosix)
+            .sort()
+
+        const newViolations = offenders.filter(
+            (f) => !CONTROLLERS_WITH_LEGACY_DB_ACCESS.includes(f)
+        )
+        expect(
+            newViolations,
+            `controllers running their own Mongoose query (move it to the *.service.ts):\n${newViolations.join('\n')}`
+        ).toEqual([])
+
+        const staleExceptions = CONTROLLERS_WITH_LEGACY_DB_ACCESS.filter(
+            (f) => !offenders.includes(f)
+        )
+        expect(
+            staleExceptions,
+            `RF14 has normalized these — drop them from CONTROLLERS_WITH_LEGACY_DB_ACCESS here and in eslint.config.mjs:\n${staleExceptions.join('\n')}`
+        ).toEqual([])
+    })
+
+    it('a normalized *.controller.ts imports no @shared money-math module', () => {
+        const mathModules = [
+            '@shared/money',
+            '@shared/balances',
+            '@shared/budget',
+            '@shared/savingsGoals',
+            '@shared/forecast',
+        ]
+        const offenders: string[] = []
+        for (const file of moduleFiles('.controller.ts')) {
+            if (CONTROLLERS_WITH_LEGACY_DB_ACCESS.includes(relPosix(file))) continue
+            for (const spec of importSpecifiers(file)) {
+                if (mathModules.includes(spec)) {
+                    offenders.push(`${relPosix(file)} → ${spec}`)
+                }
+            }
+        }
+        expect(
+            offenders,
+            `money math belongs in the service or a domain file:\n${offenders.join('\n')}`
+        ).toEqual([])
+    })
+
+    it('a *.service.ts imports no Express', () => {
+        const offenders: string[] = []
+        for (const file of moduleFiles('.service.ts')) {
+            for (const spec of importSpecifiers(file)) {
+                if (spec === 'express' || spec === 'express-async-handler') {
+                    offenders.push(`${relPosix(file)} → ${spec}`)
+                }
+            }
+        }
+        expect(
+            offenders,
+            `a *.service.ts takes plain arguments — no Express:\n${offenders.join('\n')}`
+        ).toEqual([])
+    })
+})

@@ -253,6 +253,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/developers/guides/overview' },
           { text: 'Project Structure', link: '/developers/guides/project-structure' },
+          { text: 'Architecture & Layering Contract', link: '/developers/guides/architecture' },
           { text: 'Environment Variables', link: '/developers/guides/environment-variables' },
           { text: 'Deployment Guide', link: '/developers/guides/deployment' },
           { text: 'Desktop App (Tauri)', link: '/developers/guides/desktop-app' },

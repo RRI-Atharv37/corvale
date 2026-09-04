@@ -106,6 +106,7 @@ See [Authentication API](../api/authentication-api.md) for the full lifecycle in
 ## Related pages
 
 - [Project Structure](./project-structure.md)
+- [Architecture &amp; Layering Contract](./architecture.md)
 - [Environment Variables](./environment-variables.md)
 - [API Overview](./api-overview.md)
 - [Budgets API](../api/budgets-api.md)

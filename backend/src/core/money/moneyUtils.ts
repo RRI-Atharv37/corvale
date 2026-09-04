@@ -1,1 +1,1 @@
-export { toMinorUnits, fromMinorUnits, parseAmountToMinorUnits } from '@shared/money'
+export { toMinorUnits, fromMinorUnits, parseAmountToMinorUnits, roundMoney } from '@shared/money'

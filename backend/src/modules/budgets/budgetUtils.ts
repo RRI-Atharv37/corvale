@@ -7,6 +7,7 @@ import { Transaction } from '@modules/transactions'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from '@core/money/moneyUtils'
+import { validateRequiredFields } from '@core/http/validation'
 import {
     BudgetProgress,
     computeBudgetProgress,
@@ -87,6 +88,38 @@ export const parsePeriodType = (value: unknown): BudgetPeriodType => {
         )
     }
     return value as BudgetPeriodType
+}
+
+export interface ResolvedPeriod {
+    periodStart: Date
+    periodEnd: Date
+    periodType: BudgetPeriodType
+}
+
+/** Resolve a budget period from a loose `{ periodType, year, month, periodStart, periodEnd }` bag. */
+export const resolvePeriodFromBody = (
+    body: Record<string, unknown>,
+    timezone: string
+): ResolvedPeriod => {
+    const periodType = parsePeriodType(body.periodType)
+
+    if (periodType === 'monthly') {
+        validateRequiredFields(body, ['year', 'month'])
+        const { periodStart, periodEnd } = resolveMonthlyPeriod(
+            Number(body.year),
+            Number(body.month),
+            timezone
+        )
+        return { periodStart, periodEnd, periodType }
+    }
+
+    validateRequiredFields(body, ['periodStart', 'periodEnd'])
+    const { periodStart, periodEnd } = resolveCustomPeriod(
+        String(body.periodStart),
+        String(body.periodEnd),
+        timezone
+    )
+    return { periodStart, periodEnd, periodType }
 }
 
 export const validateCategoryForBudget = async (
