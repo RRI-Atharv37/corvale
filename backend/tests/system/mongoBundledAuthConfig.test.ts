@@ -16,7 +16,7 @@ import path from 'path'
  * `docker-compose.yml` / `.env.example` / deployment guide instead.
  */
 
-const REPO_ROOT = path.join(__dirname, '..', '..')
+const REPO_ROOT = path.join(__dirname, '..', '..', '..')
 const COMPOSE = fs.readFileSync(path.join(REPO_ROOT, 'docker-compose.yml'), 'utf8')
 const ROOT_ENV_EXAMPLE = fs.readFileSync(path.join(REPO_ROOT, '.env.example'), 'utf8')
 const BACKEND_ENV_EXAMPLE = fs.readFileSync(
@@ -24,7 +24,7 @@ const BACKEND_ENV_EXAMPLE = fs.readFileSync(
     'utf8'
 )
 const DEPLOY_DOC = fs.readFileSync(
-    path.join(REPO_ROOT, 'docs', 'developers', 'deployment.md'),
+    path.join(REPO_ROOT, 'docs', 'developers', 'guides', 'deployment.md'),
     'utf8'
 )
 

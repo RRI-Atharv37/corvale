@@ -13,7 +13,7 @@ import path from 'path'
  * pins the static Dockerfiles.
  */
 
-const REPO_ROOT = path.join(__dirname, '..', '..')
+const REPO_ROOT = path.join(__dirname, '..', '..', '..')
 const read = (p: string) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
 const BACKEND_DOCKERFILE = read(path.join(REPO_ROOT, 'backend', 'Dockerfile'))

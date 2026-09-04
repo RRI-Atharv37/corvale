@@ -18,7 +18,7 @@ import path from 'path'
  * NOT inherited into a block that sets any header of its own, which is the classic footgun here.
  */
 
-const NGINX_CONF = path.join(__dirname, '..', '..', 'frontend', 'corvale', 'nginx.conf')
+const NGINX_CONF = path.join(__dirname, '..', '..', '..', 'frontend', 'corvale', 'nginx.conf')
 const conf = fs.readFileSync(NGINX_CONF, 'utf8')
 
 /** Extract the body of every `location ... { ... }` block (brace-balanced). */
@@ -109,7 +109,7 @@ describe('nginx security headers (SEC-31, S24)', () => {
 })
 
 describe('deployment guide — TLS is required, not optional (SEC-31, S24)', () => {
-    const DEPLOY_DOC = path.join(__dirname, '..', '..', 'docs', 'developers', 'deployment.md')
+    const DEPLOY_DOC = path.join(__dirname, '..', '..', '..', 'docs', 'developers', 'guides', 'deployment.md')
     const doc = fs.readFileSync(DEPLOY_DOC, 'utf8')
 
     it('states that a TLS terminator is required for any internet-facing deployment', () => {

@@ -16,7 +16,7 @@ import path from 'path'
  * is all-or-nothing to be meaningful.
  */
 
-const REPO_ROOT = path.join(__dirname, '..', '..')
+const REPO_ROOT = path.join(__dirname, '..', '..', '..')
 const read = (p: string) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const CI = read(path.join(REPO_ROOT, '.github', 'workflows', 'ci.yml'))
 const RELEASE = read(path.join(REPO_ROOT, '.github', 'workflows', 'release.yml'))

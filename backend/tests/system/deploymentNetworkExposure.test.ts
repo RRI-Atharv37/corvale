@@ -17,10 +17,10 @@ import path from 'path'
  * `docker-compose.yml` and the deployment guide instead.
  */
 
-const REPO_ROOT = path.join(__dirname, '..', '..')
+const REPO_ROOT = path.join(__dirname, '..', '..', '..')
 const read = (p: string) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const COMPOSE = read(path.join(REPO_ROOT, 'docker-compose.yml'))
-const DEPLOY_DOC = read(path.join(REPO_ROOT, 'docs', 'developers', 'deployment.md'))
+const DEPLOY_DOC = read(path.join(REPO_ROOT, 'docs', 'developers', 'guides', 'deployment.md'))
 
 /**
  * Return the block of lines belonging to a top-level `services:` entry, by indentation:
