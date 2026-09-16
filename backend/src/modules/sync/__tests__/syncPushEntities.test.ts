@@ -669,3 +669,177 @@ describe('Sync API — push: workspace membership is re-validated at op-apply ti
         expect(storedCatRule?.amountMax).toBe(100000)
     })
 })
+
+/**
+ * BUG-33: the local-first client never sends `year`/`month` for a monthly budget — it resolves
+ * `periodStart`/`periodEnd` itself (via the shared `resolveMonthlyPeriod`) and stores/syncs only
+ * those. The pre-fix `resolvePeriodFromBody` in `budgetSync.service.ts` demanded `year`/`month`
+ * unconditionally for `periodType: 'monthly'`, so every real local-first budget create/update was
+ * rejected. These cover the actual client payload shape, not the hand-written year/month shape the
+ * older tests above use (kept passing as the documented fallback).
+ */
+describe('Sync API — push: budget period resolution from a client-resolved payload (BUG-33)', () => {
+    let app: Application
+    let owner: RegisteredUser
+
+    beforeEach(async () => {
+        app = createApp()
+        owner = await registerUser(app)
+    })
+
+    it('applies a monthly budget create op whose payload carries client-resolved periodStart/periodEnd instead of year/month', async () => {
+        const periodStart = new Date(Date.UTC(2026, 8, 1)).toISOString()
+        const periodEnd = new Date(Date.UTC(2026, 8, 30, 23, 59, 59, 999)).toISOString()
+
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'budget-monthly-client-period-create',
+                        entity: 'budget',
+                        operation: 'create',
+                        payload: {
+                            periodType: 'monthly',
+                            periodStart,
+                            periodEnd,
+                            amount: 50000,
+                        },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('applied')
+
+        const stored = await Budget.findById(res.body.data.results[0].resultId)
+        expect(stored?.periodType).toBe('monthly')
+        expect(stored?.periodStart.toISOString()).toBe(periodStart)
+        expect(stored?.periodEnd.toISOString()).toBe(periodEnd)
+    })
+
+    it('applies a monthly budget update op sent in the same client-resolved shape (no year/month), without cascading to "Budget not found"', async () => {
+        const periodStart = new Date(Date.UTC(2026, 8, 1)).toISOString()
+        const periodEnd = new Date(Date.UTC(2026, 8, 30, 23, 59, 59, 999)).toISOString()
+
+        const createRes = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'budget-monthly-client-period-create-2',
+                        entity: 'budget',
+                        operation: 'create',
+                        payload: { periodType: 'monthly', periodStart, periodEnd, amount: 50000 },
+                    },
+                ],
+            })
+        expect(createRes.status).toBe(200)
+        expect(createRes.body.data.results[0].status).toBe('applied')
+        const budgetId = createRes.body.data.results[0].resultId as string
+        const baseUpdatedAt = (await Budget.findById(budgetId))!.updatedAt.toISOString()
+
+        await ensureTimestampAdvances()
+
+        const updateRes = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'budget-monthly-client-period-update',
+                        entity: 'budget',
+                        operation: 'update',
+                        baseUpdatedAt,
+                        payload: {
+                            _id: budgetId,
+                            periodType: 'monthly',
+                            periodStart,
+                            periodEnd,
+                            amount: 60000,
+                        },
+                    },
+                ],
+            })
+
+        expect(updateRes.status).toBe(200)
+        expect(updateRes.body.data.results[0].status).toBe('applied')
+        const updated = await Budget.findById(budgetId)
+        expect(updated?.amount).toBe(60000)
+    })
+
+    it('rejects a monthly budget create op whose client-resolved period is invalid (periodStart after periodEnd)', async () => {
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'budget-monthly-invalid-period',
+                        entity: 'budget',
+                        operation: 'create',
+                        payload: {
+                            periodType: 'monthly',
+                            periodStart: new Date(Date.UTC(2026, 8, 30)).toISOString(),
+                            periodEnd: new Date(Date.UTC(2026, 8, 1)).toISOString(),
+                            amount: 50000,
+                        },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('rejected')
+    })
+
+    it('applies a custom budget create op via sync whose periodStart/periodEnd are full client-resolved ISO instants', async () => {
+        const periodStart = new Date(Date.UTC(2026, 8, 5)).toISOString()
+        const periodEnd = new Date(Date.UTC(2026, 8, 20, 23, 59, 59, 999)).toISOString()
+
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'budget-custom-client-period-create',
+                        entity: 'budget',
+                        operation: 'create',
+                        payload: {
+                            periodType: 'custom',
+                            periodStart,
+                            periodEnd,
+                            amount: 25000,
+                        },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('applied')
+        const stored = await Budget.findById(res.body.data.results[0].resultId)
+        expect(stored?.periodStart.toISOString()).toBe(periodStart)
+        expect(stored?.periodEnd.toISOString()).toBe(periodEnd)
+    })
+
+    it('still accepts the legacy year/month payload shape', async () => {
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'budget-monthly-legacy-year-month',
+                        entity: 'budget',
+                        operation: 'create',
+                        payload: { periodType: 'monthly', year: 2026, month: 3, amount: 40000 },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('applied')
+    })
+})

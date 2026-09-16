@@ -29,11 +29,35 @@ const toMajorAmount = (value: unknown): unknown => (typeof value === 'number' ? 
  * getUserTimezoneForOp since sync ops have no request-scoped user object.
  */
 
+/**
+ * The local-first client never sends `year`/`month` — it resolves `periodStart`/`periodEnd`
+ * itself (via the same shared `resolveMonthlyPeriod`/`resolveCustomPeriod`) before the record
+ * ever reaches the outbox, and syncs the resolved instants (BUG-33). Trust those when both are
+ * present, for either period type, the same way this file already trusts a client-resolved
+ * `amount` (see `toMajorAmount` above). The `year`/`month` path stays as a fallback for a caller
+ * that genuinely only has raw form input (e.g. the existing hand-written test payloads).
+ */
 const resolvePeriodFromBody = (
     body: Record<string, unknown>,
     timezone: string
 ): { periodStart: Date; periodEnd: Date; periodType: 'monthly' | 'custom' } => {
     const periodType = parsePeriodType(body.periodType)
+
+    if (typeof body.periodStart === 'string' && typeof body.periodEnd === 'string') {
+        const periodStart = new Date(body.periodStart)
+        const periodEnd = new Date(body.periodEnd)
+        if (
+            Number.isNaN(periodStart.getTime()) ||
+            Number.isNaN(periodEnd.getTime()) ||
+            periodStart > periodEnd
+        ) {
+            throw new CustomError(
+                'Invalid period; periodStart must be a valid date on or before periodEnd',
+                400
+            )
+        }
+        return { periodStart, periodEnd, periodType }
+    }
 
     if (periodType === 'monthly') {
         validateRequiredFields(body, ['year', 'month'])
