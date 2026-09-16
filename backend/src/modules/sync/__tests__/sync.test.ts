@@ -1,4 +1,5 @@
 import request from 'supertest'
+import { Types } from 'mongoose'
 import { Application } from 'express'
 import { createApp } from '@http/app'
 import { Account } from '@modules/accounts'
@@ -439,6 +440,106 @@ describe('Sync API — push ordered apply', () => {
         const toAfter = await Account.findById(to._id)
         expect(fromAfter?.currentBalance).toBe(960)
         expect(toAfter?.currentBalance).toBe(40)
+    })
+
+    // BUG-34 follow-up: the local-first client (domain/transfers.ts) generates both legs' ids up
+    // front and must get them honored, exactly like a plain transaction.create already does -
+    // otherwise the local rows never reconcile with what the server created (outbox.ts discards
+    // resultId; it never rewrites a local row's id) and the next pull produces duplicates.
+    it('honors client-supplied ids for both legs of a transaction.transfer intent', async () => {
+        const from = await seedAccount(owner.userId, { name: 'From', currentBalance: 1000, openingBalance: 1000 })
+        const to = await seedAccount(owner.userId, { name: 'To' })
+        const outboundId = new Types.ObjectId().toString()
+        const inboundId = new Types.ObjectId().toString()
+
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'transfer-client-ids',
+                        entity: 'transaction',
+                        operation: 'create',
+                        payload: {
+                            intent: 'transaction.transfer',
+                            _id: outboundId,
+                            pairId: inboundId,
+                            amount: 4000,
+                            date: new Date().toISOString(),
+                            fromAccountId: from._id.toString(),
+                            toAccountId: to._id.toString(),
+                        },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('applied')
+        expect(res.body.data.results[0].resultId).toBe(outboundId)
+
+        const outbound = await Transaction.findById(outboundId)
+        const inbound = await Transaction.findById(inboundId)
+        expect(outbound?.transferPairId?.toString()).toBe(inboundId)
+        expect(inbound?.transferPairId?.toString()).toBe(outboundId)
+    })
+
+    // BUG-34: a split created offline (domain/splits.ts) pushes one grouped create op carrying
+    // `splits` (the REST endpoint's own shape, minor-unit amounts, client-supplied child ids) rather
+    // than N independent per-row ops - this exercises that exact real-client payload shape end to
+    // end through applyCreateOp, not just the REST endpoint.
+    it('applies a split create pushed with the REST splits shape, in minor units, with client ids honored', async () => {
+        const account = await seedAccount(owner.userId, { currentBalance: 200, openingBalance: 200 })
+        const foodCategory = await seedCategory(owner.userId, 'Food')
+        const transportCategory = await seedCategory(owner.userId, 'Transport')
+        const parentId = new Types.ObjectId().toString()
+        const child1Id = new Types.ObjectId().toString()
+        const child2Id = new Types.ObjectId().toString()
+
+        const res = await request(app)
+            .post('/api/v1/sync/push')
+            .set(authHeader(owner.token))
+            .send({
+                ops: [
+                    {
+                        opId: 'split-1',
+                        entity: 'transaction',
+                        operation: 'create',
+                        payload: {
+                            _id: parentId,
+                            type: 'expense',
+                            status: 'posted',
+                            title: 'Mixed shopping trip',
+                            amount: 10000,
+                            date: new Date().toISOString(),
+                            accountId: account._id.toString(),
+                            splits: [
+                                { _id: child1Id, categoryId: foodCategory._id.toString(), amount: 6000 },
+                                { _id: child2Id, categoryId: transportCategory._id.toString(), amount: 4000 },
+                            ],
+                        },
+                    },
+                ],
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('applied')
+        expect(res.body.data.results[0].resultId).toBe(parentId)
+
+        const parent = await Transaction.findById(parentId)
+        expect(parent?.amount).toBe(10000)
+        expect(parent?.hasSplitChildren).toBe(true)
+
+        const child1 = await Transaction.findById(child1Id)
+        const child2 = await Transaction.findById(child2Id)
+        expect(child1?.amount).toBe(6000)
+        expect(child1?.splitTransactionId?.toString()).toBe(parentId)
+        expect(child2?.amount).toBe(4000)
+        expect(child2?.splitTransactionId?.toString()).toBe(parentId)
+
+        // The expense is debited exactly once - not once for the parent and again for the children.
+        const updatedAccount = await Account.findById(account._id)
+        expect(updatedAccount?.currentBalance).toBe(100)
     })
 
     it('re-validates workspace role at op-apply time, not just at request time', async () => {

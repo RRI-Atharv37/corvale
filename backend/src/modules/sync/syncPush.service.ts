@@ -140,9 +140,27 @@ const applyCreateOp = async (
 
     // Sync payloads carry `amount` in minor units (mirroring the local SQLite/Transaction schema),
     // whereas createTransactionForUser expects the REST endpoint's major-unit decimal convention.
+    // A split parent's push op (BUG-34 follow-up) carries its own `splits[].amount` in the same
+    // minor-unit convention - each line needs the identical conversion before it reaches
+    // validateSplitInputs, which (like the top-level amount) assumes major-unit input.
     const transactionPayload = {
         ...payload,
         amount: typeof payload.amount === 'number' ? fromMinorUnits(payload.amount) : payload.amount,
+        ...(Array.isArray(payload.splits)
+            ? {
+                  splits: payload.splits.map((split) =>
+                      split && typeof split === 'object'
+                          ? {
+                                ...split,
+                                amount:
+                                    typeof (split as Record<string, unknown>).amount === 'number'
+                                        ? fromMinorUnits((split as Record<string, unknown>).amount as number)
+                                        : (split as Record<string, unknown>).amount,
+                            }
+                          : split
+                  ),
+              }
+            : {}),
     }
     const created = await createTransactionForUser(userId, transactionPayload)
     return { status: 'applied', resultId: created._id.toString() }

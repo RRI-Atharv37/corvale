@@ -29,6 +29,9 @@ import { assertWorkspaceMembership, validateResourceAccess } from "@modules/work
 import { roundMoney } from "@shared/money";
 
 export interface SplitInput {
+    /** Client-supplied child id (BUG-34 follow-up, sync-push splits only) - resolved the same way
+     * every other sync create honors a client id. Absent on a REST-originated split. */
+    _id?: unknown
     categoryId: string
     amount: unknown
 }
@@ -62,6 +65,7 @@ export interface SerializedTransaction {
     tags?: string[]
     transferPairId?: Types.ObjectId | null
     splitTransactionId?: Types.ObjectId | null
+    hasSplitChildren?: boolean
     recurringPaymentId?: Types.ObjectId | null
     receiptIds?: Types.ObjectId[]
     createdAt: Date
@@ -208,6 +212,7 @@ export const validateSplitInputs = (splits: SplitInput[], parentAmountMinor: num
         }
 
         return {
+            _id: split._id,
             categoryId: split.categoryId,
             amount: parseClientAmount(split.amount),
         }

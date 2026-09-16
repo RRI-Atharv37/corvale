@@ -28,6 +28,8 @@
     "migrate:email-verification:dry-run": "ts-node scripts/backfillEmailVerification.ts --dry-run",
     "migrate:account-balances": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts",
     "migrate:account-balances:dry-run": "ts-node scripts/migrateAccountBalancesToMinorUnits.ts --dry-run",
+    "migrate:has-split-children": "ts-node scripts/backfillHasSplitChildren.ts",
+    "migrate:has-split-children:dry-run": "ts-node scripts/backfillHasSplitChildren.ts --dry-run",
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts",
     "purge:tombstones:dry-run": "ts-node scripts/purgeTombstones.ts --dry-run"
   },

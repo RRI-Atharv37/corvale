@@ -58,22 +58,26 @@ const createSplitChildren = async (
     }
 
     await Transaction.insertMany(
-        normalizedSplits.map((split) => ({
-            userId,
-            workspaceId: workspaceId ?? null,
-            accountId,
-            categoryId: split.categoryId,
-            type: 'expense',
-            status,
-            amount: split.amount,
-            currency,
-            title,
-            description: description?.trim(),
-            date,
-            paymentMethod: paymentMethod?.trim(),
-            tags,
-            splitTransactionId: parentId,
-        }))
+        normalizedSplits.map((split) => {
+            const clientId = resolveClientObjectId(split._id)
+            return {
+                ...(clientId ? { _id: clientId } : {}),
+                userId,
+                workspaceId: workspaceId ?? null,
+                accountId,
+                categoryId: split.categoryId,
+                type: 'expense',
+                status,
+                amount: split.amount,
+                currency,
+                title,
+                description: description?.trim(),
+                date,
+                paymentMethod: paymentMethod?.trim(),
+                tags,
+                splitTransactionId: parentId,
+            }
+        })
     )
 }
 
@@ -225,6 +229,8 @@ export const createTransactionForUser = async (
             tags,
             description
         )
+        transaction.hasSplitChildren = true
+        await transaction.save()
     }
 
     const payload = await serializeTransactionWithSplits(transaction, userId)
@@ -379,7 +385,7 @@ export const createTransferForOp = async (
 ): Promise<string> => {
     validateRequiredFields(payload, ['amount', 'date', 'fromAccountId', 'toAccountId'])
 
-    const { amount, date, fromAccountId, toAccountId, title, description, status, workspaceId } =
+    const { amount, date, fromAccountId, toAccountId, title, description, status, workspaceId, pairId } =
         payload as {
             amount: unknown
             date: string
@@ -389,6 +395,10 @@ export const createTransferForOp = async (
             description?: string
             status?: string
             workspaceId?: unknown
+            /** Client-supplied id for the inbound leg (BUG-34 follow-up); `payload._id` is the
+             * outbound leg's id, resolved the same way every other sync create honors a client id.
+             * Both are optional - a REST-originated transfer (createTransfer) never sets either. */
+            pairId?: unknown
         }
 
     if (fromAccountId === toAccountId) {
@@ -421,12 +431,15 @@ export const createTransferForOp = async (
     const parsedDate = new Date(date)
     const trimmedTitle = (title ?? 'Transfer').trim()
     const trimmedDescription = description?.trim()
+    const outboundClientId = resolveClientObjectId(payload._id)
+    const inboundClientId = resolveClientObjectId(pairId)
 
     let outbound: ITransaction | null = null
     let inbound: ITransaction | null = null
 
     try {
         outbound = await Transaction.create({
+            ...(outboundClientId ? { _id: outboundClientId } : {}),
             userId,
             workspaceId: resolvedWorkspaceId,
             accountId: fromAccountId,
@@ -441,6 +454,7 @@ export const createTransferForOp = async (
         })
 
         inbound = await Transaction.create({
+            ...(inboundClientId ? { _id: inboundClientId } : {}),
             userId,
             workspaceId: resolvedWorkspaceId,
             accountId: toAccountId,

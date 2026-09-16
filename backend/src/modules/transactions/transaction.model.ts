@@ -48,6 +48,10 @@ export interface ITransaction extends Document {
      * identifies a real account.
      */
     createdByRemovedUser?: boolean
+    /** True on a split parent once its child lines exist (set by `createSplitChildren`). Splits
+     * are create-only (`SPLIT_NOT_EDITABLE`) - this lets the transactions list hide Edit/Duplicate
+     * for a split parent without a per-row children query (BUG-34). Never set on a split child. */
+    hasSplitChildren?: boolean
     deletedAt?: Date | null
     createdAt: Date
     updatedAt: Date
@@ -85,6 +89,7 @@ const TransactionSchema = new Schema<ITransaction>(
         reconciledAt: { type: Date, default: null },
         externalId: { type: String, trim: true },
         createdByRemovedUser: { type: Boolean, default: false },
+        hasSplitChildren: { type: Boolean, default: false },
     },
     { timestamps: true }
 )

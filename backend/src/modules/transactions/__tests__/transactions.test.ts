@@ -768,6 +768,9 @@ describe('Transactions', () => {
         expect(res.body.data.splits).toHaveLength(2)
         expect(res.body.data.splits[0].amount).toBe(60)
         expect(res.body.data.splits[1].amount).toBe(40)
+        // BUG-34: the parent is flagged so the transactions list can hide Edit/Duplicate for it
+        // without a per-row children query.
+        expect(res.body.data.hasSplitChildren).toBe(true)
 
         const childCount = await Transaction.countDocuments({
             splitTransactionId: res.body.data._id,
@@ -779,6 +782,7 @@ describe('Transactions', () => {
             .set(authHeader(token))
 
         expect(listRes.body.data.data).toHaveLength(1)
+        expect(listRes.body.data.data[0].hasSplitChildren).toBe(true)
 
         const updatedAccount = await Account.findById(account._id)
         expect(updatedAccount?.currentBalance).toBe(100)
