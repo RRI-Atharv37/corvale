@@ -3,6 +3,7 @@ import { MemorySqliteDriver } from '@platform/db/MemorySqliteDriver'
 import { runMigrations } from '@platform/db/migrations/runMigrations'
 import { MIGRATIONS } from '@platform/db/migrations/schema'
 import { Repository } from '@platform/db/repositories/Repository'
+import { createSqliteOutboxStore } from '@platform/sync/sqliteOutboxStore'
 import type { LocalDb } from '@platform/db/LocalDb'
 import type { LocalAccount, LocalTransaction } from '../types'
 import { createLocalSplitExpense } from '../splits'
@@ -71,6 +72,23 @@ describe('domain/splits: createLocalSplitExpense', () => {
 
     const account = await accountsRepo.findById(db, accountId)
     expect(account?.currentBalance).toBe(850)
+
+    // BUG-34: exactly one grouped push op carrying `splits` (the REST endpoint's own shape, minor
+    // units, each child's own client id) - not N independent per-row creates, which would reach the
+    // server with no `splits` array at all and leave `hasSplitChildren`/`splitTransactionId` unset,
+    // double-counting the expense.
+    const pending = await createSqliteOutboxStore(db).list()
+    expect(pending).toHaveLength(1)
+    expect(pending[0].operation).toBe('create')
+    expect(pending[0].payload._id).toBe(result.parentId)
+    expect(pending[0].payload.type).toBe('expense')
+    expect(pending[0].payload.amount).toBe(15000)
+    expect(pending[0].payload.splits).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _id: result.childIds[0], amount: expect.any(Number) }),
+        expect.objectContaining({ _id: result.childIds[1], amount: expect.any(Number) }),
+      ])
+    )
   })
 
   it('rejects when split amounts do not sum to the total', async () => {

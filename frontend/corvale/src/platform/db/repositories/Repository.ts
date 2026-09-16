@@ -251,6 +251,19 @@ export class Repository<T extends SyncableRecord> {
     return doc
   }
 
+  /**
+   * Writes the optimistic local row without enqueuing its own outbox op - for a caller that
+   * writes several linked rows in one logical create (a transfer's two legs, a split's parent +
+   * children) and must enqueue a single grouped push op itself via `enqueueGroupedTransactionCreate`
+   * instead of one independent op per row. The server only understands a multi-document transaction
+   * create as one grouped op (`intent: 'transaction.transfer'`, or a plain create carrying `splits`)
+   * - N independent per-row ops lose the linkage entirely (BUG-34 follow-up).
+   */
+  async createLocalOnly(db: LocalDb, doc: T): Promise<T> {
+    await this.upsertLocal(db, doc, 'pending')
+    return doc
+  }
+
   /** `baseUpdatedAt` is the record's `updatedAt` before this edit - the server's conflict precondition. */
   async update(db: LocalDb, doc: T, baseUpdatedAt: string): Promise<T> {
     await this.upsertLocal(db, doc, 'pending')
@@ -279,4 +292,24 @@ export class Repository<T extends SyncableRecord> {
       payload: { _id: id, ...(record?.workspaceId ? { workspaceId: record.workspaceId } : {}) },
     })
   }
+}
+
+/**
+ * Enqueues one outbox 'create' op for a transaction create that spans several local rows (see
+ * `Repository.createLocalOnly`) - `entityRecordId` is the "primary" row's id (a transfer's outbound
+ * leg, a split's parent), the same one the caller passed as `payload._id`. Mirrors what
+ * `Repository.create` builds internally, exposed standalone since these callers write their rows
+ * through `createLocalOnly` instead.
+ */
+export async function enqueueGroupedTransactionCreate(
+  db: LocalDb,
+  entityRecordId: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const outbox = createOutbox(createSqliteOutboxStore(db), outboxOptions)
+  await outbox.enqueue({
+    entity: buildOutboxEntity('transaction', entityRecordId),
+    operation: 'create',
+    payload,
+  })
 }

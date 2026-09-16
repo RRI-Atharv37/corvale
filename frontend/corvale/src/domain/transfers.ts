@@ -1,5 +1,5 @@
 import type { LocalDb } from '@platform/db/LocalDb'
-import { Repository } from '@platform/db/repositories/Repository'
+import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { parseAmountToMinorUnits } from '@shared/money'
 import { recomputeLocalAccountBalance } from './accountBalances'
@@ -72,6 +72,12 @@ const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<vo
  * incremental balance math locally (see the "Account balance" architecture decision). The
  * outbound leg is created with an earlier `createdAt` than the inbound leg so
  * `domain/accountBalances.ts`'s creation-order heuristic resolves direction correctly.
+ *
+ * Both rows are written via `createLocalOnly` (no per-row outbox op) and synced up as a single
+ * grouped `intent: 'transaction.transfer'` push op instead (BUG-34 follow-up) - `applyCreateOp`
+ * only recognizes a transfer create in that grouped shape; two independent per-leg create ops each
+ * get rejected outright (`type: 'transfer'` isn't a valid `createTransactionForUser` type), so an
+ * offline-created transfer never synced at all before this.
  */
 export const createLocalTransfer = async (
   db: LocalDb,
@@ -148,10 +154,22 @@ export const createLocalTransfer = async (
   }
 
   await db.transaction(async (tx) => {
-    await transactionsRepo.create(tx, outbound)
-    await transactionsRepo.create(tx, inbound)
+    await transactionsRepo.createLocalOnly(tx, outbound)
+    await transactionsRepo.createLocalOnly(tx, inbound)
     await persistAccountBalance(tx, input.fromAccountId)
     await persistAccountBalance(tx, input.toAccountId)
+    await enqueueGroupedTransactionCreate(tx, outboundId, {
+      intent: 'transaction.transfer',
+      _id: outboundId,
+      pairId: inboundId,
+      amount: amountMinor,
+      date: isoDate,
+      fromAccountId: input.fromAccountId,
+      toAccountId: input.toAccountId,
+      title,
+      description,
+      workspaceId: input.workspaceId ?? null,
+    })
   })
 
   return { outboundId, inboundId }

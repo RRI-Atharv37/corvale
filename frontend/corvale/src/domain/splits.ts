@@ -1,5 +1,5 @@
 import type { LocalDb } from '@platform/db/LocalDb'
-import { Repository } from '@platform/db/repositories/Repository'
+import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { parseAmountToMinorUnits, validateSplitInputs, type SplitInput } from '@shared/money'
 import { recomputeLocalAccountBalance } from './accountBalances'
@@ -57,6 +57,14 @@ const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<vo
  * inserting parent + children is correct. See `domain/__tests__/localDomainParity.test.ts`'s "counts
  * a split parent once and ignores its split children" case for the server-matching fixture this
  * mirrors.
+ *
+ * All rows are written via `createLocalOnly` (no per-row outbox op) and synced up as a single
+ * grouped create op carrying `splits` in the REST endpoint's own shape, each split line's client id
+ * threaded through so the server's `createSplitChildren` reuses it instead of minting a new one
+ * (BUG-34 follow-up) - N independent per-row create ops would otherwise reach `applyCreateOp` with
+ * no `splits` array at all, so the parent's `hasSplitChildren` flag never gets set and every child's
+ * `splitTransactionId` is silently dropped by `createTransactionForUser`'s field whitelist, leaving
+ * an offline-created split as N+1 disconnected transactions with the expense double-counted.
  */
 export const createLocalSplitExpense = async (
   db: LocalDb,
@@ -102,6 +110,7 @@ export const createLocalSplitExpense = async (
     tags,
     paymentMethod,
     splitTransactionId: null,
+    hasSplitChildren: true,
   }
 
   const children: LocalTransaction[] = normalizedSplits.map((split, index) => {
@@ -128,11 +137,29 @@ export const createLocalSplitExpense = async (
   })
 
   await db.transaction(async (tx) => {
-    await transactionsRepo.create(tx, parent)
+    await transactionsRepo.createLocalOnly(tx, parent)
     for (const child of children) {
-      await transactionsRepo.create(tx, child)
+      await transactionsRepo.createLocalOnly(tx, child)
     }
     await persistAccountBalance(tx, input.accountId)
+    await enqueueGroupedTransactionCreate(tx, parentId, {
+      _id: parentId,
+      type: 'expense',
+      status: 'posted',
+      title,
+      amount: amountMinor,
+      date: isoDate,
+      accountId: input.accountId,
+      description,
+      paymentMethod,
+      tags,
+      workspaceId: input.workspaceId ?? null,
+      splits: normalizedSplits.map((split, index) => ({
+        _id: children[index]._id,
+        categoryId: split.categoryId,
+        amount: split.amount,
+      })),
+    })
   })
 
   return { parentId, childIds: children.map((child) => child._id) }

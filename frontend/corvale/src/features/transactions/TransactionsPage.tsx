@@ -251,6 +251,10 @@ const Transactions = () => {
             toast.error('Transfer editing is not available yet. Delete and recreate the transfer.')
             return
         }
+        if (item.hasSplitChildren || item.splitTransactionId) {
+            toast.error('Split transactions cannot be edited. Delete and recreate instead.')
+            return
+        }
 
         setEditingId(item._id)
         setForm({
@@ -1101,7 +1105,7 @@ const Transactions = () => {
                                             {amountPrefix(item.type, item.transferDirection)}
                                             {formatCurrency(item.amount, item.currency)}
                                         </p>
-                                        {canEdit && item.type !== 'transfer' && (
+                                        {canEdit && item.type !== 'transfer' && !item.hasSplitChildren && !item.splitTransactionId && (
                                             <button
                                                 type="button"
                                                 onClick={() => openEdit(item)}
@@ -1111,7 +1115,7 @@ const Transactions = () => {
                                                 <IoPencil size={16} />
                                             </button>
                                         )}
-                                        {canEdit && item.type !== 'transfer' && (
+                                        {canEdit && item.type !== 'transfer' && !item.hasSplitChildren && !item.splitTransactionId && (
                                             <button
                                                 type="button"
                                                 onClick={() => void handleDuplicate(item)}

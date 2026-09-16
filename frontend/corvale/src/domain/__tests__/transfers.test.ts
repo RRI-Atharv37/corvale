@@ -3,6 +3,7 @@ import { MemorySqliteDriver } from '@platform/db/MemorySqliteDriver'
 import { runMigrations } from '@platform/db/migrations/runMigrations'
 import { MIGRATIONS } from '@platform/db/migrations/schema'
 import { Repository } from '@platform/db/repositories/Repository'
+import { createSqliteOutboxStore } from '@platform/sync/sqliteOutboxStore'
 import type { LocalDb } from '@platform/db/LocalDb'
 import type { LocalAccount, LocalCategory, LocalTransaction } from '../types'
 import { createLocalTransfer } from '../transfers'
@@ -77,6 +78,22 @@ describe('domain/transfers: createLocalTransfer', () => {
     expect(inbound?.accountId).toBe(toId)
     expect(outbound?.amount).toBe(20000)
     expect(inbound?.amount).toBe(20000)
+
+    // BUG-34 follow-up: exactly one grouped push op for both legs, not two independent per-row
+    // creates - two independent creates would each get rejected server-side (type: 'transfer' isn't
+    // a valid createTransactionForUser type outside this grouped shape), so an offline-created
+    // transfer would never sync at all.
+    const pending = await createSqliteOutboxStore(db).list()
+    expect(pending).toHaveLength(1)
+    expect(pending[0].operation).toBe('create')
+    expect(pending[0].payload).toMatchObject({
+      intent: 'transaction.transfer',
+      _id: result.outboundId,
+      pairId: result.inboundId,
+      amount: 20000,
+      fromAccountId: fromId,
+      toAccountId: toId,
+    })
   })
 
   it('applies the credit-account sign flip correctly (checking 1000 -> credit card owing 300, transfer 100: checking=900, credit owed=200)', async () => {

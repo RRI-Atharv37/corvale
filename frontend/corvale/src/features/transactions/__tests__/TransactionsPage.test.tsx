@@ -456,6 +456,23 @@ describe('Transactions (local-first)', () => {
         expect(screen.queryByRole('button', { name: 'Duplicate transaction' })).not.toBeInTheDocument()
     })
 
+    it('does not offer edit or duplicate for a split parent (BUG-34)', async () => {
+        await seedAccountsAndCategories()
+        await seedTransaction({
+            _id: 'tx-split-parent',
+            title: 'Mixed shopping trip',
+            amount: 10000,
+            hasSplitChildren: true,
+        })
+
+        renderWithProviders(<Transactions />, { route: '/transactions' })
+        await waitFor(() => expect(screen.getByText('Mixed shopping trip')).toBeInTheDocument())
+
+        expect(screen.queryByRole('button', { name: 'Edit transaction' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Duplicate transaction' })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Delete transaction' })).toBeInTheDocument()
+    })
+
     it('blocks submit and writes nothing when required fields are missing', async () => {
         await seedAccountsAndCategories()
         const user = userEvent.setup()

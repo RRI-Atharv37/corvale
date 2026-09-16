@@ -42,6 +42,9 @@ export interface LocalTransaction extends SyncableRecord {
   /** OFX `FITID` from a bank-file import — an exact re-import dedupe key (BUG-21). */
   externalId?: string
   splitTransactionId: string | null
+  /** True on a split parent once its child lines exist (BUG-34); mirrors the server field of the
+   * same name, set locally at split-creation time by `domain/splits.ts`. */
+  hasSplitChildren?: boolean
   /** Set on both legs of a transfer (mirrors `backend/models/Transaction.ts`); null otherwise. */
   transferPairId?: string | null
   /**

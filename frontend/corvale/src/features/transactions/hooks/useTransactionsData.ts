@@ -112,6 +112,7 @@ const toApiTransaction = (tx: LocalTransactionRecord, currency: string): Transac
     transferPairId: tx.transferPairId ?? null,
     transferDirection: tx.transferDirection,
     splitTransactionId: tx.splitTransactionId ?? null,
+    hasSplitChildren: tx.hasSplitChildren ?? false,
     clearedStatus: (tx.clearedStatus ?? 'pending') as ClearedStatus,
     createdAt: tx.createdAt,
     updatedAt: tx.updatedAt,
