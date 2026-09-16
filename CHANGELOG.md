@@ -13,6 +13,26 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-17
+
+### Fixed
+
+- **Split transactions' Edit and Duplicate buttons no longer fail with an error.** Splits can only
+  be created, not edited (delete and recreate instead) — the Edit/Duplicate buttons on a split row
+  are now hidden, the same way they already were for transfers, instead of opening a form that
+  then failed to save.
+- **Offline-created splits and transfers (desktop app) now sync correctly.** A split expense
+  created while offline could previously double the amount deducted from the account once it
+  synced; a transfer created while offline could fail to sync at all and stay stuck locally. Both
+  now sync as a single correctly-linked change.
+- **Monthly budgets now sync correctly on desktop / offline.** A monthly budget created or edited
+  while offline was previously rejected when it tried to sync, and a follow-up edit could then
+  fail with "Budget not found." Custom-period budgets had the same underlying issue and are fixed
+  too.
+- **A transfer between accounts no longer looks like a duplicate transaction in the list.** Both
+  legs of a transfer now show a signed amount (+/−) like other transactions, instead of an
+  identical unsigned amount that only a small account-name label distinguished.
+
 ## [1.0.3] - 2026-09-01
 
 ### Added
