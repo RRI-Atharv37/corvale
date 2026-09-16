@@ -15,7 +15,7 @@ const transactionsRepo = new Repository<LocalTransaction>('transactions')
  * needs every local transaction (not just the target account's) since a
  * leg's pair lives in a different account.
  */
-const buildPairCreatedAtById = (transactions: LocalTransaction[]): Map<string, string> => {
+export const buildPairCreatedAtById = (transactions: LocalTransaction[]): Map<string, string> => {
   const byId = new Map(transactions.map((tx) => [tx._id, tx.createdAt ?? tx.updatedAt]))
   const pairCreatedAtById = new Map<string, string>()
   for (const tx of transactions) {
@@ -25,6 +25,21 @@ const buildPairCreatedAtById = (transactions: LocalTransaction[]): Map<string, s
     }
   }
   return pairCreatedAtById
+}
+
+/** Direction a transfer leg represents, resolved via the creation-order heuristic above. `undefined`
+ * when the pair isn't in `pairCreatedAtById` (e.g. filtered out of the current query) - callers
+ * should fall back to a neutral, non-directional display for that case, mirroring the backend's
+ * `attachTransferDirections` (`backend/src/modules/transactions/transactionUtils.ts`). */
+export const getTransferDirection = (
+  tx: Pick<LocalTransaction, '_id' | 'type' | 'transferPairId' | 'createdAt' | 'updatedAt'>,
+  pairCreatedAtById: Map<string, string>
+): 'out' | 'in' | undefined => {
+  if (tx.type !== 'transfer' || !tx.transferPairId) return undefined
+  const pairCreatedAt = pairCreatedAtById.get(tx._id)
+  if (pairCreatedAt === undefined) return undefined
+  const ownCreatedAt = tx.createdAt ?? tx.updatedAt
+  return ownCreatedAt > pairCreatedAt ? 'in' : 'out'
 }
 
 const toRecomputeTransactions = (
@@ -37,10 +52,7 @@ const toRecomputeTransactions = (
     .map((tx) => {
       let effectiveType = tx.type
       if (tx.type === 'transfer' && tx.transferPairId) {
-        const pairCreatedAt = pairCreatedAtById.get(tx._id)
-        const ownCreatedAt = tx.createdAt ?? tx.updatedAt
-        const isInbound = pairCreatedAt !== undefined && ownCreatedAt > pairCreatedAt
-        effectiveType = isInbound ? 'income' : 'transfer'
+        effectiveType = getTransferDirection(tx, pairCreatedAtById) === 'in' ? 'income' : 'transfer'
       }
       return {
         type: effectiveType,

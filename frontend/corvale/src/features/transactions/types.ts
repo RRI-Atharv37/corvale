@@ -22,6 +22,7 @@ export interface Transaction {
     paymentMethod?: string
     tags?: string[]
     transferPairId?: string | null
+    transferDirection?: 'out' | 'in'
     splitTransactionId?: string | null
     splits?: SplitLine[]
     transferPair?: Transaction

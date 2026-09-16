@@ -642,6 +642,41 @@ describe('Transactions', () => {
         expect(listed).toHaveLength(2)
     })
 
+    it('marks each transfer leg with its direction so the list can tell them apart (BUG-35)', async () => {
+        const { token } = await seedUserDirectly({ email: 'transfer-direction@example.com' })
+        const fromAccount = await createTestAccount(token, 500)
+        const toAccountRes = await request(app)
+            .post('/api/v1/accounts')
+            .set(authHeader(token))
+            .send({ name: 'Savings', type: 'savings', openingBalance: 100 })
+        const toAccount = toAccountRes.body.data
+
+        const created = await request(app)
+            .post('/api/v1/transactions/transfer')
+            .set(authHeader(token))
+            .send({
+                title: 'Move to savings',
+                amount: 150,
+                date: '2026-01-01T12:00:00.000Z',
+                fromAccountId: fromAccount._id,
+                toAccountId: toAccount._id,
+            })
+        const { outbound, inbound } = created.body.data
+
+        const listRes = await request(app).get('/api/v1/transactions').set(authHeader(token))
+        expect(listRes.status).toBe(200)
+        const listedOutbound = listRes.body.data.data.find((tx: { _id: string }) => tx._id === outbound._id)
+        const listedInbound = listRes.body.data.data.find((tx: { _id: string }) => tx._id === inbound._id)
+        expect(listedOutbound.transferDirection).toBe('out')
+        expect(listedInbound.transferDirection).toBe('in')
+
+        const detailRes = await request(app)
+            .get(`/api/v1/transactions/${outbound._id}`)
+            .set(authHeader(token))
+        expect(detailRes.body.data.transferDirection).toBe('out')
+        expect(detailRes.body.data.transferPair.transferDirection).toBe('in')
+    })
+
     it('rejects transfer when source and destination are the same account', async () => {
         const { token } = await seedUserDirectly({ email: 'transfer-same@example.com' })
         const account = await createTestAccount(token)

@@ -19,7 +19,7 @@ import {
     type TransactionSortOrder,
 } from '@domain/transactionSearch'
 import { applyLocalCategorizationRules } from '@domain/categorizationRules'
-import { recomputeLocalAccountBalance } from '@domain/accountBalances'
+import { buildPairCreatedAtById, getTransferDirection, recomputeLocalAccountBalance } from '@domain/accountBalances'
 import { createLocalTransfer } from '@domain/transfers'
 import { createLocalSplitExpense } from '@domain/splits'
 import { unwrapApiData } from '@lib/apiHelpers'
@@ -90,6 +90,7 @@ export interface UseTransactionsDataResult {
  * hook can join in the owning account's currency for display without touching shared infra. */
 interface LocalTransactionRecord extends LocalTransaction {
     currency?: string
+    transferDirection?: 'out' | 'in'
 }
 
 const toApiTransaction = (tx: LocalTransactionRecord, currency: string): Transaction => ({
@@ -109,6 +110,7 @@ const toApiTransaction = (tx: LocalTransactionRecord, currency: string): Transac
     paymentMethod: tx.paymentMethod,
     tags: tx.tags,
     transferPairId: tx.transferPairId ?? null,
+    transferDirection: tx.transferDirection,
     splitTransactionId: tx.splitTransactionId ?? null,
     clearedStatus: (tx.clearedStatus ?? 'pending') as ClearedStatus,
     createdAt: tx.createdAt,
@@ -249,8 +251,13 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
 
             const accounts = await accountsRepo.list(db)
             const currencyByAccountId = new Map(accounts.map((account) => [account._id, account.currency]))
+            const pairCreatedAtById = buildPairCreatedAtById(scoped)
 
-            return scoped.map((tx) => ({ ...tx, currency: currencyByAccountId.get(tx.accountId) ?? 'USD' }))
+            return scoped.map((tx) => ({
+                ...tx,
+                currency: currencyByAccountId.get(tx.accountId) ?? 'USD',
+                transferDirection: getTransferDirection(tx, pairCreatedAtById),
+            }))
         },
         [typeFilter, statusFilter, tagFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder, timezone, activeWorkspaceId]
     )

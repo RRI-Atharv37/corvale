@@ -500,7 +500,9 @@ export const getTransactionDetail = async (
 
     if (isTransferLeg(transaction) && transaction.transferPairId) {
         const pair = await loadTransaction(transaction.transferPairId.toString(), userId, 'viewer')
-        payload.transferPair = serializeTransaction(pair)
+        const isInbound = transaction.createdAt.getTime() > pair.createdAt.getTime()
+        payload.transferDirection = isInbound ? 'in' : 'out'
+        payload.transferPair = { ...serializeTransaction(pair), transferDirection: isInbound ? 'out' : 'in' }
     }
 
     const workspaceId = transaction.workspaceId?.toString() ?? null

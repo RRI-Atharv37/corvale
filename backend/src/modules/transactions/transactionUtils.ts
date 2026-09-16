@@ -66,6 +66,7 @@ export interface SerializedTransaction {
     receiptIds?: Types.ObjectId[]
     createdAt: Date
     updatedAt: Date
+    transferDirection?: 'out' | 'in'
 }
 
 export const serializeTransactionPlain = (
@@ -381,6 +382,55 @@ export const isSplitChild = (transaction: ITransaction): boolean =>
 
 export const isTransferLeg = (transaction: ITransaction): boolean =>
     transaction.type === 'transfer' && transaction.transferPairId != null
+
+/**
+ * Both legs of a transfer persist with `type: 'transfer'` and no other stored field marking which
+ * one is the debit and which is the credit - direction is only recoverable via creation order
+ * relative to the paired leg (mirrors `frontend/corvale/src/domain/accountBalances.ts`'s identical
+ * heuristic, used there for the balance engine). Resolves pairs found within `transactions` itself
+ * first (the common case - both legs land on the same list page), then batches one `_id: { $in }`
+ * lookup for any pairs missing from that set (RLS's documented allowed shape for "load rows the
+ * caller already holds ids for"). A leg whose pair can't be resolved (e.g. deleted) is left
+ * without a direction - callers fall back to a neutral, non-directional display for it.
+ */
+export const attachTransferDirections = async <T extends SerializedTransaction>(
+    transactions: T[]
+): Promise<T[]> => {
+    const legs = transactions.filter((tx) => tx.type === 'transfer' && tx.transferPairId)
+    if (legs.length === 0) {
+        return transactions
+    }
+
+    const createdAtById = new Map<string, Date>(
+        transactions.map((tx) => [tx._id.toString(), tx.createdAt])
+    )
+
+    const missingIds = [
+        ...new Set(
+            legs
+                .map((tx) => tx.transferPairId!.toString())
+                .filter((pairId) => !createdAtById.has(pairId))
+        ),
+    ]
+
+    if (missingIds.length > 0) {
+        const pairs = await Transaction.find({ _id: { $in: missingIds } }).select('createdAt')
+        for (const pair of pairs) {
+            createdAtById.set(pair._id.toString(), pair.createdAt)
+        }
+    }
+
+    return transactions.map((tx) => {
+        if (tx.type !== 'transfer' || !tx.transferPairId) {
+            return tx
+        }
+        const pairCreatedAt = createdAtById.get(tx.transferPairId.toString())
+        if (!pairCreatedAt) {
+            return tx
+        }
+        return { ...tx, transferDirection: tx.createdAt.getTime() > pairCreatedAt.getTime() ? 'in' : 'out' }
+    })
+}
 
 export const applyTransactionToAccount = async (
     account: IAccount,

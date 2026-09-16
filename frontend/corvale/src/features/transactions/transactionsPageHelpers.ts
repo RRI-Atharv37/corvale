@@ -59,8 +59,14 @@ export const amountColor = (type: TransactionType): string => {
     return 'text-violet-400'
 }
 
-export const amountPrefix = (type: TransactionType): string => {
+/** Transfer legs carry no sign of their own (`type` is `'transfer'` for both the outbound and
+ * inbound leg) - `transferDirection`, resolved server/domain-side from creation order relative to
+ * the paired leg, is what lets the two rows read as opposite ends of one move instead of a
+ * duplicate. Falls back to no sign when direction can't be resolved (e.g. the pair isn't loaded). */
+export const amountPrefix = (type: TransactionType, transferDirection?: 'out' | 'in'): string => {
     if (type === 'income') return '+'
     if (type === 'expense') return '−'
+    if (transferDirection === 'in') return '+'
+    if (transferDirection === 'out') return '−'
     return ''
 }

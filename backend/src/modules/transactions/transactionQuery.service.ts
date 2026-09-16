@@ -4,6 +4,7 @@ import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { resolveDateRange } from '@core/time/timezoneUtils'
 import {
+    attachTransferDirections,
     CSV_HEADERS,
     buildCategorySortLookupStages,
     buildTransactionSort,
@@ -141,9 +142,11 @@ export const listTransactions = async (input: QueryInput) => {
             Transaction.countDocuments(filter),
         ])
 
-        const data = await enrichTransactionsForWorkspace(
-            workspaceId,
-            results.map((doc) => serializeTransactionPlain(doc))
+        const data = await attachTransferDirections(
+            await enrichTransactionsForWorkspace(
+                workspaceId,
+                results.map((doc) => serializeTransactionPlain(doc))
+            )
         )
 
         return {
@@ -167,7 +170,9 @@ export const listTransactions = async (input: QueryInput) => {
     ])
 
     return {
-        data: await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions)),
+        data: await attachTransferDirections(
+            await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+        ),
         meta: {
             totalTransactions,
             pageNumber,
@@ -211,15 +216,19 @@ export const filterTransactions = async (input: QueryInput) => {
             STRIP_CATEGORY_SORT_JOIN,
         ]).option({ [RLS_ALLOW_LOOKUP]: true })
 
-        return enrichTransactionsForWorkspace(
-            workspaceId,
-            results.map((doc) => serializeTransactionPlain(doc))
+        return attachTransferDirections(
+            await enrichTransactionsForWorkspace(
+                workspaceId,
+                results.map((doc) => serializeTransactionPlain(doc))
+            )
         )
     }
 
     const sort = buildTransactionSort(sortBy as string | undefined, sortOrder as string | undefined)
     const transactions = await Transaction.find(filter).sort(sort)
-    return enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    return attachTransferDirections(
+        await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    )
 }
 
 export const searchTransactions = async (input: QueryInput) => {
@@ -252,15 +261,19 @@ export const searchTransactions = async (input: QueryInput) => {
             STRIP_CATEGORY_SORT_JOIN,
         ]).option({ [RLS_ALLOW_LOOKUP]: true })
 
-        return enrichTransactionsForWorkspace(
-            workspaceId,
-            results.map((doc) => serializeTransactionPlain(doc))
+        return attachTransferDirections(
+            await enrichTransactionsForWorkspace(
+                workspaceId,
+                results.map((doc) => serializeTransactionPlain(doc))
+            )
         )
     }
 
     const sort = buildTransactionSort(sortBy as string | undefined, sortOrder as string | undefined)
     const transactions = await Transaction.find(filter).sort(sort)
-    return enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    return attachTransferDirections(
+        await enrichTransactionsForWorkspace(workspaceId, serializeTransactions(transactions))
+    )
 }
 
 const categoryNameOf = (categoryId: unknown): string =>

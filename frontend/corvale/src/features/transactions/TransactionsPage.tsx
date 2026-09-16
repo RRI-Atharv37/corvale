@@ -1098,7 +1098,7 @@ const Transactions = () => {
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
                                         <p className={`text-sm font-semibold ${amountColor(item.type)}`}>
-                                            {amountPrefix(item.type)}
+                                            {amountPrefix(item.type, item.transferDirection)}
                                             {formatCurrency(item.amount, item.currency)}
                                         </p>
                                         {canEdit && item.type !== 'transfer' && (
