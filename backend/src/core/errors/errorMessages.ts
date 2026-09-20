@@ -213,4 +213,13 @@ export const ERROR_MESSAGES = {
         SOLE_OWNER_HAS_MEMBERS:
             'Transfer ownership or remove the other members of your workspace(s) before deleting your account',
     },
+    BILLING: {
+        ENTITLEMENT_REQUIRED: 'Your current plan does not include this feature',
+        READ_ONLY: 'Your subscription is not active; your data is read-only and can still be exported',
+        QUOTA_EXCEEDED: 'This would exceed your plan limit',
+        SYNC_DEVICE_LIMIT: 'Your plan does not allow syncing changes from another device',
+        WEBHOOK_SIGNATURE_INVALID: 'Invalid webhook signature',
+        WEBHOOK_PAYLOAD_INVALID: 'Invalid webhook payload',
+        NO_BILLING_CUSTOMER: 'No billing account exists for this user yet',
+    },
 }

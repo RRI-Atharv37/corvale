@@ -15,3 +15,9 @@ export type FeatureKey = (typeof FEATURE_KEYS)[number]
 
 export const LIMIT_KEYS = ['receiptStorageBytes', 'syncDevices', 'workspaceMembers'] as const
 export type LimitKey = (typeof LIMIT_KEYS)[number]
+
+export const RESOURCE_LIMIT_KEY: Readonly<Record<UsageResource, LimitKey>> = {
+    receiptBytes: 'receiptStorageBytes',
+    syncDevices: 'syncDevices',
+    workspaceMembers: 'workspaceMembers',
+}
