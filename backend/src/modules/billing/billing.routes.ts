@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
-// Routes land in M3b (webhook) and M6 (checkout/portal); not mounted in http/routes.ts until then.
+// Checkout/portal routes land in M6; not mounted in http/routes.ts until then. The webhook is
+// mounted from app.ts (webhook.routes.ts) because it needs the raw body ahead of express.json.
 const router = Router()
 
 export default router

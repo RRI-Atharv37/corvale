@@ -6,8 +6,10 @@ import connectDB from '@infra/db/db'
 import { registerGracefulShutdown } from '@infra/config/gracefulShutdown'
 import { initErrorTracking } from '@infra/observability/errorTracking'
 import { ensureMasterCategoriesSeeded } from "@modules/categories/categorySeed";
+import { assertBillingConfigured } from '@modules/billing'
 
 initErrorTracking()
+assertBillingConfigured()
 
 connectDB().then(() => ensureMasterCategoriesSeeded())
 

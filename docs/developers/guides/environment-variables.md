@@ -33,6 +33,8 @@ Create a `.env` file in the `backend/` folder.
 | `AUTH_RATE_LIMIT_MAX` | No | `10` | Max requests per window per IP for auth routes, and for `/auth/refresh` + `/auth/logout` |
 | `SYNC_PUSH_RATE_LIMIT_WINDOW_MS` | No | `60000` (1 min) | Rate limit window for `POST /sync/push` |
 | `SYNC_PUSH_RATE_LIMIT_MAX` | No | `120` | Max `POST /sync/push` requests per window per IP |
+| `BILLING_WEBHOOK_RATE_LIMIT_WINDOW_MS` | No | `60000` (1 min) | Rate limit window for the billing webhook. Only deliveries that are refused (bad signature, unreadable body) count toward it |
+| `BILLING_WEBHOOK_RATE_LIMIT_MAX` | No | `600` | Max refused billing webhook deliveries per window per IP before further requests get a `429` |
 | `SYNC_OPERATION_TTL_SECONDS` | No | `2592000` (30 days) | How long a `SyncOperation` idempotency-ledger row is kept before a TTL index removes it. Only needs to outlive a client's retry window |
 | `WORKSPACE_INVITE_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for `POST /workspaces/:id/members` (workspace invitations) |
 | `WORKSPACE_INVITE_RATE_LIMIT_MAX` | No | `30` | Max workspace invitations per window per IP. A dedicated budget because the endpoint reveals whether an email has an account |

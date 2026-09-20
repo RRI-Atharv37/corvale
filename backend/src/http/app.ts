@@ -6,6 +6,7 @@ import { validateEnv } from '@infra/config/envValidation'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import healthRoutes from './health.routes'
 import { mountRoutes } from './routes'
+import { createBillingWebhookRoutes } from '@modules/billing/webhook.routes'
 import { sanitizeBody } from '@http/middleware/sanitizeBodyMiddleware'
 import { buildCorsOriginAllowlist } from '@infra/config/corsOriginAllowlist'
 import { createGlobalRateLimiter } from '@http/middleware/rateLimitMiddleware'
@@ -109,10 +110,15 @@ export const createApp = (): express.Application => {
         })
     )
 
+    app.use(requestLogger)
+
+    // The provider signs the raw bytes, so this mount must precede express.json / sanitizeBody, and
+    // it sits before the /api/v1 limiter because it has its own.
+    app.use('/api/v1/billing/webhook', createBillingWebhookRoutes())
+
     app.use(express.json({ limit: '1mb' }))
     app.use(cookieParser())
     app.use(sanitizeBody)
-    app.use(requestLogger)
 
     app.use(healthRoutes)
 

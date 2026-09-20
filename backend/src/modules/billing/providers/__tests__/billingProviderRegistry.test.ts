@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+    assertBillingConfigured,
     getBillingProvider,
     resetBillingProvider,
     setBillingProvider,
@@ -19,7 +20,7 @@ const ENV_KEYS = [
     'MOR_VARIANTS',
 ] as const
 
-const saved = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
+const saved = Object.fromEntries([...ENV_KEYS, 'BILLING_ENABLED'].map((key) => [key, process.env[key]]))
 
 const configureMor = (): void => {
     process.env.MOR_API_KEY = 'mor_key'
@@ -33,7 +34,7 @@ const configureMor = (): void => {
 
 afterEach(() => {
     resetBillingProvider()
-    for (const key of ENV_KEYS) {
+    for (const key of [...ENV_KEYS, 'BILLING_ENABLED']) {
         if (saved[key] === undefined) delete process.env[key]
         else process.env[key] = saved[key]
     }
@@ -122,5 +123,45 @@ describe('getBillingProvider', () => {
         configureMor()
 
         expect(getBillingProvider().name).toBe('mor')
+    })
+})
+
+describe('assertBillingConfigured (boot fail-fast)', () => {
+    it('does nothing while billing is off, whatever is or is not configured', () => {
+        delete process.env.BILLING_ENABLED
+        for (const key of ENV_KEYS) delete process.env[key]
+
+        expect(() => assertBillingConfigured()).not.toThrow()
+    })
+
+    it('does nothing when billing is on and the provider is fully configured', () => {
+        process.env.BILLING_ENABLED = 'true'
+        configureMor()
+
+        expect(() => assertBillingConfigured()).not.toThrow()
+    })
+
+    it('throws at boot when billing is on and a provider setting is missing, naming the setting', () => {
+        process.env.BILLING_ENABLED = 'true'
+        configureMor()
+        delete process.env.MOR_WEBHOOK_SECRET
+
+        expect(() => assertBillingConfigured()).toThrow(/MOR_WEBHOOK_SECRET/)
+    })
+
+    it('throws at boot when billing is on and the provider name is unknown', () => {
+        process.env.BILLING_ENABLED = 'true'
+        configureMor()
+        process.env.BILLING_PROVIDER = 'stripe'
+
+        expect(() => assertBillingConfigured()).toThrow(/BILLING_PROVIDER/)
+    })
+
+    it('checks the environment, not an installed test provider', () => {
+        process.env.BILLING_ENABLED = 'true'
+        for (const key of ENV_KEYS) delete process.env[key]
+        setBillingProvider(createFakeBillingProvider().provider)
+
+        expect(() => assertBillingConfigured()).toThrow()
     })
 })

@@ -63,6 +63,28 @@ export const createSyncPushRateLimiter = () =>
         },
     })
 
+/**
+ * The billing webhook is exempt from the `/api/v1` limiter (a provider draining a retry backlog
+ * would trip it), so it carries its own. `skipSuccessfulRequests` meters only refused deliveries -
+ * an unauthenticated caller guessing signatures - and never a provider with a valid one.
+ */
+export const createBillingWebhookRateLimiter = () =>
+    rateLimit({
+        windowMs: Number(process.env.BILLING_WEBHOOK_RATE_LIMIT_WINDOW_MS) || 60 * 1000,
+        max: Number(process.env.BILLING_WEBHOOK_RATE_LIMIT_MAX) || 600,
+        standardHeaders: true,
+        legacyHeaders: false,
+        skipSuccessfulRequests: true,
+        store: new MongoRateLimitStore('billing-webhook'),
+        handler: (_req, res) => {
+            res.status(429).json({
+                success: false,
+                statusCode: 429,
+                message: ERROR_MESSAGES.AUTH.TOO_MANY_REQUESTS,
+            })
+        },
+    })
+
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 /**
