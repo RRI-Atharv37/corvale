@@ -13,6 +13,7 @@ import { assertAccountDeletionAllowed, computeAccountDeletionImpact, deleteUserA
 import { syncUserCurrencyData } from './currencySync'
 import { buildLegalAcceptance, toPublicUser } from './userSerialization'
 import { clearRefreshTokenCookie } from "@infra/config/refreshCookie";
+import { getUserEntitlementSnapshot } from "@modules/billing";
 import { parseNotificationPreferences } from "@modules/notifications/notificationUtils";
 
 export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
@@ -24,7 +25,7 @@ export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response):
         throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)
     }
 
-    handleResponses(res, 200, toPublicUser(user))
+    handleResponses(res, 200, toPublicUser(user, await getUserEntitlementSnapshot(user._id.toString())))
 })
 
 /**
@@ -46,7 +47,7 @@ export const acceptLegalTerms = asyncHandler(async (req: AuthRequest, res: Respo
     user.legalAcceptance = buildLegalAcceptance()
     await user.save()
 
-    handleResponses(res, 200, toPublicUser(user))
+    handleResponses(res, 200, toPublicUser(user, await getUserEntitlementSnapshot(user._id.toString())))
 })
 
 export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
@@ -113,7 +114,7 @@ export const updateUserPreferences = asyncHandler(async (req: AuthRequest, res: 
         await syncUserCurrencyData(user._id, user.preferredCurrency)
     }
 
-    handleResponses(res, 200, toPublicUser(user))
+    handleResponses(res, 200, toPublicUser(user, await getUserEntitlementSnapshot(user._id.toString())))
 })
 
 /**

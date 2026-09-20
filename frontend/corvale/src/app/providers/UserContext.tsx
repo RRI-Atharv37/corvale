@@ -49,7 +49,17 @@ const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     // already wipes, after offering to export unsynced changes first.
     const revocationInProgress = useRef(false)
 
-    const applyUser = useCallback((userData: User | null) => {
+    const userRef = useRef<User | null>(null)
+
+    const applyUser = useCallback((incoming: User | null) => {
+        // Every server user payload carries the entitlement snapshot; keep the last one for the
+        // same account if a caller hands back a user without it, rather than dropping to read-only.
+        const previous = userRef.current
+        const userData =
+            incoming && !incoming.entitlements && previous?._id === incoming._id && previous.entitlements
+                ? { ...incoming, entitlements: previous.entitlements }
+                : incoming
+        userRef.current = userData
         setUser(userData)
         setCachedUser(userData)
         if (userData?.preferredCurrency) {

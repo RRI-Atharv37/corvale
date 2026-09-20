@@ -1,7 +1,8 @@
+import type { EntitlementSnapshot } from '@core/billing/entitlementSnapshot'
 import type { IUser, LegalAcceptance } from './user.model'
 import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from './legalVersions'
 
-export const toPublicUser = (user: IUser) => ({
+export const toPublicUser = (user: IUser, entitlements: EntitlementSnapshot) => ({
     _id: user._id,
     fullName: user.fullName,
     email: user.email,
@@ -16,6 +17,9 @@ export const toPublicUser = (user: IUser) => ({
     // The currently published versions ride along on every user payload so the client can tell
     // whether the stored acceptance is stale without a second round trip on each login (M0c).
     legalVersions: CURRENT_LEGAL_VERSIONS,
+    // Required on every user payload: the client replaces its stored user wholesale, so an
+    // endpoint that omitted this would wipe its cached snapshot (M2d).
+    entitlements,
 })
 
 /**

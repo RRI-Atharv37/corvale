@@ -27,6 +27,39 @@ export interface NotificationPreferences {
     billReminderDaysBefore: number
 }
 
+export type BillingFeature = 'workspaces' | 'prioritySupport' | 'bankSync'
+
+export type EntitlementStatus = 'none' | 'trialing' | 'active' | 'past_due' | 'trial_expired' | 'cancelled'
+
+/**
+ * Server-resolved entitlements, riding on every user payload (M2d). Dates are ISO strings. The
+ * client gate is UX only - the server enforces every one of these independently. `canRead`,
+ * `canExport` and `canSyncPull` are `true` in every state, by contract.
+ */
+export interface EntitlementSnapshot {
+    billingEnabled: boolean
+    status: EntitlementStatus
+    planCode: 'plus' | 'pro' | null
+    canRead: boolean
+    canWrite: boolean
+    canExport: boolean
+    canSyncPull: boolean
+    canSyncPush: boolean
+    features: Record<BillingFeature, boolean>
+    limits: {
+        receiptStorageBytes: number | null
+        syncDevices: number | null
+        workspaceMembers: number | null
+    }
+    trialEndsAt: string | null
+    currentPeriodEnd: string | null
+    cancelAtPeriodEnd: boolean
+    graceEndsAt: string | null
+    resolvedAt: string
+    /** When write access lapses with no further event; lets an offline client go read-only alone. */
+    writableUntil: string | null
+}
+
 export interface User {
     _id: string
     fullName: string
@@ -42,6 +75,8 @@ export interface User {
     legalAcceptance?: LegalAcceptance
     /** The currently published versions, sent by the server so the client can spot a stale one. */
     legalVersions?: LegalVersions
+    /** Absent only on a cache written before entitlements existed - treated as read-only. */
+    entitlements?: EntitlementSnapshot
 }
 
 export type ExchangeRateMap = Record<string, number>

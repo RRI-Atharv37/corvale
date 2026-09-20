@@ -34,6 +34,7 @@ import { verifyCaptcha } from '@infra/security/captchaService'
 import { getRefreshTokenFromRequest, getRefreshTokenFromRequestBody, setRefreshTokenCookie, clearRefreshTokenCookie } from "@infra/config/refreshCookie";
 import { IUser, User } from "@modules/users";
 import { buildLegalAcceptance, toPublicUser } from "@modules/users/userSerialization";
+import { getUserEntitlementSnapshot } from "@modules/billing";
 
 /**
  * SEC-32: bcrypt hash of an unguessable constant, compared against the supplied password when
@@ -60,7 +61,7 @@ const issueAuthSession = async (
 
     return {
         token: accessToken,
-        user: toPublicUser(user),
+        user: toPublicUser(user, await getUserEntitlementSnapshot(user._id.toString())),
         offlineGrant: generateOfflineGrant(user._id.toString()),
         ...(options.includeRefreshTokenInBody ? { refreshToken } : {}),
     }
@@ -214,7 +215,7 @@ export const refreshAccessToken = asyncHandler(async (req: AuthRequest, res: Res
 
     handleResponses(res, 200, {
         token: accessToken,
-        user: toPublicUser(user),
+        user: toPublicUser(user, await getUserEntitlementSnapshot(user._id.toString())),
         offlineGrant: generateOfflineGrant(user._id.toString()),
         ...(isDesktopClientRequest(req) ? { refreshToken: newRefreshToken } : {}),
     })
