@@ -8,7 +8,11 @@ import {
     Subscription,
     setBillingProvider,
     resetBillingProvider,
-    type BillingProvider,
+    createFakeBillingProvider,
+    FAKE_SIGNATURE_HEADER,
+    FAKE_WEBHOOK_SECRET,
+    signFakePayload,
+    type FakeProviderCalls,
     type NormalizedBillingEvent,
 } from '@modules/billing'
 import { Workspace, WorkspaceInvite } from '@modules/workspaces'
@@ -133,55 +137,12 @@ export const READ_ONLY_STATES = [
 export const WRITABLE_STATES = ['trialing', 'active', 'past_due_in_grace'] as const
 
 export const WEBHOOK_PATH = '/api/v1/billing/webhook'
-export const WEBHOOK_SECRET = 'whsec_test_secret'
-export const SIGNATURE_HEADER = 'x-fake-signature'
+export const WEBHOOK_SECRET = FAKE_WEBHOOK_SECRET
+export const SIGNATURE_HEADER = FAKE_SIGNATURE_HEADER
 
-export const signPayload = (raw: string, secret = WEBHOOK_SECRET): string =>
-    crypto.createHmac('sha256', secret).update(raw).digest('hex')
+export const signPayload = signFakePayload
 
-export interface FakeProviderCalls {
-    verifyWebhook: number
-    parseEvent: number
-    createCheckoutSession: Array<Record<string, unknown>>
-    getPortalUrl: Array<Record<string, unknown>>
-}
-
-export const createFakeBillingProvider = (): { provider: BillingProvider; calls: FakeProviderCalls } => {
-    const calls: FakeProviderCalls = {
-        verifyWebhook: 0,
-        parseEvent: 0,
-        createCheckoutSession: [],
-        getPortalUrl: [],
-    }
-
-    const provider: BillingProvider = {
-        name: 'fake',
-        async createCheckoutSession(input) {
-            calls.createCheckoutSession.push({ ...input })
-            return { url: `https://fake.test/checkout/${input.planCode}/${input.interval}` }
-        },
-        async getPortalUrl(input) {
-            calls.getPortalUrl.push({ ...input })
-            return { url: `https://fake.test/portal/${input.providerCustomerId}` }
-        },
-        verifyWebhook(rawBody, headers) {
-            calls.verifyWebhook += 1
-            const provided = headers[SIGNATURE_HEADER]
-            if (typeof provided !== 'string') return false
-            const expected = signPayload(rawBody.toString('utf8'))
-            const a = Buffer.from(provided)
-            const b = Buffer.from(expected)
-            return a.length === b.length && crypto.timingSafeEqual(a, b)
-        },
-        parseEvent(rawBody) {
-            calls.parseEvent += 1
-            const parsed = JSON.parse(rawBody.toString('utf8'))
-            return { ...parsed, occurredAt: new Date(parsed.occurredAt) } as NormalizedBillingEvent
-        },
-    }
-
-    return { provider, calls }
-}
+export { createFakeBillingProvider, type FakeProviderCalls }
 
 export const installFakeBillingProvider = (): FakeProviderCalls => {
     const { provider, calls } = createFakeBillingProvider()

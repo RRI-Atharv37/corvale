@@ -221,5 +221,7 @@ export const ERROR_MESSAGES = {
         WEBHOOK_SIGNATURE_INVALID: 'Invalid webhook signature',
         WEBHOOK_PAYLOAD_INVALID: 'Invalid webhook payload',
         NO_BILLING_CUSTOMER: 'No billing account exists for this user yet',
+        PROVIDER_NOT_CONFIGURED: 'Billing is not configured on this server',
+        PROVIDER_REQUEST_FAILED: 'The billing provider could not complete the request',
     },
 }

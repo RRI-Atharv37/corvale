@@ -61,6 +61,12 @@ Create a `.env` file in the `backend/` folder.
 | `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag attached to reported errors, e.g. `production`, `staging` |
 | `CAPTCHA_ENABLED` | No | `false` | Require a valid CAPTCHA token (`captchaToken` in the request body) on `POST /auth/register`. Off by default, same as ClamAV/SMTP |
 | `CAPTCHA_SECRET_KEY` | Only if `CAPTCHA_ENABLED=true` | - | Server-side secret used to verify the token against the hCaptcha `siteverify` endpoint |
+| `BILLING_ENABLED` | No | `false` | Turn on plan enforcement for a hosted deployment. Off (the default) means no plan limits apply, which is the right setting for self-hosting |
+| `BILLING_PROVIDER` | No | `mor` | Which payment provider adapter to use when billing is on. Only `mor`, the Merchant of Record adapter, is built in |
+| `MOR_API_KEY` | Only if billing is on | - | Merchant of Record API key, used to create checkout sessions and customer portal links |
+| `MOR_STORE_ID` | Only if billing is on | - | Id of the Merchant of Record store that sells Corvale |
+| `MOR_WEBHOOK_SECRET` | Only if billing is on | - | Signing secret of the Merchant of Record webhook. Deliveries whose `X-Signature` does not match are rejected |
+| `MOR_VARIANTS` | Only if billing is on | - | JSON map of plan and interval to the provider's variant id, e.g. `{"plus":{"monthly":"1","annual":"2"},"pro":{"monthly":"3","annual":"4"}}`. Every id must be different |
 
 All three rate limiters above (auth, sync-push, global) are backed by a MongoDB-stored counter
 (`backend/utils/mongoRateLimitStore.ts`), not per-process memory, so a client's budget is shared
