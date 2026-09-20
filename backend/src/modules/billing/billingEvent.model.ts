@@ -1,0 +1,71 @@
+import mongoose, { Document, Model, Query, Schema, Types } from 'mongoose'
+
+export interface IBillingEvent extends Document {
+    _id: Types.ObjectId
+    providerEventId: string
+    type: string
+    occurredAt: Date
+    payload: Record<string, unknown>
+    processedAt: Date | null
+    error: string | null
+    createdAt: Date
+    updatedAt: Date
+}
+
+const IMMUTABLE_PATHS = ['providerEventId', 'type', 'occurredAt', 'payload'] as const
+
+const APPEND_ONLY_DELETE = 'BillingEvent is append-only: deletes are refused'
+const APPEND_ONLY_UPDATE = 'BillingEvent is append-only: recorded fields cannot be rewritten'
+
+const BillingEventSchema = new Schema<IBillingEvent>(
+    {
+        providerEventId: { type: String, required: true, unique: true, immutable: true },
+        type: { type: String, required: true, immutable: true },
+        occurredAt: { type: Date, required: true, immutable: true },
+        payload: { type: Schema.Types.Mixed, default: {}, immutable: true },
+        processedAt: { type: Date, default: null },
+        error: { type: String, default: null },
+    },
+    { timestamps: true, minimize: false }
+)
+
+const touchesImmutablePath = (update: unknown): boolean => {
+    if (!update || typeof update !== 'object') return false
+
+    const paths: string[] = []
+    for (const [key, value] of Object.entries(update as Record<string, unknown>)) {
+        if (key.startsWith('$') && value && typeof value === 'object' && !Array.isArray(value)) {
+            paths.push(...Object.keys(value))
+        } else if (!key.startsWith('$')) {
+            paths.push(key)
+        }
+    }
+
+    return paths.some((path) =>
+        IMMUTABLE_PATHS.some((immutable) => path === immutable || path.startsWith(`${immutable}.`))
+    )
+}
+
+const refuseRewrite = function (this: Query<unknown, unknown>, next: (err?: Error) => void) {
+    return touchesImmutablePath(this.getUpdate()) ? next(new Error(APPEND_ONLY_UPDATE)) : next()
+}
+
+for (const operation of ['updateOne', 'updateMany', 'findOneAndUpdate'] as const) {
+    BillingEventSchema.pre(operation, refuseRewrite)
+}
+
+for (const operation of ['replaceOne', 'findOneAndReplace'] as const) {
+    BillingEventSchema.pre(operation, (next) => next(new Error(APPEND_ONLY_UPDATE)))
+}
+
+for (const operation of ['deleteOne', 'deleteMany', 'findOneAndDelete'] as const) {
+    BillingEventSchema.pre(operation, (next) => next(new Error(APPEND_ONLY_DELETE)))
+}
+BillingEventSchema.pre('deleteOne', { document: true, query: false }, (next) =>
+    next(new Error(APPEND_ONLY_DELETE))
+)
+
+// System collection: rows carry no userId, so the row-level-security plugin is not applied. The
+// webhook handler is the only writer and runs outside any request RLS context.
+const BillingEvent: Model<IBillingEvent> = mongoose.model<IBillingEvent>('BillingEvent', BillingEventSchema)
+export default BillingEvent

@@ -17,6 +17,7 @@ import { Pushover } from '@modules/savers'
 import { ReconciliationSession } from '@modules/reconciliation'
 import { SavedReport } from '@modules/reports'
 import { SyncOperation } from '@modules/sync'
+import { Subscription, SyncDevice, UsageCounter } from '@modules/billing'
 import { Income } from '@modules/legacy'
 import { Expense } from '@modules/legacy'
 import { IWorkspace, Workspace } from '@modules/workspaces'
@@ -335,6 +336,9 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
         // SEC-33: the per-user sync idempotency ledger. `{ userId }` satisfies the RLS guard;
         // the schema's TTL index is the backstop if this path is ever bypassed.
         SyncOperation.deleteMany({ userId }),
+        Subscription.deleteMany({ userId }),
+        UsageCounter.deleteMany({ userId }),
+        SyncDevice.deleteMany({ userId }),
         // SEC-33: pending invites this user sent or received - no `userId` field, so scoped by
         // both invite endpoints. Not RLS-plugged (see WorkspaceInvite.ts), no bypass needed.
         WorkspaceInvite.deleteMany({
