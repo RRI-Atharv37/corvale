@@ -164,6 +164,28 @@ const UNAUTHENTICATED: RouteCase[] = [
     { method: 'post', path: '/api/v1/billing/webhook' },
 ]
 
+/**
+ * The internal admin API (M7). Mounted only when ADMIN_ENABLED=true, under its own auth and never behind
+ * the billing gate: an operator must be able to fix a read-only customer. On the ordinary app these paths
+ * do not exist at all, which is asserted below.
+ */
+const ADMIN: RouteCase[] = [
+    { method: 'post', path: '/api/v1/admin/auth/login' },
+    { method: 'post', path: '/api/v1/admin/auth/refresh' },
+    { method: 'post', path: '/api/v1/admin/auth/logout' },
+    { method: 'post', path: '/api/v1/admin/auth/step-up' },
+    { method: 'post', path: '/api/v1/admin/auth/enrol/start' },
+    { method: 'post', path: '/api/v1/admin/auth/enrol/complete' },
+    { method: 'post', path: '/api/v1/admin/admins/invite' },
+    { method: 'post', path: `/api/v1/admin/admins/${id()}/reset-totp` },
+    { method: 'patch', path: `/api/v1/admin/admins/${id()}` },
+    { method: 'post', path: `/api/v1/admin/subscribers/${id()}/grant` },
+    { method: 'post', path: `/api/v1/admin/subscribers/${id()}/grant/revoke` },
+    { method: 'post', path: `/api/v1/admin/subscribers/${id()}/trial-extension` },
+    { method: 'post', path: `/api/v1/admin/subscribers/${id()}/erasure-hold` },
+    { method: 'post', path: `/api/v1/admin/subscribers/${id()}/erasure-hold/clear` },
+]
+
 /** Resolve their gate from the WORKSPACE OWNER's subscription - see workspaceEntitlements.test.ts. */
 const WORKSPACE_SCOPED: RouteCase[] = [
     { method: 'patch', path: '/api/v1/workspaces/:workspaceId' },
@@ -350,6 +372,16 @@ describe('writable states are not gated', () => {
     })
 })
 
+describe('admin routes are outside the user API', () => {
+    it.each(ADMIN.map((r) => [label(r), r] as const))('%s does not exist while ADMIN_ENABLED is unset', async (_name, route) => {
+        const user = await registerUser(app)
+
+        const res = await send(user.token, route)
+
+        expect(res.status).toBe(404)
+    })
+})
+
 describe('route classification drift guard', () => {
     const modulesDir = path.resolve(__dirname, '..', '..', 'src', 'modules')
 
@@ -371,16 +403,16 @@ describe('route classification drift guard', () => {
 
     it('every mutating route registered under src/modules is classified in this file', () => {
         const classified =
-            GATED.length + EXEMPT.length + UNAUTHENTICATED.length + WORKSPACE_SCOPED.length
+            GATED.length + EXEMPT.length + UNAUTHENTICATED.length + WORKSPACE_SCOPED.length + ADMIN.length
 
         expect(
             countMutatingRegistrations(),
-            'a router.post/put/patch/delete was added or removed - classify it as GATED (write), EXEMPT (deliberately still allowed when read-only), UNAUTHENTICATED or WORKSPACE_SCOPED'
+            'a router.post/put/patch/delete was added or removed - classify it as GATED (write), EXEMPT (deliberately still allowed when read-only), UNAUTHENTICATED, WORKSPACE_SCOPED or ADMIN'
         ).toBe(classified)
     })
 
     it('no route is classified twice', () => {
-        const all = [...GATED, ...EXEMPT, ...UNAUTHENTICATED, ...WORKSPACE_SCOPED].map(
+        const all = [...GATED, ...EXEMPT, ...UNAUTHENTICATED, ...WORKSPACE_SCOPED, ...ADMIN].map(
             (r) => `${r.method} ${r.path.replace(/[0-9a-f]{24}/g, ':id')}`
         )
 

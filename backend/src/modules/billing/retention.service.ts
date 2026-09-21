@@ -7,7 +7,9 @@ import {
     MIN_RETENTION_DAYS,
     deriveLapsedAt,
     isDeletionDue,
+    isRetentionPaused,
     resolveRetentionStage,
+    retentionClockStart,
     retentionEndsAt,
     retentionStageIndex,
 } from '@core/billing/retention'
@@ -81,16 +83,53 @@ const syncLapsedAt = async (now: Date): Promise<{ stamped: number; cleared: numb
     return { stamped, cleared: reactivated.modifiedCount }
 }
 
+/** An active comp or erasure hold keeps a row out of every notice and every erasure. */
+const notPaused = (now: Date) => ({
+    $nor: [{ retentionHoldUntil: { $gt: now } }, { 'adminGrant.kind': 'comp', 'adminGrant.until': { $gt: now } }],
+})
+
+/**
+ * When a hold or a comp has ended the retention window restarts from that moment, with the notice stages
+ * cleared: someone who was comped for 90 days gets a full notice cycle, never a same-day final warning.
+ * Bookkeeping only, like `syncLapsedAt`; it moves no user data.
+ */
+const restartClockAfterPause = async (now: Date): Promise<void> => {
+    const candidates = await Subscription.find({
+        status: { $in: LAPSED },
+        lapsedAt: { $ne: null },
+        $or: [{ retentionHoldUntil: { $ne: null, $lte: now } }, { 'adminGrant.kind': 'comp', 'adminGrant.until': { $lte: now } }],
+    })
+        .setOptions(BYPASS)
+        .lean()
+
+    for (const row of candidates) {
+        if (!row.lapsedAt) continue
+
+        const compUntil = row.adminGrant?.kind === 'comp' ? row.adminGrant.until : null
+        if (isRetentionPaused(row.retentionHoldUntil, compUntil, now)) continue
+
+        const restartedAt = retentionClockStart(row.lapsedAt, row.retentionHoldUntil, compUntil)
+        if (restartedAt.getTime() <= row.lapsedAt.getTime()) continue
+
+        await Subscription.updateOne(
+            { _id: row._id, status: { $in: LAPSED }, lapsedAt: row.lapsedAt },
+            { $set: { lapsedAt: restartedAt, retentionStage: null, retentionStageAt: null } },
+            NO_TIMESTAMPS
+        ).setOptions(BYPASS)
+    }
+}
+
 type EraseOutcome = 'deleted' | 'blocked' | 'skipped' | 'failed'
 
 /** The last look before something irreversible: the row must still be lapsed, with the same warning on record. */
-const eraseIfStillLapsed = async (rowId: unknown, userId: string, lapsedAt: Date): Promise<EraseOutcome> => {
+const eraseIfStillLapsed = async (rowId: unknown, userId: string, lapsedAt: Date, now: Date): Promise<EraseOutcome> => {
     const fresh = await Subscription.findOne({
         _id: rowId,
         status: { $in: LAPSED },
         lapsedAt,
         retentionStage: 'final_warning',
         grandfatherKind: { $ne: 'free_forever' },
+        ...notPaused(now),
     })
         .setOptions(BYPASS)
         .lean()
@@ -117,6 +156,7 @@ export const runRetentionSweep = async (now: Date = new Date()): Promise<Retenti
     if (!isBillingEnabled()) return { ...EMPTY_RESULT, skipped: true }
 
     const result: RetentionSweepResult = { ...EMPTY_RESULT, ...(await syncLapsedAt(now)) }
+    await restartClockAfterPause(now)
     if (!isRetentionEnabled()) return result
 
     if (!isSmtpConfigured()) {
@@ -129,6 +169,7 @@ export const runRetentionSweep = async (now: Date = new Date()): Promise<Retenti
         status: { $in: LAPSED },
         lapsedAt: { $ne: null },
         grandfatherKind: { $ne: 'free_forever' },
+        ...notPaused(now),
     })
         .setOptions(BYPASS)
         .lean()
@@ -141,7 +182,7 @@ export const runRetentionSweep = async (now: Date = new Date()): Promise<Retenti
 
         const stageAt = row.retentionStageAt ?? null
         if (isDeletionDue({ lapsedAt: row.lapsedAt, now, retentionDays, stage: row.retentionStage ?? null, stageAt })) {
-            const outcome = await eraseIfStillLapsed(row._id, row.userId.toString(), row.lapsedAt)
+            const outcome = await eraseIfStillLapsed(row._id, row.userId.toString(), row.lapsedAt, now)
             if (outcome === 'deleted') result.deleted += 1
             else if (outcome === 'blocked') result.blocked += 1
             else if (outcome === 'failed') result.failed += 1

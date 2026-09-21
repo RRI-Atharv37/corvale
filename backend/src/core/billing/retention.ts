@@ -71,3 +71,25 @@ export const deriveLapsedAt = (subscription: LapsedSubscription, now: Date): Dat
     const periodEnd = subscription.currentPeriodEnd
     return periodEnd !== null && periodEnd.getTime() <= now.getTime() ? periodEnd : now
 }
+
+/**
+ * An admin comp or erasure hold pauses the retention clock, and when it ends the window restarts from that
+ * moment: a person who was comped for 90 days gets a full notice cycle, not a same-day final warning.
+ */
+export const retentionClockStart = (
+    lapsedAt: Date,
+    retentionHoldUntil: Date | null | undefined,
+    compUntil: Date | null | undefined
+): Date => {
+    let start = lapsedAt
+    for (const pauseEnd of [retentionHoldUntil, compUntil]) {
+        if (pauseEnd && pauseEnd.getTime() > start.getTime()) start = pauseEnd
+    }
+    return start
+}
+
+export const isRetentionPaused = (
+    retentionHoldUntil: Date | null | undefined,
+    compUntil: Date | null | undefined,
+    now: Date
+): boolean => [retentionHoldUntil, compUntil].some((pauseEnd) => !!pauseEnd && pauseEnd.getTime() > now.getTime())

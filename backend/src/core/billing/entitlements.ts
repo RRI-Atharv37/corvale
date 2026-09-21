@@ -1,3 +1,4 @@
+import { applyAdminGrant } from './adminGrant'
 import {
     type FeatureKey,
     type GrandfatherKind,
@@ -20,6 +21,20 @@ export interface PlanDefinition {
     limits: Record<LimitKey, number | null>
 }
 
+export const ADMIN_GRANT_KINDS = ['comp', 'plan_override'] as const
+export type AdminGrantKind = (typeof ADMIN_GRANT_KINDS)[number]
+
+/**
+ * Staff-granted access layered over the provider state: it never rewrites what the payment provider says,
+ * so the next webhook cannot undo it and reconciliation does not read it as drift.
+ */
+export interface AdminGrantSnapshot {
+    kind: AdminGrantKind
+    planCode: PlanCode | null
+    until: Date
+    limits?: Partial<Record<LimitKey, number | null>> | null
+}
+
 export interface SubscriptionSnapshot {
     planCode: PlanCode
     status: SubscriptionStatus
@@ -28,10 +43,13 @@ export interface SubscriptionSnapshot {
     cancelAtPeriodEnd: boolean
     pastDueSince: Date | null
     grandfatherKind: GrandfatherKind | null
+    adminGrant?: AdminGrantSnapshot | null
 }
 
 export interface ResolveOptions {
     pastDueGraceDays?: number
+    /** The plan an active admin grant names, so the overlay can merge its features and limits. */
+    grantPlan?: PlanDefinition | null
 }
 
 export interface Entitlements {
@@ -104,15 +122,15 @@ export const buildTrialSubscription = (now: Date): SubscriptionSnapshot => ({
     grandfatherKind: null,
 })
 
-interface DerivedState {
+export interface DerivedState {
     status: SubscriptionStatus
     canWrite: boolean
     graceEndsAt: Date | null
 }
 
-// Expiry is derived from `now`, never from a job having run. Anything ambiguous (a `trialing`
+// The provider-owned half of the verdict (an admin grant is layered on separately). Expiry is derived from `now`, never from a job having run. Anything ambiguous (a `trialing`
 // row with no end date, a `past_due` row with no start) fails toward access, not a lockout.
-const deriveState = (
+export const deriveProviderState = (
     subscription: SubscriptionSnapshot,
     now: Date,
     pastDueGraceDays: number
@@ -177,13 +195,13 @@ export const resolveEntitlements = (
         }
     }
 
-    const { status, canWrite, graceEndsAt } = deriveState(
+    const { status, canWrite, graceEndsAt } = deriveProviderState(
         subscription,
         now,
         options.pastDueGraceDays ?? DEFAULT_PAST_DUE_GRACE_DAYS
     )
 
-    return {
+    const providerVerdict: Entitlements = {
         billingEnabled: true,
         status,
         planCode: subscription.planCode,
@@ -199,6 +217,8 @@ export const resolveEntitlements = (
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
         graceEndsAt,
     }
+
+    return applyAdminGrant(providerVerdict, subscription.adminGrant, options.grantPlan ?? null, now)
 }
 
 /**

@@ -1,3 +1,4 @@
+import { parseEncryptionKey } from '@core/auth/secretBox'
 import { getRefreshCookieSameSite } from '@infra/config/refreshCookie'
 
 const REQUIRED_ENV_VARS = [
@@ -45,6 +46,59 @@ const KNOWN_PLACEHOLDER_SECRETS = new Set([
 const isKnownPlaceholderSecret = (value: string): boolean =>
     KNOWN_PLACEHOLDER_SECRETS.has(value.trim().toLowerCase())
 
+export const MIN_ADMIN_JWT_SECRET_LENGTH = 32
+
+const isBareOrigin = (value: string): boolean => {
+    try {
+        const url = new URL(value)
+        return (url.protocol === 'http:' || url.protocol === 'https:') && url.origin === value
+    } catch {
+        return false
+    }
+}
+
+/**
+ * The internal admin surface (M7) is the most privileged code in the repo, so a half-configured
+ * deployment must not start: its own signing secret (never the user one), a locked-down origin and a
+ * real encryption key for the stored authenticator secrets. Nothing here applies while it is switched off.
+ */
+const validateAdminEnv = (env: NodeJS.ProcessEnv): void => {
+    if (env.ADMIN_ENABLED !== 'true') return
+
+    const missing = ['ADMIN_JWT_SECRET', 'ADMIN_ORIGIN', 'ADMIN_TOTP_ENCRYPTION_KEY'].filter((key) => !env[key])
+    if (missing.length > 0) {
+        throw new Error(`ADMIN_ENABLED is true but these are not set: ${missing.join(', ')}`)
+    }
+
+    const adminSecret = env.ADMIN_JWT_SECRET as string
+    if (adminSecret === env.JWT_SECRET) {
+        throw new Error('ADMIN_JWT_SECRET must differ from JWT_SECRET: an admin token must never verify as a user token')
+    }
+    if (isKnownPlaceholderSecret(adminSecret) || adminSecret.length < MIN_ADMIN_JWT_SECRET_LENGTH) {
+        throw new Error(
+            `ADMIN_JWT_SECRET must be a unique random value of at least ${MIN_ADMIN_JWT_SECRET_LENGTH} characters`
+        )
+    }
+
+    try {
+        parseEncryptionKey(env.ADMIN_TOTP_ENCRYPTION_KEY as string)
+    } catch {
+        throw new Error(
+            'ADMIN_TOTP_ENCRYPTION_KEY must be 32 bytes: 64 hex characters or base64, e.g. ' +
+                `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+        )
+    }
+
+    const adminOrigin = env.ADMIN_ORIGIN as string
+    if (!isBareOrigin(adminOrigin)) {
+        throw new Error('ADMIN_ORIGIN must be a single http(s) origin with no path or trailing slash, e.g. https://admin.example.com')
+    }
+    const userOrigins = (env.CLIENT_URL as string).split(',').map((origin) => origin.trim())
+    if (userOrigins.includes(adminOrigin)) {
+        throw new Error('ADMIN_ORIGIN must be a different origin from the user app (CLIENT_URL)')
+    }
+}
+
 /**
  * Fails startup loudly instead of degrading silently (SEC-12): an unset JWT_EXPIRY
  * previously issued non-expiring access tokens, an unset CLIENT_URL fell back to
@@ -87,4 +141,6 @@ export const validateEnv = (env: NodeJS.ProcessEnv = process.env): void => {
     // SEC-11: pins the deployment topology by validating REFRESH_COOKIE_SAME_SITE the same
     // way every other misconfiguration on this path fails — at boot, not as a mystery bug.
     getRefreshCookieSameSite(env)
+
+    validateAdminEnv(env)
 }

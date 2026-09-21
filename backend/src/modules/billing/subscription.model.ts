@@ -3,14 +3,21 @@ import mongoose, { Document, Model, Schema, Types } from 'mongoose'
 import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
 import {
     GRANDFATHER_KINDS,
+    LIMIT_KEYS,
     PLAN_CODES,
     SUBSCRIPTION_STATUSES,
     type GrandfatherKind,
     type PlanCode,
     type SubscriptionStatus,
 } from '@core/billing/constants'
+import { ADMIN_GRANT_KINDS, type AdminGrantSnapshot } from '@core/billing/entitlements'
 import { DUNNING_STAGES, type DunningStage } from '@core/billing/dunning'
 import { RETENTION_STAGES, type RetentionStage } from '@core/billing/retention'
+
+export interface ISubscriptionAdminGrant extends AdminGrantSnapshot {
+    grantedBy: Types.ObjectId
+    grantedAt: Date
+}
 
 export interface ISubscription extends Document {
     _id: Types.ObjectId
@@ -26,12 +33,31 @@ export interface ISubscription extends Document {
     retentionStage: RetentionStage | null
     retentionStageAt: Date | null
     grandfatherKind: GrandfatherKind | null
+    adminGrant: ISubscriptionAdminGrant | null
+    retentionHoldUntil: Date | null
     providerCustomerId: string | null
     providerSubscriptionId: string | null
     lastEventAt: Date | null
     createdAt: Date
     updatedAt: Date
 }
+
+const limitsSchema = new Schema(
+    Object.fromEntries(LIMIT_KEYS.map((key) => [key, { type: Number, default: undefined }])),
+    { _id: false }
+)
+
+const adminGrantSchema = new Schema(
+    {
+        kind: { type: String, enum: ADMIN_GRANT_KINDS, required: true },
+        planCode: { type: String, enum: [null, ...PLAN_CODES], default: null },
+        until: { type: Date, required: true },
+        limits: { type: limitsSchema, default: null },
+        grantedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', required: true },
+        grantedAt: { type: Date, required: true },
+    },
+    { _id: false }
+)
 
 const SubscriptionSchema = new Schema<ISubscription>(
     {
@@ -47,6 +73,8 @@ const SubscriptionSchema = new Schema<ISubscription>(
         retentionStage: { type: String, enum: [null, ...RETENTION_STAGES], default: null },
         retentionStageAt: { type: Date, default: null },
         grandfatherKind: { type: String, enum: [null, ...GRANDFATHER_KINDS], default: null },
+        adminGrant: { type: adminGrantSchema, default: null },
+        retentionHoldUntil: { type: Date, default: null },
         providerCustomerId: { type: String, default: null },
         providerSubscriptionId: { type: String, default: null },
         lastEventAt: { type: Date, default: null },

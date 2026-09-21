@@ -1,6 +1,8 @@
 import type { Express } from 'express'
 
 import accountRoutes from '@modules/accounts/account.routes'
+import { createAdminRoutes } from '@modules/admin/admin.routes'
+import { isAdminEnabled } from '@modules/admin'
 import { createAuthRoutes } from '@modules/auth/auth.routes'
 import { createUserRoutes } from '@modules/users/user.routes'
 import backupRoutes from '@modules/backup/backup.routes'
@@ -77,4 +79,6 @@ export const mountRoutes = (app: Express): void => {
     app.use('/api/v1/onboarding', onboardingRoutes)
     app.use('/api/v1/desktop', desktopRoutes)
     app.use('/api/v1/sync', createSyncRoutes())
+    // The internal admin API exists only where an operator has deliberately switched it on.
+    if (isAdminEnabled()) app.use('/api/v1/admin', createAdminRoutes())
 }

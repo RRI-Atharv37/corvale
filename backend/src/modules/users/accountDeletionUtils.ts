@@ -24,6 +24,7 @@ import {
     redactLedgerProviderIds,
     stopProviderBillingForErasure,
 } from '@modules/billing'
+import { redactAdminAuditSubject } from '@modules/admin'
 import { Income } from '@modules/legacy'
 import { Expense } from '@modules/legacy'
 import { IWorkspace, Workspace } from '@modules/workspaces'
@@ -361,6 +362,8 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
 
     // The Subscription row is gone; the ledger is not user-scoped, so its provider ids are removed explicitly.
     await redactLedgerProviderIds(providerIdentifiers)
+    // Admin audit rows keep the accountability record but lose every link to this person.
+    await redactAdminAuditSubject(userId)
 
     await notifyRemainingMembersOfDeparture(retainedWorkspaces, userId)
 

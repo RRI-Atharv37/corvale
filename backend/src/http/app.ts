@@ -95,20 +95,23 @@ export const createApp = (): express.Application => {
 
     const corsOriginAllowlist = buildCorsOriginAllowlist(process.env.CLIENT_URL as string)
 
-    app.use(
-        cors({
-            origin: (origin, callback) => {
-                if (!origin || corsOriginAllowlist.includes(origin)) {
-                    callback(null, true)
-                    return
-                }
-                callback(null, false)
-            },
-            methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-            allowedHeaders: ['Content-type', 'Authorization'],
-            credentials: true,
-        })
-    )
+    const corsOptions = (allowedOrigins: string[]): cors.CorsOptions => ({
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true)
+                return
+            }
+            callback(null, false)
+        },
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+        allowedHeaders: ['Content-type', 'Authorization'],
+        credentials: true,
+    })
+
+    // The admin API answers only its own origin, and the admin origin is never admitted anywhere else.
+    const userCors = cors(corsOptions(corsOriginAllowlist))
+    const adminCors = cors(corsOptions(process.env.ADMIN_ORIGIN ? [process.env.ADMIN_ORIGIN] : []))
+    app.use((req, res, next) => (req.path.startsWith('/api/v1/admin') ? adminCors(req, res, next) : userCors(req, res, next)))
 
     app.use(requestLogger)
 

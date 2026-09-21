@@ -33,7 +33,9 @@
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts",
     "purge:tombstones:dry-run": "ts-node scripts/purgeTombstones.ts --dry-run",
     "reconcile:billing": "ts-node scripts/reconcileBilling.ts",
-    "sweep:billing": "ts-node scripts/sweepBilling.ts"
+    "sweep:billing": "ts-node scripts/sweepBilling.ts",
+    "admin:create": "ts-node scripts/adminCreate.ts",
+    "admin:break-glass": "ts-node scripts/adminBreakGlass.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",
@@ -53,6 +55,7 @@
     "mongoose": "^8.13.2",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
+    "otpauth": "9.5.2",
     "pdfkit": "^0.19.1"
   },
   "devDependencies": {

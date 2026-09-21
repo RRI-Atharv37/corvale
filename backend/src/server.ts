@@ -7,11 +7,15 @@ import { registerGracefulShutdown } from '@infra/config/gracefulShutdown'
 import { initErrorTracking } from '@infra/observability/errorTracking'
 import { ensureMasterCategoriesSeeded } from "@modules/categories/categorySeed";
 import { assertBillingConfigured } from '@modules/billing'
+import { isAdminEnabled, warnIfBootstrapSecretLingering } from '@modules/admin'
 
 initErrorTracking()
 assertBillingConfigured()
 
-connectDB().then(() => ensureMasterCategoriesSeeded())
+connectDB().then(async () => {
+    await ensureMasterCategoriesSeeded()
+    if (isAdminEnabled()) await warnIfBootstrapSecretLingering()
+})
 
 const PORT = process.env.PORT || 5000
 const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

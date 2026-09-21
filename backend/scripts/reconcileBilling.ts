@@ -4,7 +4,7 @@ dotenv.config()
 
 import connectDB from '@infra/db/db'
 import { initErrorTracking } from '@infra/observability/errorTracking'
-import { reconcileBillingSubscriptions, DEFAULT_IN_FLIGHT_WINDOW_MS } from '@modules/billing'
+import { reconcileBillingSubscriptions, DEFAULT_IN_FLIGHT_WINDOW_MS, withJobRun } from '@modules/billing'
 
 const EXIT_DRIFT = 2
 
@@ -26,15 +26,23 @@ const main = async (): Promise<void> => {
     initErrorTracking()
     await connectDB()
 
-    const report = await reconcileBillingSubscriptions({ inFlightWindowMs })
+    const outcome = await withJobRun('reconcile:billing', async () => {
+        const report = await reconcileBillingSubscriptions({ inFlightWindowMs })
 
-    if (report.skipped) {
+        return {
+            report,
+            counts: { checked: report.checked, drift: report.drift.length, deferred: report.deferred },
+            exitCode: report.drift.length > 0 ? EXIT_DRIFT : 0,
+        }
+    })
+
+    if (outcome.report.skipped) {
         console.log('BILLING_ENABLED is not true; nothing to reconcile.')
         process.exit(0)
     }
 
-    console.log(JSON.stringify(report, null, 2))
-    process.exit(report.drift.length > 0 ? EXIT_DRIFT : 0)
+    console.log(JSON.stringify(outcome.report, null, 2))
+    process.exit(outcome.exitCode)
 }
 
 main().catch((error) => {

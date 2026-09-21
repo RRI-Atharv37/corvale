@@ -31,6 +31,11 @@ const BillingEventSchema = new Schema<IBillingEvent>(
     { timestamps: true, minimize: false }
 )
 
+// The admin subscriber view reads a subscriber's ledger by the provider ids in the payload.
+BillingEventSchema.index({ 'payload.providerSubscriptionId': 1, occurredAt: -1 }, { sparse: true })
+BillingEventSchema.index({ 'payload.providerCustomerId': 1, occurredAt: -1 }, { sparse: true })
+BillingEventSchema.index({ processedAt: 1, error: 1 })
+
 const touchesImmutablePath = (update: unknown): boolean => {
     if (!update || typeof update !== 'object') return false
 

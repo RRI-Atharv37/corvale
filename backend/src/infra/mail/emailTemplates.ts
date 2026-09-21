@@ -196,3 +196,29 @@ export const retentionEmailContent = (stage: RetentionStage, deletionDate: Date,
 
     return { subject, html, text }
 }
+
+export type AdminSecurityEvent = 'totp_reset' | 'break_glass'
+
+export const adminSecurityNoticeContent = (event: AdminSecurityEvent, when: Date): DunningEmailContent => {
+    const at = when.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC')
+    const summary =
+        event === 'break_glass'
+            ? 'An operator with shell access on the server reset an admin account with the break-glass procedure.'
+            : 'An owner reset the authenticator on an admin account.'
+
+    const body = [
+        paragraph(summary),
+        paragraph(`When: ${at}.`),
+        paragraph(
+            'All sessions for that account were ended and it cannot sign in until it is enrolled again. ' +
+                'Sensitive actions stay blocked for 24 hours after re-enrolment.'
+        ),
+        paragraph('If you did not expect this, treat it as a security incident and review the audit log.'),
+    ].join('')
+
+    return {
+        subject: 'Corvale admin security notice',
+        html: baseEmailTemplate('Admin security notice', body),
+        text: `${summary} When: ${at}. If you did not expect this, treat it as a security incident.`,
+    }
+}

@@ -37,6 +37,8 @@ export const sendDunningEmails = async (now: Date = new Date()): Promise<Dunning
         status: 'past_due',
         pastDueSince: { $ne: null },
         grandfatherKind: { $ne: 'free_forever' },
+        // A customer comped by staff is not chased for a payment; an override or a hold does not stop it.
+        $nor: [{ 'adminGrant.kind': 'comp', 'adminGrant.until': { $gt: now } }],
     })
         .setOptions(BYPASS)
         .lean()

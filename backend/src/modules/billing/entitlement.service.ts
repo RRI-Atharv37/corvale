@@ -6,6 +6,7 @@ import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { buildEntitlementSnapshot, type EntitlementSnapshot } from '@core/billing/entitlementSnapshot'
 import { Workspace } from '@modules/workspaces'
+import { isAdminGrantActive } from '@core/billing/adminGrant'
 import {
     DEFAULT_PAST_DUE_GRACE_DAYS,
     UNLIMITED_ENTITLEMENTS,
@@ -30,7 +31,8 @@ export const getPastDueGraceDays = (): number => {
         : DEFAULT_PAST_DUE_GRACE_DAYS
 }
 
-const loadPlanDefinition = async (code: SubscriptionSnapshot['planCode']): Promise<PlanDefinition | null> => {
+/** The plan as the catalogue defines it, with the built-in default when the collection is not seeded. */
+export const getPlanDefinition = async (code: SubscriptionSnapshot['planCode']): Promise<PlanDefinition | null> => {
     const plan = await Plan.findOne({ code }).lean()
     if (plan) return { code: plan.code, features: plan.features, limits: plan.limits }
 
@@ -52,9 +54,11 @@ const loadEntitlementState = async (
     const subscription = await Subscription.findOne({ userId }).lean()
     if (!subscription) return { entitlements: resolveEntitlements(null, null, now), subscription: null }
 
-    const plan = await loadPlanDefinition(subscription.planCode)
+    const plan = await getPlanDefinition(subscription.planCode)
+    const grant = subscription.adminGrant
+    const grantPlan = grant?.planCode && isAdminGrantActive(grant, now) ? await getPlanDefinition(grant.planCode) : null
     return {
-        entitlements: resolveEntitlements(subscription, plan, now, { pastDueGraceDays: getPastDueGraceDays() }),
+        entitlements: resolveEntitlements(subscription, plan, now, { pastDueGraceDays: getPastDueGraceDays(), grantPlan }),
         subscription,
     }
 }
@@ -65,7 +69,7 @@ export const getUserEntitlements = async (userId: string, now: Date = new Date()
 /** The shape the client caches on the user payload (M2d). Always the caller's own plan. */
 export const getUserEntitlementSnapshot = async (userId: string, now: Date = new Date()): Promise<EntitlementSnapshot> => {
     const { entitlements, subscription } = await loadEntitlementState(userId, now)
-    return buildEntitlementSnapshot(entitlements, subscription, now)
+    return buildEntitlementSnapshot(entitlements, subscription, now, { pastDueGraceDays: getPastDueGraceDays() })
 }
 
 export const getWorkspaceOwnerId = async (workspaceId: string): Promise<string> => {
