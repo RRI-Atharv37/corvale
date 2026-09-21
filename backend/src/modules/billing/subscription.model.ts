@@ -10,6 +10,7 @@ import {
     type SubscriptionStatus,
 } from '@core/billing/constants'
 import { DUNNING_STAGES, type DunningStage } from '@core/billing/dunning'
+import { RETENTION_STAGES, type RetentionStage } from '@core/billing/retention'
 
 export interface ISubscription extends Document {
     _id: Types.ObjectId
@@ -21,6 +22,9 @@ export interface ISubscription extends Document {
     cancelAtPeriodEnd: boolean
     pastDueSince: Date | null
     dunningStage: DunningStage | null
+    lapsedAt: Date | null
+    retentionStage: RetentionStage | null
+    retentionStageAt: Date | null
     grandfatherKind: GrandfatherKind | null
     providerCustomerId: string | null
     providerSubscriptionId: string | null
@@ -39,6 +43,9 @@ const SubscriptionSchema = new Schema<ISubscription>(
         cancelAtPeriodEnd: { type: Boolean, default: false },
         pastDueSince: { type: Date, default: null },
         dunningStage: { type: String, enum: [null, ...DUNNING_STAGES], default: null },
+        lapsedAt: { type: Date, default: null },
+        retentionStage: { type: String, enum: [null, ...RETENTION_STAGES], default: null },
+        retentionStageAt: { type: Date, default: null },
         grandfatherKind: { type: String, enum: [null, ...GRANDFATHER_KINDS], default: null },
         providerCustomerId: { type: String, default: null },
         providerSubscriptionId: { type: String, default: null },
@@ -57,6 +64,7 @@ SubscriptionSchema.index(
     { unique: true, partialFilterExpression: { providerCustomerId: { $type: 'string' } } }
 )
 SubscriptionSchema.index({ status: 1, trialEndsAt: 1 })
+SubscriptionSchema.index({ status: 1, lapsedAt: 1 })
 
 applyRowLevelSecurity(SubscriptionSchema)
 

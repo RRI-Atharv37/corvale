@@ -70,6 +70,8 @@ Create a `.env` file in the `backend/` folder.
 | `MOR_WEBHOOK_SECRET` | Only if billing is on | - | Signing secret of the Merchant of Record webhook. Deliveries whose `X-Signature` does not match are rejected |
 | `MOR_VARIANTS` | Only if billing is on | - | JSON map of plan and interval to the provider's variant id, e.g. `{"plus":{"monthly":"1","annual":"2"},"pro":{"monthly":"3","annual":"4"}}`. Every id must be different |
 | `BILLING_PAST_DUE_GRACE_DAYS` | No | `7` | Days a failed payment keeps write access before the account turns read-only. A whole number from 3 to 60; anything else falls back to 7. Reading, exporting and backing up always work. The payment-failed, reminder, final-warning and read-only emails are spaced across this window |
+| `BILLING_RETENTION_ENABLED` | No | `false` | Turn on the retention window for lapsed accounts (cancelled subscriptions and expired trials). While off, nothing is emailed or deleted. While on, `npm run sweep:billing` emails the owner at the start, 30 days out and 7 days out, then permanently erases the account. Only enable it once your Terms state the window |
+| `BILLING_RETENTION_DAYS` | No | `180` | Days a lapsed account is kept read-only before erasure. A whole number from 60 to 3650; anything else falls back to 180. An account is only erased after the window has ended and the final warning went out at least 7 days earlier. Reactivating at any point inside the window restores everything |
 
 All three rate limiters above (auth, sync-push, global) are backed by a MongoDB-stored counter
 (`backend/utils/mongoRateLimitStore.ts`), not per-process memory, so a client's budget is shared

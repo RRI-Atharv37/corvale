@@ -17,6 +17,7 @@ import {
 } from '@modules/billing'
 import { Workspace, WorkspaceInvite } from '@modules/workspaces'
 import type { SubscriptionStatus } from '@core/billing/entitlements'
+import type { RetentionStage } from '@core/billing/retention'
 import { authHeader } from '@tests/helpers'
 
 /**
@@ -89,6 +90,9 @@ export interface SubscriptionOverrides {
     providerCustomerId?: string | null
     providerSubscriptionId?: string | null
     lastEventAt?: Date | null
+    lapsedAt?: Date | null
+    retentionStage?: RetentionStage | null
+    retentionStageAt?: Date | null
 }
 
 export const setSubscription = async (

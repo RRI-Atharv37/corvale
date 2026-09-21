@@ -1,4 +1,5 @@
 import type { DunningStage } from '@core/billing/dunning'
+import type { RetentionStage } from '@core/billing/retention'
 
 const formatExpiry = (expiryMs: number): string => {
     const hours = expiryMs / (60 * 60 * 1000)
@@ -141,6 +142,51 @@ export const dunningEmailContent = (stage: DunningStage, graceEndsAt: Date, bill
                 'Update your payment method and everything picks up exactly where you left off. Nothing has been deleted.',
             ],
             cta: 'Restore full access',
+        },
+    }
+
+    const { subject, title, lines, cta } = copy[stage]
+    const html = baseEmailTemplate(title, `${lines.map(paragraph).join('')}${ctaButton(billingUrl, cta)}`)
+    const text = `${lines.join('\n\n')}\n\n${cta}: ${billingUrl}`
+
+    return { subject, html, text }
+}
+
+export const retentionEmailContent = (stage: RetentionStage, deletionDate: Date, billingUrl: string): DunningEmailContent => {
+    const deletesOn = formatUtcDate(deletionDate)
+    const exportAnytime = 'You can export a full copy of your data, including receipts, from Settings at any time - even while your account is read-only.'
+    const restore = 'Reactivate your subscription before then and everything is exactly as you left it, with nothing to set up again.'
+
+    const copy: Record<RetentionStage, { subject: string; title: string; lines: string[]; cta: string }> = {
+        notice: {
+            subject: 'Your Corvale account is read-only, and your data is kept until ' + deletesOn,
+            title: 'Your data is kept until ' + deletesOn,
+            lines: [
+                `Your Corvale account is read-only. You can still view everything. We keep your data until ${deletesOn}, and after that it is permanently deleted.`,
+                exportAnytime,
+                restore,
+            ],
+            cta: 'Reactivate',
+        },
+        reminder: {
+            subject: 'Your Corvale data will be deleted on ' + deletesOn,
+            title: 'Your data will be deleted on ' + deletesOn,
+            lines: [
+                `Your Corvale account is still read-only. On ${deletesOn} your account, records and receipts will be permanently deleted, and this cannot be undone.`,
+                exportAnytime,
+                restore,
+            ],
+            cta: 'Reactivate',
+        },
+        final_warning: {
+            subject: 'Final notice: your Corvale data is deleted on ' + deletesOn,
+            title: 'Your data is deleted on ' + deletesOn,
+            lines: [
+                `This is the last notice. On ${deletesOn} your Corvale account, records and receipts will be permanently deleted, and this cannot be undone.`,
+                exportAnytime,
+                restore,
+            ],
+            cta: 'Reactivate',
         },
     }
 

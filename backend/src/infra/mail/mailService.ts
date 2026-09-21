@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 import type { DunningStage } from '@core/billing/dunning'
-import { passwordResetEmailHtml, emailVerificationEmailHtml, dunningEmailContent } from './emailTemplates'
+import type { RetentionStage } from '@core/billing/retention'
+import { passwordResetEmailHtml, emailVerificationEmailHtml, dunningEmailContent, retentionEmailContent } from './emailTemplates'
 
 export interface MailMessage {
     to: string
@@ -79,6 +80,15 @@ export const sendDunningEmail = async (
     content: { stage: DunningStage; graceEndsAt: Date; billingUrl: string }
 ): Promise<void> => {
     const { subject, html, text } = dunningEmailContent(content.stage, content.graceEndsAt, content.billingUrl)
+
+    await getTransport().sendMail({ to: email, subject, html, text })
+}
+
+export const sendRetentionEmail = async (
+    email: string,
+    content: { stage: RetentionStage; deletionDate: Date; billingUrl: string }
+): Promise<void> => {
+    const { subject, html, text } = retentionEmailContent(content.stage, content.deletionDate, content.billingUrl)
 
     await getTransport().sendMail({ to: email, subject, html, text })
 }

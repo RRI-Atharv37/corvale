@@ -29,7 +29,7 @@ const main = async (): Promise<void> => {
     }
 
     console.log(JSON.stringify(report, null, 2))
-    process.exit(sweep.dunning.failed > 0 ? EXIT_DELIVERY_FAILURES : 0)
+    process.exit(sweep.dunning.failed > 0 || sweep.retention.failed > 0 ? EXIT_DELIVERY_FAILURES : 0)
 }
 
 main().catch((error) => {
