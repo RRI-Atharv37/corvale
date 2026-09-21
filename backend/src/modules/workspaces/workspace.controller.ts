@@ -4,6 +4,7 @@ import { Response } from 'express'
 import Workspace, { WORKSPACE_ROLES, WorkspaceRole } from './workspace.model'
 import WorkspaceInvite from './workspaceInvite.model'
 import { User } from '@modules/users'
+import { releaseWorkspaceSeat, reserveWorkspaceSeatQuota } from '@modules/billing/usage.service'
 import { AuthRequest } from '@http/middleware/authTypes'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
@@ -145,21 +146,32 @@ export const inviteWorkspaceMember = asyncHandler(async (req: AuthRequest, res: 
         throw new CustomError(ERROR_MESSAGES.WORKSPACE.INVITE_ALREADY_PENDING, 400)
     }
 
-    const inviter = await User.findById(userId).select('fullName')
+    await reserveWorkspaceSeatQuota(workspaceId, workspace.ownerId.toString())
 
-    const invite = await WorkspaceInvite.create({
-        workspaceId,
-        inviteeUserId: invitee._id,
-        inviterUserId: userId,
-        role,
-        status: 'pending',
-    })
+    let invite
+    try {
+        const inviter = await User.findById(userId).select('fullName')
 
-    await createWorkspaceInviteNotification(
-        invite,
-        workspace.name,
-        inviter?.fullName?.trim() || 'Someone'
-    )
+        invite = await WorkspaceInvite.create({
+            workspaceId,
+            inviteeUserId: invitee._id,
+            inviterUserId: userId,
+            role,
+            status: 'pending',
+        })
+
+        await createWorkspaceInviteNotification(
+            invite,
+            workspace.name,
+            inviter?.fullName?.trim() || 'Someone'
+        )
+    } catch (error) {
+        if (invite) {
+            await WorkspaceInvite.deleteOne({ _id: invite._id })
+        }
+        await releaseWorkspaceSeat(workspaceId)
+        throw error
+    }
 
     const serialized = await serializeWorkspaceInvite(invite)
     handleResponses(res, 201, serialized)
@@ -207,6 +219,7 @@ export const acceptWorkspaceInvite = asyncHandler(async (req: AuthRequest, res: 
         invite.status = 'accepted'
         await invite.save()
         await dismissWorkspaceInviteNotification(userId, inviteId)
+        await releaseWorkspaceSeat(workspace._id.toString())
         throw new CustomError(ERROR_MESSAGES.WORKSPACE.MEMBER_ALREADY_EXISTS, 400)
     }
 
@@ -228,10 +241,12 @@ export const declineWorkspaceInvite = asyncHandler(async (req: AuthRequest, res:
     validateRequiredFields({ inviteId }, ['inviteId'])
 
     const invite = await loadPendingInviteForUser(inviteId, userId)
+    const workspace = await loadWorkspace(invite.workspaceId.toString())
 
     invite.status = 'declined'
     await invite.save()
     await dismissWorkspaceInviteNotification(userId, inviteId)
+    await releaseWorkspaceSeat(workspace._id.toString())
 
     handleResponses(res, 200, { message: 'Invitation declined' })
 })
@@ -305,6 +320,7 @@ export const removeWorkspaceMember = asyncHandler(async (req: AuthRequest, res: 
     )
 
     const updated = await workspace.save()
+    await releaseWorkspaceSeat(workspace._id.toString())
     const serialized = await serializeWorkspaceWithUsers(updated)
 
     handleResponses(res, 200, serialized)

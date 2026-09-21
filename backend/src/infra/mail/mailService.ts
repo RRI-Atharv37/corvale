@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
-import { passwordResetEmailHtml, emailVerificationEmailHtml } from './emailTemplates'
+import type { DunningStage } from '@core/billing/dunning'
+import { passwordResetEmailHtml, emailVerificationEmailHtml, dunningEmailContent } from './emailTemplates'
 
 export interface MailMessage {
     to: string
@@ -71,4 +72,13 @@ export const sendEmailVerificationEmail = async (email: string, verifyUrl: strin
         html: emailVerificationEmailHtml(verifyUrl, expiryMs),
         text: `Verify your Corvale email address: ${verifyUrl}`,
     })
+}
+
+export const sendDunningEmail = async (
+    email: string,
+    content: { stage: DunningStage; graceEndsAt: Date; billingUrl: string }
+): Promise<void> => {
+    const { subject, html, text } = dunningEmailContent(content.stage, content.graceEndsAt, content.billingUrl)
+
+    await getTransport().sendMail({ to: email, subject, html, text })
 }

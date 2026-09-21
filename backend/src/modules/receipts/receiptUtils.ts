@@ -10,6 +10,7 @@ import { detectReceiptSignature } from '@infra/storage/fileSignature'
 import { RECEIPT_ALLOWED_MIME_TYPES, ReceiptMimeType } from '@core/storage/receiptMimeTypes'
 import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from '@infra/storage/receiptStorage'
 import { validateOwnership } from '@core/access/ownership'
+import { releaseQuota } from '@modules/billing/usage.service'
 
 export const RECEIPT_MAX_SIZE_BYTES = 5 * 1024 * 1024
 
@@ -73,6 +74,7 @@ export const deleteReceiptRecord = async (receipt: IReceipt, userId: string): Pr
     }
     receipt.deletedAt = new Date()
     await receipt.save()
+    await releaseQuota(userId, 'receiptBytes', receipt.size)
 }
 
 export const assertAllowedReceiptMimeType = (mimeType: string): void => {

@@ -10,8 +10,14 @@ import { assertWorkspaceMembership } from '@modules/workspaces/access'
 
 import type { BillingScope } from './billingScope'
 import { getUsage, getUserEntitlements, isBillingEnabled } from './entitlement.service'
+import { quotaExceededError } from './usage.service'
 
-type Check = (req: AuthRequest, entitlements: Entitlements, subjectUserId: string) => Promise<void> | void
+interface Subject {
+    userId: string
+    inWorkspace: boolean
+}
+
+type Check = (req: AuthRequest, entitlements: Entitlements, subject: Subject) => Promise<void> | void
 
 const paymentRequired = (message: string): CustomError => new CustomError(message, 402)
 
@@ -24,12 +30,12 @@ const assertCanWrite = (entitlements: Entitlements): void => {
  * workspace owner for a workspace. Naming a workspace requires belonging to it, so a non-member
  * gets the same 403 the controllers give and learns nothing about the owner's billing state.
  */
-const resolveSubject = async (req: AuthRequest, callerId: string, scope: BillingScope | undefined): Promise<string> => {
+const resolveSubject = async (req: AuthRequest, callerId: string, scope: BillingScope | undefined): Promise<Subject> => {
     const workspaceId = scope ? await scope(req) : null
-    if (!workspaceId) return callerId
+    if (!workspaceId) return { userId: callerId, inWorkspace: false }
 
     const workspace = await assertWorkspaceMembership(workspaceId, callerId)
-    return workspace.ownerId.toString()
+    return { userId: workspace.ownerId.toString(), inWorkspace: true }
 }
 
 /**
@@ -43,10 +49,10 @@ const gate =
         try {
             const callerId = getUserId(req)
             if (isBillingEnabled()) {
-                const subjectId = await resolveSubject(req, callerId, scope)
-                const entitlements = await getUserEntitlements(subjectId)
+                const subject = await resolveSubject(req, callerId, scope)
+                const entitlements = await getUserEntitlements(subject.userId)
                 assertCanWrite(entitlements)
-                await check(req, entitlements, subjectId)
+                await check(req, entitlements, subject)
             }
             next()
         } catch (error) {
@@ -59,6 +65,18 @@ export const requireWriteAccess: RequestHandler = gate(() => undefined)
 
 /** As `requireWriteAccess`, for a write that may land in a workspace (judged on its owner's plan). */
 export const requireWriteAccessIn = (scope: BillingScope): RequestHandler => gate(() => undefined, scope)
+
+/**
+ * The gate for a write that may land in a workspace: write access on the subject's plan, and when
+ * the write is in a workspace, that owner's plan must include workspaces. A downgraded owner's
+ * workspace is frozen (402) for every member; personal data on the same plan is untouched.
+ */
+export const requireScopedWriteAccess = (scope: BillingScope): RequestHandler =>
+    gate((_req, entitlements, subject) => {
+        if (subject.inWorkspace && !entitlements.features.workspaces) {
+            throw paymentRequired(ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
+        }
+    }, scope)
 
 /** Write access, plus the plan must include `feature` (402 ENTITLEMENT_REQUIRED otherwise). */
 export const requireEntitlement = (feature: FeatureKey, scope?: BillingScope): RequestHandler =>
@@ -78,15 +96,11 @@ export const requireQuota = (
     amount: number | ((req: AuthRequest) => number) = 1,
     scope?: BillingScope
 ): RequestHandler =>
-    gate(async (req, entitlements, subjectId) => {
+    gate(async (req, entitlements, subject) => {
         const requested = typeof amount === 'function' ? amount(req) : amount
-        const used = await getUsage(subjectId, resource)
+        const used = await getUsage(subject.userId, resource)
 
         if (wouldExceedQuota(entitlements.limits[RESOURCE_LIMIT_KEY[resource]], used, requested)) {
-            throw paymentRequired(
-                resource === 'syncDevices'
-                    ? ERROR_MESSAGES.BILLING.SYNC_DEVICE_LIMIT
-                    : ERROR_MESSAGES.BILLING.QUOTA_EXCEEDED
-            )
+            throw quotaExceededError(resource)
         }
     }, scope)

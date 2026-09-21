@@ -107,6 +107,7 @@ export const ERROR_MESSAGES = {
         SPLIT_REQUIRES_EXPENSE: 'Split transactions are only supported for expenses',
         BULK_EMPTY: 'At least one transaction id is required',
         BULK_TOO_MANY: 'Too many transaction ids in one request (maximum 500)',
+        BULK_MIXED_SCOPE: 'Transactions from different workspaces, or personal and workspace transactions, cannot be changed together',
         BULK_CATEGORY_TRANSFER: 'Transfers cannot be bulk recategorized',
         RECEIPT_ALREADY_ATTACHED: 'Receipt is already attached to this transaction',
         RECEIPT_NOT_ATTACHED: 'Receipt is not attached to this transaction',
@@ -223,5 +224,8 @@ export const ERROR_MESSAGES = {
         NO_BILLING_CUSTOMER: 'No billing account exists for this user yet',
         PROVIDER_NOT_CONFIGURED: 'Billing is not configured on this server',
         PROVIDER_REQUEST_FAILED: 'The billing provider could not complete the request',
+    },
+    SYNC: {
+        INVALID_DEVICE_ID: 'deviceId must be 1-64 characters: letters, numbers, hyphens and underscores',
     },
 }

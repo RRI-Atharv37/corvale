@@ -10,15 +10,16 @@ import {
     updateCategorizationRule,
 } from './categorizationRule.controller'
 import { protect } from '@http/middleware/authMiddleware'
+import { requireWriteAccess } from '@modules/billing/entitlement.middleware'
 
 const router = express.Router()
 
-router.post('/bulk-apply', protect, bulkApplyRules)
+router.post('/bulk-apply', protect, requireWriteAccess, bulkApplyRules)
 router.post('/test', protect, testCategorizationRule)
-router.post('/', protect, createCategorizationRule)
+router.post('/', protect, requireWriteAccess, createCategorizationRule)
 router.get('/', protect, getCategorizationRules)
 router.get('/:ruleId', protect, getCategorizationRuleById)
-router.put('/:ruleId', protect, updateCategorizationRule)
-router.delete('/:ruleId', protect, deleteCategorizationRule)
+router.put('/:ruleId', protect, requireWriteAccess, updateCategorizationRule)
+router.delete('/:ruleId', protect, requireWriteAccess, deleteCategorizationRule)
 
 export default router

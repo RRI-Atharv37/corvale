@@ -16,6 +16,8 @@ export interface IWorkspace extends Document {
     name: string
     ownerId: Types.ObjectId
     members: IWorkspaceMember[]
+    // Members plus pending invites; null until first counted. Maintained by billing's seat reservation.
+    seatCount?: number | null
 }
 
 const ROLE_RANK: Record<WorkspaceRole, number> = {

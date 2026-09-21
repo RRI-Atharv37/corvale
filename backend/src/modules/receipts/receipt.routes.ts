@@ -2,6 +2,7 @@ import express from 'express'
 
 import { deleteReceipt, getReceiptFile, uploadReceipt } from './receipt.controller'
 import { protect } from '@http/middleware/authMiddleware'
+import { requireWriteAccess } from '@modules/billing/entitlement.middleware'
 import { handleReceiptUploadError, receiptUpload } from './receiptUpload.middleware'
 import { sanitizeBody } from '@http/middleware/sanitizeBodyMiddleware'
 
@@ -12,12 +13,13 @@ const router = express.Router()
 router.post(
     '/',
     protect,
+    requireWriteAccess,
     receiptUpload.single('receipt'),
     handleReceiptUploadError,
     sanitizeBody,
     uploadReceipt
 )
 router.get('/:receiptId', protect, getReceiptFile)
-router.delete('/:receiptId', protect, deleteReceipt)
+router.delete('/:receiptId', protect, requireWriteAccess, deleteReceipt)
 
 export default router

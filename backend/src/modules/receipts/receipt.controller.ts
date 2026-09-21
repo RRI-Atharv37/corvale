@@ -24,6 +24,7 @@ import {
     receiptObjectKey,
 } from '@infra/storage/receiptStorage'
 import { scanUploadedFile } from '@infra/security/virusScanService'
+import { releaseQuota, reserveQuota } from '@modules/billing/usage.service'
 import { getUserId } from '@core/auth/requestUser'
 import { handleResponses } from '@core/http/response'
 import { validateRequiredFields } from '@core/http/validation'
@@ -36,45 +37,53 @@ export const uploadReceipt = asyncHandler(async (req: AuthRequest, res: Response
     }
 
     const filePath = getReceiptFilePath(userId, req.file.filename)
+    const { filename, size } = req.file
 
     try {
-        await assertWithinReceiptStorageQuota(userId, req.file.size)
+        await assertWithinReceiptStorageQuota(userId, size)
+        await reserveQuota(userId, 'receiptBytes', size)
     } catch (error) {
-        deleteReceiptFile(userId, req.file.filename)
+        deleteReceiptFile(userId, filename)
         throw error
     }
 
-    // Sniff the actual bytes rather than trusting the client-declared Content-Type (S14/SEC-15):
-    // a mismatch is indistinguishable from a spoofed declaration at the API boundary, so both
-    // are rejected the same way as an unsupported type.
-    const detectedMimeType = detectReceiptSignature(fs.readFileSync(filePath))
-    if (!detectedMimeType || detectedMimeType !== req.file.mimetype) {
-        deleteReceiptFile(userId, req.file.filename)
-        throw new CustomError(ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE, 400)
-    }
-
+    let receipt
     try {
-        await scanUploadedFile(filePath)
+        // Sniff the actual bytes rather than trusting the client-declared Content-Type (S14/SEC-15):
+        // a mismatch is indistinguishable from a spoofed declaration at the API boundary, so both
+        // are rejected the same way as an unsupported type.
+        const detectedMimeType = detectReceiptSignature(fs.readFileSync(filePath))
+        if (!detectedMimeType || detectedMimeType !== req.file.mimetype) {
+            deleteReceiptFile(userId, filename)
+            throw new CustomError(ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE, 400)
+        }
+
+        try {
+            await scanUploadedFile(filePath)
+        } catch (error) {
+            deleteReceiptFile(userId, filename)
+            throw error
+        }
+
+        if (isObjectStorageConfigured()) {
+            const key = receiptObjectKey(userId, filename)
+            await putReceiptObject(key, filePath, detectedMimeType)
+            // Object storage is now the only copy - the local disk write was only ever staging
+            // for the virus scan and the upload, so a redeploy can no longer lose it (SEC-23).
+            deleteReceiptFile(userId, filename)
+        }
+
+        receipt = await Receipt.create({
+            userId,
+            originalFilename: req.file.originalname,
+            storedFilename: filename,
+            mimeType: detectedMimeType,
+            size,
+        })
     } catch (error) {
-        deleteReceiptFile(userId, req.file.filename)
+        await releaseQuota(userId, 'receiptBytes', size)
         throw error
     }
-
-    if (isObjectStorageConfigured()) {
-        const key = receiptObjectKey(userId, req.file.filename)
-        await putReceiptObject(key, filePath, detectedMimeType)
-        // Object storage is now the only copy - the local disk write was only ever staging
-        // for the virus scan and the upload, so a redeploy can no longer lose it (SEC-23).
-        deleteReceiptFile(userId, req.file.filename)
-    }
-
-    const receipt = await Receipt.create({
-        userId,
-        originalFilename: req.file.originalname,
-        storedFilename: req.file.filename,
-        mimeType: detectedMimeType,
-        size: req.file.size,
-    })
 
     handleResponses(res, 201, serializeReceipt(receipt))
 })

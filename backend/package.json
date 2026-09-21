@@ -32,7 +32,8 @@
     "migrate:has-split-children:dry-run": "ts-node scripts/backfillHasSplitChildren.ts --dry-run",
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts",
     "purge:tombstones:dry-run": "ts-node scripts/purgeTombstones.ts --dry-run",
-    "reconcile:billing": "ts-node scripts/reconcileBilling.ts"
+    "reconcile:billing": "ts-node scripts/reconcileBilling.ts",
+    "sweep:billing": "ts-node scripts/sweepBilling.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",

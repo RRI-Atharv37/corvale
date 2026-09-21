@@ -27,6 +27,7 @@ import { SavingsGoalContribution } from '@modules/savings-goals'
 import { Tag } from '@modules/tags'
 import { Transaction } from '@modules/transactions'
 import { TransactionTemplate } from '@modules/transaction-templates'
+import { releaseQuota, reserveQuota } from '@modules/billing/usage.service'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
@@ -463,43 +464,49 @@ export const restoreUserBackup = async (
         const actualSize = fileBuffer.byteLength
 
         await assertWithinReceiptStorageQuota(userId, actualSize)
-
-        const ext = path.extname(String(record.originalFilename ?? '')).toLowerCase()
-        const safeExt = ext.length <= 10 ? ext : ''
-        const newStoredFilename = `${crypto.randomUUID()}${safeExt}`
-
-        const destPath = getReceiptFilePath(userId, newStoredFilename)
-        fs.mkdirSync(path.dirname(destPath), { recursive: true })
-        fs.writeFileSync(destPath, fileBuffer)
+        await reserveQuota(userId, 'receiptBytes', actualSize)
 
         try {
-            await scanUploadedFile(destPath)
+            const ext = path.extname(String(record.originalFilename ?? '')).toLowerCase()
+            const safeExt = ext.length <= 10 ? ext : ''
+            const newStoredFilename = `${crypto.randomUUID()}${safeExt}`
+
+            const destPath = getReceiptFilePath(userId, newStoredFilename)
+            fs.mkdirSync(path.dirname(destPath), { recursive: true })
+            fs.writeFileSync(destPath, fileBuffer)
+
+            try {
+                await scanUploadedFile(destPath)
+            } catch (error) {
+                deleteReceiptFile(userId, newStoredFilename)
+                throw error
+            }
+
+            if (isObjectStorageConfigured()) {
+                await putReceiptObject(
+                    receiptObjectKey(userId, newStoredFilename),
+                    destPath,
+                    detectedMimeType
+                )
+                // Object storage is the only durable copy — the local write was staging for the
+                // scan and the upload, exactly as in `uploadReceipt` (SEC-23).
+                deleteReceiptFile(userId, newStoredFilename)
+            }
+
+            const createdReceipt = await Receipt.create({
+                userId: userObjectId,
+                originalFilename: record.originalFilename,
+                storedFilename: newStoredFilename,
+                mimeType: detectedMimeType,
+                size: actualSize,
+            })
+
+            idMap.set(sourceId, createdReceipt._id.toString())
+            created.receipts += 1
         } catch (error) {
-            deleteReceiptFile(userId, newStoredFilename)
+            await releaseQuota(userId, 'receiptBytes', actualSize)
             throw error
         }
-
-        if (isObjectStorageConfigured()) {
-            await putReceiptObject(
-                receiptObjectKey(userId, newStoredFilename),
-                destPath,
-                detectedMimeType
-            )
-            // Object storage is the only durable copy — the local write was staging for the
-            // scan and the upload, exactly as in `uploadReceipt` (SEC-23).
-            deleteReceiptFile(userId, newStoredFilename)
-        }
-
-        const createdReceipt = await Receipt.create({
-            userId: userObjectId,
-            originalFilename: record.originalFilename,
-            storedFilename: newStoredFilename,
-            mimeType: detectedMimeType,
-            size: actualSize,
-        })
-
-        idMap.set(sourceId, createdReceipt._id.toString())
-        created.receipts += 1
     }
 
     const deferredTransactionUpdates: {

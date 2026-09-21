@@ -9,6 +9,7 @@ import {
     type PlanCode,
     type SubscriptionStatus,
 } from '@core/billing/constants'
+import { DUNNING_STAGES, type DunningStage } from '@core/billing/dunning'
 
 export interface ISubscription extends Document {
     _id: Types.ObjectId
@@ -19,6 +20,7 @@ export interface ISubscription extends Document {
     currentPeriodEnd: Date | null
     cancelAtPeriodEnd: boolean
     pastDueSince: Date | null
+    dunningStage: DunningStage | null
     grandfatherKind: GrandfatherKind | null
     providerCustomerId: string | null
     providerSubscriptionId: string | null
@@ -36,6 +38,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
         currentPeriodEnd: { type: Date, default: null },
         cancelAtPeriodEnd: { type: Boolean, default: false },
         pastDueSince: { type: Date, default: null },
+        dunningStage: { type: String, enum: [null, ...DUNNING_STAGES], default: null },
         grandfatherKind: { type: String, enum: [null, ...GRANDFATHER_KINDS], default: null },
         providerCustomerId: { type: String, default: null },
         providerSubscriptionId: { type: String, default: null },

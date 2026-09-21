@@ -1,11 +1,13 @@
 import { Types } from 'mongoose'
 
 import type { UsageResource } from '@core/billing/constants'
+import { MAX_PAST_DUE_GRACE_DAYS, MIN_PAST_DUE_GRACE_DAYS } from '@core/billing/dunning'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { buildEntitlementSnapshot, type EntitlementSnapshot } from '@core/billing/entitlementSnapshot'
 import { Workspace } from '@modules/workspaces'
 import {
+    DEFAULT_PAST_DUE_GRACE_DAYS,
     UNLIMITED_ENTITLEMENTS,
     cloneEntitlements,
     resolveEntitlements,
@@ -20,6 +22,13 @@ import Subscription from './subscription.model'
 import UsageCounter from './usageCounter.model'
 
 export const isBillingEnabled = (): boolean => process.env.BILLING_ENABLED === 'true'
+
+export const getPastDueGraceDays = (): number => {
+    const configured = Number(process.env.BILLING_PAST_DUE_GRACE_DAYS)
+    return Number.isInteger(configured) && configured >= MIN_PAST_DUE_GRACE_DAYS && configured <= MAX_PAST_DUE_GRACE_DAYS
+        ? configured
+        : DEFAULT_PAST_DUE_GRACE_DAYS
+}
 
 const loadPlanDefinition = async (code: SubscriptionSnapshot['planCode']): Promise<PlanDefinition | null> => {
     const plan = await Plan.findOne({ code }).lean()
@@ -44,7 +53,10 @@ const loadEntitlementState = async (
     if (!subscription) return { entitlements: resolveEntitlements(null, null, now), subscription: null }
 
     const plan = await loadPlanDefinition(subscription.planCode)
-    return { entitlements: resolveEntitlements(subscription, plan, now), subscription }
+    return {
+        entitlements: resolveEntitlements(subscription, plan, now, { pastDueGraceDays: getPastDueGraceDays() }),
+        subscription,
+    }
 }
 
 export const getUserEntitlements = async (userId: string, now: Date = new Date()): Promise<Entitlements> =>

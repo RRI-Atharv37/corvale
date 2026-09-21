@@ -1,3 +1,5 @@
+import type { DunningStage } from '@core/billing/dunning'
+
 const formatExpiry = (expiryMs: number): string => {
     const hours = expiryMs / (60 * 60 * 1000)
     if (hours < 1) {
@@ -85,4 +87,66 @@ export const emailVerificationEmailHtml = (verifyUrl: string, expiryMs: number):
         </p>
     `
     return baseEmailTemplate('Verify your email', body)
+}
+
+export interface DunningEmailContent {
+    subject: string
+    html: string
+    text: string
+}
+
+const paragraph = (text: string): string =>
+    `<p style="margin:0 0 12px;font-size:14px;color:#374151;line-height:1.5;">${text}</p>`
+
+const formatUtcDate = (date: Date): string =>
+    date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+export const dunningEmailContent = (stage: DunningStage, graceEndsAt: Date, billingUrl: string): DunningEmailContent => {
+    const endsOn = formatUtcDate(graceEndsAt)
+    const keepsWorking = 'Your data is safe and stays readable, and you can export it at any time.'
+
+    const copy: Record<DunningStage, { subject: string; title: string; lines: string[]; cta: string }> = {
+        payment_failed: {
+            subject: "We couldn't process your Corvale payment",
+            title: "Your payment didn't go through",
+            lines: [
+                `We couldn't charge your payment method for your Corvale subscription. Nothing has changed yet: you can keep using Corvale as normal until ${endsOn}.`,
+                'Please update your payment method so the next attempt succeeds.',
+            ],
+            cta: 'Update payment method',
+        },
+        reminder: {
+            subject: 'Reminder: update your Corvale payment method',
+            title: 'Your payment is still outstanding',
+            lines: [
+                `Your Corvale payment is still unpaid. Corvale keeps working until ${endsOn}; after that your account becomes read-only.`,
+                keepsWorking,
+            ],
+            cta: 'Update payment method',
+        },
+        final_warning: {
+            subject: 'Last chance: your Corvale account turns read-only tomorrow',
+            title: 'Your account turns read-only tomorrow',
+            lines: [
+                `Unless the payment goes through, your Corvale account becomes read-only on ${endsOn}. You will not be able to add or change data until it is paid.`,
+                keepsWorking,
+            ],
+            cta: 'Update payment method',
+        },
+        access_paused: {
+            subject: 'Your Corvale account is now read-only',
+            title: 'Your account is now read-only',
+            lines: [
+                'We still could not collect your payment, so your Corvale account is read-only. You can view everything and export or back up your data at any time, but you cannot add or change anything.',
+                'Update your payment method and everything picks up exactly where you left off. Nothing has been deleted.',
+            ],
+            cta: 'Restore full access',
+        },
+    }
+
+    const { subject, title, lines, cta } = copy[stage]
+    const html = baseEmailTemplate(title, `${lines.map(paragraph).join('')}${ctaButton(billingUrl, cta)}`)
+    const text = `${lines.join('\n\n')}\n\n${cta}: ${billingUrl}`
+
+    return { subject, html, text }
 }

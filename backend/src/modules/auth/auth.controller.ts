@@ -34,7 +34,7 @@ import { verifyCaptcha } from '@infra/security/captchaService'
 import { getRefreshTokenFromRequest, getRefreshTokenFromRequestBody, setRefreshTokenCookie, clearRefreshTokenCookie } from "@infra/config/refreshCookie";
 import { IUser, User } from "@modules/users";
 import { buildLegalAcceptance, toPublicUser } from "@modules/users/userSerialization";
-import { getUserEntitlementSnapshot } from "@modules/billing";
+import { getUserEntitlementSnapshot, startTrialIfEligible } from "@modules/billing";
 
 /**
  * SEC-32: bcrypt hash of an unguessable constant, compared against the supplied password when
@@ -144,6 +144,7 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
         legalAcceptance: buildLegalAcceptance(),
     })) as IUser
 
+    await startTrialIfEligible(user._id.toString())
     await dispatchEmailVerification(user)
 
     const payload = await issueAuthSession(user, res, {

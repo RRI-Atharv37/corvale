@@ -21,6 +21,9 @@ import {
     updateSavedReport,
 } from './savedReport.controller'
 import { protect } from '@http/middleware/authMiddleware'
+import { requireScopedWriteAccess } from '@modules/billing/entitlement.middleware'
+import { scopeFromBody, scopeFromResource } from '@modules/billing/billingScope'
+import SavedReport from './savedReport.model'
 
 const router = express.Router()
 
@@ -37,9 +40,9 @@ router.post('/query', protect, queryCustomReport)
 router.post('/generate', protect, generateReport)
 
 router.get('/saved', protect, listSavedReports)
-router.post('/saved', protect, createSavedReport)
-router.put('/saved/:reportId', protect, updateSavedReport)
-router.delete('/saved/:reportId', protect, deleteSavedReport)
+router.post('/saved', protect, requireScopedWriteAccess(scopeFromBody), createSavedReport)
+router.put('/saved/:reportId', protect, requireScopedWriteAccess(scopeFromResource(SavedReport, 'reportId')), updateSavedReport)
+router.delete('/saved/:reportId', protect, requireScopedWriteAccess(scopeFromResource(SavedReport, 'reportId')), deleteSavedReport)
 router.get('/saved/:reportId/run', protect, runSavedReport)
 
 export default router

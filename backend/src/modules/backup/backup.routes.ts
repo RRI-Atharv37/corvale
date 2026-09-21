@@ -2,6 +2,8 @@ import express from 'express'
 
 import { commitRestore, exportBackup, previewRestore } from './backup.controller'
 import { protect } from '@http/middleware/authMiddleware'
+import { requireScopedWriteAccess } from '@modules/billing/entitlement.middleware'
+import { scopeFromBody } from '@modules/billing/billingScope'
 import { backupUpload, handleBackupUploadError } from './backupUpload.middleware'
 import { sanitizeBody } from '@http/middleware/sanitizeBodyMiddleware'
 
@@ -24,6 +26,7 @@ router.post(
     backupUpload.single('file'),
     handleBackupUploadError,
     sanitizeBody,
+    requireScopedWriteAccess(scopeFromBody),
     commitRestore
 )
 

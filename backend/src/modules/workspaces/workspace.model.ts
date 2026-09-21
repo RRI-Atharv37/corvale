@@ -23,6 +23,7 @@ const workspaceSchema = new Schema<IWorkspace>(
         name: { type: String, required: true, trim: true },
         ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         members: { type: [workspaceMemberSchema], default: [] },
+        seatCount: { type: Number, default: null, min: 0 },
     },
     { timestamps: true }
 )

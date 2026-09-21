@@ -76,6 +76,7 @@ const subscriptionChanges = (row: ISubscription | null, event: NormalizedBilling
     if (event.status) {
         changes.status = event.status
         changes.pastDueSince = event.status === 'past_due' ? (row?.pastDueSince ?? event.occurredAt) : null
+        if (event.status !== 'past_due') changes.dunningStage = null
     }
     if (event.currentPeriodEnd !== undefined) changes.currentPeriodEnd = event.currentPeriodEnd
     if (event.trialEndsAt !== undefined) changes.trialEndsAt = event.trialEndsAt
@@ -146,7 +147,7 @@ const handleSubscriptionUpdated: BillingEventHandler = async (event) => {
 const handleSubscriptionDeleted: BillingEventHandler = async (event) => {
     const row = await findByProviderIds(event)
     if (!row) return unapplied(NO_MATCH)
-    return applyChanges(row, event, { status: 'cancelled', pastDueSince: null })
+    return applyChanges(row, event, { status: 'cancelled', pastDueSince: null, dunningStage: null })
 }
 
 const DUNNING_STATES: readonly string[] = ['active', 'past_due']
@@ -164,7 +165,7 @@ const handlePaymentSucceeded: BillingEventHandler = async (event) => {
     if (!row) return unapplied(NO_MATCH)
     if (!DUNNING_STATES.includes(row.status)) return APPLIED
 
-    const changes: Record<string, unknown> = { status: 'active', pastDueSince: null }
+    const changes: Record<string, unknown> = { status: 'active', pastDueSince: null, dunningStage: null }
     if (event.currentPeriodEnd !== undefined) changes.currentPeriodEnd = event.currentPeriodEnd
     return applyChanges(row, event, changes)
 }

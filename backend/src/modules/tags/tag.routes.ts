@@ -9,14 +9,15 @@ import {
     updateTag,
 } from './tag.controller'
 import { protect } from '@http/middleware/authMiddleware'
+import { requireWriteAccess } from '@modules/billing/entitlement.middleware'
 
 const router = express.Router()
 
-router.post('/dedupe', protect, dedupeTags)
-router.post('/', protect, createTag)
+router.post('/dedupe', protect, requireWriteAccess, dedupeTags)
+router.post('/', protect, requireWriteAccess, createTag)
 router.get('/', protect, getTags)
 router.get('/:tagId', protect, getTagById)
-router.put('/:tagId', protect, updateTag)
-router.delete('/:tagId', protect, deleteTag)
+router.put('/:tagId', protect, requireWriteAccess, updateTag)
+router.delete('/:tagId', protect, requireWriteAccess, deleteTag)
 
 export default router

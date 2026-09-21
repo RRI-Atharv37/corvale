@@ -6,6 +6,8 @@ import {
     previewImport,
 } from './import.controller'
 import { protect } from '@http/middleware/authMiddleware'
+import { requireScopedWriteAccess } from '@modules/billing/entitlement.middleware'
+import { scopeFromBody } from '@modules/billing/billingScope'
 import { csvUpload, handleCsvUploadError } from './csvUpload.middleware'
 import { sanitizeBody } from '@http/middleware/sanitizeBodyMiddleware'
 
@@ -22,6 +24,6 @@ router.post(
     parseImportFile
 )
 router.post('/preview', protect, previewImport)
-router.post('/commit', protect, commitImport)
+router.post('/commit', protect, requireScopedWriteAccess(scopeFromBody), commitImport)
 
 export default router

@@ -69,6 +69,7 @@ Create a `.env` file in the `backend/` folder.
 | `MOR_STORE_ID` | Only if billing is on | - | Id of the Merchant of Record store that sells Corvale |
 | `MOR_WEBHOOK_SECRET` | Only if billing is on | - | Signing secret of the Merchant of Record webhook. Deliveries whose `X-Signature` does not match are rejected |
 | `MOR_VARIANTS` | Only if billing is on | - | JSON map of plan and interval to the provider's variant id, e.g. `{"plus":{"monthly":"1","annual":"2"},"pro":{"monthly":"3","annual":"4"}}`. Every id must be different |
+| `BILLING_PAST_DUE_GRACE_DAYS` | No | `7` | Days a failed payment keeps write access before the account turns read-only. A whole number from 3 to 60; anything else falls back to 7. Reading, exporting and backing up always work. The payment-failed, reminder, final-warning and read-only emails are spaced across this window |
 
 All three rate limiters above (auth, sync-push, global) are backed by a MongoDB-stored counter
 (`backend/utils/mongoRateLimitStore.ts`), not per-process memory, so a client's budget is shared
