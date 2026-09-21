@@ -257,7 +257,7 @@ describe('handleBillingWebhook', () => {
         expect((await ledger(event.providerEventId))?.processedAt).toBeTruthy()
     })
 
-    it('a known event type with no handler yet is left un-processed so it is not silently swallowed', async () => {
+    it('a known event the handlers cannot apply is left un-processed so it is not silently swallowed', async () => {
         const event = makeEvent({ type: 'payment.failed' })
         const raw = wire(event)
 

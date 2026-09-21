@@ -1,23 +1,198 @@
+import { Types } from 'mongoose'
+
+import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
+import { PLAN_CODES, SUBSCRIPTION_STATUSES, type PlanCode } from '@core/billing/constants'
+import { isDuplicateKeyError } from '@core/db/objectId'
+import { logger } from '@infra/observability/logger'
+import { User } from '@modules/users'
+
 import { KNOWN_BILLING_EVENT_TYPES, type KnownBillingEventType, type NormalizedBillingEvent } from './providers/billingProvider'
+import Subscription, { type ISubscription } from './subscription.model'
 
 export type BillingEventOutcome = { status: 'applied' } | { status: 'unapplied'; reason: string }
 
 export type BillingEventHandler = (event: NormalizedBillingEvent) => Promise<BillingEventOutcome>
 
+const APPLIED: BillingEventOutcome = { status: 'applied' }
+const unapplied = (reason: string): BillingEventOutcome => ({ status: 'unapplied', reason })
+
+// Handlers run outside any request context, so every Subscription query opts out of RLS explicitly.
+const BYPASS = { [RLS_BYPASS]: true }
+
+const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/i
+
+const asObjectId = (value: string | undefined): Types.ObjectId | null =>
+    value !== undefined && OBJECT_ID_PATTERN.test(value) ? new Types.ObjectId(value) : null
+
+const validationProblem = (event: NormalizedBillingEvent): string | null => {
+    if (event.planCode != null && !(PLAN_CODES as readonly string[]).includes(event.planCode)) {
+        return `Plan ${event.planCode} is not in the catalogue`
+    }
+    if (event.status !== undefined && !SUBSCRIPTION_STATUSES.includes(event.status)) {
+        return `Status ${String(event.status)} is not a known subscription status`
+    }
+    return null
+}
+
+const findByProviderIds = async (event: NormalizedBillingEvent): Promise<ISubscription | null> => {
+    if (event.providerSubscriptionId) {
+        const bySubscription = await Subscription.findOne({ providerSubscriptionId: event.providerSubscriptionId }).setOptions(BYPASS)
+        if (bySubscription) return bySubscription
+    }
+    if (event.providerCustomerId) {
+        return Subscription.findOne({ providerCustomerId: event.providerCustomerId }).setOptions(BYPASS)
+    }
+    return null
+}
+
 /**
- * Filled in by M3c. Handlers write `Subscription` rows outside any request context, so every query
- * they issue passes `{ [RLS_BYPASS]: true }` explicitly rather than relying on the absence of one.
+ * The newest event time is the ordering key: an event older than the last one applied is stale and
+ * changes nothing (it is still settled as applied, since retrying it can never help). The filter
+ * repeats the check so a concurrent newer event wins the race.
  */
-const HANDLERS: Partial<Record<KnownBillingEventType, BillingEventHandler>> = {}
+const applyChanges = async (
+    row: ISubscription,
+    event: NormalizedBillingEvent,
+    changes: Record<string, unknown>
+): Promise<BillingEventOutcome> => {
+    if (row.lastEventAt && row.lastEventAt.getTime() > event.occurredAt.getTime()) return APPLIED
+
+    try {
+        await Subscription.findOneAndUpdate(
+            { _id: row._id, $or: [{ lastEventAt: null }, { lastEventAt: { $lte: event.occurredAt } }] },
+            { $set: { ...changes, lastEventAt: event.occurredAt } }
+        ).setOptions(BYPASS)
+    } catch (error) {
+        if (isDuplicateKeyError(error)) return unapplied('Provider id is already linked to another subscription')
+        throw error
+    }
+    return APPLIED
+}
+
+const subscriptionChanges = (row: ISubscription | null, event: NormalizedBillingEvent): Record<string, unknown> => {
+    const changes: Record<string, unknown> = {}
+
+    if (event.planCode) changes.planCode = event.planCode
+    if (event.status) {
+        changes.status = event.status
+        changes.pastDueSince = event.status === 'past_due' ? (row?.pastDueSince ?? event.occurredAt) : null
+    }
+    if (event.currentPeriodEnd !== undefined) changes.currentPeriodEnd = event.currentPeriodEnd
+    if (event.trialEndsAt !== undefined) changes.trialEndsAt = event.trialEndsAt
+    if (event.cancelAtPeriodEnd !== undefined) changes.cancelAtPeriodEnd = event.cancelAtPeriodEnd
+    if (event.providerCustomerId && !row?.providerCustomerId) changes.providerCustomerId = event.providerCustomerId
+    if (event.providerSubscriptionId && !row?.providerSubscriptionId) changes.providerSubscriptionId = event.providerSubscriptionId
+
+    return changes
+}
+
+const NO_MATCH = 'No subscription matches this event'
+
+/**
+ * `userId` only ever links a subscription that has no provider link yet, and only when the user
+ * exists; a subscription already known by its provider ids is updated regardless of what the event
+ * says about the user.
+ */
+const handleSubscriptionCreated: BillingEventHandler = async (event) => {
+    const problem = validationProblem(event)
+    if (problem) return unapplied(problem)
+
+    const known = await findByProviderIds(event)
+    if (known) return applyChanges(known, event, subscriptionChanges(known, event))
+
+    const userId = asObjectId(event.userId)
+    if (!userId) return unapplied(NO_MATCH)
+
+    const byUser = await Subscription.findOne({ userId }).setOptions(BYPASS)
+    if (byUser) {
+        if (byUser.providerSubscriptionId || byUser.providerCustomerId) {
+            return unapplied('User is already linked to a different provider subscription')
+        }
+        return applyChanges(byUser, event, subscriptionChanges(byUser, event))
+    }
+
+    if (!(await User.exists({ _id: userId }))) return unapplied('No user matches this event')
+    if (!event.planCode || !event.status) return unapplied('Event carries no plan and status to grant')
+
+    try {
+        await Subscription.create({
+            userId,
+            planCode: event.planCode as PlanCode,
+            status: event.status,
+            trialEndsAt: event.trialEndsAt ?? null,
+            currentPeriodEnd: event.currentPeriodEnd ?? null,
+            cancelAtPeriodEnd: event.cancelAtPeriodEnd ?? false,
+            pastDueSince: event.status === 'past_due' ? event.occurredAt : null,
+            providerCustomerId: event.providerCustomerId ?? null,
+            providerSubscriptionId: event.providerSubscriptionId ?? null,
+            lastEventAt: event.occurredAt,
+        })
+    } catch (error) {
+        if (isDuplicateKeyError(error)) return unapplied('A subscription for this user was created concurrently')
+        throw error
+    }
+    return APPLIED
+}
+
+const handleSubscriptionUpdated: BillingEventHandler = async (event) => {
+    const problem = validationProblem(event)
+    if (problem) return unapplied(problem)
+
+    const row = await findByProviderIds(event)
+    if (!row) return unapplied(NO_MATCH)
+    return applyChanges(row, event, subscriptionChanges(row, event))
+}
+
+const handleSubscriptionDeleted: BillingEventHandler = async (event) => {
+    const row = await findByProviderIds(event)
+    if (!row) return unapplied(NO_MATCH)
+    return applyChanges(row, event, { status: 'cancelled', pastDueSince: null })
+}
+
+const DUNNING_STATES: readonly string[] = ['active', 'past_due']
+
+const handlePaymentFailed: BillingEventHandler = async (event) => {
+    const row = await findByProviderIds(event)
+    if (!row) return unapplied(NO_MATCH)
+    if (!DUNNING_STATES.includes(row.status)) return APPLIED
+
+    return applyChanges(row, event, { status: 'past_due', pastDueSince: row.pastDueSince ?? event.occurredAt })
+}
+
+const handlePaymentSucceeded: BillingEventHandler = async (event) => {
+    const row = await findByProviderIds(event)
+    if (!row) return unapplied(NO_MATCH)
+    if (!DUNNING_STATES.includes(row.status)) return APPLIED
+
+    const changes: Record<string, unknown> = { status: 'active', pastDueSince: null }
+    if (event.currentPeriodEnd !== undefined) changes.currentPeriodEnd = event.currentPeriodEnd
+    return applyChanges(row, event, changes)
+}
+
+// Recorded on the ledger and logged for a human; whether either revokes access is a policy call for later.
+const recordOnly =
+    (message: string): BillingEventHandler =>
+    async (event) => {
+        logger.warn(message, { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
+        return APPLIED
+    }
+
+const HANDLERS: Record<KnownBillingEventType, BillingEventHandler> = {
+    'checkout.completed': handleSubscriptionCreated,
+    'subscription.created': handleSubscriptionCreated,
+    'subscription.updated': handleSubscriptionUpdated,
+    'subscription.deleted': handleSubscriptionDeleted,
+    'payment.succeeded': handlePaymentSucceeded,
+    'payment.failed': handlePaymentFailed,
+    'refund.issued': recordOnly('Billing refund issued'),
+    'dispute.opened': recordOnly('Billing dispute opened'),
+}
 
 const isKnownEventType = (type: string): type is KnownBillingEventType =>
     (KNOWN_BILLING_EVENT_TYPES as readonly string[]).includes(type)
 
 export const applyBillingEvent: BillingEventHandler = async (event) => {
-    if (!isKnownEventType(event.type)) return { status: 'applied' }
+    if (!isKnownEventType(event.type)) return APPLIED
 
-    const handler = HANDLERS[event.type]
-    if (!handler) return { status: 'unapplied', reason: `No handler for ${event.type}` }
-
-    return handler(event)
+    return HANDLERS[event.type](event)
 }
