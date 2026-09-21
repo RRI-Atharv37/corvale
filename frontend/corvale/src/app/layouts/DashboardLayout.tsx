@@ -58,6 +58,8 @@ import PrivacyDataSettings from '@features/settings/components/PrivacyDataSettin
 import ExchangeRatesSettings from '@features/settings/components/ExchangeRatesSettings'
 import SyncSettings from '@features/settings/components/SyncSettings'
 import DesktopUpdateSettings from '@features/settings/components/DesktopUpdateSettings'
+import BillingSettings from '@features/settings/components/BillingSettings'
+import BillingBanner from '@features/billing/components/BillingBanner'
 import SyncStatusBadge from '@features/settings/components/SyncStatusBadge'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
 import { isLocalPinEnabled } from '@lib/localPinFlag'
@@ -381,6 +383,8 @@ const DashboardLayout: React.FC = () => {
                     </div>
                 </header>
 
+                <BillingBanner />
+
                 <main className="px-4 py-6 lg:px-8 lg:py-8 max-w-6xl">
                     <Suspense fallback={<LoadingState message="Loading page..." />}>
                         <Outlet />
@@ -472,6 +476,7 @@ const DashboardLayout: React.FC = () => {
                     <TransactionTemplatesSettings />
                     <ExchangeRatesSettings />
                     <BackupRestoreSettings />
+                    <BillingSettings onNavigate={() => setSettingsOpen(false)} />
                     <DesktopUpdateSettings />
                     {isLocalFirstEnabled() && <SyncSettings />}
                     {isLocalPinEnabled() && <PinSettings />}

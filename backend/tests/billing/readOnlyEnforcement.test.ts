@@ -144,6 +144,9 @@ const EXEMPT: RouteCase[] = [
     { method: 'post', path: `/api/v1/workspaces/invites/${id()}/decline` },
     { method: 'post', path: '/api/v1/billing/checkout' },
     { method: 'post', path: '/api/v1/billing/portal' },
+    { method: 'post', path: '/api/v1/billing/change-plan' },
+    { method: 'post', path: '/api/v1/billing/cancel' },
+    { method: 'post', path: '/api/v1/billing/resume' },
 ]
 
 /** Routes with no user session: classified for the drift guard, exercised in their own suites. */

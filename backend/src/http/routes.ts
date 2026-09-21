@@ -4,6 +4,7 @@ import accountRoutes from '@modules/accounts/account.routes'
 import { createAuthRoutes } from '@modules/auth/auth.routes'
 import { createUserRoutes } from '@modules/users/user.routes'
 import backupRoutes from '@modules/backup/backup.routes'
+import billingRoutes from '@modules/billing/billing.routes'
 import budgetRoutes from '@modules/budgets/budget.routes'
 import calendarRoutes from '@modules/calendar/calendar.routes'
 import categoryRoutes from '@modules/categories/category.routes'
@@ -66,6 +67,7 @@ export const mountRoutes = (app: Express): void => {
     app.use('/api/v1/workspaces', createWorkspaceRoutes())
     app.use('/api/v1/imports', importRoutes)
     app.use('/api/v1/backup', backupRoutes)
+    app.use('/api/v1/billing', billingRoutes)
     app.use('/api/v1/forecast', forecastRoutes)
     app.use('/api/v1/calendar', calendarRoutes)
     app.use('/api/v1/subscriptions', subscriptionRoutes)

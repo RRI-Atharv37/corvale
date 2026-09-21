@@ -3,7 +3,12 @@ import crypto from 'node:crypto'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
-import type { BillingProvider, NormalizedBillingEvent, ProviderSubscriptionSnapshot } from './billingProvider'
+import type {
+    BillingProvider,
+    NormalizedBillingEvent,
+    ProviderInvoice,
+    ProviderSubscriptionSnapshot,
+} from './billingProvider'
 
 export const FAKE_SIGNATURE_HEADER = 'x-fake-signature'
 export const FAKE_WEBHOOK_SECRET = 'whsec_test_secret'
@@ -17,6 +22,10 @@ export interface FakeProviderCalls {
     listSubscriptions: number
     createCheckoutSession: Array<Record<string, unknown>>
     getPortalUrl: Array<Record<string, unknown>>
+    listInvoices: Array<Record<string, unknown>>
+    changePlan: Array<Record<string, unknown>>
+    cancelSubscription: Array<Record<string, unknown>>
+    resumeSubscription: Array<Record<string, unknown>>
 }
 
 export interface FakeBillingProviderOptions {
@@ -37,7 +46,12 @@ const optionalDate = (value: unknown): Date | null | undefined => {
 /** Test double: the event body is already the normalised event, signed with HMAC-SHA256 over the raw bytes. */
 export const createFakeBillingProvider = (
     options: FakeBillingProviderOptions = {}
-): { provider: BillingProvider; calls: FakeProviderCalls; remote: ProviderSubscriptionSnapshot[] } => {
+): {
+    provider: BillingProvider
+    calls: FakeProviderCalls
+    remote: ProviderSubscriptionSnapshot[]
+    invoices: ProviderInvoice[]
+} => {
     const secret = options.secret ?? FAKE_WEBHOOK_SECRET
     const signatureHeader = options.signatureHeader ?? FAKE_SIGNATURE_HEADER
     const calls: FakeProviderCalls = {
@@ -46,15 +60,33 @@ export const createFakeBillingProvider = (
         listSubscriptions: 0,
         createCheckoutSession: [],
         getPortalUrl: [],
+        listInvoices: [],
+        changePlan: [],
+        cancelSubscription: [],
+        resumeSubscription: [],
     }
 
     const remote: ProviderSubscriptionSnapshot[] = []
+    const invoices: ProviderInvoice[] = []
 
     const provider: BillingProvider = {
         name: 'fake',
         async listSubscriptions() {
             calls.listSubscriptions += 1
             return remote.map((snapshot) => ({ ...snapshot }))
+        },
+        async listInvoices(input) {
+            calls.listInvoices.push({ ...input })
+            return invoices.map((invoice) => ({ ...invoice })).sort((a, b) => b.issuedAt.getTime() - a.issuedAt.getTime())
+        },
+        async changePlan(input) {
+            calls.changePlan.push({ ...input })
+        },
+        async cancelSubscription(input) {
+            calls.cancelSubscription.push({ ...input })
+        },
+        async resumeSubscription(input) {
+            calls.resumeSubscription.push({ ...input })
         },
         async createCheckoutSession(input) {
             calls.createCheckoutSession.push({ ...input })
@@ -97,5 +129,5 @@ export const createFakeBillingProvider = (
         },
     }
 
-    return { provider, calls, remote }
+    return { provider, calls, remote, invoices }
 }

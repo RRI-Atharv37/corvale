@@ -69,8 +69,18 @@ const applyChanges = async (
     return APPLIED
 }
 
-const subscriptionChanges = (row: ISubscription | null, event: NormalizedBillingEvent): Record<string, unknown> => {
+/**
+ * `resubscribe` lets a creation event move the provider link, but only off a subscription that has
+ * already ended: a cancelled row is finished, so the user's new checkout is their subscription now.
+ * Any other state keeps its link - the provider ids of a live subscription never move.
+ */
+const subscriptionChanges = (
+    row: ISubscription | null,
+    event: NormalizedBillingEvent,
+    resubscribe = false
+): Record<string, unknown> => {
     const changes: Record<string, unknown> = {}
+    const relink = resubscribe && row?.status === 'cancelled'
 
     if (event.planCode) changes.planCode = event.planCode
     if (event.status) {
@@ -81,8 +91,8 @@ const subscriptionChanges = (row: ISubscription | null, event: NormalizedBilling
     if (event.currentPeriodEnd !== undefined) changes.currentPeriodEnd = event.currentPeriodEnd
     if (event.trialEndsAt !== undefined) changes.trialEndsAt = event.trialEndsAt
     if (event.cancelAtPeriodEnd !== undefined) changes.cancelAtPeriodEnd = event.cancelAtPeriodEnd
-    if (event.providerCustomerId && !row?.providerCustomerId) changes.providerCustomerId = event.providerCustomerId
-    if (event.providerSubscriptionId && !row?.providerSubscriptionId) changes.providerSubscriptionId = event.providerSubscriptionId
+    if (event.providerCustomerId && (relink || !row?.providerCustomerId)) changes.providerCustomerId = event.providerCustomerId
+    if (event.providerSubscriptionId && (relink || !row?.providerSubscriptionId)) changes.providerSubscriptionId = event.providerSubscriptionId
 
     return changes
 }
@@ -99,17 +109,17 @@ const handleSubscriptionCreated: BillingEventHandler = async (event) => {
     if (problem) return unapplied(problem)
 
     const known = await findByProviderIds(event)
-    if (known) return applyChanges(known, event, subscriptionChanges(known, event))
+    if (known) return applyChanges(known, event, subscriptionChanges(known, event, true))
 
     const userId = asObjectId(event.userId)
     if (!userId) return unapplied(NO_MATCH)
 
     const byUser = await Subscription.findOne({ userId }).setOptions(BYPASS)
     if (byUser) {
-        if (byUser.providerSubscriptionId || byUser.providerCustomerId) {
+        if ((byUser.providerSubscriptionId || byUser.providerCustomerId) && byUser.status !== 'cancelled') {
             return unapplied('User is already linked to a different provider subscription')
         }
-        return applyChanges(byUser, event, subscriptionChanges(byUser, event))
+        return applyChanges(byUser, event, subscriptionChanges(byUser, event, true))
     }
 
     if (!(await User.exists({ _id: userId }))) return unapplied('No user matches this event')

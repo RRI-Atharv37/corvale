@@ -224,6 +224,12 @@ export const ERROR_MESSAGES = {
         NO_BILLING_CUSTOMER: 'No billing account exists for this user yet',
         PROVIDER_NOT_CONFIGURED: 'Billing is not configured on this server',
         PROVIDER_REQUEST_FAILED: 'The billing provider could not complete the request',
+        NOT_ENABLED: 'Billing is not enabled on this server',
+        INVALID_PLAN: 'Choose a valid plan and billing interval',
+        ALREADY_SUBSCRIBED: 'You already have an active subscription; change or manage it instead of starting a new one',
+        NO_ACTIVE_SUBSCRIPTION: 'You have no active subscription to change',
+        ALREADY_CANCELLING: 'Your subscription is already set to end at the close of the current period',
+        NOT_CANCELLING: 'Your subscription is not set to end, so there is nothing to resume',
     },
     SYNC: {
         INVALID_DEVICE_ID: 'deviceId must be 1-64 characters: letters, numbers, hyphens and underscores',

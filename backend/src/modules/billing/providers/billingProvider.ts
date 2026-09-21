@@ -75,6 +75,30 @@ export interface HostedUrl {
     url: string
 }
 
+export const PROVIDER_INVOICE_STATUSES = ['paid', 'pending', 'void', 'refunded'] as const
+export type ProviderInvoiceStatus = (typeof PROVIDER_INVOICE_STATUSES)[number]
+
+/** One charge as the billing screen lists it. Fetched live, never stored, and never carries an email or a name. */
+export interface ProviderInvoice {
+    id: string
+    issuedAt: Date
+    /** Minor units of `currency`. */
+    total: number
+    currency: string
+    status: ProviderInvoiceStatus
+    /** The provider-hosted invoice/receipt page; null unless it is an https URL. */
+    url: string | null
+}
+
+export interface SubscriptionRef {
+    providerSubscriptionId: string
+}
+
+export interface PlanChangeInput extends SubscriptionRef {
+    planCode: PlanCode
+    interval: BillingInterval
+}
+
 export interface BillingProvider {
     readonly name: string
     createCheckoutSession(input: CheckoutSessionInput): Promise<HostedUrl>
@@ -85,4 +109,14 @@ export interface BillingProvider {
     parseEvent(rawBody: Buffer): NormalizedBillingEvent
     /** Every subscription of this deployment's store, all pages. Throws a 502 `CustomError` rather than return a partial list. */
     listSubscriptions(): Promise<ProviderSubscriptionSnapshot[]>
+    /** Most recent charges of one subscription, newest first. Throws a 502 `CustomError` when the provider cannot answer. */
+    listInvoices(input: SubscriptionRef): Promise<ProviderInvoice[]>
+    /**
+     * The three calls below only *ask* the provider. None of them changes what Corvale believes: the
+     * resulting state arrives on a signed webhook, like every other entitlement change.
+     */
+    changePlan(input: PlanChangeInput): Promise<void>
+    /** Ends the subscription at the close of the paid period; the provider keeps billing until then. */
+    cancelSubscription(input: SubscriptionRef): Promise<void>
+    resumeSubscription(input: SubscriptionRef): Promise<void>
 }

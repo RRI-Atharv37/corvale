@@ -97,6 +97,70 @@ describe('linking a subscription to a user', () => {
     })
 })
 
+describe('resubscribing after a subscription ended (M6)', () => {
+    const NEW_IDS = { providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_second' }
+
+    it('moves the link onto the new provider subscription when the old one is cancelled', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original' })
+
+        const outcome = await applyBillingEvent(
+            event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'plus', status: 'active', currentPeriodEnd: daysFromNow(30) })
+        )
+
+        expect(outcome.status).toBe('applied')
+        expect(await sub()).toMatchObject({ status: 'active', planCode: 'plus', providerSubscriptionId: 'sub_second', providerCustomerId: 'cus_original' })
+    })
+
+    it('does so even when the provider issues a new customer id for the new subscription', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original' })
+
+        const outcome = await applyBillingEvent(
+            event({ type: 'subscription.created', userId: user.userId, providerCustomerId: 'cus_second', providerSubscriptionId: 'sub_second', planCode: 'pro', status: 'active' })
+        )
+
+        expect(outcome.status).toBe('applied')
+        expect(await sub()).toMatchObject({ status: 'active', planCode: 'pro', providerSubscriptionId: 'sub_second', providerCustomerId: 'cus_second' })
+    })
+
+    it('starts a clean billing slate: no stale dunning or lapse markers survive the new subscription', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original', lapsedAt: daysFromNow(-40) })
+
+        await applyBillingEvent(event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'plus', status: 'active' }))
+
+        expect(await sub()).toMatchObject({ pastDueSince: null, dunningStage: null })
+    })
+
+    it('a stale event for the OLD subscription can no longer revive or alter the row', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original', lastEventAt: daysFromNow(-3) })
+        await applyBillingEvent(event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'plus', status: 'active', occurredAt: daysFromNow(-1) }))
+
+        await applyBillingEvent(
+            event({ type: 'subscription.deleted', providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original', status: 'cancelled', occurredAt: daysFromNow(-2) })
+        )
+
+        expect(await sub()).toMatchObject({ status: 'active', providerSubscriptionId: 'sub_second' })
+    })
+
+    it.each(['active', 'past_due', 'trialing'] as const)('never re-links a %s subscription, however the event names the user', async (status) => {
+        await setSubscription(user.userId, { status, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original' })
+
+        const outcome = await applyBillingEvent(
+            event({ type: 'subscription.created', userId: user.userId, providerCustomerId: 'cus_second', providerSubscriptionId: 'sub_second', planCode: 'pro', status: 'active' })
+        )
+
+        expect(outcome.status).toBe('unapplied')
+        expect((await sub())?.providerSubscriptionId).toBe('sub_original')
+    })
+
+    it('an update event never moves the link, only a creation does', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original' })
+
+        await applyBillingEvent(event({ type: 'subscription.updated', ...NEW_IDS, planCode: 'plus', status: 'active' }))
+
+        expect((await sub())?.providerSubscriptionId).toBe('sub_original')
+    })
+})
+
 describe('subscription events', () => {
     beforeEach(() => setSubscription(user.userId, { status: 'active', planCode: 'pro', ...ids() }))
 

@@ -213,4 +213,14 @@ export const API_PATHS = {
     DESKTOP: {
         RELEASE_MANIFEST: '/desktop/release-manifest',
     },
+    BILLING: {
+        PLANS: '/billing/plans',
+        OVERVIEW: '/billing/overview',
+        INVOICES: '/billing/invoices',
+        CHECKOUT: '/billing/checkout',
+        PORTAL: '/billing/portal',
+        CHANGE_PLAN: '/billing/change-plan',
+        CANCEL: '/billing/cancel',
+        RESUME: '/billing/resume',
+    },
 } as const

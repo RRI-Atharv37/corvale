@@ -46,6 +46,8 @@ const CalendarPage = lazy(() => import('@features/calendar/CalendarPage'))
 const Subscriptions = lazy(() => import('@features/subscriptions/SubscriptionsPage'))
 const DebtPayoff = lazy(() => import('@features/debts/DebtPayoffPage'))
 const Download = lazy(() => import('@features/download/DownloadPage'))
+const Pricing = lazy(() => import('@features/billing/PricingPage'))
+const Billing = lazy(() => import('@features/billing/BillingPage'))
 const LegalPage = lazy(() => import('@features/legal/LegalPage'))
 
 const AppRoutes = () => {
@@ -62,6 +64,15 @@ const AppRoutes = () => {
                 element={
                     <Suspense fallback={<LoadingState message="Loading..." />}>
                         <Download />
+                    </Suspense>
+                }
+            />
+
+            <Route
+                path="/pricing"
+                element={
+                    <Suspense fallback={<LoadingState message="Loading..." />}>
+                        <Pricing />
                     </Suspense>
                 }
             />
@@ -101,6 +112,7 @@ const AppRoutes = () => {
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/subscriptions" element={<Subscriptions />} />
                 <Route path="/debts" element={<DebtPayoff />} />
+                <Route path="/settings/billing" element={<Billing />} />
             </Route>
 
             {/* Public legal pages (M0c). Generated from the document registry so a route can

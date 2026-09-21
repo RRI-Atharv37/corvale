@@ -10,6 +10,8 @@ import {
     type BillingProvider,
     type KnownBillingEventType,
     type NormalizedBillingEvent,
+    type ProviderInvoice,
+    type ProviderInvoiceStatus,
     type ProviderSubscriptionSnapshot,
 } from './billingProvider'
 
@@ -33,6 +35,7 @@ const DEFAULT_TIMEOUT_MS = 10_000
 const JSON_API = 'application/vnd.api+json'
 const SIGNATURE_HEADER = 'x-signature'
 const LIST_PAGE_SIZE = 100
+const INVOICE_PAGE_SIZE = 50
 const MAX_LIST_PAGES = 500
 
 const SETTINGS = {
@@ -142,7 +145,7 @@ export const createMorProvider = (
         for (const interval of BILLING_INTERVALS) planByVariant.set(config.variants[plan][interval], plan)
     }
 
-    const call = async (operation: string, path: string, init: { method: 'GET' | 'POST'; body?: unknown }): Promise<Json> => {
+    const call = async (operation: string, path: string, init: { method: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown }): Promise<Json> => {
         let response: Response
         try {
             response = await fetchImpl(`${apiBase}${path}`, {
@@ -205,6 +208,49 @@ export const createMorProvider = (
         return typeof lastPage === 'number' && Number.isInteger(lastPage) && lastPage >= 1 ? lastPage : 1
     }
 
+    const toInvoice = (entry: unknown): ProviderInvoice | null => {
+        if (!isObject(entry)) return null
+        const id = asId(entry.id)
+        const attributes = isObject(entry.attributes) ? entry.attributes : {}
+        const issuedAt = asDate(attributes.created_at)
+        if (!id || !issuedAt) return null
+
+        const urls = isObject(attributes.urls) ? attributes.urls : {}
+        const providerStatus = attributes.status
+        const status: ProviderInvoiceStatus =
+            attributes.refunded === true || providerStatus === 'refunded' || providerStatus === 'partial_refund'
+                ? 'refunded'
+                : providerStatus === 'paid'
+                  ? 'paid'
+                  : providerStatus === 'void'
+                    ? 'void'
+                    : 'pending'
+
+        return {
+            id,
+            issuedAt,
+            total: typeof attributes.total === 'number' ? attributes.total : 0,
+            currency: typeof attributes.currency === 'string' ? attributes.currency : 'USD',
+            status,
+            url: isHttps(urls.invoice_url) ? urls.invoice_url : null,
+        }
+    }
+
+    const variantFor = (planCode: PlanCode, interval: (typeof BILLING_INTERVALS)[number]): number | string => {
+        const variant = config.variants[planCode][interval]
+        return Number.isInteger(Number(variant)) ? Number(variant) : variant
+    }
+
+    const subscriptionPath = (providerSubscriptionId: string): string =>
+        `/v1/subscriptions/${encodeURIComponent(providerSubscriptionId)}`
+
+    const patchSubscription = async (operation: string, providerSubscriptionId: string, attributes: Json): Promise<void> => {
+        await call(operation, subscriptionPath(providerSubscriptionId), {
+            method: 'PATCH',
+            body: { data: { type: 'subscriptions', id: providerSubscriptionId, attributes } },
+        })
+    }
+
     const toSnapshot = (entry: unknown): ProviderSubscriptionSnapshot => {
         const providerSubscriptionId = isObject(entry) ? asId(entry.id) : undefined
         if (!isObject(entry) || !providerSubscriptionId) {
@@ -258,6 +304,33 @@ export const createMorProvider = (
             } while (pageNumber <= lastPage)
 
             return snapshots
+        },
+
+        async listInvoices({ providerSubscriptionId }) {
+            const query = new URLSearchParams({
+                'filter[store_id]': config.storeId,
+                'filter[subscription_id]': providerSubscriptionId,
+                'page[size]': String(INVOICE_PAGE_SIZE),
+            })
+            const body = await call('listInvoices', `/v1/subscription-invoices?${query.toString()}`, { method: 'GET' })
+
+            const entries = Array.isArray(body.data) ? body.data : []
+            return entries
+                .map(toInvoice)
+                .filter((invoice): invoice is ProviderInvoice => invoice !== null)
+                .sort((a, b) => b.issuedAt.getTime() - a.issuedAt.getTime())
+        },
+
+        async changePlan({ providerSubscriptionId, planCode, interval }) {
+            await patchSubscription('changePlan', providerSubscriptionId, { variant_id: variantFor(planCode, interval) })
+        },
+
+        async cancelSubscription({ providerSubscriptionId }) {
+            await call('cancelSubscription', subscriptionPath(providerSubscriptionId), { method: 'DELETE' })
+        },
+
+        async resumeSubscription({ providerSubscriptionId }) {
+            await patchSubscription('resumeSubscription', providerSubscriptionId, { cancelled: false })
         },
 
         async createCheckoutSession({ userId, email, planCode, interval, returnUrl }) {

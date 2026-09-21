@@ -58,6 +58,8 @@ const morHarness = (): ProviderHarness => {
         if (url.endsWith('/v1/checkouts')) {
             return jsonResponse({ data: { attributes: { url: 'https://store.example.test/checkout/custom/abc' } } })
         }
+        if (url.includes('/v1/subscription-invoices')) return jsonResponse({ data: [] })
+        if (url.includes('/v1/subscriptions/')) return jsonResponse({ data: { attributes: {} } })
         return jsonResponse({ data: { attributes: { urls: { customer_portal: 'https://store.example.test/billing?x=1' } } } })
     }
     const provider = createMorProvider(morConfig(), { fetchImpl: fetchImpl as typeof fetch })
@@ -282,6 +284,20 @@ describe.each([
             const portal = await provider.getPortalUrl({ providerCustomerId: '55' })
 
             expect(portal.url).toMatch(/^https:\/\//)
+        })
+    })
+
+    describe('account management (M6)', () => {
+        it('listInvoices returns an array, never a partial or a raw provider body', async () => {
+            const invoices = await provider.listInvoices({ providerSubscriptionId: '77' })
+
+            expect(Array.isArray(invoices)).toBe(true)
+        })
+
+        it('changePlan, cancelSubscription and resumeSubscription resolve without returning provider state', async () => {
+            await expect(provider.changePlan({ providerSubscriptionId: '77', planCode: 'pro', interval: 'annual' })).resolves.toBeUndefined()
+            await expect(provider.cancelSubscription({ providerSubscriptionId: '77' })).resolves.toBeUndefined()
+            await expect(provider.resumeSubscription({ providerSubscriptionId: '77' })).resolves.toBeUndefined()
         })
     })
 })
