@@ -230,6 +230,7 @@ export const ERROR_MESSAGES = {
         NO_ACTIVE_SUBSCRIPTION: 'You have no active subscription to change',
         ALREADY_CANCELLING: 'Your subscription is already set to end at the close of the current period',
         NOT_CANCELLING: 'Your subscription is not set to end, so there is nothing to resume',
+        ERASURE_CANCEL_FAILED: 'We could not cancel your subscription with the payment provider, so your account was not deleted. Please try again shortly',
     },
     SYNC: {
         INVALID_DEVICE_ID: 'deviceId must be 1-64 characters: letters, numbers, hyphens and underscores',

@@ -17,7 +17,13 @@ import { Pushover } from '@modules/savers'
 import { ReconciliationSession } from '@modules/reconciliation'
 import { SavedReport } from '@modules/reports'
 import { SyncOperation } from '@modules/sync'
-import { Subscription, SyncDevice, UsageCounter } from '@modules/billing'
+import {
+    Subscription,
+    SyncDevice,
+    UsageCounter,
+    redactLedgerProviderIds,
+    stopProviderBillingForErasure,
+} from '@modules/billing'
 import { Income } from '@modules/legacy'
 import { Expense } from '@modules/legacy'
 import { IWorkspace, Workspace } from '@modules/workspaces'
@@ -277,6 +283,9 @@ const notifyRemainingMembersOfDeparture = async (
  * sole *owner* of a workspace that still has other members (ownership must be transferred first).
  */
 export const deleteUserAccountCascade = async (userId: string): Promise<void> => {
+    // Before anything is deleted: a subscription that cannot be stopped at the provider refuses the erasure.
+    const providerIdentifiers = await stopProviderBillingForErasure(userId)
+
     const { retainedWorkspaceIds, emptiedWorkspaceIds, retainedWorkspaces } =
         await computeWorkspaceDepartureImpact(userId)
 
@@ -349,6 +358,9 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
     // Drop the now-deleted user from the member list of every workspace they're still in (the
     // retained ones - the emptied ones are already gone above).
     await Workspace.updateMany({ 'members.userId': userId }, { $pull: { members: { userId } } })
+
+    // The Subscription row is gone; the ledger is not user-scoped, so its provider ids are removed explicitly.
+    await redactLedgerProviderIds(providerIdentifiers)
 
     await notifyRemainingMembersOfDeparture(retainedWorkspaces, userId)
 

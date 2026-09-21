@@ -8,6 +8,7 @@ export interface IBillingEvent extends Document {
     payload: Record<string, unknown>
     processedAt: Date | null
     error: string | null
+    redactedAt: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -25,6 +26,7 @@ const BillingEventSchema = new Schema<IBillingEvent>(
         payload: { type: Schema.Types.Mixed, default: {}, immutable: true },
         processedAt: { type: Date, default: null },
         error: { type: String, default: null },
+        redactedAt: { type: Date, default: null },
     },
     { timestamps: true, minimize: false }
 )
@@ -46,8 +48,30 @@ const touchesImmutablePath = (update: unknown): boolean => {
     )
 }
 
+/**
+ * The one sanctioned exception to append-only: provider ids identify a person at the Merchant of
+ * Record, so erasure must be able to remove exactly those two fields. Only `redactLedgerProviderIds`
+ * passes this option, and the update shape is checked so nothing else can ride along with it.
+ */
+export const BILLING_EVENT_REDACTION = Symbol('billingEventRedaction')
+
+const REDACTABLE_PATHS = ['payload.providerCustomerId', 'payload.providerSubscriptionId']
+
+const isRedactionUpdate = (update: unknown): boolean => {
+    if (!update || typeof update !== 'object') return false
+    const { $unset, $set, ...rest } = update as { $unset?: Record<string, unknown>; $set?: Record<string, unknown> }
+    if (Object.keys(rest).length > 0) return false
+    return (
+        Object.keys($unset ?? {}).every((path) => REDACTABLE_PATHS.includes(path)) &&
+        Object.keys($set ?? {}).every((path) => path === 'redactedAt')
+    )
+}
+
 const refuseRewrite = function (this: Query<unknown, unknown>, next: (err?: Error) => void) {
-    return touchesImmutablePath(this.getUpdate()) ? next(new Error(APPEND_ONLY_UPDATE)) : next()
+    const update = this.getUpdate()
+    if (!touchesImmutablePath(update)) return next()
+    const sanctioned = (this.getOptions() as Record<symbol, unknown>)[BILLING_EVENT_REDACTION] === true
+    return sanctioned && isRedactionUpdate(update) ? next() : next(new Error(APPEND_ONLY_UPDATE))
 }
 
 for (const operation of ['updateOne', 'updateMany', 'findOneAndUpdate'] as const) {

@@ -19,7 +19,7 @@ const main = async (): Promise<void> => {
 
     const sweep = await runBillingSweeps()
     if (sweep.skipped) {
-        console.log('BILLING_ENABLED is not true; nothing to sweep.')
+        console.log(`BILLING_ENABLED is not true; only the ledger scrub ran (${sweep.ledgerRedacted} redacted).`)
         process.exit(0)
     }
 

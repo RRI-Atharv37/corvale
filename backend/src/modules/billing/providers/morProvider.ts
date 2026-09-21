@@ -325,6 +325,7 @@ export const createMorProvider = (
             await patchSubscription('changePlan', providerSubscriptionId, { variant_id: variantFor(planCode, interval) })
         },
 
+        // The provider's cancel call stops all further charges but has no expire-now; `immediate` is honoured to that extent.
         async cancelSubscription({ providerSubscriptionId }) {
             await call('cancelSubscription', subscriptionPath(providerSubscriptionId), { method: 'DELETE' })
         },

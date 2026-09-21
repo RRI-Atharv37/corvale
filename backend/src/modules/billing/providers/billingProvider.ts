@@ -94,6 +94,11 @@ export interface SubscriptionRef {
     providerSubscriptionId: string
 }
 
+export interface CancelSubscriptionInput extends SubscriptionRef {
+    /** Stop billing now instead of at the close of the paid period; used only when the account is being erased. */
+    immediate?: boolean
+}
+
 export interface PlanChangeInput extends SubscriptionRef {
     planCode: PlanCode
     interval: BillingInterval
@@ -117,6 +122,6 @@ export interface BillingProvider {
      */
     changePlan(input: PlanChangeInput): Promise<void>
     /** Ends the subscription at the close of the paid period; the provider keeps billing until then. */
-    cancelSubscription(input: SubscriptionRef): Promise<void>
+    cancelSubscription(input: CancelSubscriptionInput): Promise<void>
     resumeSubscription(input: SubscriptionRef): Promise<void>
 }

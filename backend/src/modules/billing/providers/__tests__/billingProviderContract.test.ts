@@ -297,6 +297,7 @@ describe.each([
         it('changePlan, cancelSubscription and resumeSubscription resolve without returning provider state', async () => {
             await expect(provider.changePlan({ providerSubscriptionId: '77', planCode: 'pro', interval: 'annual' })).resolves.toBeUndefined()
             await expect(provider.cancelSubscription({ providerSubscriptionId: '77' })).resolves.toBeUndefined()
+            await expect(provider.cancelSubscription({ providerSubscriptionId: '77', immediate: true })).resolves.toBeUndefined()
             await expect(provider.resumeSubscription({ providerSubscriptionId: '77' })).resolves.toBeUndefined()
         })
     })
