@@ -1,6 +1,6 @@
 import { READ_ONLY_ENTITLEMENTS } from '@lib/entitlements'
 import type { EntitlementSnapshot } from '@lib/types/api'
-import type { BillingNotice, PublicPlan } from './types'
+import type { BillingNotice, PublicPlan, SyncDevice } from './types'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const URGENT_TRIAL_DAYS = 3
@@ -126,4 +126,13 @@ export const describeBilling = (entitlements: EntitlementSnapshot, now: Date): B
         message: 'You do not have a plan yet, so your data is read-only. Nothing was deleted, and you can export it at any time.',
         cta: 'Choose a plan',
     }
+}
+
+const DEVICE_KIND_LABEL = { desktop: 'Desktop app', web: 'Web browser', pwa: 'Installed web app' } as const
+
+/** A device is never shown by its id: that is an implementation detail with no meaning to the person. */
+export const deviceLabel = (device: SyncDevice): string => {
+    if (device.name) return device.name
+    if (device.kind) return DEVICE_KIND_LABEL[device.kind]
+    return device.deviceId === '_legacy' ? 'Earlier app version' : 'Unknown device'
 }

@@ -7,10 +7,13 @@ import {
     changePlan,
     createCheckout,
     createPortal,
+    getDevices,
     getInvoices,
     getOverview,
     getPlans,
+    renameDevice,
     resumeSubscription,
+    revokeDevice,
 } from './billing.controller'
 
 // Every route here is deliberately outside the read-only write gate: a lapsed user must always be
@@ -26,5 +29,8 @@ router.post('/portal', protect, createPortal)
 router.post('/change-plan', protect, changePlan)
 router.post('/cancel', protect, cancelSubscription)
 router.post('/resume', protect, resumeSubscription)
+router.get('/devices', protect, getDevices)
+router.patch('/devices/:deviceId', protect, renameDevice)
+router.delete('/devices/:deviceId', protect, revokeDevice)
 
 export default router

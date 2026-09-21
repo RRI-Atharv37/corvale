@@ -5,6 +5,7 @@ import { unwrapApiData } from '@lib/apiHelpers'
 import { buildWorkspaceBodyFields, buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import type { SyncableRecord } from '../db/repositories/Repository'
 import type { OutboxOp } from './outbox'
+import { getDeviceIdentity } from './deviceIdentity'
 import { parseOutboxEntity } from './entityMap'
 
 export interface BootstrapSyncSnapshot {
@@ -25,7 +26,7 @@ export const fetchBootstrapSnapshot = async (
     workspaceId: string | null | undefined
 ): Promise<BootstrapSyncSnapshot> => {
     const response = await axiosInstance.get<ApiResponse<BootstrapSyncSnapshot>>(API_PATHS.SYNC.BOOTSTRAP, {
-        params: buildWorkspaceQueryParams(workspaceId),
+        params: { ...buildWorkspaceQueryParams(workspaceId), ...getDeviceIdentity() },
     })
     return unwrapApiData(response)
 }
@@ -56,6 +57,7 @@ export const fetchPullPage = async (
         params: {
             ...buildWorkspaceQueryParams(workspaceId),
             ...(checkpoint ? { checkpoint } : {}),
+            ...getDeviceIdentity(),
         },
     })
     return unwrapApiData(response)
@@ -83,6 +85,7 @@ export const pushOutboxOps = async (
 ): Promise<PushOpsResponse> => {
     const response = await axiosInstance.post<ApiResponse<PushOpsResponse>>(API_PATHS.SYNC.PUSH, {
         ...buildWorkspaceBodyFields(workspaceId),
+        ...getDeviceIdentity(),
         ops: ops.map((op) => ({
             opId: op.opId,
             entity: parseOutboxEntity(op.entity).entityType,

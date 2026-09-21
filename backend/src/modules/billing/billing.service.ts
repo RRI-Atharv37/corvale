@@ -11,6 +11,7 @@ import { BILLING_INTERVALS, type BillingInterval, type ProviderInvoice } from '.
 import { getBillingProvider } from './providers/providerRegistry'
 import { getRetentionDays, isRetentionEnabled } from './retention.service'
 import Subscription, { type ISubscription } from './subscription.model'
+import { listSyncDevices, parseDeviceId } from './syncDevice.service'
 
 export interface PublicPlan {
     code: PlanCode
@@ -172,4 +173,10 @@ export const listInvoices = async (userId: string): Promise<ProviderInvoice[]> =
     if (!subscription?.providerSubscriptionId) return []
 
     return getBillingProvider().listInvoices({ providerSubscriptionId: subscription.providerSubscriptionId })
+}
+
+export const getSyncDevices = async (userId: string, rawCurrentDeviceId: unknown) => {
+    const currentDeviceId = parseDeviceId(rawCurrentDeviceId)
+    const { limits } = await getUserEntitlements(userId)
+    return listSyncDevices(userId, currentDeviceId, limits.syncDevices)
 }

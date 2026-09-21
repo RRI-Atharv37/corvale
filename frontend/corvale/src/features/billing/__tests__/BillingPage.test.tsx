@@ -7,12 +7,15 @@ import toast from 'react-hot-toast'
 import BillingPage from '../BillingPage'
 import * as api from '../billingApi'
 import { openExternalUrl } from '@lib/openExternal'
-import { LAPSED, daysFromNow, overview, plans, renderWithUser, snapshot } from './fixtures'
+import { LAPSED, daysFromNow, device, overview, plans, renderWithUser, snapshot } from './fixtures'
 
 vi.mock('../billingApi', () => ({
     fetchPublicPlans: vi.fn(),
     fetchBillingOverview: vi.fn(),
     fetchInvoices: vi.fn(),
+    fetchDevices: vi.fn(),
+    revokeDevice: vi.fn(),
+    renameDevice: vi.fn(),
     startCheckout: vi.fn(),
     openBillingPortal: vi.fn(),
     requestPlanChange: vi.fn(),
@@ -40,6 +43,9 @@ beforeEach(() => {
     vi.mocked(api.fetchPublicPlans).mockResolvedValue(plans())
     vi.mocked(api.fetchBillingOverview).mockResolvedValue(overview())
     vi.mocked(api.fetchInvoices).mockResolvedValue([])
+    vi.mocked(api.fetchDevices).mockResolvedValue({ devices: [], limit: null })
+    vi.mocked(api.revokeDevice).mockResolvedValue(undefined)
+    vi.mocked(api.renameDevice).mockResolvedValue(undefined)
     vi.mocked(api.startCheckout).mockResolvedValue('https://pay.example/checkout')
     vi.mocked(api.openBillingPortal).mockResolvedValue('https://pay.example/portal')
     vi.mocked(api.requestPlanChange).mockResolvedValue(undefined)
@@ -349,5 +355,95 @@ describe('a subscription that is set to end', () => {
 
         await waitFor(() => expect(api.requestResume).toHaveBeenCalledTimes(1))
         await waitFor(() => expect(updateUser).toHaveBeenCalled())
+    })
+})
+
+describe('sync devices', () => {
+    const twoDevices = () => ({
+        devices: [device({ deviceId: 'desk', kind: 'desktop', current: true }), device({ deviceId: 'phone', kind: 'pwa', canPush: false })],
+        limit: 1,
+    })
+
+    it('lists the devices, this one first marked, next to the plan limit', async () => {
+        vi.mocked(api.fetchDevices).mockResolvedValue(twoDevices())
+        renderBilling(snapshot({ planCode: 'plus' }))
+
+        const region = await screen.findByRole('region', { name: /sync devices/i })
+
+        expect(within(region).getAllByRole('listitem')).toHaveLength(2)
+        expect(within(region).getByText(/this device/i)).toBeInTheDocument()
+        expect(within(region).getByText(/download only/i)).toBeInTheDocument()
+    })
+
+    it('removing a device revokes exactly that one and then re-reads the list', async () => {
+        vi.mocked(api.fetchDevices).mockResolvedValueOnce(twoDevices()).mockResolvedValue({ devices: [twoDevices().devices[0]], limit: 1 })
+        const user = userEvent.setup()
+        renderBilling(snapshot({ planCode: 'plus' }))
+
+        await user.click(await screen.findByRole('button', { name: /remove installed web app/i }))
+        await user.click(screen.getByRole('button', { name: /yes, remove/i }))
+
+        await waitFor(() => expect(api.revokeDevice).toHaveBeenCalledExactlyOnceWith('phone'))
+        await waitFor(() => expect(api.fetchDevices).toHaveBeenCalledTimes(2))
+        await waitFor(() => expect(screen.queryByRole('button', { name: /remove installed web app/i })).not.toBeInTheDocument())
+        expect(toast.success).toHaveBeenCalled()
+    })
+
+    it('renaming a device sends the name and re-reads the list', async () => {
+        vi.mocked(api.fetchDevices).mockResolvedValue(twoDevices())
+        const user = userEvent.setup()
+        renderBilling(snapshot({ planCode: 'plus' }))
+
+        await user.click(await screen.findByRole('button', { name: /rename installed web app/i }))
+        await user.type(screen.getByRole('textbox', { name: /device name/i }), 'Phone')
+        await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+        await waitFor(() => expect(api.renameDevice).toHaveBeenCalledExactlyOnceWith('phone', 'Phone'))
+        await waitFor(() => expect(api.fetchDevices).toHaveBeenCalledTimes(2))
+    })
+
+    it('reports a failed removal and leaves the list as it was', async () => {
+        vi.mocked(api.fetchDevices).mockResolvedValue(twoDevices())
+        vi.mocked(api.revokeDevice).mockRejectedValue(new Error('nope'))
+        const user = userEvent.setup()
+        renderBilling(snapshot({ planCode: 'plus' }))
+
+        await user.click(await screen.findByRole('button', { name: /remove installed web app/i }))
+        await user.click(screen.getByRole('button', { name: /yes, remove/i }))
+
+        await waitFor(() => expect(toast.error).toHaveBeenCalled())
+        expect(toast.success).not.toHaveBeenCalled()
+        expect(api.fetchDevices).toHaveBeenCalledTimes(1)
+    })
+
+    it('is still there, and still works, when the subscription has lapsed: freeing a slot is never locked', async () => {
+        vi.mocked(api.fetchBillingOverview).mockResolvedValue(overview({ hasBillingCustomer: false, hasLiveSubscription: false }))
+        vi.mocked(api.fetchDevices).mockResolvedValue(twoDevices())
+        const user = userEvent.setup()
+        renderBilling(snapshot({ status: 'cancelled', ...LAPSED, currentPeriodEnd: null }))
+
+        await user.click(await screen.findByRole('button', { name: /remove installed web app/i }))
+        await user.click(screen.getByRole('button', { name: /yes, remove/i }))
+
+        await waitFor(() => expect(api.revokeDevice).toHaveBeenCalledWith('phone'))
+    })
+
+    it('a failed device load shows in the section and leaves the rest of the page usable', async () => {
+        vi.mocked(api.fetchDevices).mockRejectedValue(new Error('offline'))
+        renderBilling()
+
+        expect(await screen.findByText(/could not load your devices/i)).toBeInTheDocument()
+        expect(screen.getByRole('region', { name: /current plan/i })).toBeInTheDocument()
+    })
+
+    it('asks for nothing while billing is off', async () => {
+        vi.mocked(api.fetchPublicPlans).mockResolvedValue(plans({ billingEnabled: false, plans: [] }))
+        vi.mocked(api.fetchBillingOverview).mockResolvedValue(overview({ billingEnabled: false, hasBillingCustomer: false, hasLiveSubscription: false }))
+        renderBilling(snapshot({ billingEnabled: false }))
+
+        await screen.findByText(/billing is not enabled/i)
+
+        expect(api.fetchDevices).not.toHaveBeenCalled()
+        expect(screen.queryByRole('region', { name: /sync devices/i })).not.toBeInTheDocument()
     })
 })

@@ -233,5 +233,8 @@ export const ERROR_MESSAGES = {
     },
     SYNC: {
         INVALID_DEVICE_ID: 'deviceId must be 1-64 characters: letters, numbers, hyphens and underscores',
+        INVALID_DEVICE_KIND: 'deviceKind must be one of: desktop, web, pwa',
+        INVALID_DEVICE_NAME: 'A device name must be 1-40 characters with no control characters, or null to clear it',
+        DEVICE_NOT_FOUND: 'Sync device not found',
     },
 }

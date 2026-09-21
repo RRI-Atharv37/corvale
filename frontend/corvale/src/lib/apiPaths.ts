@@ -222,5 +222,6 @@ export const API_PATHS = {
         CHANGE_PLAN: '/billing/change-plan',
         CANCEL: '/billing/cancel',
         RESUME: '/billing/resume',
+        DEVICES: '/billing/devices',
     },
 } as const

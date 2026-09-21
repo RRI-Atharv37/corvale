@@ -47,4 +47,12 @@ describe('wipeLocalData (BUG-30: report a cleared PIN)', () => {
         expect(result).toEqual({ pinCleared: true })
         expect(localStorage.getItem(LEGACY_PIN_VERIFIER_KEY)).toBeNull()
     })
+
+    it('keeps the device id: a wipe is not a new device, and a fresh id would strand a slot', async () => {
+        localStorage.setItem('corvale_device_id', 'install-1')
+
+        await wipeLocalData()
+
+        expect(localStorage.getItem('corvale_device_id')).toBe('install-1')
+    })
 })

@@ -151,6 +151,24 @@ The desktop app checks for updates against the release host it was built to use.
 updater, that check discloses your IP address and the version you are running to whoever serves
 those releases. It sends nothing about you or your records.
 
+### The devices you sync from
+
+Each copy of Corvale you use — a browser tab, the installed web app, the desktop app — makes up a
+random device ID the first time it runs and keeps it on that device. When it syncs it sends that
+ID, and one of three labels (desktop app, web browser or installed web app), so we can tell your
+copies apart. Against your account we keep the ID, the label, when the device first and last
+synced, and a name only if you choose to give it one.
+
+We use this for two things: to apply any limit your plan puts on how many devices can upload
+changes, and to show you your devices in your billing settings so you can rename one or remove it.
+Removing a device deletes that record and nothing else — your records are not touched, and a
+device that syncs again is simply added back. These records are erased with the rest of your
+account when you delete it.
+
+The ID is random. It is not derived from your browser, your hardware or anything else about the
+machine, and we do not record your IP address, browser, operating system or any other description
+of the device.
+
 ## What we do not collect
 
 We think this list matters as much as the one above.
@@ -165,8 +183,10 @@ We think this list matters as much as the one above.
   loads comes from our own servers, so no third party learns that you visited.
 - **No date of birth.** We ask only whether you are 18 or older, and store just that answer.
 - **We do not keep your IP address or device details as part of your account profile or your
-  login-session records.** IP addresses are processed briefly for rate limiting and security, as
-  described above, and then expire.
+  login-session records.** The only thing we keep about a device is the random ID, coarse type and
+  optional name described under [The devices you sync from](#the-devices-you-sync-from). IP
+  addresses are processed briefly for rate limiting and security, as described above, and then
+  expire.
 
 ## Why we use your data, and on what basis
 

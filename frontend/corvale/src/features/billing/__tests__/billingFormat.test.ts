@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { READ_ONLY_ENTITLEMENTS } from '@lib/entitlements'
-import { describeBilling, formatBytes, formatUsd, whole, wholeDaysLeft, yearlySavingsPercent } from '../billingFormat'
-import { LAPSED, daysFromNow, snapshot } from './fixtures'
+import { describeBilling, deviceLabel, formatBytes, formatUsd, whole, wholeDaysLeft, yearlySavingsPercent } from '../billingFormat'
+import { LAPSED, daysFromNow, device, snapshot } from './fixtures'
 
 const NOW = new Date()
 
@@ -131,5 +131,27 @@ describe('describeBilling', () => {
     it('a grandfathered account that still writes is never nagged, whatever its stored status says', () => {
         expect(describeBilling(snapshot({ status: 'cancelled', canWrite: true }), NOW)).toBeNull()
         expect(describeBilling(snapshot({ status: 'trial_expired', canWrite: true }), NOW)).toBeNull()
+    })
+})
+
+describe('deviceLabel', () => {
+    it('prefers the name the user chose', () => {
+        expect(deviceLabel(device({ name: 'Work laptop', kind: 'desktop' }))).toBe('Work laptop')
+    })
+
+    it.each([
+        ['desktop', 'Desktop app'],
+        ['web', 'Web browser'],
+        ['pwa', 'Installed web app'],
+    ] as const)('names an unnamed %s device %s', (kind, label) => {
+        expect(deviceLabel(device({ name: null, kind }))).toBe(label)
+    })
+
+    it('calls the shared row of pre-identity clients an earlier app version', () => {
+        expect(deviceLabel(device({ deviceId: '_legacy', kind: null, name: null }))).toBe('Earlier app version')
+    })
+
+    it('never shows a raw id: an unknown kind is just an unknown device', () => {
+        expect(deviceLabel(device({ deviceId: 'a1b2c3', kind: null, name: null }))).toBe('Unknown device')
     })
 })

@@ -1,4 +1,5 @@
 import type { BillingFeature } from '@lib/types/api'
+import type { DeviceKind } from '@platform/sync/deviceIdentity'
 
 export type BillingInterval = 'monthly' | 'annual'
 export type PlanCode = 'plus' | 'pro'
@@ -29,6 +30,25 @@ export interface BillingOverview {
     hasLiveSubscription: boolean
     /** Set only while the server is really enforcing a retention window. */
     retentionDays: number | null
+}
+
+export interface SyncDevice {
+    deviceId: string
+    /** `null` for the shared row of clients that shipped before devices had ids. */
+    kind: DeviceKind | null
+    name: string | null
+    firstSeenAt: string
+    lastSeenAt: string
+    /** The device that asked. */
+    current: boolean
+    /** Whether the plan lets this device upload changes; every device downloads. */
+    canPush: boolean
+}
+
+export interface SyncDevices {
+    devices: SyncDevice[]
+    /** `null` = every device may push. */
+    limit: number | null
 }
 
 export type InvoiceStatus = 'paid' | 'pending' | 'void' | 'refunded'

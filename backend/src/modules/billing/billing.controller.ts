@@ -8,6 +8,7 @@ import type { AuthRequest } from '@http/middleware/authTypes'
 import {
     getBillingOverview,
     getPublicPlans,
+    getSyncDevices,
     listInvoices,
     openPortal,
     parsePlanSelection,
@@ -16,6 +17,7 @@ import {
     requestResume,
     startCheckout,
 } from './billing.service'
+import { renameSyncDevice, revokeSyncDevice } from './syncDevice.service'
 
 const REQUESTED = { requested: true }
 
@@ -54,4 +56,18 @@ export const resumeSubscription = asyncHandler(async (req: AuthRequest, res: Res
 
 export const getInvoices = asyncHandler(async (req: AuthRequest, res: Response) => {
     handleResponses(res, 200, { invoices: await listInvoices(getUserId(req)) })
+})
+
+export const getDevices = asyncHandler(async (req: AuthRequest, res: Response) => {
+    handleResponses(res, 200, await getSyncDevices(getUserId(req), req.query.deviceId))
+})
+
+export const renameDevice = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const name = await renameSyncDevice(getUserId(req), req.params.deviceId, (req.body as { name?: unknown } | undefined)?.name)
+    handleResponses(res, 200, { deviceId: req.params.deviceId, name })
+})
+
+export const revokeDevice = asyncHandler(async (req: AuthRequest, res: Response) => {
+    await revokeSyncDevice(getUserId(req), req.params.deviceId)
+    handleResponses(res, 200, { deviceId: req.params.deviceId })
 })

@@ -3,7 +3,8 @@ import { API_PATHS } from '@lib/apiPaths'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { isAllowedExternalUrl } from '@lib/safeExternalUrl'
 import type { ApiResponse, User } from '@lib/types/api'
-import type { BillingOverview, Invoice, PlanSelection, PublicPlans } from './types'
+import { getDeviceIdentity } from '@platform/sync/deviceIdentity'
+import type { BillingOverview, Invoice, PlanSelection, PublicPlans, SyncDevices } from './types'
 
 const get = async <T>(path: string): Promise<T> => unwrapApiData(await axiosInstance.get<ApiResponse<T>>(path))
 
@@ -41,6 +42,23 @@ export const requestCancellation = async (): Promise<void> => {
 
 export const requestResume = async (): Promise<void> => {
     await post(API_PATHS.BILLING.RESUME)
+}
+
+/** Sends this install's id so the server can say which row is this device. */
+export const fetchDevices = async (): Promise<SyncDevices> =>
+    unwrapApiData(
+        await axiosInstance.get<ApiResponse<SyncDevices>>(API_PATHS.BILLING.DEVICES, { params: { deviceId: getDeviceIdentity().deviceId } })
+    )
+
+const devicePath = (deviceId: string): string => `${API_PATHS.BILLING.DEVICES}/${encodeURIComponent(deviceId)}`
+
+export const revokeDevice = async (deviceId: string): Promise<void> => {
+    await axiosInstance.delete(devicePath(deviceId))
+}
+
+/** `null` clears the name. */
+export const renameDevice = async (deviceId: string, name: string | null): Promise<void> => {
+    await axiosInstance.patch(devicePath(deviceId), { name })
 }
 
 export const fetchCurrentUser = (): Promise<User> => get<User>(API_PATHS.AUTH.USER)

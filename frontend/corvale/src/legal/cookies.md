@@ -35,8 +35,8 @@ Corvale clears it when you sign out.
 
 ## What Corvale stores in your browser
 
-These are not cookies — they are local storage, which stays on your device and is never sent to
-our servers automatically. We list them because you deserve the whole picture.
+These are not cookies — they are local storage, which stays on your device. The table says where
+an entry is also sent to us. We list them because you deserve the whole picture.
 
 | What is stored | Why | How long it lasts |
 | --- | --- | --- |
@@ -46,6 +46,7 @@ our servers automatically. We list them because you deserve the whole picture.
 | A verifier and a salt for your app PIN | Lets the app check your PIN without transmitting it anywhere | Until you remove the PIN or clear site data |
 | A count of failed PIN attempts | Locks the local data after repeated wrong entries | Reset on a correct PIN; cleared with site data |
 | Whether you have seen the PIN setup prompt | So you are not asked twice | Until you clear site data |
+| A random device ID | So your account can tell your copies of Corvale apart. It is sent to us with each sync, so a plan's device limit can be applied and you can manage your devices. See the [Privacy Policy](./privacy.md#the-devices-you-sync-from) | Until you clear site data. It is kept when you sign out |
 
 Corvale also sets one **session storage** key, which records that your timezone has already been
 checked in this browser tab. It disappears when you close the tab.

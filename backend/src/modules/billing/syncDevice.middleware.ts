@@ -6,24 +6,32 @@ import { logger } from '@infra/observability/logger'
 
 import { scopeFromBody } from './billingScope'
 import { getUserEntitlements, isBillingEnabled } from './entitlement.service'
-import { canDevicePush, parseDeviceId, registerSyncDevice } from './syncDevice.service'
+import type { DeviceKind } from './syncDevice.model'
+import { canDevicePush, parseDeviceId, parseDeviceKind, registerSyncDevice } from './syncDevice.service'
 import { quotaExceededError } from './usage.service'
 
 const observeDevice = (source: 'query' | 'body'): RequestHandler =>
     async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
         try {
-            const raw = ((source === 'query' ? req.query : req.body) as { deviceId?: unknown } | undefined)?.deviceId
+            const fields = (source === 'query' ? req.query : req.body) as { deviceId?: unknown; deviceKind?: unknown } | undefined
 
             let deviceId: string | undefined
             try {
-                deviceId = parseDeviceId(raw)
+                deviceId = parseDeviceId(fields?.deviceId)
             } catch (error) {
                 if (isBillingEnabled()) throw error
                 return next()
             }
 
+            let kind: DeviceKind | undefined
             try {
-                await registerSyncDevice(getUserId(req), deviceId)
+                kind = parseDeviceKind(fields?.deviceKind)
+            } catch (error) {
+                if (isBillingEnabled()) throw error
+            }
+
+            try {
+                await registerSyncDevice(getUserId(req), deviceId, new Date(), kind)
             } catch (error) {
                 logger.warn('Sync device registration failed', { message: error instanceof Error ? error.message : 'unknown' })
             }

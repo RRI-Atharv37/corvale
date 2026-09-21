@@ -110,6 +110,8 @@ period is stated in the [Privacy Policy](./privacy.md) and the [Terms of Service
   Corvale's own servers, so no third party learns that you visited.
 - **No date of birth.** Corvale asks only whether you are 18 or older, and stores just that answer.
 - **No IP address or device details kept against your account profile or your login sessions.**
+  The only thing kept about a device is a random ID, a coarse type (desktop app, web browser or
+  installed web app) and a name only if you give one, so you can manage the devices you sync from.
   Your IP address is processed briefly as a rate-limit counter and then expires.
 
 ## Ask a human

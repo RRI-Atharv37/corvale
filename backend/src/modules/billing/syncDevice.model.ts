@@ -4,10 +4,17 @@ import { applyRowLevelSecurity } from '@core/access/applyRowLevelSecurity'
 
 export const DEVICE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 
+export const DEVICE_KINDS = ['desktop', 'web', 'pwa'] as const
+export type DeviceKind = (typeof DEVICE_KINDS)[number]
+
+export const MAX_DEVICE_NAME_LENGTH = 40
+
 export interface ISyncDevice extends Document {
     _id: Types.ObjectId
     userId: Types.ObjectId
     deviceId: string
+    kind?: DeviceKind
+    name?: string
     firstSeenAt: Date
     lastSeenAt: Date
     createdAt: Date
@@ -18,6 +25,8 @@ const SyncDeviceSchema = new Schema<ISyncDevice>(
     {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         deviceId: { type: String, required: true, match: DEVICE_ID_PATTERN },
+        kind: { type: String, enum: DEVICE_KINDS },
+        name: { type: String, maxlength: MAX_DEVICE_NAME_LENGTH },
         firstSeenAt: { type: Date, required: true },
         lastSeenAt: { type: Date, required: true },
     },

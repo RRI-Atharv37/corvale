@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 
 import { UserContext } from '@/app/providers/UserContext'
 import type { EntitlementSnapshot, User } from '@lib/types/api'
-import type { BillingOverview, PublicPlans } from '../types'
+import type { BillingOverview, PublicPlans, SyncDevice } from '../types'
 
 export const DAY_MS = 24 * 60 * 60 * 1000
 export const daysFromNow = (days: number): string => new Date(Date.now() + days * DAY_MS + 12 * 60 * 60 * 1000).toISOString()
@@ -59,6 +59,17 @@ export const overview = (overrides: Partial<BillingOverview> = {}): BillingOverv
     hasBillingCustomer: true,
     hasLiveSubscription: true,
     retentionDays: null,
+    ...overrides,
+})
+
+export const device = (overrides: Partial<SyncDevice> = {}): SyncDevice => ({
+    deviceId: 'device-a',
+    kind: 'desktop',
+    name: null,
+    firstSeenAt: '2026-03-01T09:00:00.000Z',
+    lastSeenAt: '2026-04-10T09:00:00.000Z',
+    current: false,
+    canPush: true,
     ...overrides,
 })
 

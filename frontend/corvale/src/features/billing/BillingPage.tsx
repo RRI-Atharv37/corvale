@@ -11,17 +11,21 @@ import { useEntitlements } from '@/app/providers/useEntitlements'
 import { useUser } from '@/app/providers/useUser'
 import {
     fetchBillingOverview,
+    fetchDevices,
     fetchInvoices,
     fetchPublicPlans,
     openBillingPortal,
+    renameDevice,
     requestCancellation,
     requestPlanChange,
     requestResume,
+    revokeDevice,
     startCheckout,
 } from './billingApi'
 import { describeBilling, formatDate, formatUsd, planName, yearlySavingsPercent } from './billingFormat'
 import BillingNoticeCard from './components/BillingNoticeCard'
 import CancelFlow from './components/CancelFlow'
+import DeviceList from './components/DeviceList'
 import IntervalToggle from './components/IntervalToggle'
 import InvoiceHistory from './components/InvoiceHistory'
 import PlanFacts from './components/PlanFacts'
@@ -76,6 +80,7 @@ const BillingPage: React.FC = () => {
     const plansQuery = useAsyncData(fetchPublicPlans, [])
     const overviewQuery = useAsyncData(fetchBillingOverview, [])
     const invoicesQuery = useAsyncData(async () => (billingEnabled ? fetchInvoices() : []), [billingEnabled])
+    const devicesQuery = useAsyncData(async () => (billingEnabled ? fetchDevices() : null), [billingEnabled])
 
     const [planCode, setPlanCode] = useState<PlanCode>(entitlements.planCode ?? 'pro')
     const [interval, setInterval] = useState<BillingInterval>('monthly')
@@ -85,6 +90,7 @@ const BillingPage: React.FC = () => {
 
     const { refetch: refetchOverview } = overviewQuery
     const { refetch: refetchInvoices } = invoicesQuery
+    const { refetch: refetchDevices } = devicesQuery
     const { watch } = useBillingWatch({
         onUser: updateUser,
         onChanged: () => {
@@ -108,6 +114,27 @@ const BillingPage: React.FC = () => {
             }
         },
         []
+    )
+
+    const removeDevice = useCallback(
+        async (deviceId: string) => {
+            const ok = await run(() => revokeDevice(deviceId), 'Could not remove that device')
+            if (ok) {
+                toast.success('Device removed.')
+                void refetchDevices()
+            }
+            return ok
+        },
+        [run, refetchDevices]
+    )
+
+    const nameDevice = useCallback(
+        async (deviceId: string, name: string | null) => {
+            const ok = await run(() => renameDevice(deviceId, name), 'Could not rename that device')
+            if (ok) void refetchDevices()
+            return ok
+        },
+        [run, refetchDevices]
     )
 
     if (!billingEnabled) {
@@ -282,6 +309,16 @@ const BillingPage: React.FC = () => {
                     )}
                 </div>
             </section>
+
+            <DeviceList
+                devices={devicesQuery.data?.devices ?? null}
+                limit={devicesQuery.data?.limit ?? null}
+                loading={devicesQuery.loading}
+                error={devicesQuery.error}
+                busy={busy}
+                onRevoke={removeDevice}
+                onRename={nameDevice}
+            />
 
             <InvoiceHistory invoices={invoicesQuery.data} loading={invoicesQuery.loading} error={invoicesQuery.error} />
 
