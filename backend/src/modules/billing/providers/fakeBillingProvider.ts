@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
-import type { BillingProvider, NormalizedBillingEvent } from './billingProvider'
+import type { BillingProvider, NormalizedBillingEvent, ProviderSubscriptionSnapshot } from './billingProvider'
 
 export const FAKE_SIGNATURE_HEADER = 'x-fake-signature'
 export const FAKE_WEBHOOK_SECRET = 'whsec_test_secret'
@@ -14,6 +14,7 @@ export const signFakePayload = (raw: string, secret: string = FAKE_WEBHOOK_SECRE
 export interface FakeProviderCalls {
     verifyWebhook: number
     parseEvent: number
+    listSubscriptions: number
     createCheckoutSession: Array<Record<string, unknown>>
     getPortalUrl: Array<Record<string, unknown>>
 }
@@ -36,18 +37,25 @@ const optionalDate = (value: unknown): Date | null | undefined => {
 /** Test double: the event body is already the normalised event, signed with HMAC-SHA256 over the raw bytes. */
 export const createFakeBillingProvider = (
     options: FakeBillingProviderOptions = {}
-): { provider: BillingProvider; calls: FakeProviderCalls } => {
+): { provider: BillingProvider; calls: FakeProviderCalls; remote: ProviderSubscriptionSnapshot[] } => {
     const secret = options.secret ?? FAKE_WEBHOOK_SECRET
     const signatureHeader = options.signatureHeader ?? FAKE_SIGNATURE_HEADER
     const calls: FakeProviderCalls = {
         verifyWebhook: 0,
         parseEvent: 0,
+        listSubscriptions: 0,
         createCheckoutSession: [],
         getPortalUrl: [],
     }
 
+    const remote: ProviderSubscriptionSnapshot[] = []
+
     const provider: BillingProvider = {
         name: 'fake',
+        async listSubscriptions() {
+            calls.listSubscriptions += 1
+            return remote.map((snapshot) => ({ ...snapshot }))
+        },
         async createCheckoutSession(input) {
             calls.createCheckoutSession.push({ ...input })
             return { url: `https://fake.test/checkout/${input.planCode}/${input.interval}` }
@@ -89,5 +97,5 @@ export const createFakeBillingProvider = (
         },
     }
 
-    return { provider, calls }
+    return { provider, calls, remote }
 }

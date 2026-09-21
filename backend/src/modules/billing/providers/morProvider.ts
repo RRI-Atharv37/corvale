@@ -10,6 +10,7 @@ import {
     type BillingProvider,
     type KnownBillingEventType,
     type NormalizedBillingEvent,
+    type ProviderSubscriptionSnapshot,
 } from './billingProvider'
 
 export type MorVariants = Record<PlanCode, Record<(typeof BILLING_INTERVALS)[number], string>>
@@ -31,6 +32,8 @@ const DEFAULT_API_BASE = 'https://api.lemonsqueezy.com'
 const DEFAULT_TIMEOUT_MS = 10_000
 const JSON_API = 'application/vnd.api+json'
 const SIGNATURE_HEADER = 'x-signature'
+const LIST_PAGE_SIZE = 100
+const MAX_LIST_PAGES = 500
 
 const SETTINGS = {
     apiKey: 'MOR_API_KEY',
@@ -195,8 +198,67 @@ export const createMorProvider = (
         }
     }
 
+    const lastPageOf = (body: Json): number => {
+        const meta = body.meta
+        const pageMeta = isObject(meta) ? meta.page : undefined
+        const lastPage = isObject(pageMeta) ? pageMeta.lastPage : undefined
+        return typeof lastPage === 'number' && Number.isInteger(lastPage) && lastPage >= 1 ? lastPage : 1
+    }
+
+    const toSnapshot = (entry: unknown): ProviderSubscriptionSnapshot => {
+        const providerSubscriptionId = isObject(entry) ? asId(entry.id) : undefined
+        if (!isObject(entry) || !providerSubscriptionId) {
+            logger.error('Billing provider returned a subscription with no id', { operation: 'listSubscriptions' })
+            throw requestFailed()
+        }
+
+        const attributes = isObject(entry.attributes) ? entry.attributes : {}
+        const updatedAt = asDate(attributes.updated_at) ?? asDate(attributes.created_at) ?? new Date(0)
+        const variantId = asId(attributes.variant_id)
+        const endsAt = asDate(attributes.ends_at)
+        const renewsAt = asDate(attributes.renews_at)
+        const cancelled = attributes.cancelled === true
+
+        return compact({
+            providerSubscriptionId,
+            providerCustomerId: asId(attributes.customer_id),
+            planCode: variantId ? planByVariant.get(variantId) : undefined,
+            status: mapStatus(attributes.status, endsAt, updatedAt),
+            currentPeriodEnd: cancelled ? (endsAt ?? renewsAt) : renewsAt,
+            trialEndsAt: asDate(attributes.trial_ends_at),
+            cancelAtPeriodEnd: cancelled,
+            updatedAt,
+        }) as unknown as ProviderSubscriptionSnapshot
+    }
+
     return {
         name: 'mor',
+
+        async listSubscriptions() {
+            const snapshots: ProviderSubscriptionSnapshot[] = []
+            let pageNumber = 1
+            let lastPage = 1
+
+            do {
+                const query = new URLSearchParams({
+                    'filter[store_id]': config.storeId,
+                    'page[number]': String(pageNumber),
+                    'page[size]': String(LIST_PAGE_SIZE),
+                })
+                const body = await call('listSubscriptions', `/v1/subscriptions?${query.toString()}`, { method: 'GET' })
+
+                lastPage = lastPageOf(body)
+                if (lastPage > MAX_LIST_PAGES) {
+                    logger.error('Billing provider reported an implausible page count', { operation: 'listSubscriptions', lastPage })
+                    throw requestFailed()
+                }
+
+                if (Array.isArray(body.data)) snapshots.push(...body.data.map(toSnapshot))
+                pageNumber += 1
+            } while (pageNumber <= lastPage)
+
+            return snapshots
+        },
 
         async createCheckoutSession({ userId, email, planCode, interval, returnUrl }) {
             const body = {

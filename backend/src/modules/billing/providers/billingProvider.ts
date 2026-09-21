@@ -43,6 +43,22 @@ export interface NormalizedBillingEvent {
     payload?: Record<string, unknown>
 }
 
+/**
+ * One provider subscription as the reconciliation pass compares it. Like an event, only what the
+ * provider actually stated is set, and it never carries an email or a name.
+ */
+export interface ProviderSubscriptionSnapshot {
+    providerSubscriptionId: string
+    providerCustomerId?: string
+    planCode?: string | null
+    status?: SubscriptionStatus
+    currentPeriodEnd?: Date | null
+    trialEndsAt?: Date | null
+    cancelAtPeriodEnd?: boolean
+    /** When the provider last changed this subscription; separates drift from a webhook still in flight. */
+    updatedAt: Date
+}
+
 export interface CheckoutSessionInput {
     userId: string
     email: string
@@ -67,4 +83,6 @@ export interface BillingProvider {
     verifyWebhook(rawBody: Buffer, headers: WebhookHeaders): boolean
     /** Throws a 400 `CustomError` on a body that is not a well-formed event of this provider. */
     parseEvent(rawBody: Buffer): NormalizedBillingEvent
+    /** Every subscription of this deployment's store, all pages. Throws a 502 `CustomError` rather than return a partial list. */
+    listSubscriptions(): Promise<ProviderSubscriptionSnapshot[]>
 }
