@@ -6,7 +6,7 @@ import { logger } from '@infra/observability/logger'
 import BillingEvent from './billingEvent.model'
 import { getBillingProvider } from './providers/providerRegistry'
 import type { NormalizedBillingEvent, WebhookHeaders } from './providers/billingProvider'
-import { applyBillingEvent, type BillingEventHandler } from './webhookEventHandlers'
+import { applyBillingEvent, type BillingEventHandler, type BillingEventOutcome } from './webhookEventHandlers'
 
 export interface WebhookResult {
     duplicate: boolean
@@ -88,6 +88,30 @@ export const recordAndApplyBillingEvent = async (
     }
 
     return { duplicate: false }
+}
+
+/**
+ * Admin-triggered re-run of one ledgered event that never applied (an admin repair tool, M7.5) - reuses the
+ * same claim/settle primitives a redelivered webhook goes through, so ordering (`lastEventAt`) is unchanged
+ * and a concurrent redelivery of the same event cannot double-apply it. Only eligible for `error != null &&
+ * processedAt == null`. The reconstructed event carries only what the ledger ever stored - it never recovers
+ * a `subscription.created`'s `userId` (deliberately never persisted), so a replay cannot relink an unlinked row.
+ */
+export const replayBillingEvent = async (id: string): Promise<BillingEventOutcome | null> => {
+    const row = await BillingEvent.findOne({ _id: id, processedAt: null, error: { $ne: null } })
+    if (!row || !(await claimForRetry(row.providerEventId))) return null
+
+    const event: NormalizedBillingEvent = { providerEventId: row.providerEventId, type: row.type, occurredAt: row.occurredAt, ...row.payload }
+
+    try {
+        const outcome = await applyBillingEvent(event)
+        await settle(row.providerEventId, outcome.status === 'applied' ? { processedAt: new Date(), error: null } : { error: truncate(outcome.reason) })
+        return outcome
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error applying billing event'
+        await settle(row.providerEventId, { error: truncate(message) }).catch(() => undefined)
+        throw error
+    }
 }
 
 /** Signature is checked over the raw bytes before anything is parsed; nothing is recorded on a failure. */

@@ -181,7 +181,7 @@ export interface JobStatus {
 export interface OpsHealth {
   billingEnabled: boolean
   retentionEnabled: boolean
-  unprocessedEvents: { count: number; recent: { type: string; occurredAt: string; error: string | null }[] }
+  unprocessedEvents: { count: number; recent: { id: string; type: string; occurredAt: string; error: string | null }[] }
   pastDueNearGraceEnd: { hours: number; count: number; items: { userId: string; graceEndsAt: string }[] }
   upcomingErasures: { days: number; retentionEnabled: boolean; count: number; items: { userId: string; eraseOn: string }[] }
   jobs: Record<'sweep:billing' | 'reconcile:billing', JobStatus>
@@ -232,6 +232,21 @@ export interface GrandfatherCohortPreview {
   registeredBefore: string
   count: number
   sample: string[]
+}
+
+export interface ProviderInvoiceView {
+  id: string
+  issuedAt: string
+  total: number
+  currency: string
+  status: 'paid' | 'pending' | 'void' | 'refunded'
+  url: string | null
+}
+
+export interface ResyncDiff {
+  field: string
+  local: unknown
+  remote: unknown
 }
 
 export interface AdminListItem {

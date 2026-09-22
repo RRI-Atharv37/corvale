@@ -141,8 +141,13 @@ export const createMorProvider = (
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
     const planByVariant = new Map<string, PlanCode>()
+    const intervalByVariant = new Map<string, (typeof BILLING_INTERVALS)[number]>()
     for (const plan of PLAN_CODES) {
-        for (const interval of BILLING_INTERVALS) planByVariant.set(config.variants[plan][interval], plan)
+        for (const interval of BILLING_INTERVALS) {
+            const variant = config.variants[plan][interval]
+            planByVariant.set(variant, plan)
+            intervalByVariant.set(variant, interval)
+        }
     }
 
     const call = async (operation: string, path: string, init: { method: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown }): Promise<Json> => {
@@ -280,6 +285,39 @@ export const createMorProvider = (
     return {
         name: 'mor',
 
+        // Unlike `call()`, a 404 here means "no longer at the provider", not a failure - an admin resync must tell those apart.
+        async getSubscriptionSnapshot({ providerSubscriptionId }) {
+            const operation = 'getSubscriptionSnapshot'
+            let response: Response
+            try {
+                response = await fetchImpl(`${apiBase}${subscriptionPath(providerSubscriptionId)}`, {
+                    method: 'GET',
+                    headers: { Accept: JSON_API, Authorization: `Bearer ${config.apiKey}` },
+                    signal: AbortSignal.timeout(timeoutMs),
+                })
+            } catch (error) {
+                logger.error('Billing provider request failed', { operation, reason: (error as Error).name })
+                throw requestFailed()
+            }
+            if (response.status === 404) return null
+            if (!response.ok) {
+                logger.error('Billing provider rejected a request', { operation, status: response.status })
+                throw requestFailed()
+            }
+
+            let body: unknown
+            try {
+                body = await response.json()
+            } catch {
+                body = undefined
+            }
+            if (!isObject(body) || !isObject(body.data)) {
+                logger.error('Billing provider returned an unreadable response', { operation })
+                throw requestFailed()
+            }
+            return toSnapshot(body.data)
+        },
+
         async listSubscriptions() {
             const snapshots: ProviderSubscriptionSnapshot[] = []
             let pageNumber = 1
@@ -332,6 +370,14 @@ export const createMorProvider = (
 
         async resumeSubscription({ providerSubscriptionId }) {
             await patchSubscription('resumeSubscription', providerSubscriptionId, { cancelled: false })
+        },
+
+        // Ask-only, like the calls above: the resulting invoice status arrives on the refund.issued webhook.
+        async refundInvoice({ providerInvoiceId, amountMinor }) {
+            await call('refundInvoice', `/v1/subscription-invoices/${encodeURIComponent(providerInvoiceId)}/refund`, {
+                method: 'POST',
+                body: { data: { type: 'subscription-invoices', id: providerInvoiceId, attributes: { amount: amountMinor } } },
+            })
         },
 
         async createCheckoutSession({ userId, email, planCode, interval, returnUrl }) {
@@ -437,6 +483,7 @@ export const createMorProvider = (
 
                 event.userId = userId
                 event.planCode = variantId ? planByVariant.get(variantId) : undefined
+                event.interval = variantId ? (intervalByVariant.get(variantId) ?? null) : undefined
                 event.status =
                     eventName === 'subscription_expired'
                         ? 'cancelled'

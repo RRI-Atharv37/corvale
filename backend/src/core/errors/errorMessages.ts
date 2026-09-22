@@ -282,5 +282,13 @@ export const ERROR_MESSAGES = {
         COHORT_EMPTY: 'No subscribers match that cohort',
         BATCH_NOT_FOUND: 'No grandfather batch matches that id',
         BATCH_NOT_APPLIED: 'This batch has already been reverted',
+        NOT_PROVIDER_LINKED: 'This subscriber has no live payment-provider subscription',
+        INVOICE_NOT_FOUND: 'No invoice matches that id on the live provider list',
+        INVOICE_NOT_REFUNDABLE: 'Only a paid invoice can be refunded',
+        REFUND_AMOUNT_MISMATCH: 'Type the exact amount shown for that invoice to confirm',
+        SNAPSHOT_UNAVAILABLE: 'The payment provider no longer has this subscription',
+        NO_DIFFERENCE: 'Nothing differs from the payment provider',
+        DEVICE_REF_AMBIGUOUS: 'That reference matches more than one device; ask the subscriber for the full id',
+        EVENT_NOT_REPLAYABLE: 'No unapplied, errored ledger event matches that id',
     },
 }

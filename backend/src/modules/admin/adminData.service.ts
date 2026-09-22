@@ -5,11 +5,13 @@ import type { GrandfatherKind } from '@core/billing/constants'
 import {
     BillingEvent,
     JobRun,
+    MetricDaily,
     Subscription,
     SyncDevice,
     UsageCounter,
     type IBillingEvent,
     type IJobRun,
+    type IMetricDaily,
     type ISubscription,
     type ISyncDevice,
     type IUsageCounter,
@@ -89,6 +91,20 @@ export const findDevices = (userId: string): Promise<ISyncDevice[]> =>
         .sort({ firstSeenAt: 1, _id: 1 })
         .lean<ISyncDevice[]>()
 
+/**
+ * Resolves the truncated 8-char ref the detail view shows (`toDeviceView`) back to a full device without
+ * ever putting the full id on the wire: the admin never needs it, only the row it targets. `'ambiguous'`
+ * is returned rather than picking one, for the practically-impossible case of two of this user's devices
+ * sharing an 8-hex-char prefix.
+ */
+export const findDeviceByRef = async (userId: string, ref: string): Promise<ISyncDevice | 'ambiguous' | null> => {
+    const matches = await SyncDevice.find({ userId: asObjectId(userId), deviceId: { $regex: `^${ref}` } })
+        .setOptions(BYPASS)
+        .lean<ISyncDevice[]>()
+    if (matches.length === 0) return null
+    return matches.length > 1 ? 'ambiguous' : matches[0]
+}
+
 export interface OwnedWorkspace {
     _id: Types.ObjectId
     members: { userId: Types.ObjectId }[]
@@ -118,6 +134,10 @@ export const findRecentUnprocessedEvents = (limit: number): Promise<IBillingEven
 
 export const findLatestJobRun = (name: JobName): Promise<IJobRun | null> =>
     JobRun.findOne({ name }).sort({ startedAt: -1, _id: -1 }).lean<IJobRun>()
+
+/** `MetricDaily` carries no `userId` (anonymous by design, M7b) so needs no RLS bypass - read through here anyway, for one place that touches every billing-module collection. */
+export const findMetricDailyRange = (fromDate: string, toDate: string): Promise<IMetricDaily[]> =>
+    MetricDaily.find({ date: { $gte: fromDate, $lte: toDate } }).sort({ date: 1 }).lean<IMetricDaily[]>()
 
 /**
  * Overlay writes. Each touches only the staff-owned fields (`adminGrant`, `retentionHoldUntil`) or, for a
@@ -186,3 +206,7 @@ export const revertCohortGrandfather = async (subscriptionIds: Types.ObjectId[],
     const result = await Subscription.updateMany({ _id: { $in: subscriptionIds }, grandfatherKind: kind }, { $set: { grandfatherKind: null } }).setOptions(BYPASS)
     return result.modifiedCount
 }
+
+/** M7.5 resync: writes only the fields the admin was shown as differing, straight from a freshly re-fetched provider snapshot. */
+export const applyProviderFields = (userId: string, patch: Record<string, unknown>): Promise<SubscriptionRow | null> =>
+    previousRow({ userId: asObjectId(userId) }, { $set: patch })

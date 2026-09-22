@@ -25,6 +25,13 @@ export const ADMIN_AUDIT_ACTIONS = [
     'grandfather.revoked',
     'grandfather.bulk_applied',
     'grandfather.bulk_reverted',
+    'billing.refund',
+    'billing.cancel_now',
+    'billing.cancel_at_period_end',
+    'billing.resync',
+    'billing.usage_recomputed',
+    'device.revoked',
+    'billing_event.replayed',
 ] as const
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number]
 

@@ -38,7 +38,7 @@ const BYPASS = { [RLS_BYPASS]: true }
 const timeOf = (value: Date | null | undefined): number | null => (value ? value.getTime() : null)
 
 /** A field the provider did not state is never compared: absence is not evidence of a change. */
-const differingFields = (local: ISubscription, remote: ProviderSubscriptionSnapshot): string[] => {
+export const differingFields = (local: ISubscription, remote: ProviderSubscriptionSnapshot): string[] => {
     const fields: string[] = []
 
     if (remote.status !== undefined && local.status !== remote.status) fields.push('status')

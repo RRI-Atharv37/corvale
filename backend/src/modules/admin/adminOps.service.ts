@@ -105,6 +105,7 @@ export const getOpsHealth = async (now: Date = new Date()) => {
         unprocessedEvents: {
             count: unprocessedCount,
             recent: recentUnprocessed.map((event) => ({
+                id: event._id.toString(),
                 type: event.type,
                 occurredAt: event.occurredAt,
                 error: event.error ? event.error.slice(0, 300) : null,

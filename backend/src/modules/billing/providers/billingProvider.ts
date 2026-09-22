@@ -1,7 +1,6 @@
-import type { PlanCode, SubscriptionStatus } from '@core/billing/constants'
+import { BILLING_INTERVALS, type BillingInterval, type PlanCode, type SubscriptionStatus } from '@core/billing/constants'
 
-export const BILLING_INTERVALS = ['monthly', 'annual'] as const
-export type BillingInterval = (typeof BILLING_INTERVALS)[number]
+export { BILLING_INTERVALS, type BillingInterval }
 
 export const KNOWN_BILLING_EVENT_TYPES = [
     'checkout.completed',
@@ -36,6 +35,7 @@ export interface NormalizedBillingEvent {
     providerSubscriptionId?: string
     planCode?: string | null
     status?: SubscriptionStatus
+    interval?: BillingInterval | null
     currentPeriodEnd?: Date | null
     trialEndsAt?: Date | null
     cancelAtPeriodEnd?: boolean
@@ -104,6 +104,12 @@ export interface PlanChangeInput extends SubscriptionRef {
     interval: BillingInterval
 }
 
+export interface RefundInvoiceInput {
+    providerInvoiceId: string
+    /** Minor units of the invoice's own currency; the full total for a full refund, less for a partial one. */
+    amountMinor: number
+}
+
 export interface BillingProvider {
     readonly name: string
     createCheckoutSession(input: CheckoutSessionInput): Promise<HostedUrl>
@@ -114,14 +120,18 @@ export interface BillingProvider {
     parseEvent(rawBody: Buffer): NormalizedBillingEvent
     /** Every subscription of this deployment's store, all pages. Throws a 502 `CustomError` rather than return a partial list. */
     listSubscriptions(): Promise<ProviderSubscriptionSnapshot[]>
+    /** One subscription's live state, for an admin-triggered resync; null if the provider no longer has it. */
+    getSubscriptionSnapshot(input: SubscriptionRef): Promise<ProviderSubscriptionSnapshot | null>
     /** Most recent charges of one subscription, newest first. Throws a 502 `CustomError` when the provider cannot answer. */
     listInvoices(input: SubscriptionRef): Promise<ProviderInvoice[]>
     /**
-     * The three calls below only *ask* the provider. None of them changes what Corvale believes: the
+     * The calls below only *ask* the provider. None of them changes what Corvale believes: the
      * resulting state arrives on a signed webhook, like every other entitlement change.
      */
     changePlan(input: PlanChangeInput): Promise<void>
     /** Ends the subscription at the close of the paid period; the provider keeps billing until then. */
     cancelSubscription(input: CancelSubscriptionInput): Promise<void>
     resumeSubscription(input: SubscriptionRef): Promise<void>
+    /** Full or partial refund of one invoice. Record-only until `refund.issued` arrives - nothing here changes entitlement. */
+    refundInvoice(input: RefundInvoiceInput): Promise<void>
 }

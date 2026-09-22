@@ -11,6 +11,18 @@ import { auditLog, invite, list, resetTotp, setStatus } from './adminManagement.
 import { detail, list as listSubscribers, lookup, meta, opsHealth } from './adminSubscribers.controller'
 import { erasureHold, erasureHoldClear, grant, revoke, trialExtension } from './adminGrants.controller'
 import { cohortApply, cohortBatches, cohortDryRun, cohortRevert, grandfather, grandfatherRevoke } from './adminGrandfather.controller'
+import {
+    cancelSubscriptionAtPeriodEnd,
+    cancelSubscriptionNow,
+    invoices,
+    recomputeSubscriberUsage,
+    refund,
+    replayBillingEventAction,
+    resyncApply,
+    resyncPreview,
+    revokeSubscriberDevice,
+} from './adminBilling.controller'
+import { metricsOverview } from './adminMetrics.controller'
 
 /**
  * Mounted by `http/routes.ts` only while ADMIN_ENABLED=true. Everything sits behind the optional IP
@@ -56,6 +68,18 @@ export const createAdminRoutes = (): express.Router => {
     router.post('/grandfather/cohort/apply', protectAdmin, requireCapability('grandfather.write'), requireStepUp, cohortApply)
     router.get('/grandfather/cohort/batches', protectAdmin, requireCapability('grandfather.write'), cohortBatches)
     router.post('/grandfather/cohort/:batchId/revert', protectAdmin, requireCapability('grandfather.write'), requireStepUp, cohortRevert)
+
+    router.get('/subscribers/:userId/invoices', protectAdmin, requireCapability('money.write'), invoices)
+    router.post('/subscribers/:userId/refund', protectAdmin, requireCapability('money.write'), requireStepUp, refund)
+    router.post('/subscribers/:userId/cancel', protectAdmin, requireCapability('money.write'), cancelSubscriptionAtPeriodEnd)
+    router.post('/subscribers/:userId/cancel/now', protectAdmin, requireCapability('money.write'), requireStepUp, cancelSubscriptionNow)
+    router.get('/subscribers/:userId/resync/preview', protectAdmin, requireCapability('money.write'), resyncPreview)
+    router.post('/subscribers/:userId/resync/apply', protectAdmin, requireCapability('money.write'), resyncApply)
+    router.post('/subscribers/:userId/recompute-usage', protectAdmin, requireCapability('grants.write'), recomputeSubscriberUsage)
+    router.post('/subscribers/:userId/devices/:deviceRef/revoke', protectAdmin, requireCapability('grants.write'), revokeSubscriberDevice)
+    router.post('/billing-events/:eventId/replay', protectAdmin, requireCapability('money.write'), requireStepUp, replayBillingEventAction)
+
+    router.get('/metrics/overview', protectAdmin, requireCapability('metrics.read'), metricsOverview)
 
     return router
 }

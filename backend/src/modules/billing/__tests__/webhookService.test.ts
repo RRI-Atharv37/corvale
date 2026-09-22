@@ -1,9 +1,12 @@
+import { Types } from 'mongoose'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
     BillingEvent,
+    Subscription,
     handleBillingWebhook,
     recordAndApplyBillingEvent,
+    replayBillingEvent,
     resetBillingProvider,
     setBillingProvider,
     type BillingEventOutcome,
@@ -11,6 +14,7 @@ import {
 } from '@modules/billing'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { BILLING_STATES, setSubscription } from '@tests/billingHelpers'
 
 import { createFakeBillingProvider, FAKE_SIGNATURE_HEADER, signFakePayload } from '../providers/fakeBillingProvider'
 
@@ -213,6 +217,69 @@ describe('recordAndApplyBillingEvent', () => {
         await recordAndApplyBillingEvent({ ...original, planCode: 'pro' }, async () => applied)
 
         expect(JSON.stringify((await ledger(original.providerEventId))?.payload)).toContain('"plus"')
+    })
+})
+
+describe('replayBillingEvent', () => {
+    const userId = new Types.ObjectId().toString()
+
+    beforeEach(async () => {
+        await setSubscription(userId, { ...BILLING_STATES.active, providerSubscriptionId: 'sub_replay', providerCustomerId: 'cus_replay' })
+    })
+
+    const seedUnappliedEvent = (payload: Record<string, unknown>) =>
+        BillingEvent.create({
+            providerEventId: 'evt_replay_1',
+            type: 'subscription.updated',
+            occurredAt: new Date('2026-09-20T10:00:00.000Z'),
+            payload,
+            error: 'earlier failure',
+        })
+
+    it('re-applies the reconstructed event, using only what the ledger stored', async () => {
+        const event = await seedUnappliedEvent({ providerSubscriptionId: 'sub_replay', status: 'past_due' })
+
+        const outcome = await replayBillingEvent(event._id.toString())
+
+        expect(outcome).toEqual({ status: 'applied' })
+        const row = await ledger('evt_replay_1')
+        expect(row?.processedAt).toBeTruthy()
+        expect(row?.error ?? null).toBeNull()
+        expect((await Subscription.findOne({ userId }).lean())?.status).toBe('past_due')
+    })
+
+    it('returns null for an unknown id or an event that already processed', async () => {
+        const processed = await BillingEvent.create({
+            providerEventId: 'evt_replay_done',
+            type: 'subscription.updated',
+            occurredAt: new Date(),
+            payload: {},
+            processedAt: new Date(),
+        })
+
+        expect(await replayBillingEvent(processed._id.toString())).toBeNull()
+        expect(await replayBillingEvent(new Types.ObjectId().toString())).toBeNull()
+    })
+
+    it('re-settles with a fresh reason when the reconstructed event still cannot be matched to anything', async () => {
+        const event = await seedUnappliedEvent({ providerSubscriptionId: 'sub_gone_from_ledger' })
+
+        const outcome = await replayBillingEvent(event._id.toString())
+
+        expect(outcome).toMatchObject({ status: 'unapplied' })
+        const row = await ledger('evt_replay_1')
+        expect(row?.processedAt ?? null).toBeNull()
+        expect(row?.error).toBeTruthy()
+    })
+
+    it('leaves an ordering-superseded replay a no-op, same as any other stale event', async () => {
+        await Subscription.updateOne({ userId }, { $set: { lastEventAt: new Date('2026-09-25T00:00:00.000Z') } })
+        const event = await seedUnappliedEvent({ providerSubscriptionId: 'sub_replay', status: 'past_due' })
+
+        const outcome = await replayBillingEvent(event._id.toString())
+
+        expect(outcome).toEqual({ status: 'applied' })
+        expect((await Subscription.findOne({ userId }).lean())?.status).toBe('active')
     })
 })
 

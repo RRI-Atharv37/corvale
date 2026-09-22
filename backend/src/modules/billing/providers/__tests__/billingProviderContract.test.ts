@@ -59,7 +59,7 @@ const morHarness = (): ProviderHarness => {
             return jsonResponse({ data: { attributes: { url: 'https://store.example.test/checkout/custom/abc' } } })
         }
         if (url.includes('/v1/subscription-invoices')) return jsonResponse({ data: [] })
-        if (url.includes('/v1/subscriptions/')) return jsonResponse({ data: { attributes: {} } })
+        if (url.includes('/v1/subscriptions/')) return jsonResponse({ data: { id: '77', attributes: {} } })
         return jsonResponse({ data: { attributes: { urls: { customer_portal: 'https://store.example.test/billing?x=1' } } } })
     }
     const provider = createMorProvider(morConfig(), { fetchImpl: fetchImpl as typeof fetch })
@@ -299,6 +299,18 @@ describe.each([
             await expect(provider.cancelSubscription({ providerSubscriptionId: '77' })).resolves.toBeUndefined()
             await expect(provider.cancelSubscription({ providerSubscriptionId: '77', immediate: true })).resolves.toBeUndefined()
             await expect(provider.resumeSubscription({ providerSubscriptionId: '77' })).resolves.toBeUndefined()
+        })
+    })
+
+    describe('provider actions (M7.5)', () => {
+        it('getSubscriptionSnapshot resolves to a snapshot or null, never throwing for a known id', async () => {
+            const snapshot = await provider.getSubscriptionSnapshot({ providerSubscriptionId: '77' })
+
+            expect(snapshot === null || typeof snapshot === 'object').toBe(true)
+        })
+
+        it('refundInvoice resolves without returning provider state - the resulting status arrives on a webhook', async () => {
+            await expect(provider.refundInvoice({ providerInvoiceId: 'inv_1', amountMinor: 500 })).resolves.toBeUndefined()
         })
     })
 })

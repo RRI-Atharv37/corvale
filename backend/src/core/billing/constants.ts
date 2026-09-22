@@ -7,6 +7,9 @@ export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number]
 export const GRANDFATHER_KINDS = ['free_forever', 'locked_rate', 'extended_trial'] as const
 export type GrandfatherKind = (typeof GRANDFATHER_KINDS)[number]
 
+export const BILLING_INTERVALS = ['monthly', 'annual'] as const
+export type BillingInterval = (typeof BILLING_INTERVALS)[number]
+
 export const USAGE_RESOURCES = ['receiptBytes', 'syncDevices', 'workspaceMembers'] as const
 export type UsageResource = (typeof USAGE_RESOURCES)[number]
 

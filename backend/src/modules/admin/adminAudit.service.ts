@@ -30,6 +30,10 @@ const KEPT_WITH_ROW: ReadonlySet<AdminAuditAction> = new Set<AdminAuditAction>([
     'admin.status_changed',
     'grandfather.set',
     'grandfather.bulk_applied',
+    'billing.refund',
+    'billing.cancel_now',
+    'billing.cancel_at_period_end',
+    'billing_event.replayed',
 ])
 
 const ALLOWED_STATE_KEYS = [

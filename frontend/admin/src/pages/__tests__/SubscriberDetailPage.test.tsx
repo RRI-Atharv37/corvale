@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { StepUpProvider } from '../../components/StepUp'
 import * as apiModule from '../../lib/api'
 import SubscriberDetailPage from '../SubscriberDetailPage'
 
@@ -32,6 +33,14 @@ vi.mock('../../lib/api', async (importOriginal) => {
       clearErasureHold: vi.fn(),
       setGrandfather: vi.fn(),
       revokeGrandfather: vi.fn(),
+      listInvoices: vi.fn(),
+      refund: vi.fn(),
+      cancelAtPeriodEnd: vi.fn(),
+      cancelNow: vi.fn(),
+      previewResync: vi.fn(),
+      applyResync: vi.fn(),
+      recomputeUsage: vi.fn(),
+      revokeDevice: vi.fn(),
     },
   }
 })
@@ -103,11 +112,13 @@ const META = {
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={[`/subscribers/${USER_ID}`]}>
-      <Routes>
-        <Route path="/subscribers/:userId" element={<SubscriberDetailPage />} />
-      </Routes>
-    </MemoryRouter>
+    <StepUpProvider>
+      <MemoryRouter initialEntries={[`/subscribers/${USER_ID}`]}>
+        <Routes>
+          <Route path="/subscribers/:userId" element={<SubscriberDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </StepUpProvider>
   )
 
 beforeEach(() => {
@@ -115,7 +126,23 @@ beforeEach(() => {
   role = 'support'
   vi.mocked(apiModule.api.getSubscriber).mockReset().mockResolvedValue(detail() as never)
   vi.mocked(apiModule.api.meta).mockReset().mockResolvedValue(META as never)
-  for (const name of ['grant', 'revokeGrant', 'extendTrial', 'setErasureHold', 'clearErasureHold', 'setGrandfather', 'revokeGrandfather'] as const) {
+  vi.mocked(apiModule.api.listInvoices).mockReset().mockResolvedValue({ invoices: [] })
+  for (const name of [
+    'grant',
+    'revokeGrant',
+    'extendTrial',
+    'setErasureHold',
+    'clearErasureHold',
+    'setGrandfather',
+    'revokeGrandfather',
+    'refund',
+    'cancelAtPeriodEnd',
+    'cancelNow',
+    'previewResync',
+    'applyResync',
+    'recomputeUsage',
+    'revokeDevice',
+  ] as const) {
     vi.mocked(apiModule.api[name]).mockReset().mockResolvedValue({} as never)
   }
 })
@@ -319,6 +346,41 @@ describe('SubscriberDetailPage - actions', () => {
 
     await waitFor(() => expect(apiModule.api.setGrandfather).toHaveBeenCalledWith(USER_ID, { kind: 'free_forever', reason: 'Early adopter, pre-paywall cohort' }))
     await waitFor(() => expect(apiModule.api.getSubscriber).toHaveBeenCalledTimes(2))
+  })
+
+  it('offers no money actions to a role without money.write', async () => {
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Account' })
+
+    expect(screen.queryByRole('button', { name: /cancel at period end/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /cancel now/i })).not.toBeInTheDocument()
+  })
+
+  it('cancels at period end without a step-up', async () => {
+    capabilities = ['subscribers.read', 'ops.read', 'grants.write', 'money.write']
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /cancel at period end/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Reason'), 'Subscriber asked to end at renewal')
+    await user.click(within(dialog).getByRole('button', { name: /^cancel at period end/i }))
+
+    await waitFor(() => expect(apiModule.api.cancelAtPeriodEnd).toHaveBeenCalledWith(USER_ID, { reason: 'Subscriber asked to end at renewal' }))
+  })
+
+  it('revokes a device from the devices table', async () => {
+    capabilities = ['subscribers.read', 'ops.read', 'grants.write']
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Revoke' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Reason'), 'Subscriber lost this device')
+    await user.click(within(dialog).getByRole('button', { name: /^revoke/i }))
+
+    await waitFor(() => expect(apiModule.api.revokeDevice).toHaveBeenCalledWith(USER_ID, 'abcdef01', { reason: 'Subscriber lost this device' }))
   })
 
   it('offers to clear an existing grandfather kind', async () => {

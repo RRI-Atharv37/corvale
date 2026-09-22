@@ -22,10 +22,12 @@ export interface FakeProviderCalls {
     listSubscriptions: number
     createCheckoutSession: Array<Record<string, unknown>>
     getPortalUrl: Array<Record<string, unknown>>
+    getSubscriptionSnapshot: Array<Record<string, unknown>>
     listInvoices: Array<Record<string, unknown>>
     changePlan: Array<Record<string, unknown>>
     cancelSubscription: Array<Record<string, unknown>>
     resumeSubscription: Array<Record<string, unknown>>
+    refundInvoice: Array<Record<string, unknown>>
 }
 
 export interface FakeBillingProviderOptions {
@@ -60,10 +62,12 @@ export const createFakeBillingProvider = (
         listSubscriptions: 0,
         createCheckoutSession: [],
         getPortalUrl: [],
+        getSubscriptionSnapshot: [],
         listInvoices: [],
         changePlan: [],
         cancelSubscription: [],
         resumeSubscription: [],
+        refundInvoice: [],
     }
 
     const remote: ProviderSubscriptionSnapshot[] = []
@@ -74,6 +78,11 @@ export const createFakeBillingProvider = (
         async listSubscriptions() {
             calls.listSubscriptions += 1
             return remote.map((snapshot) => ({ ...snapshot }))
+        },
+        async getSubscriptionSnapshot(input) {
+            calls.getSubscriptionSnapshot.push({ ...input })
+            const found = remote.find((snapshot) => snapshot.providerSubscriptionId === input.providerSubscriptionId)
+            return found ? { ...found } : null
         },
         async listInvoices(input) {
             calls.listInvoices.push({ ...input })
@@ -87,6 +96,9 @@ export const createFakeBillingProvider = (
         },
         async resumeSubscription(input) {
             calls.resumeSubscription.push({ ...input })
+        },
+        async refundInvoice(input) {
+            calls.refundInvoice.push({ ...input })
         },
         async createCheckoutSession(input) {
             calls.createCheckoutSession.push({ ...input })

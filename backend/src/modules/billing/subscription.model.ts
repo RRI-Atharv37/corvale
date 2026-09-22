@@ -14,6 +14,8 @@ import { ADMIN_GRANT_KINDS, type AdminGrantSnapshot } from '@core/billing/entitl
 import { DUNNING_STAGES, type DunningStage } from '@core/billing/dunning'
 import { RETENTION_STAGES, type RetentionStage } from '@core/billing/retention'
 
+import { BILLING_INTERVALS, type BillingInterval } from './providers/billingProvider'
+
 export interface ISubscriptionAdminGrant extends AdminGrantSnapshot {
     grantedBy: Types.ObjectId
     grantedAt: Date
@@ -24,6 +26,8 @@ export interface ISubscription extends Document {
     userId: Types.ObjectId
     planCode: PlanCode
     status: SubscriptionStatus
+    /** Set once a provider webhook has stated it; null for a Corvale-run trial the provider has never seen. */
+    interval: BillingInterval | null
     trialEndsAt: Date | null
     currentPeriodEnd: Date | null
     cancelAtPeriodEnd: boolean
@@ -64,6 +68,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
         planCode: { type: String, enum: PLAN_CODES, required: true },
         status: { type: String, enum: SUBSCRIPTION_STATUSES, required: true },
+        interval: { type: String, enum: [null, ...BILLING_INTERVALS], default: null },
         trialEndsAt: { type: Date, default: null },
         currentPeriodEnd: { type: Date, default: null },
         cancelAtPeriodEnd: { type: Boolean, default: false },

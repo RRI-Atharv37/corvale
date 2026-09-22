@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Badge, ErrorAlert, Facts, Section, Spinner } from '../components/ui'
+import { ActionDialog } from '../components/ActionDialog'
+import { useStepUp } from '../components/StepUp'
+import { Badge, Button, ErrorAlert, Facts, Section, Spinner } from '../components/ui'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { formatDate, formatDateTime, humanize, relativeDays } from '../lib/format'
 import type { JobStatus } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
@@ -29,7 +33,18 @@ const Job = ({ name, job }: { name: string; job: JobStatus }) => (
 
 const OverviewPage = () => {
   const health = useAsync(() => api.opsHealth(), [])
+  const { hasCapability } = useAuth()
+  const { run } = useStepUp()
+  const canReplay = hasCapability('money.write')
+  const [replayTarget, setReplayTarget] = useState<string | null>(null)
   const data = health.data
+
+  const replay = async (reason: string) => {
+    if (!replayTarget) return
+    await run(() => api.replayBillingEvent(replayTarget, { reason }))
+    setReplayTarget(null)
+    health.reload()
+  }
 
   return (
     <>
@@ -63,10 +78,13 @@ const OverviewPage = () => {
             </p>
             {data.unprocessedEvents.recent.length > 0 ? (
               <ul className="mt-2 divide-y divide-border text-sm">
-                {data.unprocessedEvents.recent.map((event, index) => (
-                  <li key={`${event.type}-${event.occurredAt}-${index}`} className="py-1">
-                    {event.type} <span className="text-text-muted">{formatDateTime(event.occurredAt)}</span>
-                    {event.error ? <span className="block text-xs text-danger">{event.error}</span> : null}
+                {data.unprocessedEvents.recent.map((event) => (
+                  <li key={event.id} className="flex flex-wrap items-center justify-between gap-2 py-1">
+                    <span>
+                      {event.type} <span className="text-text-muted">{formatDateTime(event.occurredAt)}</span>
+                      {event.error ? <span className="block text-xs text-danger">{event.error}</span> : null}
+                    </span>
+                    {canReplay ? <Button onClick={() => setReplayTarget(event.id)}>Replay</Button> : null}
                   </li>
                 ))}
               </ul>
@@ -111,6 +129,17 @@ const OverviewPage = () => {
             )}
           </Section>
         </div>
+      ) : null}
+
+      {replayTarget ? (
+        <ActionDialog
+          title="Replay this event"
+          submitLabel="Replay"
+          variant="danger"
+          description="Re-runs the ledgered event now, the same way a redelivered webhook would. Only works for an event that never applied."
+          onCancel={() => setReplayTarget(null)}
+          onSubmit={replay}
+        />
       ) : null}
     </>
   )

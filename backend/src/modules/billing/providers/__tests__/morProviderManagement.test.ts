@@ -47,6 +47,79 @@ const invoice = (id: string, attributes: Record<string, unknown> = {}) => ({
     },
 })
 
+const subscriptionResource = (id: string, attributes: Record<string, unknown> = {}) => ({
+    type: 'subscriptions',
+    id,
+    attributes: {
+        customer_id: 55,
+        variant_id: 201,
+        status: 'active',
+        cancelled: false,
+        trial_ends_at: null,
+        renews_at: '2026-04-01T00:00:00.000000Z',
+        ends_at: null,
+        created_at: '2026-03-01T09:00:00.000000Z',
+        updated_at: '2026-03-01T10:00:00.000000Z',
+        ...attributes,
+    },
+})
+
+describe('getSubscriptionSnapshot (M7.5)', () => {
+    it('fetches the subscription by id, authenticated with the API key', async () => {
+        const fetchImpl = stubFetch(() => json({ data: subscriptionResource('77') }))
+        const provider = createMorProvider(config, { fetchImpl })
+
+        await provider.getSubscriptionSnapshot({ providerSubscriptionId: '77' })
+
+        const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
+        expect(new URL(url).pathname).toBe('/v1/subscriptions/77')
+        expect(init.method).toBe('GET')
+        expect((init.headers as Record<string, string>).Authorization).toBe('Bearer mor_live_key')
+    })
+
+    it('maps the found subscription the same way listSubscriptions does', async () => {
+        const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({ data: subscriptionResource('77') })) })
+
+        const snapshot = await provider.getSubscriptionSnapshot({ providerSubscriptionId: '77' })
+
+        expect(snapshot).toMatchObject({ providerSubscriptionId: '77', providerCustomerId: '55', planCode: 'pro', status: 'active' })
+    })
+
+    it('resolves to null when the provider no longer has it, rather than throwing', async () => {
+        const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({ errors: [] }, 404)) })
+
+        await expect(provider.getSubscriptionSnapshot({ providerSubscriptionId: '77' })).resolves.toBeNull()
+    })
+
+    it('fails as a 502 for any other provider error', async () => {
+        const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({ errors: [] }, 500)) })
+
+        await expect(provider.getSubscriptionSnapshot({ providerSubscriptionId: '77' })).rejects.toMatchObject({ statusCode: 502 })
+    })
+})
+
+describe('refundInvoice (M7.5)', () => {
+    it('posts the refund amount to the invoice, authenticated with the API key', async () => {
+        const fetchImpl = stubFetch(() => json({ data: {} }))
+        const provider = createMorProvider(config, { fetchImpl })
+
+        await provider.refundInvoice({ providerInvoiceId: '9001', amountMinor: 1200 })
+
+        const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
+        expect(new URL(url).pathname).toBe('/v1/subscription-invoices/9001/refund')
+        expect(init.method).toBe('POST')
+        expect(JSON.parse(String(init.body))).toEqual({
+            data: { type: 'subscription-invoices', id: '9001', attributes: { amount: 1200 } },
+        })
+    })
+
+    it('fails as a 502 when the provider refuses', async () => {
+        const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({ errors: [] }, 422)) })
+
+        await expect(provider.refundInvoice({ providerInvoiceId: '9001', amountMinor: 1200 })).rejects.toMatchObject({ statusCode: 502 })
+    })
+})
+
 describe('listInvoices', () => {
     it('asks for one subscription of this store, authenticated with the API key', async () => {
         const fetchImpl = stubFetch(() => json({ data: [] }))

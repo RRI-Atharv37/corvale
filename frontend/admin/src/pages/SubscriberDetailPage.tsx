@@ -2,15 +2,30 @@ import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ActionDialog } from '../components/ActionDialog'
+import { useStepUp } from '../components/StepUp'
 import { Badge, Button, ErrorAlert, Facts, Field, Section, Spinner, inputClass } from '../components/ui'
 import { api } from '../lib/api'
 import { statusTone } from '../lib/tone'
 import { useAuth } from '../lib/auth'
 import { formatBytes, formatDate, formatDateTime, formatLimit, humanize, relativeDays } from '../lib/format'
-import type { Meta, SubscriberDetail } from '../lib/types'
+import type { Meta, ProviderInvoiceView, ResyncDiff, SubscriberDetail } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
 
-type DialogKind = 'comp' | 'override' | 'trial' | 'hold' | 'revoke' | 'clearHold' | 'grandfather' | 'revokeGrandfather'
+type DialogKind =
+  | 'comp'
+  | 'override'
+  | 'trial'
+  | 'hold'
+  | 'revoke'
+  | 'clearHold'
+  | 'grandfather'
+  | 'revokeGrandfather'
+  | 'refund'
+  | 'cancelPeriodEnd'
+  | 'cancelNow'
+  | 'recomputeUsage'
+  | 'revokeDevice'
+  | 'applyResync'
 
 const bool = (value: boolean): string => (value ? 'yes' : 'no')
 const yesNo = (value: boolean | null): string => (value === null ? '-' : bool(value))
@@ -66,16 +81,19 @@ interface DialogsProps {
   userId: string
   detail: SubscriberDetail
   meta: Meta | null
+  invoice?: ProviderInvoiceView
+  deviceRef?: string
   done: () => void
   cancel: () => void
 }
 
 const MB = 1024 * 1024
 
-const Dialogs = ({ kind, userId, detail, meta, done, cancel }: DialogsProps) => {
+const Dialogs = ({ kind, userId, detail, meta, invoice, deviceRef, done, cancel }: DialogsProps) => {
   const plans = meta?.plans ?? ['plus', 'pro']
   const grantCap = meta?.caps.grantDays
   const holdCap = meta?.caps.erasureHoldDays
+  const { run: stepUpRun } = useStepUp()
 
   const grandfatherKinds = meta?.grandfatherKinds ?? ['free_forever', 'locked_rate', 'extended_trial']
   const [plan, setPlan] = useState(detail.subscription?.planCode ?? plans[plans.length - 1])
@@ -86,12 +104,18 @@ const Dialogs = ({ kind, userId, detail, meta, done, cancel }: DialogsProps) => 
   const [devices, setDevices] = useState('')
   const [seats, setSeats] = useState('')
   const [unlimited, setUnlimited] = useState({ receipt: false, devices: false, seats: false })
+  const [confirmAmount, setConfirmAmount] = useState('')
 
   const wholeDays = Number(days)
   const daysValid = Number.isInteger(wholeDays) && wholeDays >= 1
 
   const run = async (action: () => Promise<unknown>) => {
     await action()
+    done()
+  }
+
+  const runWithStepUp = async (action: () => Promise<unknown>) => {
+    await stepUpRun(action)
     done()
   }
 
@@ -232,6 +256,91 @@ const Dialogs = ({ kind, userId, detail, meta, done, cancel }: DialogsProps) => 
     )
   }
 
+  if (kind === 'refund' && invoice) {
+    const typedAmount = Number(confirmAmount)
+    return (
+      <ActionDialog
+        title="Refund an invoice"
+        submitLabel="Refund"
+        variant="danger"
+        description={`Refunds ${invoice.currency} ${(invoice.total / 100).toFixed(2)} on invoice ${invoice.id}. The result arrives on a webhook, so nothing here changes what the subscriber can do. Type ${invoice.total} to confirm the amount in minor units.`}
+        canSubmit={typedAmount === invoice.total}
+        onCancel={cancel}
+        onSubmit={(reason) =>
+          runWithStepUp(() => api.refund(userId, { providerInvoiceId: invoice.id, confirmAmountMinor: typedAmount, reason }))
+        }
+      >
+        <Field label={`Type ${invoice.total} to confirm`} htmlFor="refund-confirm">
+          <input id="refund-confirm" className={inputClass} inputMode="numeric" value={confirmAmount} onChange={(event) => setConfirmAmount(event.target.value)} />
+        </Field>
+      </ActionDialog>
+    )
+  }
+
+  if (kind === 'cancelPeriodEnd') {
+    return (
+      <ActionDialog
+        title="Cancel at period end"
+        submitLabel="Cancel at period end"
+        variant="danger"
+        description="Asks the provider to end the subscription at the close of the current paid period. It keeps billing until then."
+        onCancel={cancel}
+        onSubmit={(reason) => run(() => api.cancelAtPeriodEnd(userId, { reason }))}
+      />
+    )
+  }
+
+  if (kind === 'cancelNow') {
+    return (
+      <ActionDialog
+        title="Cancel now"
+        submitLabel="Cancel now"
+        variant="danger"
+        description="Asks the provider to stop billing immediately. The real provider may only honour this at the next renewal - verify the outcome afterward."
+        onCancel={cancel}
+        onSubmit={(reason) => runWithStepUp(() => api.cancelNow(userId, { reason }))}
+      />
+    )
+  }
+
+  if (kind === 'applyResync') {
+    return (
+      <ActionDialog
+        title="Apply resync"
+        submitLabel="Apply"
+        variant="danger"
+        description="Overwrites the fields shown as differing with the payment provider's live values."
+        onCancel={cancel}
+        onSubmit={(reason) => run(() => api.applyResync(userId, { reason }))}
+      />
+    )
+  }
+
+  if (kind === 'recomputeUsage') {
+    return (
+      <ActionDialog
+        title="Recompute usage"
+        submitLabel="Recompute"
+        description="Rebuilds this subscriber's receipt and sync-device usage counters, and the seat count of every workspace they own, from the underlying rows."
+        onCancel={cancel}
+        onSubmit={(reason) => run(() => api.recomputeUsage(userId, { reason }))}
+      />
+    )
+  }
+
+  if (kind === 'revokeDevice' && deviceRef) {
+    return (
+      <ActionDialog
+        title="Revoke device"
+        submitLabel="Revoke"
+        variant="danger"
+        description={`Frees the sync slot held by device ${deviceRef}. If it keeps syncing it re-registers as a new, later-ranked device.`}
+        onCancel={cancel}
+        onSubmit={(reason) => run(() => api.revokeDevice(userId, deviceRef, { reason }))}
+      />
+    )
+  }
+
   if (kind === 'revoke') {
     return (
       <ActionDialog
@@ -262,6 +371,13 @@ const SubscriberDetailPage = () => {
   const detail = useAsync(() => api.getSubscriber(userId), [userId])
   const meta = useAsync(() => api.meta(), [])
   const [dialog, setDialog] = useState<DialogKind | null>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<ProviderInvoiceView | undefined>(undefined)
+  const [selectedDeviceRef, setSelectedDeviceRef] = useState<string | undefined>(undefined)
+  const [resync, setResync] = useState<{ differences: ResyncDiff[] } | null>(null)
+  const [resyncError, setResyncError] = useState<string | null>(null)
+  const [resyncChecking, setResyncChecking] = useState(false)
+  const providerLinked = Boolean(detail.data?.subscription?.providerSubscriptionId)
+  const invoices = useAsync(() => (providerLinked ? api.listInvoices(userId) : Promise.resolve({ invoices: [] })), [userId, providerLinked])
 
   if (detail.error && !detail.data) {
     return (
@@ -284,6 +400,20 @@ const SubscriberDetailPage = () => {
   const sub = data.subscription
   const canGrant = hasCapability('grants.write')
   const canGrandfather = hasCapability('grandfather.write')
+  const canMoney = hasCapability('money.write')
+
+  const checkResync = async () => {
+    setResyncChecking(true)
+    setResyncError(null)
+    setResync(null)
+    try {
+      setResync(await api.previewResync(userId))
+    } catch (failure) {
+      setResyncError(failure instanceof Error ? failure.message : 'The resync preview failed')
+    } finally {
+      setResyncChecking(false)
+    }
+  }
 
   return (
     <>
@@ -311,6 +441,42 @@ const SubscriberDetailPage = () => {
         <div className="flex flex-wrap gap-2" aria-label="Grandfather actions" role="group">
           <Button onClick={() => setDialog('grandfather')}>Grandfather</Button>
           {sub?.grandfatherKind ? <Button onClick={() => setDialog('revokeGrandfather')}>Clear grandfather</Button> : null}
+        </div>
+      ) : null}
+
+      {canMoney && sub?.providerSubscriptionId ? (
+        <div className="flex flex-wrap gap-2" aria-label="Money actions" role="group">
+          <Button onClick={() => setDialog('cancelPeriodEnd')}>Cancel at period end</Button>
+          <Button onClick={() => setDialog('cancelNow')}>Cancel now</Button>
+          <Button onClick={() => void checkResync()} disabled={resyncChecking}>
+            {resyncChecking ? 'Checking...' : 'Check resync'}
+          </Button>
+        </div>
+      ) : null}
+      {canMoney && resyncError ? <ErrorAlert message={resyncError} /> : null}
+      {canMoney && resync ? (
+        resync.differences.length === 0 ? (
+          <p className="text-sm text-text-muted">Nothing differs from the payment provider.</p>
+        ) : (
+          <div className="space-y-2 rounded-md border border-border p-3 text-sm">
+            <ul className="space-y-1">
+              {resync.differences.map((diff) => (
+                <li key={diff.field}>
+                  <span className="font-medium">{humanize(diff.field)}</span>: {String(diff.local ?? '-')} <span className="text-text-muted">-&gt;</span>{' '}
+                  {String(diff.remote ?? '-')}
+                </li>
+              ))}
+            </ul>
+            <Button variant="primary" onClick={() => setDialog('applyResync')}>
+              Apply resync
+            </Button>
+          </div>
+        )
+      ) : null}
+
+      {canGrant ? (
+        <div className="flex flex-wrap gap-2" aria-label="Repair actions" role="group">
+          <Button onClick={() => setDialog('recomputeUsage')}>Recompute usage</Button>
         </div>
       ) : null}
 
@@ -391,7 +557,8 @@ const SubscriberDetailPage = () => {
                 <th className="py-1 pr-4 font-medium">Kind</th>
                 <th className="py-1 pr-4 font-medium">First seen</th>
                 <th className="py-1 pr-4 font-medium">Last seen</th>
-                <th className="py-1 font-medium">Can push</th>
+                <th className="py-1 pr-4 font-medium">Can push</th>
+                {canGrant ? <th className="py-1 font-medium">Actions</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -401,13 +568,70 @@ const SubscriberDetailPage = () => {
                   <td className="py-1 pr-4">{device.kind ?? 'unknown'}</td>
                   <td className="py-1 pr-4">{formatDate(device.firstSeenAt)}</td>
                   <td className="py-1 pr-4">{formatDate(device.lastSeenAt)}</td>
-                  <td className="py-1">{bool(device.canPush)}</td>
+                  <td className="py-1 pr-4">{bool(device.canPush)}</td>
+                  {canGrant ? (
+                    <td className="py-1">
+                      <Button
+                        onClick={() => {
+                          setSelectedDeviceRef(device.deviceRef)
+                          setDialog('revokeDevice')
+                        }}
+                      >
+                        Revoke
+                      </Button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </Section>
+
+      {canMoney && providerLinked ? (
+        <Section title="Invoices">
+          <ErrorAlert message={invoices.error} />
+          {invoices.loading && !invoices.data ? <Spinner /> : null}
+          {invoices.data && invoices.data.invoices.length === 0 ? <p className="text-sm text-text-muted">No invoices on the live provider list.</p> : null}
+          {invoices.data && invoices.data.invoices.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-text-muted">
+                <tr>
+                  <th className="py-1 pr-4 font-medium">Issued</th>
+                  <th className="py-1 pr-4 font-medium">Amount</th>
+                  <th className="py-1 pr-4 font-medium">Status</th>
+                  <th className="py-1 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {invoices.data.invoices.map((invoice) => (
+                  <tr key={invoice.id}>
+                    <td className="py-1 pr-4 whitespace-nowrap">{formatDate(invoice.issuedAt)}</td>
+                    <td className="py-1 pr-4">
+                      {invoice.currency} {(invoice.total / 100).toFixed(2)}
+                    </td>
+                    <td className="py-1 pr-4">
+                      <Badge tone={invoice.status === 'paid' ? 'good' : invoice.status === 'refunded' ? 'neutral' : 'warn'}>{humanize(invoice.status)}</Badge>
+                    </td>
+                    <td className="py-1">
+                      {invoice.status === 'paid' ? (
+                        <Button
+                          onClick={() => {
+                            setSelectedInvoice(invoice)
+                            setDialog('refund')
+                          }}
+                        >
+                          Refund
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+        </Section>
+      ) : null}
 
       <Section title="Workspaces">
         {data.workspaces.length === 0 ? (
@@ -488,10 +712,16 @@ const SubscriberDetailPage = () => {
           userId={userId}
           detail={data}
           meta={meta.data}
+          invoice={selectedInvoice}
+          deviceRef={selectedDeviceRef}
           cancel={() => setDialog(null)}
           done={() => {
             setDialog(null)
+            setSelectedInvoice(undefined)
+            setSelectedDeviceRef(undefined)
+            setResync(null)
             detail.reload()
+            invoices.reload()
           }}
         />
       ) : null}

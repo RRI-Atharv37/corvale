@@ -1,6 +1,7 @@
 import { expireLapsedTrials } from './trial.service'
 import { sendDunningEmails, type DunningSweepResult } from './dunning.service'
 import { isBillingEnabled } from './entitlement.service'
+import { snapshotMetricsStock } from './metrics.service'
 import { runRetentionSweep, type RetentionSweepResult } from './retention.service'
 import { redactOrphanedLedgerProviderIds } from './billingEventRedaction'
 
@@ -16,23 +17,27 @@ export interface BillingSweepResult {
  * The scheduled pass: expire lapsed trials, send the dunning emails that are due, run the
  * retention window, then scrub provider ids from ledger events no account owns. Retention goes
  * before the scrub so a trial that expires in this run is stamped in the same run; the scrub is
- * data hygiene and runs whether or not billing is on.
+ * data hygiene and runs whether or not billing is on. The metrics stock snapshot (M7b.2) is always
+ * the last step, on purpose or off - it is just a reading of whatever is in the database right now.
  */
 export const runBillingSweeps = async (now: Date = new Date()): Promise<BillingSweepResult> => {
     if (!isBillingEnabled()) {
-        return {
+        const result: BillingSweepResult = {
             skipped: true,
             trialsExpired: 0,
             dunning: { skipped: true, sent: 0, failed: 0 },
             retention: await runRetentionSweep(now),
             ledgerRedacted: await redactOrphanedLedgerProviderIds(now),
         }
+        await snapshotMetricsStock(now)
+        return result
     }
 
     const { expired } = await expireLapsedTrials(now)
     const dunning = await sendDunningEmails(now)
     const retention = await runRetentionSweep(now)
     const ledgerRedacted = await redactOrphanedLedgerProviderIds(now)
+    await snapshotMetricsStock(now)
 
     return { skipped: false, trialsExpired: expired, dunning, retention, ledgerRedacted }
 }

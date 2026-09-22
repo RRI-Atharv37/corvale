@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setMailTransport } from '@infra/mail/mailService'
 import { Receipt } from '@modules/receipts'
-import { Subscription, UsageCounter, recomputeAllUsageCounters, runBillingSweeps } from '@modules/billing'
+import { MetricDaily, Subscription, UsageCounter, recomputeAllUsageCounters, runBillingSweeps } from '@modules/billing'
 import { seedUserDirectly } from '@tests/helpers'
 import { DAY_MS, disableBilling, enableBilling, setSubscription } from '@tests/billingHelpers'
 
@@ -74,6 +74,43 @@ describe('runBillingSweeps', () => {
 
         expect(result).toMatchObject({ skipped: true, trialsExpired: 0 })
         expect(await Subscription.countDocuments({ status: 'trial_expired' })).toBe(0)
+    })
+
+    it('writes the metrics stock snapshot onto today\'s UTC-day doc as its last step, even while billing is off (M7b.2)', async () => {
+        await setSubscription(userId(), { status: 'active', planCode: 'pro', interval: 'monthly' })
+
+        await runBillingSweeps(NOW)
+
+        const doc = await MetricDaily.findOne({ date: '2026-10-10' }).lean()
+        expect(doc?.stock?.asOf).toBeTruthy()
+        expect(doc?.stock?.segments.some((segment) => segment.planCode === 'pro' && segment.status === 'active')).toBe(true)
+    })
+
+    it('closes an earlier unclosed day without touching its stock', async () => {
+        await MetricDaily.create({
+            date: '2026-10-08',
+            closed: false,
+            stock: { asOf: daysAgo(2), segments: [], listPriceMrrMinor: 500, atRiskMrrMinor: 0 },
+        })
+
+        await runBillingSweeps(NOW)
+
+        const doc = await MetricDaily.findOne({ date: '2026-10-08' }).lean()
+        expect(doc?.closed).toBe(true)
+        expect(doc?.stock?.listPriceMrrMinor).toBe(500)
+    })
+
+    it('never rewrites an already-closed day\'s stock', async () => {
+        await MetricDaily.create({
+            date: '2026-10-08',
+            closed: true,
+            stock: { asOf: daysAgo(2), segments: [], listPriceMrrMinor: 500, atRiskMrrMinor: 0 },
+        })
+
+        await runBillingSweeps(NOW)
+
+        const doc = await MetricDaily.findOne({ date: '2026-10-08' }).lean()
+        expect(doc?.stock?.listPriceMrrMinor).toBe(500)
     })
 })
 

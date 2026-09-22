@@ -9,6 +9,8 @@ export interface IBillingEvent extends Document {
     processedAt: Date | null
     error: string | null
     redactedAt: Date | null
+    /** Set once, atomically, the first time this event's counters are recorded - a redelivery cannot double-count (M7b). */
+    metricsRecordedAt: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -27,6 +29,7 @@ const BillingEventSchema = new Schema<IBillingEvent>(
         processedAt: { type: Date, default: null },
         error: { type: String, default: null },
         redactedAt: { type: Date, default: null },
+        metricsRecordedAt: { type: Date, default: null },
     },
     { timestamps: true, minimize: false }
 )

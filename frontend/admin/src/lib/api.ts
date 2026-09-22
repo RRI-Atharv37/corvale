@@ -10,6 +10,8 @@ import type {
   MeResponse,
   Meta,
   OpsHealth,
+  ProviderInvoiceView,
+  ResyncDiff,
   Session,
   SubscriberDetail,
   SubscriberFilters,
@@ -212,5 +214,32 @@ export const api = {
   },
   async revertGrandfatherCohort(batchId: string, body: { reason: string }): Promise<{ batchId: string; revertedCount: number }> {
     return data(await http.post<{ data: { batchId: string; revertedCount: number } }>(`/grandfather/cohort/${batchId}/revert`, body))
+  },
+  async listInvoices(userId: string): Promise<{ invoices: ProviderInvoiceView[] }> {
+    return data(await http.get<{ data: { invoices: ProviderInvoiceView[] } }>(`/subscribers/${userId}/invoices`))
+  },
+  async refund(userId: string, body: { providerInvoiceId: string; confirmAmountMinor: number; reason: string }): Promise<{ requested: true }> {
+    return data(await http.post<{ data: { requested: true } }>(`/subscribers/${userId}/refund`, body))
+  },
+  async cancelAtPeriodEnd(userId: string, body: { reason: string }): Promise<{ requested: true }> {
+    return data(await http.post<{ data: { requested: true } }>(`/subscribers/${userId}/cancel`, body))
+  },
+  async cancelNow(userId: string, body: { reason: string }): Promise<{ requested: true }> {
+    return data(await http.post<{ data: { requested: true } }>(`/subscribers/${userId}/cancel/now`, body))
+  },
+  async previewResync(userId: string): Promise<{ differences: ResyncDiff[] }> {
+    return data(await http.get<{ data: { differences: ResyncDiff[] } }>(`/subscribers/${userId}/resync/preview`))
+  },
+  async applyResync(userId: string, body: { reason: string }): Promise<{ fields: string[] }> {
+    return data(await http.post<{ data: { fields: string[] } }>(`/subscribers/${userId}/resync/apply`, body))
+  },
+  async recomputeUsage(userId: string, body: { reason: string }): Promise<{ recomputed: true; workspacesRecomputed: number }> {
+    return data(await http.post<{ data: { recomputed: true; workspacesRecomputed: number } }>(`/subscribers/${userId}/recompute-usage`, body))
+  },
+  async revokeDevice(userId: string, deviceRef: string, body: { reason: string }): Promise<{ revoked: true }> {
+    return data(await http.post<{ data: { revoked: true } }>(`/subscribers/${userId}/devices/${deviceRef}/revoke`, body))
+  },
+  async replayBillingEvent(eventId: string, body: { reason: string }): Promise<unknown> {
+    return data(await http.post<{ data: unknown }>(`/billing-events/${eventId}/replay`, body))
   },
 }

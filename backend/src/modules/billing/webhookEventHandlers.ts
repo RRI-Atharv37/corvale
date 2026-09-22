@@ -6,6 +6,7 @@ import { isDuplicateKeyError } from '@core/db/objectId'
 import { logger } from '@infra/observability/logger'
 import { User } from '@modules/users'
 
+import { recordSubscriptionTransitionMetrics, recordTransitionMetrics } from './metrics.service'
 import { KNOWN_BILLING_EVENT_TYPES, type KnownBillingEventType, type NormalizedBillingEvent } from './providers/billingProvider'
 import Subscription, { type ISubscription } from './subscription.model'
 
@@ -57,8 +58,9 @@ const applyChanges = async (
 ): Promise<BillingEventOutcome> => {
     if (row.lastEventAt && row.lastEventAt.getTime() > event.occurredAt.getTime()) return APPLIED
 
+    let updated: ISubscription | null
     try {
-        await Subscription.findOneAndUpdate(
+        updated = await Subscription.findOneAndUpdate(
             { _id: row._id, $or: [{ lastEventAt: null }, { lastEventAt: { $lte: event.occurredAt } }] },
             { $set: { ...changes, lastEventAt: event.occurredAt } }
         ).setOptions(BYPASS)
@@ -66,6 +68,7 @@ const applyChanges = async (
         if (isDuplicateKeyError(error)) return unapplied('Provider id is already linked to another subscription')
         throw error
     }
+    if (updated) await recordSubscriptionTransitionMetrics(row, changes, event.providerEventId, event.occurredAt)
     return APPLIED
 }
 
@@ -83,6 +86,7 @@ const subscriptionChanges = (
     const relink = resubscribe && row?.status === 'cancelled'
 
     if (event.planCode) changes.planCode = event.planCode
+    if (event.interval !== undefined) changes.interval = event.interval
     if (event.status) {
         changes.status = event.status
         changes.pastDueSince = event.status === 'past_due' ? (row?.pastDueSince ?? event.occurredAt) : null
@@ -129,6 +133,7 @@ const handleSubscriptionCreated: BillingEventHandler = async (event) => {
         await Subscription.create({
             userId,
             planCode: event.planCode as PlanCode,
+            interval: event.interval ?? null,
             status: event.status,
             trialEndsAt: event.trialEndsAt ?? null,
             currentPeriodEnd: event.currentPeriodEnd ?? null,
@@ -142,6 +147,12 @@ const handleSubscriptionCreated: BillingEventHandler = async (event) => {
         if (isDuplicateKeyError(error)) return unapplied('A subscription for this user was created concurrently')
         throw error
     }
+    await recordSubscriptionTransitionMetrics(
+        null,
+        { status: event.status, planCode: event.planCode as PlanCode, interval: event.interval ?? null },
+        event.providerEventId,
+        event.occurredAt
+    )
     return APPLIED
 }
 
@@ -181,12 +192,18 @@ const handlePaymentSucceeded: BillingEventHandler = async (event) => {
 }
 
 // Recorded on the ledger and logged for a human; whether either revokes access is a policy call for later.
-const recordOnly =
-    (message: string): BillingEventHandler =>
-    async (event) => {
-        logger.warn(message, { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
-        return APPLIED
-    }
+const handleRefundIssued: BillingEventHandler = async (event) => {
+    logger.warn('Billing refund issued', { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
+    const total = typeof event.payload?.total === 'number' ? event.payload.total : 0
+    await recordTransitionMetrics(event.providerEventId, event.occurredAt, { refunds: 1, refundMinor: total })
+    return APPLIED
+}
+
+const handleDisputeOpened: BillingEventHandler = async (event) => {
+    logger.warn('Billing dispute opened', { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
+    await recordTransitionMetrics(event.providerEventId, event.occurredAt, { disputes: 1 })
+    return APPLIED
+}
 
 const HANDLERS: Record<KnownBillingEventType, BillingEventHandler> = {
     'checkout.completed': handleSubscriptionCreated,
@@ -195,8 +212,8 @@ const HANDLERS: Record<KnownBillingEventType, BillingEventHandler> = {
     'subscription.deleted': handleSubscriptionDeleted,
     'payment.succeeded': handlePaymentSucceeded,
     'payment.failed': handlePaymentFailed,
-    'refund.issued': recordOnly('Billing refund issued'),
-    'dispute.opened': recordOnly('Billing dispute opened'),
+    'refund.issued': handleRefundIssued,
+    'dispute.opened': handleDisputeOpened,
 }
 
 const isKnownEventType = (type: string): type is KnownBillingEventType =>
