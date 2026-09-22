@@ -4,7 +4,14 @@ import asyncHandler from 'express-async-handler'
 import { buildCsvRow } from '@core/http/csv'
 import { handleResponses } from '@core/http/response'
 
-import { getRevenueRecognitionSummary, revenueRecognitionEntriesCursor, runRevenueRecognitionNow } from './adminFinance.service'
+import {
+    getPayoutReconciliationSummary,
+    getRevenueRecognitionSummary,
+    recordProviderPayout,
+    revenueRecognitionEntriesCursor,
+    runRevenueRecognitionNow,
+    updateProviderPayout,
+} from './adminFinance.service'
 import { requestContext, type AdminRequest } from './adminAuth.middleware'
 import type { AdminPrincipal } from './adminTypes'
 
@@ -40,4 +47,16 @@ export const recognitionExportCsv = asyncHandler(async (req: AdminRequest, res: 
 
 export const recognitionRun = asyncHandler(async (req: AdminRequest, res: Response) => {
     handleResponses(res, 200, await runRevenueRecognitionNow(principalOf(req), requestContext(req)))
+})
+
+export const payoutReconciliationSummary = asyncHandler(async (req: AdminRequest, res: Response) => {
+    handleResponses(res, 200, await getPayoutReconciliationSummary(req.query))
+})
+
+export const recordPayout = asyncHandler(async (req: AdminRequest, res: Response) => {
+    handleResponses(res, 201, await recordProviderPayout(principalOf(req), requestContext(req), req.body))
+})
+
+export const updatePayout = asyncHandler(async (req: AdminRequest, res: Response) => {
+    handleResponses(res, 200, await updateProviderPayout(principalOf(req), requestContext(req), req.params.payoutId, req.body))
 })

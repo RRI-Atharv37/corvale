@@ -33,6 +33,8 @@ export const ADMIN_AUDIT_ACTIONS = [
     'device.revoked',
     'billing_event.replayed',
     'finance.recognition_run',
+    'finance.payout_recorded',
+    'finance.payout_updated',
 ] as const
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number]
 

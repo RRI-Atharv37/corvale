@@ -9,6 +9,7 @@ import {
     JobRun,
     MetricDaily,
     Plan,
+    ProviderPayout,
     Subscription,
     SyncDevice,
     UsageCounter,
@@ -16,6 +17,7 @@ import {
     type IDeferredRevenueEntry,
     type IJobRun,
     type IMetricDaily,
+    type IProviderPayout,
     type ISubscription,
     type ISyncDevice,
     type IUsageCounter,
@@ -288,3 +290,41 @@ export const findRevenueRecognitionEntries = (fromMonth?: string, toMonth?: stri
         .sort({ recognitionMonth: 1, bucketIndex: 1, _id: 1 })
         .lean<IDeferredRevenueEntry[]>()
         .cursor()
+
+/** M8f: MoR-reported payouts. Also no `userId` - one row per period+currency, not per customer - so reads through here need no RLS bypass either. */
+const payoutPeriodMatch = (fromMonth?: string, toMonth?: string): Record<string, unknown> => {
+    if (!fromMonth && !toMonth) return {}
+    const range: Record<string, string> = {}
+    if (fromMonth) range.$gte = fromMonth
+    if (toMonth) range.$lte = toMonth
+    return { periodMonth: range }
+}
+
+export const findProviderPayouts = (fromMonth?: string, toMonth?: string): Promise<IProviderPayout[]> =>
+    ProviderPayout.find(payoutPeriodMatch(fromMonth, toMonth))
+        .sort({ periodMonth: 1, currency: 1 })
+        .lean<IProviderPayout[]>()
+
+export interface CreateProviderPayoutInput {
+    periodMonth: string
+    currency: string
+    reportedPayoutMinor: number
+    note: string | null
+    recordedByAdminId: Types.ObjectId | null
+}
+
+/** Duplicate-key (one payout per period+currency) is left for the caller to translate - this file stays free of `CustomError`. */
+export const createProviderPayout = (input: CreateProviderPayoutInput): Promise<IProviderPayout> => ProviderPayout.create(input)
+
+export interface UpdateProviderPayoutInput {
+    reportedPayoutMinor?: number
+    note?: string | null
+    firc?: string | null
+    bankDepositRef?: string | null
+    bankDepositDate?: Date | null
+    bankDepositAmountMinor?: number | null
+}
+
+/** Caller validates `id` is a well-formed ObjectId first - an invalid one throws here rather than resolving to null. */
+export const updateProviderPayoutFields = (id: string, updates: UpdateProviderPayoutInput): Promise<IProviderPayout | null> =>
+    ProviderPayout.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true }).lean<IProviderPayout | null>()

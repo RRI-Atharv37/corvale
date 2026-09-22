@@ -290,5 +290,8 @@ export const ERROR_MESSAGES = {
         NO_DIFFERENCE: 'Nothing differs from the payment provider',
         DEVICE_REF_AMBIGUOUS: 'That reference matches more than one device; ask the subscriber for the full id',
         EVENT_NOT_REPLAYABLE: 'No unapplied, errored ledger event matches that id',
+        INVALID_PAYOUT: 'The payout details are not valid',
+        PAYOUT_ALREADY_RECORDED: 'A payout is already recorded for that period and currency',
+        PAYOUT_NOT_FOUND: 'No payout record matches that id',
     },
 }

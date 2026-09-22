@@ -35,6 +35,8 @@ const KEPT_WITH_ROW: ReadonlySet<AdminAuditAction> = new Set<AdminAuditAction>([
     'billing.cancel_at_period_end',
     'billing_event.replayed',
     'finance.recognition_run',
+    'finance.payout_recorded',
+    'finance.payout_updated',
 ])
 
 const ALLOWED_STATE_KEYS = [
@@ -51,6 +53,11 @@ const ALLOWED_STATE_KEYS = [
     'adminGrant',
     'batchId',
     'affectedCount',
+    'periodMonth',
+    'firc',
+    'bankDepositRef',
+    'bankDepositDate',
+    'bankDepositAmountMinor',
 ] as const
 
 const EMAIL_IN_TEXT = /[^\s@]+@[^\s@]+\.[^\s@]+/
