@@ -21,6 +21,10 @@ export const ADMIN_AUDIT_ACTIONS = [
     'trial.extended',
     'erasure.hold_set',
     'erasure.hold_cleared',
+    'grandfather.set',
+    'grandfather.revoked',
+    'grandfather.bulk_applied',
+    'grandfather.bulk_reverted',
 ] as const
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number]
 

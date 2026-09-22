@@ -6,6 +6,7 @@ import { useAuth } from './lib/auth'
 import AdminsPage from './pages/AdminsPage'
 import AuditPage from './pages/AuditPage'
 import EnrolPage from './pages/EnrolPage'
+import GrandfatherCohortPage from './pages/GrandfatherCohortPage'
 import LoginPage from './pages/LoginPage'
 import OverviewPage from './pages/OverviewPage'
 import SubscriberDetailPage from './pages/SubscriberDetailPage'
@@ -26,6 +27,7 @@ const App = () => (
         <Route index element={<OverviewPage />} />
         <Route path="subscribers" element={<Guard capability="subscribers.read"><SubscribersPage /></Guard>} />
         <Route path="subscribers/:userId" element={<Guard capability="subscribers.read"><SubscriberDetailPage /></Guard>} />
+        <Route path="grandfather" element={<Guard capability="grandfather.write"><GrandfatherCohortPage /></Guard>} />
         <Route path="audit" element={<Guard capability="audit.read"><AuditPage /></Guard>} />
         <Route path="admins" element={<Guard capability="admins.manage"><AdminsPage /></Guard>} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -5,6 +5,8 @@ import type {
   AuditResponse,
   EnrolStart,
   EnrolmentGrant,
+  GrandfatherBatchView,
+  GrandfatherCohortPreview,
   MeResponse,
   Meta,
   OpsHealth,
@@ -192,5 +194,23 @@ export const api = {
   },
   async clearErasureHold(userId: string, body: { reason: string }): Promise<unknown> {
     return data(await http.post<{ data: unknown }>(`/subscribers/${userId}/erasure-hold/clear`, body))
+  },
+  async setGrandfather(userId: string, body: { kind: string; reason: string }): Promise<unknown> {
+    return data(await http.post<{ data: unknown }>(`/subscribers/${userId}/grandfather`, body))
+  },
+  async revokeGrandfather(userId: string, body: { reason: string }): Promise<unknown> {
+    return data(await http.post<{ data: unknown }>(`/subscribers/${userId}/grandfather/revoke`, body))
+  },
+  async previewGrandfatherCohort(body: { kind: string; registeredBefore: string }): Promise<GrandfatherCohortPreview> {
+    return data(await http.post<{ data: GrandfatherCohortPreview }>('/grandfather/cohort/dry-run', body))
+  },
+  async applyGrandfatherCohort(body: { kind: string; registeredBefore: string; confirmCount: number; reason: string }): Promise<{ batchId: string; appliedCount: number }> {
+    return data(await http.post<{ data: { batchId: string; appliedCount: number } }>('/grandfather/cohort/apply', body))
+  },
+  async listGrandfatherBatches(): Promise<{ batches: GrandfatherBatchView[] }> {
+    return data(await http.get<{ data: { batches: GrandfatherBatchView[] } }>('/grandfather/cohort/batches'))
+  },
+  async revertGrandfatherCohort(batchId: string, body: { reason: string }): Promise<{ batchId: string; revertedCount: number }> {
+    return data(await http.post<{ data: { batchId: string; revertedCount: number } }>(`/grandfather/cohort/${batchId}/revert`, body))
   },
 }

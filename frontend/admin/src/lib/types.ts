@@ -213,6 +213,27 @@ export interface AuditResponse {
   limit: number
 }
 
+export interface GrandfatherBatchView {
+  id: string
+  kind: string
+  registeredBefore: string
+  reason: string
+  status: 'applied' | 'reverted'
+  count: number
+  createdBy: string | null
+  createdAt: string
+  revertedBy: string | null
+  revertedAt: string | null
+  revertReason: string | null
+}
+
+export interface GrandfatherCohortPreview {
+  kind: string
+  registeredBefore: string
+  count: number
+  sample: string[]
+}
+
 export interface AdminListItem {
   id: string
   email: string

@@ -10,7 +10,7 @@ import { formatBytes, formatDate, formatDateTime, formatLimit, humanize, relativ
 import type { Meta, SubscriberDetail } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
 
-type DialogKind = 'comp' | 'override' | 'trial' | 'hold' | 'revoke' | 'clearHold'
+type DialogKind = 'comp' | 'override' | 'trial' | 'hold' | 'revoke' | 'clearHold' | 'grandfather' | 'revokeGrandfather'
 
 const bool = (value: boolean): string => (value ? 'yes' : 'no')
 const yesNo = (value: boolean | null): string => (value === null ? '-' : bool(value))
@@ -77,8 +77,10 @@ const Dialogs = ({ kind, userId, detail, meta, done, cancel }: DialogsProps) => 
   const grantCap = meta?.caps.grantDays
   const holdCap = meta?.caps.erasureHoldDays
 
+  const grandfatherKinds = meta?.grandfatherKinds ?? ['free_forever', 'locked_rate', 'extended_trial']
   const [plan, setPlan] = useState(detail.subscription?.planCode ?? plans[plans.length - 1])
   const [days, setDays] = useState(kind === 'comp' || kind === 'override' ? '30' : kind === 'trial' ? '7' : '14')
+  const [grandfatherKind, setGrandfatherKind] = useState(detail.subscription?.grandfatherKind ?? grandfatherKinds[0])
   const [overridePlan, setOverridePlan] = useState('')
   const [receiptMb, setReceiptMb] = useState('')
   const [devices, setDevices] = useState('')
@@ -195,6 +197,41 @@ const Dialogs = ({ kind, userId, detail, meta, done, cancel }: DialogsProps) => 
     )
   }
 
+  if (kind === 'grandfather') {
+    return (
+      <ActionDialog
+        title="Grandfather this subscriber"
+        submitLabel="Set grandfather"
+        description="Marks this subscriber as pre-paywall, outside the ordinary billing lifecycle. It has no expiry and stays until cleared."
+        onCancel={cancel}
+        onSubmit={(reason) => run(() => api.setGrandfather(userId, { kind: grandfatherKind, reason }))}
+      >
+        <Field label="Kind" htmlFor="grandfather-kind">
+          <select id="grandfather-kind" className={inputClass} value={grandfatherKind} onChange={(event) => setGrandfatherKind(event.target.value)}>
+            {grandfatherKinds.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </ActionDialog>
+    )
+  }
+
+  if (kind === 'revokeGrandfather') {
+    return (
+      <ActionDialog
+        title="Clear grandfather"
+        submitLabel="Clear grandfather"
+        variant="danger"
+        description="Removes the grandfather status. The subscriber returns to the ordinary billing lifecycle."
+        onCancel={cancel}
+        onSubmit={(reason) => run(() => api.revokeGrandfather(userId, { reason }))}
+      />
+    )
+  }
+
   if (kind === 'revoke') {
     return (
       <ActionDialog
@@ -246,6 +283,7 @@ const SubscriberDetailPage = () => {
   const data = detail.data
   const sub = data.subscription
   const canGrant = hasCapability('grants.write')
+  const canGrandfather = hasCapability('grandfather.write')
 
   return (
     <>
@@ -266,6 +304,13 @@ const SubscriberDetailPage = () => {
           <Button onClick={() => setDialog('hold')}>Erasure hold</Button>
           {sub?.adminGrant ? <Button onClick={() => setDialog('revoke')}>Revoke grant</Button> : null}
           {sub?.retentionHoldUntil ? <Button onClick={() => setDialog('clearHold')}>Clear hold</Button> : null}
+        </div>
+      ) : null}
+
+      {canGrandfather ? (
+        <div className="flex flex-wrap gap-2" aria-label="Grandfather actions" role="group">
+          <Button onClick={() => setDialog('grandfather')}>Grandfather</Button>
+          {sub?.grandfatherKind ? <Button onClick={() => setDialog('revokeGrandfather')}>Clear grandfather</Button> : null}
         </div>
       ) : null}
 

@@ -1,6 +1,7 @@
 import { Types } from 'mongoose'
 
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
+import type { GrandfatherKind } from '@core/billing/constants'
 import {
     BillingEvent,
     JobRun,
@@ -138,3 +139,50 @@ export const reopenTrial = (userId: string, currentStatus: string, trialEndsAt: 
         { userId: asObjectId(userId), status: currentStatus, providerSubscriptionId: null, providerCustomerId: null },
         { $set: { status: 'trialing', trialEndsAt, lapsedAt: null, retentionStage: null, retentionStageAt: null } }
     )
+
+export const replaceGrandfatherKind = (userId: string, kind: GrandfatherKind | null): Promise<SubscriptionRow | null> =>
+    previousRow({ userId: asObjectId(userId) }, { $set: { grandfatherKind: kind } })
+
+/**
+ * The M7.4 bulk cohort: users who registered before a cutoff, have no payment-provider link and are not
+ * already grandfathered. Two plain queries rather than a `$lookup` - the admin module is forbidden from
+ * cross-collection aggregation (adminBoundary.test.ts), and the User side of this is small in practice
+ * (the pre-paywall cohort it targets).
+ */
+export const findUserIdsRegisteredBefore = async (cutoff: Date): Promise<Types.ObjectId[]> => {
+    const rows = await User.find({ createdAt: { $lt: cutoff } }).select('_id').lean<{ _id: Types.ObjectId }[]>()
+    return rows.map((row) => row._id)
+}
+
+const cohortFilter = (userIds: Types.ObjectId[]) => ({
+    userId: { $in: userIds },
+    grandfatherKind: null,
+    providerCustomerId: null,
+    providerSubscriptionId: null,
+})
+
+export interface CohortSubscriptionRow {
+    _id: Types.ObjectId
+    userId: Types.ObjectId
+}
+
+export const countCohortSubscriptions = (userIds: Types.ObjectId[]): Promise<number> =>
+    userIds.length === 0 ? Promise.resolve(0) : Subscription.countDocuments(cohortFilter(userIds)).setOptions(BYPASS)
+
+export const findCohortSubscriptions = (userIds: Types.ObjectId[], limit?: number): Promise<CohortSubscriptionRow[]> => {
+    if (userIds.length === 0) return Promise.resolve([])
+    const query = Subscription.find(cohortFilter(userIds)).setOptions(BYPASS).select('_id userId').sort({ _id: 1 })
+    return (typeof limit === 'number' ? query.limit(limit) : query).lean<CohortSubscriptionRow[]>()
+}
+
+/** Only ever moves an eligible row (still ungrandfathered) into the cohort's kind - a row a concurrent action already touched is left alone. */
+export const applyCohortGrandfather = async (subscriptionIds: Types.ObjectId[], kind: GrandfatherKind): Promise<number> => {
+    const result = await Subscription.updateMany({ _id: { $in: subscriptionIds }, grandfatherKind: null }, { $set: { grandfatherKind: kind } }).setOptions(BYPASS)
+    return result.modifiedCount
+}
+
+/** Only reverts a row still at the batch's kind - a row an admin has since changed by hand is left alone. */
+export const revertCohortGrandfather = async (subscriptionIds: Types.ObjectId[], kind: GrandfatherKind): Promise<number> => {
+    const result = await Subscription.updateMany({ _id: { $in: subscriptionIds }, grandfatherKind: kind }, { $set: { grandfatherKind: null } }).setOptions(BYPASS)
+    return result.modifiedCount
+}

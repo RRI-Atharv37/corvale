@@ -274,5 +274,13 @@ export const ERROR_MESSAGES = {
         TRIAL_NOT_EXTENDABLE: 'Only a trial that Corvale runs (no payment provider link) can be extended',
         HOLD_INVALID: 'The erasure hold is not valid',
         NO_HOLD: 'This subscriber has no erasure hold',
+        INVALID_GRANDFATHER: 'The grandfather kind is not valid',
+        NO_GRANDFATHER: 'This subscriber is not grandfathered',
+        INVALID_COHORT_CRITERIA: 'The cohort criteria are not valid',
+        COHORT_CONFIRM_REQUIRED: 'Type the exact count shown by the dry run to confirm',
+        COHORT_COUNT_MISMATCH: 'The cohort has changed since the dry run. Run it again before applying',
+        COHORT_EMPTY: 'No subscribers match that cohort',
+        BATCH_NOT_FOUND: 'No grandfather batch matches that id',
+        BATCH_NOT_APPLIED: 'This batch has already been reverted',
     },
 }

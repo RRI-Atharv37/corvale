@@ -165,6 +165,33 @@ export const toSubscriberDetailSubscription = (sub: SubscriptionLike) => ({
     updatedAt: sub.updatedAt,
 })
 
+/** A batch as staff see it in the revert list: its criteria and outcome, never the sampled emails (those only ever appear in the dry-run response). */
+export const toGrandfatherBatchView = (batch: {
+    _id: Types.ObjectId
+    kind: string
+    registeredBefore: Date
+    reason: string
+    status: string
+    subscriptionIds: unknown[]
+    createdBy: { toString(): string } | null
+    createdAt: Date
+    revertedBy?: { toString(): string } | null
+    revertedAt?: Date | null
+    revertReason?: string | null
+}) => ({
+    id: batch._id.toString(),
+    kind: batch.kind,
+    registeredBefore: batch.registeredBefore,
+    reason: batch.reason,
+    status: batch.status,
+    count: batch.subscriptionIds.length,
+    createdBy: idOf(batch.createdBy),
+    createdAt: batch.createdAt,
+    revertedBy: idOf(batch.revertedBy),
+    revertedAt: batch.revertedAt ?? null,
+    revertReason: batch.revertReason ?? null,
+})
+
 const DEVICE_REF_LENGTH = 8
 
 /** The chosen name is free text and can be personal, so a device is shown only by a short id and its kind. */

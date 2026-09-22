@@ -184,6 +184,11 @@ const ADMIN: RouteCase[] = [
     { method: 'post', path: `/api/v1/admin/subscribers/${id()}/trial-extension` },
     { method: 'post', path: `/api/v1/admin/subscribers/${id()}/erasure-hold` },
     { method: 'post', path: `/api/v1/admin/subscribers/${id()}/erasure-hold/clear` },
+    { method: 'post', path: `/api/v1/admin/subscribers/${id()}/grandfather` },
+    { method: 'post', path: `/api/v1/admin/subscribers/${id()}/grandfather/revoke` },
+    { method: 'post', path: '/api/v1/admin/grandfather/cohort/dry-run' },
+    { method: 'post', path: '/api/v1/admin/grandfather/cohort/apply' },
+    { method: 'post', path: `/api/v1/admin/grandfather/cohort/${id()}/revert` },
 ]
 
 /** Resolve their gate from the WORKSPACE OWNER's subscription - see workspaceEntitlements.test.ts. */

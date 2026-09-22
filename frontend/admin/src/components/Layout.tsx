@@ -6,6 +6,7 @@ import { Button, Spinner } from './ui'
 const NAV: { to: string; label: string; capability?: string; end?: boolean }[] = [
   { to: '/', label: 'Overview', end: true },
   { to: '/subscribers', label: 'Subscribers', capability: 'subscribers.read' },
+  { to: '/grandfather', label: 'Grandfather', capability: 'grandfather.write' },
   { to: '/audit', label: 'Audit log', capability: 'audit.read' },
   { to: '/admins', label: 'Admins', capability: 'admins.manage' },
 ]

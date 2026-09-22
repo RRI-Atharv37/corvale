@@ -30,6 +30,8 @@ vi.mock('../../lib/api', async (importOriginal) => {
       extendTrial: vi.fn(),
       setErasureHold: vi.fn(),
       clearErasureHold: vi.fn(),
+      setGrandfather: vi.fn(),
+      revokeGrandfather: vi.fn(),
     },
   }
 })
@@ -91,7 +93,7 @@ const detail = (over: Record<string, unknown> = {}) => ({
 const META = {
   plans: ['plus', 'pro'],
   statuses: [],
-  grandfatherKinds: [],
+  grandfatherKinds: ['free_forever', 'locked_rate', 'extended_trial'],
   dunningStages: [],
   retentionStages: [],
   grantKinds: ['comp', 'plan_override'],
@@ -109,11 +111,11 @@ const renderPage = () =>
   )
 
 beforeEach(() => {
-  capabilities = ['subscribers.read', 'ops.read', 'grants.write']
+  capabilities = ['subscribers.read', 'ops.read', 'grants.write', 'grandfather.write']
   role = 'support'
   vi.mocked(apiModule.api.getSubscriber).mockReset().mockResolvedValue(detail() as never)
   vi.mocked(apiModule.api.meta).mockReset().mockResolvedValue(META as never)
-  for (const name of ['grant', 'revokeGrant', 'extendTrial', 'setErasureHold', 'clearErasureHold'] as const) {
+  for (const name of ['grant', 'revokeGrant', 'extendTrial', 'setErasureHold', 'clearErasureHold', 'setGrandfather', 'revokeGrandfather'] as const) {
     vi.mocked(apiModule.api[name]).mockReset().mockResolvedValue({} as never)
   }
 })
@@ -294,5 +296,41 @@ describe('SubscriberDetailPage - actions', () => {
 
     await waitFor(() => expect(apiModule.api.revokeGrant).toHaveBeenCalledWith(USER_ID, { reason: 'Issue resolved, no longer needed' }))
     expect(screen.getByRole('button', { name: /clear hold/i })).toBeInTheDocument()
+  })
+
+  it('offers no grandfather action to a role without grandfather.write', async () => {
+    capabilities = ['subscribers.read', 'ops.read', 'grants.write']
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Account' })
+
+    expect(screen.queryByRole('button', { name: /^grandfather$/i })).not.toBeInTheDocument()
+  })
+
+  it('sets a grandfather kind, then reloads the subscriber', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /^grandfather$/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.selectOptions(within(dialog).getByLabelText('Kind'), 'free_forever')
+    await user.type(within(dialog).getByLabelText('Reason'), 'Early adopter, pre-paywall cohort')
+    await user.click(within(dialog).getByRole('button', { name: /set grandfather/i }))
+
+    await waitFor(() => expect(apiModule.api.setGrandfather).toHaveBeenCalledWith(USER_ID, { kind: 'free_forever', reason: 'Early adopter, pre-paywall cohort' }))
+    await waitFor(() => expect(apiModule.api.getSubscriber).toHaveBeenCalledTimes(2))
+  })
+
+  it('offers to clear an existing grandfather kind', async () => {
+    vi.mocked(apiModule.api.getSubscriber).mockResolvedValue(detail({ subscription: { ...detail().subscription, grandfatherKind: 'free_forever' } }) as never)
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /clear grandfather/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Reason'), 'No longer applicable, converted to a paid plan')
+    await user.click(within(dialog).getByRole('button', { name: /^clear grandfather/i }))
+
+    await waitFor(() => expect(apiModule.api.revokeGrandfather).toHaveBeenCalledWith(USER_ID, { reason: 'No longer applicable, converted to a paid plan' }))
   })
 })

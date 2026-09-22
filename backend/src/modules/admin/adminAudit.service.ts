@@ -28,6 +28,8 @@ const KEPT_WITH_ROW: ReadonlySet<AdminAuditAction> = new Set<AdminAuditAction>([
     'admin.invited',
     'admin.totp_reset',
     'admin.status_changed',
+    'grandfather.set',
+    'grandfather.bulk_applied',
 ])
 
 const ALLOWED_STATE_KEYS = [
@@ -42,6 +44,8 @@ const ALLOWED_STATE_KEYS = [
     'retentionHoldUntil',
     'role',
     'adminGrant',
+    'batchId',
+    'affectedCount',
 ] as const
 
 const EMAIL_IN_TEXT = /[^\s@]+@[^\s@]+\.[^\s@]+/

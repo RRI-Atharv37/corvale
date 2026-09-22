@@ -10,6 +10,7 @@ import { enrolComplete, enrolStart, login, logout, me, refresh, stepUp } from '.
 import { auditLog, invite, list, resetTotp, setStatus } from './adminManagement.controller'
 import { detail, list as listSubscribers, lookup, meta, opsHealth } from './adminSubscribers.controller'
 import { erasureHold, erasureHoldClear, grant, revoke, trialExtension } from './adminGrants.controller'
+import { cohortApply, cohortBatches, cohortDryRun, cohortRevert, grandfather, grandfatherRevoke } from './adminGrandfather.controller'
 
 /**
  * Mounted by `http/routes.ts` only while ADMIN_ENABLED=true. Everything sits behind the optional IP
@@ -48,6 +49,13 @@ export const createAdminRoutes = (): express.Router => {
     router.post('/subscribers/:userId/trial-extension', protectAdmin, requireCapability('grants.write'), trialExtension)
     router.post('/subscribers/:userId/erasure-hold', protectAdmin, requireCapability('grants.write'), erasureHold)
     router.post('/subscribers/:userId/erasure-hold/clear', protectAdmin, requireCapability('grants.write'), erasureHoldClear)
+
+    router.post('/subscribers/:userId/grandfather', protectAdmin, requireCapability('grandfather.write'), grandfather)
+    router.post('/subscribers/:userId/grandfather/revoke', protectAdmin, requireCapability('grandfather.write'), grandfatherRevoke)
+    router.post('/grandfather/cohort/dry-run', protectAdmin, requireCapability('grandfather.write'), cohortDryRun)
+    router.post('/grandfather/cohort/apply', protectAdmin, requireCapability('grandfather.write'), requireStepUp, cohortApply)
+    router.get('/grandfather/cohort/batches', protectAdmin, requireCapability('grandfather.write'), cohortBatches)
+    router.post('/grandfather/cohort/:batchId/revert', protectAdmin, requireCapability('grandfather.write'), requireStepUp, cohortRevert)
 
     return router
 }
