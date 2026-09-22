@@ -5,6 +5,7 @@ import type { BillingInterval, GrandfatherKind, PlanCode, SubscriptionStatus } f
 import type { PlanPrices } from '@core/billing/metrics'
 import {
     BillingEvent,
+    DeferredRevenueEntry,
     JobRun,
     MetricDaily,
     Plan,
@@ -12,6 +13,7 @@ import {
     SyncDevice,
     UsageCounter,
     type IBillingEvent,
+    type IDeferredRevenueEntry,
     type IJobRun,
     type IMetricDaily,
     type ISubscription,
@@ -235,3 +237,54 @@ export const findPlanPrices = async (): Promise<Record<string, PlanPrices>> => {
     const plans = await Plan.find().select('code prices').lean<{ code: PlanCode; prices: PlanPrices }[]>()
     return Object.fromEntries(plans.map((plan) => [plan.code, plan.prices]))
 }
+
+/** `DeferredRevenueEntry` carries no `userId` (system bookkeeping, M8e) so needs no RLS bypass - read through here anyway, same footing as `findMetricDailyRange`. */
+const recognitionMonthMatch = (fromMonth?: string, toMonth?: string): Record<string, unknown> => {
+    if (!fromMonth && !toMonth) return {}
+    const range: Record<string, string> = {}
+    if (fromMonth) range.$gte = fromMonth
+    if (toMonth) range.$lte = toMonth
+    return { recognitionMonth: range }
+}
+
+export interface RevenueRecognitionSummaryRow {
+    recognitionMonth: string
+    currency: string
+    recognizedAmountMinor: number
+    entryCount: number
+}
+
+export const findRevenueRecognitionSummary = (fromMonth?: string, toMonth?: string): Promise<RevenueRecognitionSummaryRow[]> =>
+    DeferredRevenueEntry.aggregate([
+        { $match: recognitionMonthMatch(fromMonth, toMonth) },
+        {
+            $group: {
+                _id: { recognitionMonth: '$recognitionMonth', currency: '$currency' },
+                recognizedAmountMinor: { $sum: '$recognizedAmountMinor' },
+                entryCount: { $sum: 1 },
+            },
+        },
+        { $sort: { '_id.recognitionMonth': 1, '_id.currency': 1 } },
+        {
+            $project: {
+                _id: 0,
+                recognitionMonth: '$_id.recognitionMonth',
+                currency: '$_id.currency',
+                recognizedAmountMinor: 1,
+                entryCount: 1,
+            },
+        },
+    ])
+
+/**
+ * The CA-ready CSV export streams straight off this cursor. `sourceEventId` and
+ * `providerSubscriptionId` are deliberately left out of the projection - they correlate a row back
+ * to one Merchant-of-Record customer, so they stay internal to the ledger and never reach this
+ * report's output (the "no PII" requirement, M8e).
+ */
+export const findRevenueRecognitionEntries = (fromMonth?: string, toMonth?: string) =>
+    DeferredRevenueEntry.find(recognitionMonthMatch(fromMonth, toMonth))
+        .select('recognitionMonth planCode bucketIndex recognizedAmountMinor currency paymentOccurredAt')
+        .sort({ recognitionMonth: 1, bucketIndex: 1, _id: 1 })
+        .lean<IDeferredRevenueEntry[]>()
+        .cursor()

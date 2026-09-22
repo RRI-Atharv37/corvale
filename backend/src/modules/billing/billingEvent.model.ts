@@ -11,6 +11,8 @@ export interface IBillingEvent extends Document {
     redactedAt: Date | null
     /** Set once, atomically, the first time this event's counters are recorded - a redelivery cannot double-count (M7b). */
     metricsRecordedAt: Date | null
+    /** Set once, atomically, the first time this event was considered for deferred-revenue recognition (M8e) - same claim-once shape as `metricsRecordedAt`. */
+    revenueRecognizedAt: Date | null
     createdAt: Date
     updatedAt: Date
 }
@@ -30,6 +32,7 @@ const BillingEventSchema = new Schema<IBillingEvent>(
         error: { type: String, default: null },
         redactedAt: { type: Date, default: null },
         metricsRecordedAt: { type: Date, default: null },
+        revenueRecognizedAt: { type: Date, default: null },
     },
     { timestamps: true, minimize: false }
 )
@@ -38,6 +41,8 @@ const BillingEventSchema = new Schema<IBillingEvent>(
 BillingEventSchema.index({ 'payload.providerSubscriptionId': 1, occurredAt: -1 }, { sparse: true })
 BillingEventSchema.index({ 'payload.providerCustomerId': 1, occurredAt: -1 }, { sparse: true })
 BillingEventSchema.index({ processedAt: 1, error: 1 })
+// The M8e recognition sweep scans exactly this shape: unrecognized payment events.
+BillingEventSchema.index({ type: 1, revenueRecognizedAt: 1 })
 
 const touchesImmutablePath = (update: unknown): boolean => {
     if (!update || typeof update !== 'object') return false

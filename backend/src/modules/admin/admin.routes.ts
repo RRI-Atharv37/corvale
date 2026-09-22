@@ -1,5 +1,7 @@
 import express from 'express'
 
+import { isFinanceOpsEnabled } from '@modules/billing'
+
 import { adminIpAllowlist, protectAdmin, requireCapability, requireStepUp } from './adminAuth.middleware'
 import {
     createAdminEnrolRateLimiter,
@@ -23,6 +25,7 @@ import {
     revokeSubscriberDevice,
 } from './adminBilling.controller'
 import { grandfatherCohortReport, metricsOverview } from './adminMetrics.controller'
+import { recognitionExportCsv, recognitionRun, recognitionSummary } from './adminFinance.controller'
 
 /**
  * Mounted by `http/routes.ts` only while ADMIN_ENABLED=true. Everything sits behind the optional IP
@@ -81,6 +84,13 @@ export const createAdminRoutes = (): express.Router => {
 
     router.get('/metrics/overview', protectAdmin, requireCapability('metrics.read'), metricsOverview)
     router.get('/metrics/grandfather-cohort', protectAdmin, requireCapability('metrics.read'), grandfatherCohortReport)
+
+    // M8e: the deferred-revenue bookkeeping surface exists only where an operator has deliberately switched it on.
+    if (isFinanceOpsEnabled()) {
+        router.get('/finance/recognition/summary', protectAdmin, requireCapability('metrics.read'), recognitionSummary)
+        router.get('/finance/recognition/export.csv', protectAdmin, requireCapability('metrics.read'), recognitionExportCsv)
+        router.post('/finance/recognition/run', protectAdmin, requireCapability('money.write'), recognitionRun)
+    }
 
     return router
 }

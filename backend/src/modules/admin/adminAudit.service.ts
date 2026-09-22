@@ -34,6 +34,7 @@ const KEPT_WITH_ROW: ReadonlySet<AdminAuditAction> = new Set<AdminAuditAction>([
     'billing.cancel_now',
     'billing.cancel_at_period_end',
     'billing_event.replayed',
+    'finance.recognition_run',
 ])
 
 const ALLOWED_STATE_KEYS = [
