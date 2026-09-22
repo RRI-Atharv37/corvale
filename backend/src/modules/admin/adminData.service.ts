@@ -1,11 +1,13 @@
 import { Types } from 'mongoose'
 
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
-import type { GrandfatherKind } from '@core/billing/constants'
+import type { BillingInterval, GrandfatherKind, PlanCode, SubscriptionStatus } from '@core/billing/constants'
+import type { PlanPrices } from '@core/billing/metrics'
 import {
     BillingEvent,
     JobRun,
     MetricDaily,
+    Plan,
     Subscription,
     SyncDevice,
     UsageCounter,
@@ -210,3 +212,26 @@ export const revertCohortGrandfather = async (subscriptionIds: Types.ObjectId[],
 /** M7.5 resync: writes only the fields the admin was shown as differing, straight from a freshly re-fetched provider snapshot. */
 export const applyProviderFields = (userId: string, patch: Record<string, unknown>): Promise<SubscriptionRow | null> =>
     previousRow({ userId: asObjectId(userId) }, { $set: patch })
+
+export interface SubscriptionOutcomeRow {
+    _id: Types.ObjectId
+    planCode: PlanCode
+    status: SubscriptionStatus
+    interval: BillingInterval | null
+    grandfatherKind: GrandfatherKind | null
+}
+
+/** M7b.3 grandfather cohort report: current state of a known set of subscriptions, nothing more. */
+export const findSubscriptionsByIds = (ids: Types.ObjectId[]): Promise<SubscriptionOutcomeRow[]> =>
+    ids.length === 0
+        ? Promise.resolve([])
+        : Subscription.find({ _id: { $in: ids } })
+              .setOptions(BYPASS)
+              .select('_id planCode status interval grandfatherKind')
+              .lean<SubscriptionOutcomeRow[]>()
+
+/** M7b.3: the same plan-price lookup `snapshotMetricsStock` uses, for the cohort report's "value foregone" figure. */
+export const findPlanPrices = async (): Promise<Record<string, PlanPrices>> => {
+    const plans = await Plan.find().select('code prices').lean<{ code: PlanCode; prices: PlanPrices }[]>()
+    return Object.fromEntries(plans.map((plan) => [plan.code, plan.prices]))
+}

@@ -128,4 +128,45 @@ describe('getMetricsOverview', () => {
 
         expect(result.flows.signups).toBe(1)
     })
+
+    it('reports movement as null with fewer than two stock-bearing days in the window', async () => {
+        await MetricDaily.create({
+            date: '2026-09-20',
+            flows: {},
+            stock: { asOf: new Date('2026-09-20T23:00:00.000Z'), segments: [], listPriceMrrMinor: 5000, atRiskMrrMinor: 0 },
+        })
+
+        const result = await getMetricsOverview({ days: 5 }, NOW)
+
+        expect(result.movement).toBeNull()
+        expect(result.series).toEqual([{ date: '2026-09-20', mrrMinor: 5000, atRiskMrrMinor: 0 }])
+    })
+
+    it('reconciles the flow counters against the stock delta between the earliest and latest snapshot in the window', async () => {
+        await MetricDaily.create({
+            date: '2026-09-18',
+            flows: {},
+            stock: { asOf: new Date('2026-09-18T23:00:00.000Z'), segments: [], listPriceMrrMinor: 10000, atRiskMrrMinor: 0 },
+        })
+        await MetricDaily.create({
+            date: '2026-09-20',
+            flows: { newMrr: 1500, churnedMrr: 500 },
+            stock: { asOf: new Date('2026-09-20T23:00:00.000Z'), segments: [], listPriceMrrMinor: 11000, atRiskMrrMinor: 0 },
+        })
+
+        const result = await getMetricsOverview({ days: 5 }, NOW)
+
+        expect(result.movement).toEqual({
+            startMrrMinor: 10000,
+            endMrrMinor: 11000,
+            newMrrMinor: 1500,
+            expansionMrrMinor: 0,
+            contractionMrrMinor: 0,
+            churnedMrrMinor: 500,
+            expectedDeltaMinor: 1000,
+            actualDeltaMinor: 1000,
+            residualMinor: 0,
+        })
+        expect(result.series.map((point) => point.date)).toEqual(['2026-09-18', '2026-09-20'])
+    })
 })

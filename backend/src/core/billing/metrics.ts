@@ -116,6 +116,44 @@ export const calculateTrialConversionRate = (converted: number, expired: number)
 
 export const calculateDunningRecoveryRate = (recovered: number, entered: number): number | null => (entered > 0 ? recovered / entered : null)
 
+// -------- MRR movement reconciliation (D13) --------
+
+export interface MrrMovement {
+    startMrrMinor: number
+    endMrrMinor: number
+    newMrrMinor: number
+    expansionMrrMinor: number
+    contractionMrrMinor: number
+    churnedMrrMinor: number
+    /** new + expansion - contraction - churned: what the flow counters alone predict. */
+    expectedDeltaMinor: number
+    /** endMrr - startMrr: what the stock snapshots actually show. */
+    actualDeltaMinor: number
+    /** actual - expected. Never plugged into a flow bucket - shown on the dashboard as "unexplained / late events" (D13). */
+    residualMinor: number
+}
+
+export const calculateMrrMovement = (
+    flows: Pick<MetricFlows, 'newMrr' | 'expansionMrr' | 'contractionMrr' | 'churnedMrr'>,
+    startMrrMinor: number,
+    endMrrMinor: number
+): MrrMovement => {
+    const expectedDeltaMinor = flows.newMrr + flows.expansionMrr - flows.contractionMrr - flows.churnedMrr
+    const actualDeltaMinor = endMrrMinor - startMrrMinor
+
+    return {
+        startMrrMinor,
+        endMrrMinor,
+        newMrrMinor: flows.newMrr,
+        expansionMrrMinor: flows.expansionMrr,
+        contractionMrrMinor: flows.contractionMrr,
+        churnedMrrMinor: flows.churnedMrr,
+        expectedDeltaMinor,
+        actualDeltaMinor,
+        residualMinor: actualDeltaMinor - expectedDeltaMinor,
+    }
+}
+
 // -------- LTV (D13) --------
 
 export const LTV_CAP_MONTHS = 36

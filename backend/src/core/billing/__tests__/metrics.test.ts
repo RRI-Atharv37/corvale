@@ -6,6 +6,7 @@ import {
     calculateEstimatedLtv,
     calculateLogoChurn,
     calculateMrr,
+    calculateMrrMovement,
     calculateRevenueChurn,
     calculateTrialConversionRate,
     dateKeyUtc,
@@ -147,5 +148,31 @@ describe('calculateEstimatedLtv', () => {
         const result = calculateEstimatedLtv({ ...base, churnEvents: 30, subscribersAtRisk: 300 })
 
         expect(result.highMinor as number).toBeLessThanOrEqual(1000 * LTV_CAP_MONTHS)
+    })
+})
+
+describe('calculateMrrMovement', () => {
+    it('reconciles cleanly to a zero residual when the flow counters fully explain the stock delta', () => {
+        const result = calculateMrrMovement({ newMrr: 1200, expansionMrr: 300, contractionMrr: 100, churnedMrr: 400 }, 10000, 11000)
+
+        expect(result.expectedDeltaMinor).toBe(1000)
+        expect(result.actualDeltaMinor).toBe(1000)
+        expect(result.residualMinor).toBe(0)
+    })
+
+    it('surfaces a nonzero residual for late events, rather than plugging it into a flow bucket', () => {
+        const result = calculateMrrMovement({ newMrr: 1200, expansionMrr: 0, contractionMrr: 0, churnedMrr: 0 }, 10000, 12000)
+
+        expect(result.expectedDeltaMinor).toBe(1200)
+        expect(result.actualDeltaMinor).toBe(2000)
+        expect(result.residualMinor).toBe(800)
+    })
+
+    it('handles a net contraction (negative delta) the same way', () => {
+        const result = calculateMrrMovement({ newMrr: 0, expansionMrr: 0, contractionMrr: 200, churnedMrr: 900 }, 10000, 8900)
+
+        expect(result.expectedDeltaMinor).toBe(-1100)
+        expect(result.actualDeltaMinor).toBe(-1100)
+        expect(result.residualMinor).toBe(0)
     })
 })

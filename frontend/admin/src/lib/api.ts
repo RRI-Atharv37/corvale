@@ -7,8 +7,10 @@ import type {
   EnrolmentGrant,
   GrandfatherBatchView,
   GrandfatherCohortPreview,
+  GrandfatherCohortReport,
   MeResponse,
   Meta,
+  MetricsOverview,
   OpsHealth,
   ProviderInvoiceView,
   ResyncDiff,
@@ -241,5 +243,11 @@ export const api = {
   },
   async replayBillingEvent(eventId: string, body: { reason: string }): Promise<unknown> {
     return data(await http.post<{ data: unknown }>(`/billing-events/${eventId}/replay`, body))
+  },
+  async metricsOverview(days: number): Promise<MetricsOverview> {
+    return data(await http.get<{ data: MetricsOverview }>('/metrics/overview', { params: { days } }))
+  },
+  async grandfatherCohortReport(): Promise<GrandfatherCohortReport> {
+    return data(await http.get<{ data: GrandfatherCohortReport }>('/metrics/grandfather-cohort'))
   },
 }

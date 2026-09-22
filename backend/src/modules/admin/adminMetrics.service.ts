@@ -5,6 +5,7 @@ import {
     calculateDunningRecoveryRate,
     calculateEstimatedLtv,
     calculateLogoChurn,
+    calculateMrrMovement,
     calculateRevenueChurn,
     calculateTrialConversionRate,
     dateKeyUtc,
@@ -41,6 +42,7 @@ export const getMetricsOverview = async (query: { days?: unknown }, now: Date = 
     const docs = await findMetricDailyRange(since, today)
     const flows = sumFlows(docs.map((doc) => doc.flows))
     const docsWithStock = docs.filter((doc) => doc.stock !== null)
+    const earliestStock = docsWithStock.length > 0 ? docsWithStock[0].stock : null
     const latestStock = docsWithStock.length > 0 ? docsWithStock[docsWithStock.length - 1].stock : null
 
     const payingSubscribers = latestStock ? payingSubscriberCount(latestStock.segments) : 0
@@ -61,6 +63,16 @@ export const getMetricsOverview = async (query: { days?: unknown }, now: Date = 
                   arpaMinor,
               }
             : null,
+        // Needs two distinct stock readings in the window - a single snapshot has no delta to reconcile against (D13).
+        movement:
+            docsWithStock.length >= 2 && earliestStock && latestStock
+                ? calculateMrrMovement(flows, earliestStock.listPriceMrrMinor, latestStock.listPriceMrrMinor)
+                : null,
+        series: docsWithStock.map((doc) => ({
+            date: doc.date,
+            mrrMinor: doc.stock?.listPriceMrrMinor ?? 0,
+            atRiskMrrMinor: doc.stock?.atRiskMrrMinor ?? 0,
+        })),
         rates: {
             logoChurn: calculateLogoChurn(churnEvents, payingSubscribers),
             revenueChurn: calculateRevenueChurn(flows.churnedMrr, flows.contractionMrr, latestStock?.listPriceMrrMinor ?? 0),

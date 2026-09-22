@@ -264,3 +264,99 @@ export interface EnrolmentGrant {
   enrolmentToken: string
   expiresAt: string
 }
+
+export interface MetricFlows {
+  signups: number
+  trialStarted: number
+  trialConverted: number
+  trialExpired: number
+  newPaid: number
+  newMrr: number
+  expansionMrr: number
+  contractionMrr: number
+  churnedVoluntary: number
+  churnedInvoluntary: number
+  churnedMrr: number
+  refunds: number
+  refundMinor: number
+  disputes: number
+  pastDueEntered: number
+  dunningRecovered: number
+}
+
+export interface MetricStockSegment {
+  planCode: string
+  status: string
+  interval: string | null
+  grandfatherKind: string | null
+  count: number
+}
+
+export interface MetricStockView {
+  asOf: string
+  segments: MetricStockSegment[]
+  listPriceMrrMinor: number
+  atRiskMrrMinor: number
+  payingSubscribers: number
+  arpaMinor: number | null
+}
+
+export interface MrrMovement {
+  startMrrMinor: number
+  endMrrMinor: number
+  newMrrMinor: number
+  expansionMrrMinor: number
+  contractionMrrMinor: number
+  churnedMrrMinor: number
+  expectedDeltaMinor: number
+  actualDeltaMinor: number
+  residualMinor: number
+}
+
+export interface MetricSeriesPoint {
+  date: string
+  mrrMinor: number
+  atRiskMrrMinor: number
+}
+
+export type LtvStatus = 'ok' | 'capped' | 'insufficient_data'
+
+export interface LtvResult {
+  status: LtvStatus
+  ltvMinor: number | null
+  lowMinor: number | null
+  highMinor: number | null
+  churnRate: number | null
+  churnEvents: number
+  subscribersAtRisk: number
+}
+
+export interface MetricsOverview {
+  windowDays: number
+  generatedAt: string
+  flows: MetricFlows
+  stock: MetricStockView | null
+  movement: MrrMovement | null
+  series: MetricSeriesPoint[]
+  rates: {
+    logoChurn: number | null
+    revenueChurn: number | null
+    trialConversionRate: number | null
+    dunningRecoveryRate: number | null
+  }
+  ltv: LtvResult
+  dataQuality: { daysRequested: number; daysWithStock: number }
+}
+
+export type GrandfatherOutcome = 'free_forever' | 'active_grant' | 'converted' | 'lapsed'
+
+export interface GrandfatherOutcomeBucket {
+  outcome: GrandfatherOutcome
+  count: number
+  foregoneMrrMinor: number
+}
+
+export interface GrandfatherCohortReport {
+  totalEverGrandfathered: number
+  buckets: GrandfatherOutcomeBucket[]
+}

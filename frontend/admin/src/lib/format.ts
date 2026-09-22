@@ -53,3 +53,10 @@ const EMAIL_IN_TEXT = /[^\s@]+@[^\s@]+\.[^\s@]+/
 export const containsEmail = (text: string): boolean => EMAIL_IN_TEXT.test(text)
 
 export const humanize = (value: string | null | undefined): string => (value ? value.replace(/[._]/g, ' ') : DASH)
+
+/** MRR/LTV figures carry no currency of their own - a single reporting currency's minor units (D13). */
+export const formatMinor = (minor: number | null | undefined): string => (minor === null || minor === undefined ? DASH : (minor / 100).toFixed(2))
+
+export const formatSignedMinor = (minor: number): string => `${minor > 0 ? '+' : ''}${formatMinor(minor)}`
+
+export const formatPercent = (ratio: number | null | undefined, digits = 1): string => (ratio === null || ratio === undefined ? DASH : `${(ratio * 100).toFixed(digits)}%`)

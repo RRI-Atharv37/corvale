@@ -22,7 +22,7 @@ import {
     resyncPreview,
     revokeSubscriberDevice,
 } from './adminBilling.controller'
-import { metricsOverview } from './adminMetrics.controller'
+import { grandfatherCohortReport, metricsOverview } from './adminMetrics.controller'
 
 /**
  * Mounted by `http/routes.ts` only while ADMIN_ENABLED=true. Everything sits behind the optional IP
@@ -80,6 +80,7 @@ export const createAdminRoutes = (): express.Router => {
     router.post('/billing-events/:eventId/replay', protectAdmin, requireCapability('money.write'), requireStepUp, replayBillingEventAction)
 
     router.get('/metrics/overview', protectAdmin, requireCapability('metrics.read'), metricsOverview)
+    router.get('/metrics/grandfather-cohort', protectAdmin, requireCapability('metrics.read'), grandfatherCohortReport)
 
     return router
 }
