@@ -6,7 +6,7 @@ Corvale sets **one cookie**. It is the one that keeps you signed in, and the app
 without it.
 
 There are no analytics cookies, no advertising cookies, and no third-party trackers. That is why
-you have never seen a cookie consent banner here — there is nothing to consent to.
+you have never seen a cookie consent banner here - there is nothing to consent to.
 
 This page covers the hosted Corvale service at corvale.app. Self-hosted installations are
 run by whoever operates them.
@@ -23,7 +23,7 @@ run by whoever operates them.
 
 `HttpOnly` prevents client-side JavaScript from reading the cookie, which reduces the risk of your
 session token being stolen through script injection. It is not a defence against cross-site
-scripting in general — a successful script injection may still be able to act through your
+scripting in general - a successful script injection may still be able to act through your
 browser even without reading the cookie.
 
 `SameSite=Lax` limits when the browser sends the cookie in cross-site contexts, which helps reduce
@@ -35,14 +35,14 @@ Corvale clears it when you sign out.
 
 ## What Corvale stores in your browser
 
-These are not cookies — they are local storage, which stays on your device. The table says where
+These are not cookies - they are local storage, which stays on your device. The table says where
 an entry is also sent to us. We list them because you deserve the whole picture.
 
 | What is stored | Why | How long it lasts |
 | --- | --- | --- |
 | Which workspace you are currently viewing | So the app opens where you left off | Until you sign out or clear site data |
 | Your name and preferences, cached | So the app can render while offline | Until you sign out or clear site data |
-| A signed permission slip for offline use | Lets the app work without a connection for a limited time | Until it expires — 30 days by default — or you sign out |
+| A signed permission slip for offline use | Lets the app work without a connection for a limited time | Until it expires - 30 days by default - or you sign out |
 | A verifier and a salt for your app PIN | Lets the app check your PIN without transmitting it anywhere | Until you remove the PIN or clear site data |
 | A count of failed PIN attempts | Locks the local data after repeated wrong entries | Reset on a correct PIN; cleared with site data |
 | Whether you have seen the PIN setup prompt | So you are not asked twice | Until you clear site data |
@@ -62,15 +62,15 @@ storage against someone who already has access to your browser profile, your ope
 account, or your unlocked device.
 
 Where a PIN is set, the stored copy of each record is encrypted with a key derived from it (see
-[The local database](#the-local-database)) — with the exception of a few fields, such as amounts
+[The local database](#the-local-database)) - with the exception of a few fields, such as amounts
 and dates, that are kept readable so the app can search and total your data on the device without
 a connection. The keys in the table above are not encrypted either, and neither is cached data
 when no PIN has been set.
 
 ## The local database
 
-The desktop app and the offline-capable web app keep a copy of your records — transactions,
-accounts, categories, budgets, goals and the rest — in a local database on your own device, so
+The desktop app and the offline-capable web app keep a copy of your records - transactions,
+accounts, categories, budgets, goals and the rest - in a local database on your own device, so
 everything is there without a connection. That copy reaches us only through the ordinary sync back
 to your account.
 
@@ -80,7 +80,7 @@ to your account.
   used for on-device search and totals (such as amounts and dates) stay readable. Without a PIN,
   the data sits in browser storage unencrypted, the way browser storage normally does.
 - **Offline access is time-limited.** The signed offline permission slip is issued by our server,
-  and the app can only render your cached data while it is still valid — 30 days by default. The
+  and the app can only render your cached data while it is still valid - 30 days by default. The
   app cannot extend it on its own; it has to reach the server to renew it.
 
 Clearing your browser's site data, signing out, or uninstalling the desktop app removes the local
@@ -115,13 +115,13 @@ contradict the whole point of the product.
 You can delete cookies and local storage at any time through your browser's settings.
 
 If you do, you will be signed out, your PIN setup will be forgotten, and any data cached for
-offline use will be cleared. Nothing on the server is affected — sign in again and everything is
+offline use will be cleared. Nothing on the server is affected - sign in again and everything is
 still there.
 
-## Technical appendix — current storage keys
+## Technical appendix - current storage keys
 
 These are the exact keys as they exist today, for anyone who wants to inspect them. **Key names
-are implementation detail and may change without this page being a formal notice of it** — the
+are implementation detail and may change without this page being a formal notice of it** - the
 table above is the part that describes what is actually stored and why.
 
 | Key | Corresponds to |

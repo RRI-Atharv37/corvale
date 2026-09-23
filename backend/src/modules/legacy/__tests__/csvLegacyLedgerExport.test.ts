@@ -8,9 +8,9 @@ import { authHeader, registerUser, createTestIncome, createTestExpense } from '@
  * exports must inherit the same CSV hardening every other export path already has.
  *
  * Before S22 both controllers built the file with a bare `rows.map((r) => r.join(',')).join('\n')`
- * — no RFC 4180 quoting and no formula neutralization. That is two distinct defects:
- *   1. Formula injection — a title beginning with `=`/`+`/`-`/`@` executes on open in a spreadsheet.
- *   2. Structure injection — a comma, quote, or newline in a free-text field corrupts the row,
+ * - no RFC 4180 quoting and no formula neutralization. That is two distinct defects:
+ *   1. Formula injection - a title beginning with `=`/`+`/`-`/`@` executes on open in a spreadsheet.
+ *   2. Structure injection - a comma, quote, or newline in a free-text field corrupts the row,
  *      and a newline lets a user forge arbitrary extra rows.
  *
  * The fix routes both controllers through `buildCsvString` from `utils/transactionUtils.ts`

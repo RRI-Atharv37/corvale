@@ -3,7 +3,7 @@ import type { Server } from 'http'
 import mongoose from 'mongoose'
 
 /**
- * L8 / SEC-25: replaces the bare `process.exit(1)` on unhandled rejection with a drain —
+ * L8 / SEC-25: replaces the bare `process.exit(1)` on unhandled rejection with a drain -
  * stop accepting new connections, let in-flight requests finish, close Mongo, then exit.
  * `signalSource` mirrors `mailService.ts`'s `setMailTransport` test seam: production wires
  * this to the real `process`; tests pass a plain `EventEmitter` so a simulated SIGTERM can
@@ -65,7 +65,7 @@ export const drainAndExit = async (
 
 /**
  * Wires SIGTERM/SIGINT (deliberate shutdown, exit 0) and unhandledRejection (log, drain,
- * exit 1) to `drainAndExit`. Idempotent — a second signal while already draining is ignored.
+ * exit 1) to `drainAndExit`. Idempotent - a second signal while already draining is ignored.
  * Returns an unregister function.
  */
 export const registerGracefulShutdown = (
@@ -78,7 +78,7 @@ export const registerGracefulShutdown = (
     const beginShutdown = (exitCode: number, reason: string): void => {
         if (shuttingDown) return
         shuttingDown = true
-        console.log(`${reason} — draining and shutting down`)
+        console.log(`${reason} - draining and shutting down`)
         void drainAndExit(server, exitCode, deps)
     }
 

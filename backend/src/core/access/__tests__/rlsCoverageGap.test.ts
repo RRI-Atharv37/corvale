@@ -19,7 +19,7 @@ import { computeLargestExpenses, computeBudgetAnalysis } from "@modules/reports/
 
 const UNSCOPED = /missing user or workspace scope/i
 
-describe('SEC-30 — RLS coverage gap (S23)', () => {
+describe('SEC-30 - RLS coverage gap (S23)', () => {
     describe('Category has the RLS plugin', () => {
         it('blocks an unscoped Category query inside an authenticated request context', async () => {
             const user = await registerUser(app)
@@ -65,7 +65,7 @@ describe('SEC-30 — RLS coverage gap (S23)', () => {
             })
         })
 
-        it('allows a bare { _id: { $in: [...] } } lookup — the shape .populate() issues (S28 regression)', async () => {
+        it('allows a bare { _id: { $in: [...] } } lookup - the shape .populate() issues (S28 regression)', async () => {
             const user = await registerUser(app)
             await runWithRlsContext({ userId: user.userId }, async () => {
                 await expect(

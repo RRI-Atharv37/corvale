@@ -3,7 +3,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { MongoRateLimitStore } from '@infra/rateLimit/mongoRateLimitStore'
 
 /**
- * `prefix` identifies this limiter's own budget in the shared Mongo store (SEC-26/S18) — each
+ * `prefix` identifies this limiter's own budget in the shared Mongo store (SEC-26/S18) - each
  * call site must pass a distinct value so, e.g., a refresh/logout burst can't also consume the
  * register/login budget. Previously that isolation came for free from each call getting its own
  * in-memory `MemoryStore`; a shared store needs it spelled out explicitly.
@@ -28,7 +28,7 @@ export const createAuthRateLimiter = (prefix: string) =>
  * SEC-32: `POST /workspaces/:workspaceId/members` looks the invitee up by email and 404s when
  * there is no match, so any authenticated user can bulk-probe whether an address has a Corvale
  * account. Metered only by the global mutating limiter (300 / 15 min) that is ~28,800 probes a
- * day. Its own tighter budget — and a distinct prefix so it can't lock a user out of login —
+ * day. Its own tighter budget - and a distinct prefix so it can't lock a user out of login -
  * caps that without changing the endpoint's contract.
  */
 export const createWorkspaceInviteRateLimiter = () =>

@@ -50,7 +50,7 @@ describe('refreshTokenStore', () => {
             invokeMock.mockResolvedValueOnce('stored-refresh-token')
 
             await expect(getStoredRefreshToken()).resolves.toBe('stored-refresh-token')
-            // SEC-42: no caller-supplied key — the command manages exactly one entry.
+            // SEC-42: no caller-supplied key - the command manages exactly one entry.
             expect(invokeMock).toHaveBeenCalledWith('keychain_get')
         })
 

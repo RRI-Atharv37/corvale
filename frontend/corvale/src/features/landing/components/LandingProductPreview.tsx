@@ -25,7 +25,7 @@ const TRANSACTIONS = [
 ]
 
 /**
- * Static product preview for the landing hero — mirrors the authenticated dashboard aesthetic.
+ * Static product preview for the landing hero - mirrors the authenticated dashboard aesthetic.
  */
 const LandingProductPreview: React.FC = () => {
     return (

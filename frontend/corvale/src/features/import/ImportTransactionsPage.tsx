@@ -38,7 +38,7 @@ const MAPPING_FIELDS: { key: 'date' | 'description' | 'amount' | 'debit' | 'cred
 const DATE_FORMAT_OPTIONS: { value: ImportDateFormat; label: string }[] = [
     { value: 'auto', label: 'Auto-detect' },
     { value: 'YMD', label: 'Year first (2026-03-07)' },
-    { value: 'MDY', label: 'Month first (03/07/2026 — US)' },
+    { value: 'MDY', label: 'Month first (03/07/2026 - US)' },
     { value: 'DMY', label: 'Day first (07/03/2026)' },
 ]
 
@@ -543,7 +543,7 @@ const ImportTransactions = () => {
                     {parseResult?.statementCurrency && (
                         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-text-muted">
                             This statement is in <span className="font-medium">{parseResult.statementCurrency}</span>.
-                            Amounts import exactly as written — {BRAND.name} does not convert currency, so pick an
+                            Amounts import exactly as written - {BRAND.name} does not convert currency, so pick an
                             account in the same currency.
                         </div>
                     )}
@@ -754,9 +754,9 @@ const PreviewRow: React.FC<PreviewRowProps> = ({ item, action, onActionChange })
         }`}
     >
         <td className="px-3 py-2 text-text-muted">{item.rowIndex}</td>
-        <td className="px-3 py-2">{item.date ? formatDisplayDate(item.date) : '—'}</td>
+        <td className="px-3 py-2">{item.date ? formatDisplayDate(item.date) : '-'}</td>
         <td className="px-3 py-2">
-            <div className="font-medium text-text-primary">{item.title || '—'}</div>
+            <div className="font-medium text-text-primary">{item.title || '-'}</div>
             {item.error && <div className="text-xs text-expense">{item.error}</div>}
             {item.duplicateOf && (
                 <div className="mt-1 text-xs text-text-muted">
@@ -766,9 +766,9 @@ const PreviewRow: React.FC<PreviewRowProps> = ({ item, action, onActionChange })
             )}
         </td>
         <td className="px-3 py-2 capitalize">{item.type}</td>
-        <td className="px-3 py-2">{item.amount ? formatCurrency(item.amount) : '—'}</td>
-        <td className="px-3 py-2">{item.categoryName ?? '—'}</td>
-        <td className="px-3 py-2 text-text-muted">{item.appliedRuleName ?? '—'}</td>
+        <td className="px-3 py-2">{item.amount ? formatCurrency(item.amount) : '-'}</td>
+        <td className="px-3 py-2">{item.categoryName ?? '-'}</td>
+        <td className="px-3 py-2 text-text-muted">{item.appliedRuleName ?? '-'}</td>
         <td className="px-3 py-2">
             {item.duplicateOf ? (
                 <select

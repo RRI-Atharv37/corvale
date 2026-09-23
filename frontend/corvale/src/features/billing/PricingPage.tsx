@@ -91,7 +91,9 @@ const PricingPage: React.FC = () => {
                                 <IntervalToggle value={interval} onChange={setInterval} />
                             </div>
 
-                            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                            <div
+                                className={`mt-8 grid gap-4 ${data.plans.length > 1 ? 'sm:grid-cols-2' : 'mx-auto max-w-sm'}`}
+                            >
                                 {data.plans.map((plan) => (
                                     <PlanCard key={plan.code} plan={plan} interval={interval} signedIn={isAuthenticated} />
                                 ))}

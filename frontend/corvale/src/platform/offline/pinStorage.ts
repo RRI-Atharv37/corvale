@@ -17,8 +17,8 @@ const PIN_ATTEMPTS_KEY = 'corvale_pin_attempts'
 
 // V7.3e rename-compat: pre-rename builds wrote these under `spndr_pin_*`. `migrateLegacyPinKeys`
 // copies them forward once, so a PIN set up before the Corvale rename keeps working without the
-// user re-entering it. Unlike the KDF context literals below, these are only key *names* — no
-// cryptographic material — so renaming them is safe as long as the copy-forward runs first.
+// user re-entering it. Unlike the KDF context literals below, these are only key *names* - no
+// cryptographic material - so renaming them is safe as long as the copy-forward runs first.
 const LEGACY_PIN_SALT_KEY = 'spndr_pin_salt'
 const LEGACY_PIN_VERIFIER_KEY = 'spndr_pin_verifier'
 const LEGACY_PIN_ATTEMPTS_KEY = 'spndr_pin_attempts'
@@ -32,7 +32,7 @@ export const LOCAL_DB_LOCKED_EVENT = 'corvale:local-db-locked'
 /**
  * One-time, idempotent copy-forward of the pre-rename `spndr_pin_*` localStorage keys to their
  * `corvale_pin_*` names (V7.3e). Runs at boot (`db/bootstrapLocalDb.ts`) before anything reads
- * `hasPinConfigured`. A bare rename would strand every existing PIN — the encrypted local DB
+ * `hasPinConfigured`. A bare rename would strand every existing PIN - the encrypted local DB
  * would look PIN-less rather than merely renamed. Never overwrites a value already present under
  * the new name; a no-op on a fresh install. See ROADMAP's V7 compat matrix.
  */
@@ -119,7 +119,7 @@ const constantTimeEqual = (a: string, b: string): boolean => {
 // AES-GCM-encrypt a fixed plaintext with a fixed IV. The result is deterministic for a given
 // PIN + salt, costs the full 210k-iteration PBKDF2 stretch (via `deriveKey`), and never shares
 // key material with the actual data-encryption key applied to the local DB.
-// FREEZE — DO NOT RENAME these two literals (V7.3e / V-R7). They are PBKDF2 domain-separation
+// FREEZE - DO NOT RENAME these two literals (V7.3e / V-R7). They are PBKDF2 domain-separation
 // inputs baked into every local DB set up against them, not brand strings. Changing either
 // spelling changes the derived verifier key and makes every pre-rename encrypted local DB
 // permanently unrecoverable, for zero user-visible benefit. `pinHardening.test.ts` asserts the

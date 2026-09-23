@@ -25,7 +25,15 @@ import {
     revokeSubscriberDevice,
 } from './adminBilling.controller'
 import { grandfatherCohortReport, metricsOverview } from './adminMetrics.controller'
-import { payoutReconciliationSummary, recognitionExportCsv, recognitionRun, recognitionSummary, recordPayout, updatePayout } from './adminFinance.controller'
+import {
+    fyRevenueSummary,
+    payoutReconciliationSummary,
+    recognitionExportCsv,
+    recognitionRun,
+    recognitionSummary,
+    recordPayout,
+    updatePayout,
+} from './adminFinance.controller'
 
 /**
  * Mounted by `http/routes.ts` only while ADMIN_ENABLED=true. Everything sits behind the optional IP
@@ -85,7 +93,7 @@ export const createAdminRoutes = (): express.Router => {
     router.get('/metrics/overview', protectAdmin, requireCapability('metrics.read'), metricsOverview)
     router.get('/metrics/grandfather-cohort', protectAdmin, requireCapability('metrics.read'), grandfatherCohortReport)
 
-    // M8e/M8f: the finance bookkeeping surface exists only where an operator has deliberately switched it on.
+    // M8e/M8f/M8g: the finance bookkeeping surface exists only where an operator has deliberately switched it on.
     if (isFinanceOpsEnabled()) {
         router.get('/finance/recognition/summary', protectAdmin, requireCapability('metrics.read'), recognitionSummary)
         router.get('/finance/recognition/export.csv', protectAdmin, requireCapability('metrics.read'), recognitionExportCsv)
@@ -94,6 +102,8 @@ export const createAdminRoutes = (): express.Router => {
         router.get('/finance/payouts', protectAdmin, requireCapability('metrics.read'), payoutReconciliationSummary)
         router.post('/finance/payouts', protectAdmin, requireCapability('money.write'), recordPayout)
         router.patch('/finance/payouts/:payoutId', protectAdmin, requireCapability('money.write'), updatePayout)
+
+        router.get('/finance/fy-revenue', protectAdmin, requireCapability('metrics.read'), fyRevenueSummary)
     }
 
     return router

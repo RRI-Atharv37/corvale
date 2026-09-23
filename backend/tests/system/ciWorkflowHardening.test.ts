@@ -7,12 +7,12 @@ import path from 'path'
  * 40-hex commit SHA, and `ci.yml` must declare a least-privilege `permissions:` block.
  *
  * The release workflow carries the Tauri updater signing key (`TAURI_SIGNING_PRIVATE_KEY`),
- * which signs auto-updates that install on every user's machine — a mutable action ref
+ * which signs auto-updates that install on every user's machine - a mutable action ref
  * (`@v0`, `@stable`, `@v2`) there is the single total-compromise point. `ci.yml` runs
  * `npm ci` on fork PRs with no `permissions:` block, so it inherits the repo default token
  * scope.
  *
- * `actions/*` (first-party, GitHub-owned) are treated the same as third-party here — pinning
+ * `actions/*` (first-party, GitHub-owned) are treated the same as third-party here - pinning
  * is all-or-nothing to be meaningful.
  */
 
@@ -36,7 +36,7 @@ for (const [name, workflow] of [
     ['ci.yml', CI],
     ['release.yml', RELEASE],
 ] as const) {
-    describe(`${name} — actions pinned to commit SHAs (SEC-66, S34)`, () => {
+    describe(`${name} - actions pinned to commit SHAs (SEC-66, S34)`, () => {
         const refs = usesRefs(workflow)
 
         it('references at least one action', () => {
@@ -57,7 +57,7 @@ for (const [name, workflow] of [
     })
 }
 
-describe('ci.yml — least-privilege token (SEC-66, S34)', () => {
+describe('ci.yml - least-privilege token (SEC-66, S34)', () => {
     it('declares a top-level permissions block', () => {
         expect(CI).toMatch(/^permissions:/m)
     })
@@ -70,7 +70,7 @@ describe('ci.yml — least-privilege token (SEC-66, S34)', () => {
     })
 })
 
-describe('release.yml — signing job unreachable by forks (SEC-66, S34)', () => {
+describe('release.yml - signing job unreachable by forks (SEC-66, S34)', () => {
     it('only triggers on tag pushes', () => {
         const header = RELEASE.slice(0, RELEASE.indexOf('jobs:'))
         expect(header).toMatch(/tags:/)

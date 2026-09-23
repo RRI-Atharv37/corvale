@@ -4,11 +4,11 @@ All notable changes to Corvale are documented in this file. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions are tagged `vMAJOR.MINOR.PATCH`
 in git and published via `.github/workflows/release.yml` (TODO.md D8).
 
-Releases before this file existed are recorded only as git tags with no changelog entries — see
+Releases before this file existed are recorded only as git tags with no changelog entries - see
 [TODO.completed.md](./.project/TODO.completed.md) for what shipped in each phase.
 
 Before tagging a release, rename `## [Unreleased]` below to `## [MAJOR.MINOR.PATCH] - YYYY-MM-DD`
-and start a fresh `## [Unreleased]` section above it — the release workflow extracts the section
+and start a fresh `## [Unreleased]` section above it - the release workflow extracts the section
 matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
@@ -18,7 +18,7 @@ matching the pushed tag for the GitHub Release body.
 ### Fixed
 
 - **Split transactions' Edit and Duplicate buttons no longer fail with an error.** Splits can only
-  be created, not edited (delete and recreate instead) — the Edit/Duplicate buttons on a split row
+  be created, not edited (delete and recreate instead) - the Edit/Duplicate buttons on a split row
   are now hidden, the same way they already were for transfers, instead of opening a form that
   then failed to save.
 - **Offline-created splits and transfers (desktop app) now sync correctly.** A split expense
@@ -38,7 +38,7 @@ matching the pushed tag for the GitHub Release body.
 ### Added
 
 - **Import: QIF files, and semicolon / tab / pipe CSVs.** `.qif` files are now parsed directly.
-  CSV files separated by a semicolon, tab, or pipe — the default export in much of Europe — are
+  CSV files separated by a semicolon, tab, or pipe - the default export in much of Europe - are
   detected automatically, with a **Column separator** control in the mapping step to override the
   guess. OFX / QFX imports now match on the bank's own transaction ID (`FITID`), so re-importing
   the same statement finds every row even when the bank rewords the payee between exports, and a
@@ -49,7 +49,7 @@ matching the pushed tag for the GitHub Release body.
 - **Updated Privacy Policy and Cookie Policy (version 2026-09-01).** The Cookie Policy's
   description of the on-device database was made precise: when an app PIN is set, each stored
   record is encrypted, but a few fields used for offline search and totals (such as amounts and
-  dates) are kept readable. The protections on your data have not changed — only the wording. You
+  dates) are kept readable. The protections on your data have not changed - only the wording. You
   will be asked to review and accept the current versions the next time you sign in.
 
 ### Fixed
@@ -99,8 +99,8 @@ matching the pushed tag for the GitHub Release body.
 
 - **Desktop app: local store and sync were dead ("Failed to load local data", "Sync failed").**
   index.html's `<meta>` CSP is enforced alongside the CSP Tauri injects from `tauri.conf.json`
-  (a page under two policies gets their intersection), and the meta policy — written for the web
-  build — omitted `ipc: http://ipc.localhost` from `connect-src`, so every Tauri `invoke()` was
+  (a page under two policies gets their intersection), and the meta policy - written for the web
+  build - omitted `ipc: http://ipc.localhost` from `connect-src`, so every Tauri `invoke()` was
   blocked and `TauriSqlDriver` could never open the local SQLite database. The `desktop` Vite
   mode now widens the meta CSP to admit Tauri IPC, `'wasm-unsafe-eval'` (for the sqlite-wasm
   fallback driver), and `blob:` in `img-src` (receipt thumbnails render from object URLs);
@@ -114,14 +114,14 @@ matching the pushed tag for the GitHub Release body.
   git-ignored `frontend/corvale/.env` does not exist, so `VITE_API_URL` fell back to its
   `http://localhost:5000` default and every install failed at sign-in with "Network Error" /
   "You're offline". The hosted backend URL (`https://api.corvale.app`), its origin, the docs URL,
-  and the offline-grant public key now live in `.env.desktop` — the one env file the desktop
+  and the offline-grant public key now live in `.env.desktop` - the one env file the desktop
   build always reads (D4).
 
 ## [1.0.0] - 2026-08-29
 
 Gate G3 (Production/GA) closed 2026-08-27; this is the first tagged release. Beyond the G3 work it
-also carries the v1.0.0 go-live operational track — transactional email with a hard
-email-verification gate, production hosting, and desktop/download update UX — and a second
+also carries the v1.0.0 go-live operational track - transactional email with a hard
+email-verification gate, production hosting, and desktop/download update UX - and a second
 full-project security audit (`SEC-27`–`SEC-37`, all fixed). The app is publishable and
 advertisable per the launch-gate ladder.
 
@@ -147,7 +147,7 @@ advertisable per the launch-gate ladder.
 - **Renamed from spndr to Corvale.** The product, the repository contents, the desktop app, and
   the docs site are now "Corvale"; "spndr" collided with an unrelated live finance product. What
   this means in practice:
-  - **You'll be signed out once.** Sign back in normally — no data is affected.
+  - **You'll be signed out once.** Sign back in normally - no data is affected.
   - **Old backups and CSV exports still import.** Restore accepts the previous `spndr-backup.json`
     archive layout, and import still recognizes CSVs exported by older versions (reported as the
     legacy `spndr_export` format).
@@ -158,23 +158,23 @@ advertisable per the launch-gate ladder.
   - **Self-hosters: update your config.** The default MongoDB database name in the examples
     changed from `spndr` to `corvale`, and the default refresh-token cookie name from
     `spndr_refresh` to `corvale_refresh`. Your existing data is still in whatever database your
-    `MONGO_URI` currently points at — keep pointing at it, or rename the database deliberately.
+    `MONGO_URI` currently points at - keep pointing at it, or rename the database deliberately.
     If `REFRESH_TOKEN_COOKIE_NAME` is set explicitly in your environment, the code default does
     not override it.
 - **Licence changed from Apache-2.0 to the GNU AGPL v3.0 (`AGPL-3.0-or-later`).** Corvale stays
-  open source — the AGPL is an OSI-approved licence — and **self-hosting is unaffected**: you can
+  open source - the AGPL is an OSI-approved licence - and **self-hosting is unaffected**: you can
   still run it for free, modify it, and deploy it for yourself or your household. The only new
   obligation is that if you offer a *modified* version to other people over a network, you must
   publish your changes.
 
-  **v1.0.0 is the first release under the AGPL.** Every earlier release — up to and including
-  **v0.17.0** — was published under Apache-2.0, and that grant is irrevocable: those versions
+  **v1.0.0 is the first release under the AGPL.** Every earlier release - up to and including
+  **v0.17.0** - was published under Apache-2.0, and that grant is irrevocable: those versions
   stay usable under Apache-2.0 forever, as does any commit obtained from this repository before
   the relicense.
 
   *(Mechanics: `LICENSE` replaced with the canonical AGPL v3 text; `license` fields set in all
   three workspace `package.json` files; README badge, docs footer and FAQ updated. Copyright
-  ownership verified as 100% beforehand — 124 owner commits, 8 dependabot lockfile bumps. See
+  ownership verified as 100% beforehand - 124 owner commits, 8 dependabot lockfile bumps. See
   TODO.md M0b and ROADMAP.md § Licensing.)*
 - Account balances can now be stored in integer minor units (`Account.balanceUnit`), with a
   flag-gated, idempotent migration (`migrate:account-balances`); every balance read/write path is
@@ -203,7 +203,7 @@ advertisable per the launch-gate ladder.
   instead of leaving the dashboard rendering as a shell of erroring panels (TODO.md X1, BUG-07)
 - Signing in now returns to the page you were trying to reach, including its query string, instead
   of always landing on `/dashboard` (TODO.md X2, BUG-04)
-- One failing Reports request no longer blanks the entire `/reports` page — the other sections
+- One failing Reports request no longer blanks the entire `/reports` page - the other sections
   still render, with a scoped, retryable error on just the one that failed (TODO.md X3, BUG-05)
 - Modal dialogs trap focus and restore it on close; form fields have proper label association;
   the password-visibility toggle is a real keyboard-operable button; filter tabs expose
@@ -233,7 +233,7 @@ aimed at came back clean.
 
 `SEC-04`/`SEC-06` (Tauri CSP, `db_open` path-traversal hardening) were already fixed in `v0.17.0`'s
 cycle; this release corrects an internal tracking error that had continued to list them as open.
-Installers still ship without OS-level code signing (`SEC-05`, accepted risk — see
+Installers still ship without OS-level code signing (`SEC-05`, accepted risk - see
 `docs/desktop/download.md`).
 
 ## [0.17.0] - 2026-08-25
@@ -253,7 +253,7 @@ Installers still ship without OS-level code signing (`SEC-05`, accepted risk —
 
 - Installers are not OS-level code-signed: no Windows OV/EV certificate, no Apple Developer
   notarization. Decided 2026-08-25 as accepted risk for a portfolio/personal deployment rather
-  than pursued — see `docs/desktop/download.md` for what the resulting "unknown publisher"
+  than pursued - see `docs/desktop/download.md` for what the resulting "unknown publisher"
   warning looks like and how to get past it. `bundle.windows.signCommand` and
   `bundle.macOS.signingIdentity` pick up real credentials automatically if they're ever added as
   CI secrets (`docs/developers/guides/desktop-app.md`), with no further code change needed.

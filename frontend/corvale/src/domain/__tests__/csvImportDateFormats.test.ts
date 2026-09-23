@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mapCsvRows, type ImportDateFormat } from '@shared/csvImport'
 
 /**
- * BUG-18 — day-first CSV dates. Client-side parity check for the `dateFormat` control on the
+ * BUG-18 - day-first CSV dates. Client-side parity check for the `dateFormat` control on the
  * column mapping (`auto` | `YMD` | `MDY` | `DMY`). Mirrors
  * `backend/tests/importDateFormats.test.ts`.
  */

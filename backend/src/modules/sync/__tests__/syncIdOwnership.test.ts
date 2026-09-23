@@ -21,10 +21,10 @@ import { registerUser, authHeader, RegisteredUser } from '@tests/helpers'
  *      (SEC-13, BUG-02). The fix must add an ownership check after
  *      `findById` and return a new `id_conflict` status (not `noop`, and
  *      with `resultId: null`) when the existing document belongs to
- *      someone else — for both the transaction-specific path and the
+ *      someone else - for both the transaction-specific path and the
  *      generic per-entity path.
- *   2. `pushSyncOps` hardcodes `computeCurrentCheckpoint(userId, null)` — a
- *      personal-scope checkpoint — even when the pushed ops (and the
+ *   2. `pushSyncOps` hardcodes `computeCurrentCheckpoint(userId, null)` - a
+ *      personal-scope checkpoint - even when the pushed ops (and the
  *      client's sync cursor) are workspace-scoped (BUG-09). The fix reads
  *      `workspaceId` from the push request body (mirroring how bootstrap/
  *      pull already read it from the query string), asserts membership,
@@ -33,7 +33,7 @@ import { registerUser, authHeader, RegisteredUser } from '@tests/helpers'
  *      separate, non-transactional awaits (BUG-10). Whatever the fix
  *      (Mongo transaction, or ledger-row-first-then-apply), the outward
  *      guarantee is exactly-once application even when two requests race
- *      on the same `opId` concurrently — not just on sequential retries
+ *      on the same `opId` concurrently - not just on sequential retries
  *      (already covered by syncIdempotency.test.ts).
  */
 
@@ -50,7 +50,7 @@ const seedAccount = async (userId: string, overrides: Partial<Record<string, unk
 
 const seedCategory = async (userId: string, name = 'Groceries') => Category.create({ userId, name })
 
-describe('Sync create — cross-tenant id ownership (SEC-13, BUG-02)', () => {
+describe('Sync create - cross-tenant id ownership (SEC-13, BUG-02)', () => {
     let app: Application
 
     it('rejects a transaction create colliding with another user\'s id as id_conflict, not noop', async () => {
@@ -155,7 +155,7 @@ describe('Sync create — cross-tenant id ownership (SEC-13, BUG-02)', () => {
             title: 'Owner private expense',
             date: new Date(),
         })
-        // Soft-delete it — the row stays in the collection with deletedAt set.
+        // Soft-delete it - the row stays in the collection with deletedAt set.
         await request(app)
             .delete(`/api/v1/transactions/${ownerTxn._id.toString()}`)
             .set(authHeader(owner.token))
@@ -317,7 +317,7 @@ describe('Sync create — cross-tenant id ownership (SEC-13, BUG-02)', () => {
     })
 })
 
-describe('Sync push — workspace-scoped checkpoint (BUG-09)', () => {
+describe('Sync push - workspace-scoped checkpoint (BUG-09)', () => {
     it('returns a checkpoint computed over the workspace scope, not the personal scope', async () => {
         const app = createApp()
         const owner: RegisteredUser = await registerUser(app, { email: 'sync-checkpoint-owner@example.com' })
@@ -379,7 +379,7 @@ describe('Sync push — workspace-scoped checkpoint (BUG-09)', () => {
     })
 })
 
-describe('Sync push — exactly-once application under concurrent retry (BUG-10)', () => {
+describe('Sync push - exactly-once application under concurrent retry (BUG-10)', () => {
     it('applies a balance-affecting create exactly once when two requests race on the same opId', async () => {
         const app = createApp()
         const owner: RegisteredUser = await registerUser(app, { email: 'sync-race@example.com' })

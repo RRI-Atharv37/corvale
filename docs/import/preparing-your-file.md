@@ -5,7 +5,7 @@ title: Preparing Your File
 ## Get your file ready before you import
 
 Corvale's import wizard is happiest with a tidy CSV. Most bank exports need a
-little cleanup first — especially around dates, currency symbols, and how columns
+little cleanup first - especially around dates, currency symbols, and how columns
 are separated. This page covers exactly what Corvale accepts, and how to convert
 a file that doesn't fit.
 
@@ -16,10 +16,10 @@ straight to [Importing a Bank File](./importing-a-bank-file.md).
 
 | Format | Extension | Notes |
 |--------|-----------|-------|
-| Delimited text | `.csv` | Any layout. Comma, semicolon, tab, or pipe separated — Corvale detects which, and you can override it. Corvale suggests a column mapping and lets you correct it. |
-| Open Financial Exchange | `.ofx` | Parsed automatically — no mapping step. |
+| Delimited text | `.csv` | Any layout. Comma, semicolon, tab, or pipe separated - Corvale detects which, and you can override it. Corvale suggests a column mapping and lets you correct it. |
+| Open Financial Exchange | `.ofx` | Parsed automatically - no mapping step. |
 | Quicken Financial Exchange | `.qfx` | Read with the OFX parser, or the QIF parser if the file is really QIF. |
-| Quicken Interchange Format | `.qif` | Parsed automatically — no mapping step. |
+| Quicken Interchange Format | `.qif` | Parsed automatically - no mapping step. |
 
 If you upload an `.ofx` or `.qfx` file that turns out not to be OFX or QIF at all,
 Corvale stops with a clear message rather than trying to read it as a spreadsheet.
@@ -42,14 +42,14 @@ For CSV files, Corvale reads the date column like this:
    timestamp, is ignored.
 2. **Slash, dot, or dash dates** (for example `7/3/2026`, `07.03.2026`, or
    `7-3-2026`) are read according to the **Date format** control in the mapping
-   step — see below. Two-digit years from 70 to 99 become 19xx; 00 to 69 become
+   step - see below. Two-digit years from 70 to 99 become 19xx; 00 to 69 become
    20xx.
 3. **Anything else** (such as `Jan 5, 2026`) is handed to a generic date reader
-   whose behavior varies. Values like that usually work, but many others don't —
+   whose behavior varies. Values like that usually work, but many others don't -
    convert them to `YYYY-MM-DD` to be safe.
 
-A slash/dot/dash date whose numbers can't make a real calendar date — a "month"
-of 25, or 30 February — is reported as an error on that row rather than being
+A slash/dot/dash date whose numbers can't make a real calendar date - a "month"
+of 25, or 30 February - is reported as an error on that row rather than being
 guessed at or rolled forward.
 
 OFX and QFX files carry their dates in a fixed `YYYYMMDD` form, so there is
@@ -63,7 +63,7 @@ slash, dot, and dash dates:
 
 | Option | Order | Example |
 |--------|-------|---------|
-| **Auto-detect** (default) | Corvale scans the whole date column and chooses (see below) | — |
+| **Auto-detect** (default) | Corvale scans the whole date column and chooses (see below) | - |
 | **Year first** | `YYYY/MM/DD` | `2026/03/07` → 7 March 2026 |
 | **Month first (US)** | `MM/DD/YYYY` | `03/07/2026` → 7 March 2026 |
 | **Day first** | `DD/MM/YYYY` | `07/03/2026` → 7 March 2026 |
@@ -73,8 +73,8 @@ number is over 12 (like `25/03/2026`) means day-first; a four-digit year first
 (like `2026/03/07`) means year-first; otherwise it uses month-first, the US
 convention.
 
-Set the dropdown explicitly when your file's dates are all ambiguous — every day
-and month is 12 or lower, like `07/03/2026` — and you know which convention your
+Set the dropdown explicitly when your file's dates are all ambiguous - every day
+and month is 12 or lower, like `07/03/2026` - and you know which convention your
 bank uses. The preview step shows the parsed dates before anything is saved, so
 you can check the result and go back if it looks wrong.
 
@@ -86,8 +86,8 @@ Corvale detects whether your CSV uses a comma, semicolon, tab, or pipe between
 columns by looking at the header row. Semicolons are common in European bank
 exports, and they now work without any conversion.
 
-If the detected separator is wrong — the mapping step shows one giant column, or
-the values run together — use the **Column separator** dropdown in the mapping
+If the detected separator is wrong - the mapping step shows one giant column, or
+the values run together - use the **Column separator** dropdown in the mapping
 step to set it yourself. Corvale re-reads the file straight away.
 
 Fields may be wrapped in double quotes (`"Coffee, black"`), and a literal quote
@@ -106,7 +106,7 @@ number and reads the digits, grouping separators, and decimal point that remain.
 Corvale works out which mark is the decimal point:
 
 - If the value has both a `.` and a `,`, the **rightmost** one is the decimal
-  point and the other is a thousands separator — so `1.234,56` is `1234.56` and
+  point and the other is a thousands separator - so `1.234,56` is `1234.56` and
   `1,234.56` is also `1234.56`.
 - If the value has only a `,` followed by one or two digits (`40,00`, `40,5`),
   the comma is treated as a decimal point.
@@ -115,22 +115,22 @@ Corvale works out which mark is the decimal point:
 
 The preview step shows every parsed amount before anything is saved, so you can
 check the result and go back if a value looks wrong. A value Corvale can't read
-as a single number — `1.2.3`, or text with no digits — is reported as an error on
+as a single number - `1.2.3`, or text with no digits - is reported as an error on
 that row.
 
 If your file has separate **debit** and **credit** columns instead of one signed
-amount column, that's fine — map both in the wizard and Corvale figures out the
+amount column, that's fine - map both in the wizard and Corvale figures out the
 direction. The same number formatting rules apply to those columns.
 
 ## Convert your file first
 
 Use this recipe when your file is an XLSX or PDF. Currency symbols, decimal
 commas, semicolon or tab separators, and day-first or year-first dates no longer
-need converting — Corvale reads them, and the preview step lets you confirm — but
+need converting - Corvale reads them, and the preview step lets you confirm - but
 reformatting to plain `1234.56` amounts and `YYYY-MM-DD` dates is still the
 safest option if you're editing the file anyway.
 
-1. **Open the file in a spreadsheet app** — Excel, Google Sheets, or LibreOffice
+1. **Open the file in a spreadsheet app** - Excel, Google Sheets, or LibreOffice
    Calc. XLSX opens directly; for a PDF statement, copy the transaction table and
    paste it into a blank sheet.
 2. **Arrange the columns** so you have one date column, one description column,
@@ -140,12 +140,12 @@ safest option if you're editing the file anyway.
    Format → Number → Date, then choose the `2026-03-07` style, or use a formula
    like `TEXT(A2, "YYYY-MM-DD")`.
 4. **Clean up the amounts.** Remove currency symbols and thousands separators,
-   and make sure the decimal point is a `.` — find-and-replace, or set the column
+   and make sure the decimal point is a `.` - find-and-replace, or set the column
    format to a plain number with no symbol.
 5. **Split large files.** If you have more than 2,000 rows, save them across
    several files.
 6. **Save as CSV.** Choose "CSV" (in Excel, "CSV UTF-8 (Comma delimited)"). A
-   semicolon-separated export from a European locale is fine too — Corvale
+   semicolon-separated export from a European locale is fine too - Corvale
    detects it.
 7. **Import each CSV** through the wizard. See
    [Importing a Bank File](./importing-a-bank-file.md).

@@ -17,7 +17,7 @@ const REQUIRED_ENV_VARS = [
 export const MIN_PRODUCTION_JWT_SECRET_LENGTH = 32
 
 /**
- * Secret values that ship *in the repo* — `backend/.env.example`, the getting-started docs — plus
+ * Secret values that ship *in the repo* - `backend/.env.example`, the getting-started docs - plus
  * a handful of universally-known weak defaults. Corvale is distributed for self-hosting and
  * `docker-compose.yml` instructs `cp backend/.env.example backend/.env`; a deployer who copies
  * the file and misses the `JWT_SECRET` line otherwise signs every access token with a string
@@ -111,7 +111,7 @@ export const validateEnv = (env: NodeJS.ProcessEnv = process.env): void => {
     }
 
     // SEC-27: a presence-only check let a placeholder JWT_SECRET through. Reject the values that
-    // ship in the repo/docs, plus obvious weak defaults, at boot and regardless of NODE_ENV —
+    // ship in the repo/docs, plus obvious weak defaults, at boot and regardless of NODE_ENV -
     // the insecure path must fail loudly, not just quietly work.
     const jwtSecret = env.JWT_SECRET as string
     if (isKnownPlaceholderSecret(jwtSecret)) {
@@ -124,7 +124,7 @@ export const validateEnv = (env: NodeJS.ProcessEnv = process.env): void => {
     if (isKnownPlaceholderSecret(env.OFFLINE_GRANT_PRIVATE_KEY as string)) {
         throw new Error(
             'OFFLINE_GRANT_PRIVATE_KEY is still set to the .env.example placeholder. Generate a real ' +
-                'EC keypair — see docs/developers/guides/environment-variables.md#offline-session-grant.'
+                'EC keypair - see docs/developers/guides/environment-variables.md#offline-session-grant.'
         )
     }
 
@@ -139,7 +139,7 @@ export const validateEnv = (env: NodeJS.ProcessEnv = process.env): void => {
     }
 
     // SEC-11: pins the deployment topology by validating REFRESH_COOKIE_SAME_SITE the same
-    // way every other misconfiguration on this path fails — at boot, not as a mystery bug.
+    // way every other misconfiguration on this path fails - at boot, not as a mystery bug.
     getRefreshCookieSameSite(env)
 
     validateAdminEnv(env)

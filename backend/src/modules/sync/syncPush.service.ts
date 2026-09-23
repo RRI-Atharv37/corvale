@@ -168,7 +168,7 @@ const applyCreateOp = async (
 
 /**
  * Fetches the current doc bypassing the soft-delete filter, so a doc that was deleted out from
- * under this op is visible as a conflict (deletedAt set) rather than surfacing as a plain 404 — a
+ * under this op is visible as a conflict (deletedAt set) rather than surfacing as a plain 404 - a
  * delete racing an update must resolve to "delete won", not "not found".
  */
 const fetchCurrentForConflictCheck = async (
@@ -520,7 +520,7 @@ const ENTITY_HANDLERS: Record<string, EntityOpHandlers> = {
 
 /**
  * Per-document last-write-wins with delete-always-wins (the "Conflicts" architecture decision):
- * delete never precondition-checks against baseUpdatedAt — it tombstones unconditionally — while
+ * delete never precondition-checks against baseUpdatedAt - it tombstones unconditionally - while
  * update always enforces it when provided.
  */
 const applyOp = async (userId: string, op: SyncOpInput): Promise<ApplyOpOutcome> => {

@@ -15,10 +15,10 @@ import { registerUser, authHeader, ensureTimestampAdvances, RegisteredUser } fro
  *     the server doc's current `updatedAt`, the op comes back
  *     `status: 'conflict'` with `conflict.serverDoc` set to the current
  *     server state, and the client's mutation is NOT applied.
- *   - Money fields are never field-merged — a conflict is surfaced, not
+ *   - Money fields are never field-merged - a conflict is surfaced, not
  *     auto-resolved.
  *   - delete-vs-update: whichever ordering the ops arrive in, the delete
- *     always wins — the document ends up deleted (soft-deleted) and any
+ *     always wins - the document ends up deleted (soft-deleted) and any
  *     update that raced against it is reported as a conflict.
  *   - A duplicate `create` (payload carries a client-generated `_id` that
  *     already exists for this entity/user) is a no-op: the existing
@@ -38,7 +38,7 @@ const seedAccount = async (userId: string) =>
 
 const seedCategory = async (userId: string, name = 'Groceries') => Category.create({ userId, name })
 
-describe('Sync API — conflict resolution', () => {
+describe('Sync API - conflict resolution', () => {
     let app: Application
     let owner: RegisteredUser
 
@@ -90,7 +90,7 @@ describe('Sync API — conflict resolution', () => {
         expect(stored?.title).toBe('Changed out from under the client')
     })
 
-    it('never field-merges a money field on conflict — the server amount is untouched', async () => {
+    it('never field-merges a money field on conflict - the server amount is untouched', async () => {
         const account = await seedAccount(owner.userId)
         const category = await seedCategory(owner.userId)
         const transaction = await Transaction.create({
@@ -289,8 +289,8 @@ describe('Sync API — conflict resolution', () => {
 /**
  * BUG-16: the staleness check compares `baseUpdatedAt` against the server doc's
  * `updatedAt` as an exact ISO string (millisecond resolution). Two writes to one
- * document within the same millisecond — a second sync op, or a genuine
- * two-device race — used to leave `updatedAt` unchanged, so the second op's
+ * document within the same millisecond - a second sync op, or a genuine
+ * two-device race - used to leave `updatedAt` unchanged, so the second op's
  * "did this change out from under me?" check passed and the write was reported
  * `applied` instead of `conflict` (a silent lost update).
  *
@@ -299,7 +299,7 @@ describe('Sync API — conflict resolution', () => {
  * the op was based on (an atomic compare-and-set claim on `updatedAt`, plus a
  * post-apply bump when the wall clock did not advance). No protocol change.
  */
-describe('Sync API — BUG-16: same-millisecond concurrent writes', () => {
+describe('Sync API - BUG-16: same-millisecond concurrent writes', () => {
     let app: Application
     let owner: RegisteredUser
 

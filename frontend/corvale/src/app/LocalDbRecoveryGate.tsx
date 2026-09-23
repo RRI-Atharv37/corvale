@@ -92,12 +92,12 @@ const LocalDbRecoveryGate: React.FC<{ children: React.ReactNode }> = ({ children
             <p className="text-sm text-text-muted mt-1">
               Corvale couldn&apos;t reach your operating system&apos;s secure key storage, which holds the key for
               your local data. This usually means your login keyring is locked. Unlock it (or allow the access
-              prompt) and try again — nothing on this device has been changed.
+              prompt) and try again - nothing on this device has been changed.
             </p>
           ) : (
             <p className="text-sm text-text-muted mt-1">
               The copy of your data stored on this device couldn&apos;t be opened and needs to be rebuilt. Your data
-              is safe — it&apos;s stored on your Corvale account. Rebuilding re-downloads it here.
+              is safe - it&apos;s stored on your Corvale account. Rebuilding re-downloads it here.
             </p>
           )}
         </div>

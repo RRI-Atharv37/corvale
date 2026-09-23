@@ -219,11 +219,11 @@ Two things to know:
 - **A host firewall (`ufw`, `firewalld`) is not enough on its own.** Docker inserts its own
   `iptables` DNAT rules that are evaluated before `ufw`'s, so a container published on
   `0.0.0.0` stays reachable even when `ufw` claims the port is closed. Verify exposure at the
-  cloud provider's network firewall / security group as well — don't rely on the host firewall
+  cloud provider's network firewall / security group as well - don't rely on the host firewall
   alone.
 - **If the proxy runs on a different host** (not the same machine as the containers), loopback
   won't reach it. Bind to the private-network interface instead via a
-  `docker-compose.override.yml` — copy `docker-compose.override.example.yml`, which Compose
+  `docker-compose.override.yml` - copy `docker-compose.override.example.yml`, which Compose
   merges over the tracked file automatically so `git pull` never conflicts, and change the
   `ports:` entries there (e.g. `10.0.0.5:5000:5000`). Never bind back to `0.0.0.0` on a
   public-facing host.

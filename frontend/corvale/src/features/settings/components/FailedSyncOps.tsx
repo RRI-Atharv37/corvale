@@ -64,7 +64,7 @@ const FailedSyncOps: React.FC<FailedSyncOpsProps> = ({ failedOps, onRetry, onDis
                 <li key={op.opId} className="px-4 py-3">
                     <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
                         <FiAlertTriangle size={14} />
-                        {describeOp(op)} — rejected by the server
+                        {describeOp(op)} - rejected by the server
                     </p>
                     <p className="mt-1 text-xs text-fg-muted leading-relaxed">{op.lastError}</p>
                     <div className="mt-2 flex gap-2">

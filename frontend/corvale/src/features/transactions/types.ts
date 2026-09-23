@@ -24,7 +24,7 @@ export interface Transaction {
     transferPairId?: string | null
     transferDirection?: 'out' | 'in'
     splitTransactionId?: string | null
-    /** True on a split parent once its child lines exist (BUG-34) — splits are create-only, so
+    /** True on a split parent once its child lines exist (BUG-34) - splits are create-only, so
      * the transactions list uses this to hide Edit/Duplicate for a split parent row. */
     hasSplitChildren?: boolean
     splits?: SplitLine[]

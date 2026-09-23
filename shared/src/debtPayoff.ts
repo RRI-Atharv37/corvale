@@ -46,7 +46,7 @@ const roundMinor = (value: number): number => Math.round(value)
 
 /**
  * Throws a plain `Error` (not a backend `CustomError`) when a debt cannot be
- * paid off with the given payments — callers on the backend must catch and
+ * paid off with the given payments - callers on the backend must catch and
  * translate to `CustomError(message, 400)` to preserve existing API behavior.
  */
 export const generatePayoffSchedule = (

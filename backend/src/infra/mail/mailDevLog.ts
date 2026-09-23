@@ -3,7 +3,7 @@
  *
  * Fail-closed: the link is logged only when an operator explicitly sets `MAIL_DEV_LOG=true`,
  * never merely because `NODE_ENV` isn't `production`. The raw token is redacted from the URL
- * regardless — a working account-takeover token must never reach stdout or a log driver.
+ * regardless - a working account-takeover token must never reach stdout or a log driver.
  */
 
 export const isMailDevLogEnabled = (): boolean => process.env.MAIL_DEV_LOG === 'true'

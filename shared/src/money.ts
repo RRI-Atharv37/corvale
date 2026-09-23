@@ -66,7 +66,7 @@ export const getTransferOutDeltaMajor = (amountMinor: number, accountType: Accou
 
 /**
  * Same sign logic as getBalanceDeltaMajor, but for an account balance that is
- * itself stored in minor units (Sprint C5) — integer math throughout, no
+ * itself stored in minor units (Sprint C5) - integer math throughout, no
  * fromMinorUnits round-trip, so no rounding drift on repeated application.
  */
 export const getBalanceDeltaMinor = (

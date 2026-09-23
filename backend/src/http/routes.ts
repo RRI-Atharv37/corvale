@@ -37,17 +37,17 @@ import { createWorkspaceRoutes } from '@modules/workspaces/workspace.routes'
 
 /**
  * The single mount table over `modules/*`. Route strings are unchanged from the pre-RF3
- * `app.ts` — this refactor moves no URL. Middleware wiring stays in `app.ts`.
+ * `app.ts` - this refactor moves no URL. Middleware wiring stays in `app.ts`.
  *
  * Routers are imported by deep path (`@modules/x/x.routes`) rather than through each module's
  * `index.ts`: a route file imports `@http/middleware`, `authMiddleware` imports the users model,
- * so routing a router through a module barrel would drag the whole barrel — and its load-time
- * `createXRoutes()` — into a cycle. The mount table is the one place allowed to know route paths.
+ * so routing a router through a module barrel would drag the whole barrel - and its load-time
+ * `createXRoutes()` - into a cycle. The mount table is the one place allowed to know route paths.
  */
 export const mountRoutes = (app: Express): void => {
     app.use('/api/v1/auth', createAuthRoutes())
     // User-account routes (`/user`, `/legal/accept`, `/account/*`) live in the users module but
-    // stack onto the same `/api/v1/auth` base — RF3 moved no URL.
+    // stack onto the same `/api/v1/auth` base - RF3 moved no URL.
     app.use('/api/v1/auth', createUserRoutes())
     app.use('/api/v1/income', incomeRoutes)
     app.use('/api/v1/expense', expenseRoutes)

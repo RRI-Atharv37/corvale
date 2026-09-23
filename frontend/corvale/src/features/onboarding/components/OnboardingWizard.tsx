@@ -85,7 +85,7 @@ const OnboardingWizard = forwardRef<OnboardingWizardHandle>((_props, ref) => {
                     setStatus(unwrapApiData(startResponse))
                     setVisible(true)
                 } catch {
-                    // Onboarding is a nicety, not a blocker — silently skip if it can't start
+                    // Onboarding is a nicety, not a blocker - silently skip if it can't start
                 }
             }
         }

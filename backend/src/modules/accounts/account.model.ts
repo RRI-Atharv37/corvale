@@ -17,7 +17,7 @@ export interface IAccount extends Document {
     type: AccountType
     currency: string
     /**
-     * openingBalance/currentBalance are stored in the unit balanceUnit names — 'major'
+     * openingBalance/currentBalance are stored in the unit balanceUnit names - 'major'
      * (a decimal, e.g. 12.50) for every account created before Sprint C5's migration ran,
      * 'minor' (an integer, e.g. 1250) for one that's been converted, mirroring how
      * Transaction.amount is always minor units. New accounts default to 'major' unchanged
@@ -31,7 +31,7 @@ export interface IAccount extends Document {
      * The date the `openingBalance` is stated "as of". Balance math counts only
      * transactions dated on/after this instant, so backfilling or importing
      * history older than the account's start doesn't inflate `currentBalance`.
-     * `null` keeps the legacy behavior — the opening balance predates all
+     * `null` keeps the legacy behavior - the opening balance predates all
      * activity and every transaction contributes. Set at creation to the day the
      * user tells us what's in the account (see onboardingController /
      * accountController), editable afterward with a balance recompute.

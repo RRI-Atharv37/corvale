@@ -1,10 +1,19 @@
 import { Types } from 'mongoose'
 
 import { computePayoutVariance } from '@core/billing/payoutReconciliation'
+import { financialYearOf, isValidFinancialYear } from '@core/billing/financialYear'
 import { isDuplicateKeyError } from '@core/db/objectId'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
-import { computeLocalRevenueByCurrency, isValidPeriodMonth, runRevenueRecognitionSweep, type IProviderPayout, type RevenueRecognitionSweepResult } from '@modules/billing'
+import {
+    computeFinancialYearRevenue,
+    computeLocalRevenueByCurrency,
+    isValidPeriodMonth,
+    runRevenueRecognitionSweep,
+    type FinancialYearRevenueSummary,
+    type IProviderPayout,
+    type RevenueRecognitionSweepResult,
+} from '@modules/billing'
 
 import { recordAudit } from './adminAudit.service'
 import {
@@ -251,6 +260,26 @@ export const updateProviderPayout = async (
     })
 
     return toReconciliationRow(payout, await computeLocalRevenueByCurrency(payout.periodMonth))
+}
+
+/**
+ * M8g - the GST-registration-threshold revenue surface: a financial-year running-revenue-total for
+ * the CA to use (`M8a`). Data only - no GST-registration determination and no currency conversion
+ * happen here, both left to the CA; the response reports whatever currencies Corvale actually
+ * recognized revenue in, exactly as recorded.
+ */
+const requireOptionalFinancialYear = (value: unknown): string | undefined => {
+    if (value === undefined || value === '') return undefined
+    if (typeof value !== 'string' || !isValidFinancialYear(value)) throw new CustomError(ERROR_MESSAGES.ADMIN.INVALID_QUERY, 400)
+    return value
+}
+
+export const getFinancialYearRevenueSummary = async (
+    query: Record<string, unknown>,
+    now: Date = new Date()
+): Promise<FinancialYearRevenueSummary> => {
+    const financialYear = requireOptionalFinancialYear(query.financialYear) ?? financialYearOf(now)
+    return computeFinancialYearRevenue(financialYear, now)
 }
 
 export const runRevenueRecognitionNow = async (

@@ -15,13 +15,13 @@ const AdmZip = require('adm-zip') as new () => {
  * `backend/utils/backupUtils.ts`'s `extractBackupFromUpload` (:755-814) today only bounds the
  * **compressed** size of an uploaded backup (`BACKUP_MAX_ZIP_BYTES`, 50 MB) before handing the
  * buffer to `AdmZip` and calling `entry.getData()` on every entry, which inflates each one fully
- * into memory. A small, highly-compressible zip can therefore exhaust the process heap — a full
+ * into memory. A small, highly-compressible zip can therefore exhaust the process heap - a full
  * availability loss, since the backend is single-process per instance. Zip Slip is separately
  * verified-safe (every entry name is reduced through `path.basename` before use) and is not
  * re-tested here.
  *
  * Contract assumed here, all read from the zip's central directory (`entry.header.size` for
- * declared uncompressed size, `entry.header.compressedSize`) — so a hostile archive is rejected
+ * declared uncompressed size, `entry.header.compressedSize`) - so a hostile archive is rejected
  * without ever calling `entry.getData()` on it:
  *
  *   export const BACKUP_MAX_UNCOMPRESSED_BYTES: number   // env `BACKUP_MAX_UNCOMPRESSED_BYTES`

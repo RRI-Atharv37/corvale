@@ -5,7 +5,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server'
 // Set synchronously (with the Mongo URI awaited) at module top level, not inside
 // beforeAll: this setup file is imported and fully resolved before a test file's own
 // top-level `import app from '../app'` runs, and createApp() now calls validateEnv()
-// eagerly (SEC-12) — so these vars must already exist by the time that import executes,
+// eagerly (SEC-12) - so these vars must already exist by the time that import executes,
 // not merely by the time this file's beforeAll would otherwise have run. Top-level await
 // requires this file to be ESM, hence the .mts extension (backend/package.json declares
 // "type": "commonjs", so a plain .ts file here cannot use top-level await).

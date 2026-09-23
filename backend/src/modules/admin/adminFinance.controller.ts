@@ -5,6 +5,7 @@ import { buildCsvRow } from '@core/http/csv'
 import { handleResponses } from '@core/http/response'
 
 import {
+    getFinancialYearRevenueSummary,
     getPayoutReconciliationSummary,
     getRevenueRecognitionSummary,
     recordProviderPayout,
@@ -47,6 +48,10 @@ export const recognitionExportCsv = asyncHandler(async (req: AdminRequest, res: 
 
 export const recognitionRun = asyncHandler(async (req: AdminRequest, res: Response) => {
     handleResponses(res, 200, await runRevenueRecognitionNow(principalOf(req), requestContext(req)))
+})
+
+export const fyRevenueSummary = asyncHandler(async (req: AdminRequest, res: Response) => {
+    handleResponses(res, 200, await getFinancialYearRevenueSummary(req.query))
 })
 
 export const payoutReconciliationSummary = asyncHandler(async (req: AdminRequest, res: Response) => {

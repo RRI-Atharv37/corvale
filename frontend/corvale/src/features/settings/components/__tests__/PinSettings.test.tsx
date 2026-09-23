@@ -5,11 +5,11 @@ import PinSettings from '../PinSettings'
 
 /**
  * SEC-45: the local-lock PIN fields must set `autoComplete="off"` so browser / OS autofill does
- * not retain the PIN. (The feature itself is dormant — BUG-31 — but the attribute lands with the
+ * not retain the PIN. (The feature itself is dormant - BUG-31 - but the attribute lands with the
  * field.)
  */
 
-describe('PinSettings — PIN field credential hygiene (SEC-45)', () => {
+describe('PinSettings - PIN field credential hygiene (SEC-45)', () => {
     beforeEach(() => {
         localStorage.clear()
     })

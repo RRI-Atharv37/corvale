@@ -5,7 +5,7 @@ team behind it, so there's no guaranteed response time on anything in this file.
 reports and questions are read and answered on a best-effort basis.
 
 **Privacy and data-rights requests do not go here.** Those have their own route and their own
-stated response window — see the Contact page on the docs site or in the app.
+stated response window - see the Contact page on the docs site or in the app.
 
 ## Found a bug?
 
@@ -19,7 +19,7 @@ Open an issue using the **Feature request** template.
 ## General question?
 
 Check the [FAQ](../docs/faq/frequently-asked-questions.md) and the rest of the
-[`docs/`](../docs) site first — most "how do I..." questions are already answered there (run
+[`docs/`](../docs) site first - most "how do I..." questions are already answered there (run
 `npm run dev` inside `docs/` to browse it rendered, or just read the Markdown source on GitHub).
 If your question isn't answered, open an issue; there's no dedicated Q&A forum for this project.
 
@@ -30,11 +30,11 @@ instructions instead.
 
 ## What to expect
 
-- Bug reports and PRs are triaged as time allows — there's no SLA.
+- Bug reports and PRs are triaged as time allows - there's no SLA.
 - Security reports are prioritized over everything else; see SECURITY.md for that process's
   own (faster) expectations.
-- Requests about your own data on the hosted service — export, correction, deletion, or a
-  complaint — are handled through the privacy route, not here, and that route does have a stated
+- Requests about your own data on the hosted service - export, correction, deletion, or a
+  complaint - are handled through the privacy route, not here, and that route does have a stated
   response window.
 - Running your own deployment? The
   [incident response runbook](../docs/developers/guides/incident-response-runbook.md) is the

@@ -15,7 +15,7 @@ import { assertWorkspaceMembership, validateResourceAccess } from "@modules/work
 /**
  * `parseRecurringAmount` expects a REST body's major-unit decimal and
  * converts it to minor units itself. Sync payloads carry `amount` already in
- * minor units (the local SQLite/RecurringRule schema convention) — mirrors
+ * minor units (the local SQLite/RecurringRule schema convention) - mirrors
  * the `transaction.create` conversion already in `syncController.ts`'s
  * `applyCreateOp`, applied here for the same reason.
  */
@@ -26,10 +26,10 @@ const toMajorAmount = (value: unknown): unknown => (typeof value === 'number' ? 
  * recurringRuleController's createRecurringRule/updateRecurringRule/
  * archiveRecurringRule exactly. generateRecurringDrafts/confirmDraft/
  * dismissDraft stay out of scope and server-authoritative (the "Server-authoritative"
- * architecture decision) — this only covers the rule's own fields, not draft generation.
+ * architecture decision) - this only covers the rule's own fields, not draft generation.
  *
  * Like category, the REST createRecurringRule endpoint predates the
- * client-generated-`_id` convention — resolveClientObjectId is added
+ * client-generated-`_id` convention - resolveClientObjectId is added
  * here (not to the REST controller) since a sync create needs it to keep
  * the offline-created local id and the server id in sync.
  */

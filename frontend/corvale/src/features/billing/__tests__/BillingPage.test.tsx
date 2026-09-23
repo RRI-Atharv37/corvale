@@ -111,13 +111,12 @@ describe('choosing a plan without a live subscription', () => {
     it('starts a hosted checkout for the chosen plan and interval and opens it', async () => {
         const user = userEvent.setup()
         renderBilling(snapshot({ status: 'trialing', trialEndsAt: daysFromNow(9), currentPeriodEnd: null }))
-        await screen.findByRole('radio', { name: /^plus/i })
+        await screen.findByRole('radio', { name: /^pro/i })
 
-        await user.click(screen.getByRole('radio', { name: /^plus/i }))
         await user.click(screen.getByRole('radio', { name: /annual/i }))
         await user.click(screen.getByRole('button', { name: /^subscribe/i }))
 
-        await waitFor(() => expect(api.startCheckout).toHaveBeenCalledWith({ planCode: 'plus', interval: 'annual' }))
+        await waitFor(() => expect(api.startCheckout).toHaveBeenCalledWith({ planCode: 'pro', interval: 'annual' }))
         expect(openExternalUrl).toHaveBeenCalledWith('https://pay.example/checkout')
         expect(api.requestPlanChange).not.toHaveBeenCalled()
     })
@@ -149,16 +148,15 @@ describe('choosing a plan without a live subscription', () => {
 })
 
 describe('changing plan on a live subscription', () => {
-    it('asks for the change in-app instead of starting a second checkout', async () => {
+    it('asks for the interval change in-app instead of starting a second checkout', async () => {
         const user = userEvent.setup()
         renderBilling(snapshot({ planCode: 'pro' }))
-        await screen.findByRole('radio', { name: /^plus/i })
+        await screen.findByRole('radio', { name: /^pro/i })
 
-        await user.click(screen.getByRole('radio', { name: /^plus/i }))
-        await user.click(screen.getByRole('radio', { name: /monthly/i }))
+        await user.click(screen.getByRole('radio', { name: /annual/i }))
         await user.click(screen.getByRole('button', { name: /change plan/i }))
 
-        await waitFor(() => expect(api.requestPlanChange).toHaveBeenCalledWith({ planCode: 'plus', interval: 'monthly' }))
+        await waitFor(() => expect(api.requestPlanChange).toHaveBeenCalledWith({ planCode: 'pro', interval: 'annual' }))
         expect(api.startCheckout).not.toHaveBeenCalled()
         expect(toast.success).toHaveBeenCalled()
     })
@@ -166,9 +164,8 @@ describe('changing plan on a live subscription', () => {
     it('re-reads the user afterwards so the new entitlement shows up without a reload', async () => {
         const user = userEvent.setup()
         const { updateUser } = renderBilling(snapshot({ planCode: 'pro' }))
-        await screen.findByRole('radio', { name: /^plus/i })
+        await screen.findByRole('radio', { name: /^pro/i })
 
-        await user.click(screen.getByRole('radio', { name: /^plus/i }))
         await user.click(screen.getByRole('button', { name: /change plan/i }))
 
         await waitFor(() => expect(api.fetchCurrentUser).toHaveBeenCalled())
@@ -179,9 +176,8 @@ describe('changing plan on a live subscription', () => {
         vi.mocked(api.requestPlanChange).mockRejectedValue(new Error('refused'))
         const user = userEvent.setup()
         renderBilling(snapshot({ planCode: 'pro' }))
-        await screen.findByRole('radio', { name: /^plus/i })
+        await screen.findByRole('radio', { name: /^pro/i })
 
-        await user.click(screen.getByRole('radio', { name: /^plus/i }))
         await user.click(screen.getByRole('button', { name: /change plan/i }))
 
         await waitFor(() => expect(toast.error).toHaveBeenCalled())
@@ -291,24 +287,12 @@ describe('cancelling', () => {
         expect(api.requestCancellation).not.toHaveBeenCalled()
     })
 
-    it('offers Plus as a cheaper alternative to a Pro subscriber, and carries the choice to the picker', async () => {
+    it('does not offer a downgrade to a cheaper plan - there is only one plan', async () => {
         const user = userEvent.setup()
         renderBilling(snapshot({ planCode: 'pro' }))
         const flow = await openCancelFlow(user)
 
-        await user.click(within(flow).getByRole('button', { name: /switch to plus instead/i }))
-
-        expect(screen.queryByRole('region', { name: /cancel your subscription/i })).not.toBeInTheDocument()
-        expect(screen.getByRole('radio', { name: /^plus/i })).toBeChecked()
-        expect(api.requestCancellation).not.toHaveBeenCalled()
-    })
-
-    it('does not offer a downgrade to someone already on Plus', async () => {
-        const user = userEvent.setup()
-        renderBilling(snapshot({ planCode: 'plus' }))
-        const flow = await openCancelFlow(user)
-
-        expect(within(flow).queryByRole('button', { name: /switch to plus/i })).not.toBeInTheDocument()
+        expect(within(flow).queryByRole('button', { name: /switch to.*instead/i })).not.toBeInTheDocument()
     })
 
     it('confirming asks the server to cancel, then refreshes the user', async () => {

@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for the suggestion. Note that Corvale is a solo-maintained personal/portfolio
-        project — not every idea will get picked up, but it's still useful to hear.
+        project - not every idea will get picked up, but it's still useful to hear.
 
   - type: textarea
     id: problem

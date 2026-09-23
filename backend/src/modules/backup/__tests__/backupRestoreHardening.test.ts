@@ -9,9 +9,9 @@ import { Transaction } from '@modules/transactions'
 import { authHeader, registerUser, seedUserDirectly } from '@tests/helpers'
 
 /**
- * Acceptance spec for S32 — SEC-50 / SEC-51 (`backend/utils/backupUtils.ts`).
+ * Acceptance spec for S32 - SEC-50 / SEC-51 (`backend/utils/backupUtils.ts`).
  *
- * SEC-50 (High) — the `.zip` restore branch enforced no JSON size cap (only the `.json` branch
+ * SEC-50 (High) - the `.zip` restore branch enforced no JSON size cap (only the `.json` branch
  * did), `parseBackupPayload` capped record *shape* but never record *count*, and restore wrote
  * one awaited `Model.create()` per record. A ~2 MB zip sitting under the SEC-16 ratio/size gates
  * could force a 200 MB inflate + `JSON.parse` and ~1.5 M sequential writes in one request.
@@ -22,11 +22,11 @@ import { authHeader, registerUser, seedUserDirectly } from '@tests/helpers'
  *   - transactions + deferred link-ups + savings-goal contributions are written via
  *     `insertMany` / `bulkWrite`, not a per-record loop.
  *
- * SEC-51 (Medium) — the budgets / categorization-rules / transaction-templates loops did
+ * SEC-51 (Medium) - the budgets / categorization-rules / transaction-templates loops did
  * `idMap.set(sourceId, sourceId)` (identity mapping), and `mapOptionalId` only guarded on
  * *presence* in the map, not ownership. A crafted backup could declare a budget whose `id` is a
  * victim's account ObjectId, installing an identity mapping a later transaction record resolves
- * as its `accountId` — restore performed no account-ownership validation. Fixed by resolving
+ * as its `accountId` - restore performed no account-ownership validation. Fixed by resolving
  * account / category references through per-kind maps that only ever hold ids created by this
  * restore (or shared master categories), and by storing the created row's id at all three sites.
  */
@@ -117,7 +117,7 @@ afterEach(() => {
     delete process.env.BACKUP_MAX_RECORDS_PER_COLLECTION
 })
 
-describe('SEC-50 — zip JSON size cap', () => {
+describe('SEC-50 - zip JSON size cap', () => {
     it('rejects a zip whose corvale-backup.json entry exceeds BACKUP_MAX_JSON_BYTES before parsing', async () => {
         process.env.BACKUP_MAX_JSON_BYTES = '4096'
         const { token } = await registerUser(app, { email: 'sec50-jsoncap@example.com' })
@@ -150,7 +150,7 @@ describe('SEC-50 — zip JSON size cap', () => {
     })
 })
 
-describe('SEC-50 — per-collection record cap', () => {
+describe('SEC-50 - per-collection record cap', () => {
     it('rejects a backup whose transactions array is longer than BACKUP_MAX_RECORDS_PER_COLLECTION', async () => {
         process.env.BACKUP_MAX_RECORDS_PER_COLLECTION = '5'
         const { token, userId } = await registerUser(app, { email: 'sec50-recordcap@example.com' })
@@ -184,7 +184,7 @@ describe('SEC-50 — per-collection record cap', () => {
     })
 })
 
-describe('SEC-50 — batched restore still links transfers and preserves scope', () => {
+describe('SEC-50 - batched restore still links transfers and preserves scope', () => {
     it('restores a multi-transaction backup with a transfer pair via the batched path', async () => {
         const source = await seedUserDirectly({ email: 'sec50-batch-src@example.com' })
         const target = await seedUserDirectly({ email: 'sec50-batch-tgt@example.com' })
@@ -238,7 +238,7 @@ describe('SEC-50 — batched restore still links transfers and preserves scope',
     })
 })
 
-describe('SEC-51 — restore cannot resolve references to a foreign account', () => {
+describe('SEC-51 - restore cannot resolve references to a foreign account', () => {
     it('rejects a backup whose budget id is a victim account id used as a transaction accountId', async () => {
         const victim = await seedUserDirectly({ email: 'sec51-victim@example.com' })
         const victimAccountRes = await request(app)

@@ -25,7 +25,7 @@ function parseFile(token: string, content: string, filename: string, delimiter?:
     return req.attach('file', Buffer.from(content, 'utf-8'), filename)
 }
 
-describe('BUG-19 — CSV delimiter detection', () => {
+describe('BUG-19 - CSV delimiter detection', () => {
     it('sniffDelimiter picks the highest-count candidate, comma breaking ties', () => {
         expect(sniffDelimiter('Date;Description;Amount')).toBe(';')
         expect(sniffDelimiter('Date\tDescription\tAmount')).toBe('\t')

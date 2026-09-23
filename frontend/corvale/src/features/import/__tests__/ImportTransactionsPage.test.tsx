@@ -77,7 +77,7 @@ afterEach(() => {
     Object.defineProperty(navigator, 'onLine', { value: true, writable: true, configurable: true })
 })
 
-describe('ImportTransactions — delimiter override (BUG-19)', () => {
+describe('ImportTransactions - delimiter override (BUG-19)', () => {
     it('auto-detects a semicolon CSV and re-parses when the separator is changed', async () => {
         await seed()
         const user = userEvent.setup()

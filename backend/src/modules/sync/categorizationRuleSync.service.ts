@@ -14,7 +14,7 @@ import { validateResourceAccess } from "@modules/workspaces/access";
  * `parseOptionalAmountBound` expects a REST body's major-unit decimal and
  * converts it to minor units itself. Sync payloads carry `amountMin`/
  * `amountMax` already in minor units (the local SQLite/CategorizationRule
- * schema convention) — mirrors the `transaction.create` conversion already
+ * schema convention) - mirrors the `transaction.create` conversion already
  * in `syncController.ts`'s `applyCreateOp`, applied here for the same
  * reason.
  */
@@ -26,7 +26,7 @@ const toMajorAmount = (value: unknown): unknown => (typeof value === 'number' ? 
  * updateCategorizationRule/deleteCategorizationRule exactly. Real
  * `deletedAt` soft-delete like Tag, so delete tombstones unconditionally.
  * bulkApplyRules/testCategorizationRule stay REST-only (not raw field
- * edits — out of scope).
+ * edits - out of scope).
  */
 
 const validateUserRuleForOp = async (ruleId: string, userId: string): Promise<ICategorizationRule> =>

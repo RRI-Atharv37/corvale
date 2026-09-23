@@ -118,9 +118,9 @@ export default defineConfig(({ mode }) => {
       registerType: 'prompt',
       includeAssets: ['apple-touch-icon.png'],
       manifest: {
-        name: 'Corvale — Know where every dollar went',
+        name: 'Corvale - Know where every dollar went',
         short_name: 'Corvale',
-        description: 'Personal finance tracker — budgets, accounts, transactions and reports that work offline.',
+        description: 'Personal finance tracker - budgets, accounts, transactions and reports that work offline.',
         theme_color: '#14121c',
         background_color: '#14121c',
         display: 'standalone',
@@ -168,7 +168,7 @@ export default defineConfig(({ mode }) => {
       },
     },
   },
-  // RF1: was frontend/corvale/vitest.config.ts — merged here so the alias list lives in one place.
+  // RF1: was frontend/corvale/vitest.config.ts - merged here so the alias list lives in one place.
   test: {
     globals: true,
     environment: 'happy-dom',

@@ -30,7 +30,7 @@ import { authHeader, registerUser } from '@tests/helpers'
  *     gets no `Access-Control-Allow-Origin` header at all (SEC-10).
  */
 
-describe('API hardening — security headers (SEC-07)', () => {
+describe('API hardening - security headers (SEC-07)', () => {
     it('sets nosniff, hides X-Powered-By, and denies framing', async () => {
         const app = createApp()
         const res = await request(app).get('/health')
@@ -74,14 +74,14 @@ describe('API hardening — security headers (SEC-07)', () => {
 
         const policy = res.headers['permissions-policy'] ?? ''
         expect(policy).toBeTruthy()
-        // The app uses none of these powerful features — each must be denied to all origins.
+        // The app uses none of these powerful features - each must be denied to all origins.
         for (const feature of ['camera', 'microphone', 'geolocation', 'payment', 'usb']) {
             expect(policy).toMatch(new RegExp(`${feature}=\\(\\)`))
         }
     })
 })
 
-describe('API hardening — request body limit (SEC-08)', () => {
+describe('API hardening - request body limit (SEC-08)', () => {
     it('rejects a JSON body over the configured limit with 413', async () => {
         const app = createApp()
         const { token } = await registerUser(app, { email: 'body-limit@example.com' })
@@ -105,7 +105,7 @@ describe('API hardening — request body limit (SEC-08)', () => {
     })
 })
 
-describe('API hardening — health and readiness (SEC-25)', () => {
+describe('API hardening - health and readiness (SEC-25)', () => {
     it('GET /health reports ok without touching the database', async () => {
         const app = createApp()
         const res = await request(app).get('/health')
@@ -138,7 +138,7 @@ describe('API hardening — health and readiness (SEC-25)', () => {
     })
 })
 
-describe('API hardening — JSON 404 (SEC-25)', () => {
+describe('API hardening - JSON 404 (SEC-25)', () => {
     it('returns a JSON 404 for an unknown API route', async () => {
         const app = createApp()
         const res = await request(app).get('/api/v1/this-route-does-not-exist')
@@ -158,7 +158,7 @@ describe('API hardening — JSON 404 (SEC-25)', () => {
     })
 })
 
-describe('API hardening — env validation (SEC-12)', () => {
+describe('API hardening - env validation (SEC-12)', () => {
     const originalClientUrl = process.env.CLIENT_URL
     const originalJwtSecret = process.env.JWT_SECRET
     const originalJwtExpiry = process.env.JWT_EXPIRY
@@ -191,7 +191,7 @@ describe('API hardening — env validation (SEC-12)', () => {
     })
 })
 
-describe('API hardening — CORS fail-closed (SEC-10)', () => {
+describe('API hardening - CORS fail-closed (SEC-10)', () => {
     it('reflects Access-Control-Allow-Origin for the configured CLIENT_URL', async () => {
         const app = createApp()
         const res = await request(app).get('/health').set('Origin', process.env.CLIENT_URL as string)
@@ -208,7 +208,7 @@ describe('API hardening — CORS fail-closed (SEC-10)', () => {
     })
 })
 
-describe('API hardening — CORS desktop origin allowlist (SEC-10, S17)', () => {
+describe('API hardening - CORS desktop origin allowlist (SEC-10, S17)', () => {
     it.each(['tauri://localhost', 'http://tauri.localhost'])(
         'reflects Access-Control-Allow-Origin for the desktop origin %s',
         async (origin) => {

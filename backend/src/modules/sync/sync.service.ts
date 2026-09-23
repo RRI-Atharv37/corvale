@@ -70,7 +70,7 @@ interface EntityConfig {
      * Optional per-entity transform applied to every plain doc before it goes
      * on the wire (bootstrap + pull). `account` uses it to force
      * openingBalance/currentBalance to major units regardless of the row's
-     * `balanceUnit` storage flag — see accountWireFormat.ts / BUG-17.
+     * `balanceUnit` storage flag - see accountWireFormat.ts / BUG-17.
      */
     serialize?: (doc: Record<string, unknown>) => Record<string, unknown>
 }
@@ -92,7 +92,7 @@ const ENTITY_CONFIG: Record<SyncEntityName, EntityConfig> = {
         hasSoftDelete: false,
         // User's own categories plus the shared `userId: null` masters. Expressed as a single
         // `userId: { $in: [...] }` rather than a top-level `$or` so it survives being merged
-        // with the pull cursor's own `$or` in `combineFilters` — and so the RLS guard sees a
+        // with the pull cursor's own `$or` in `combineFilters` - and so the RLS guard sees a
         // top-level `userId` key (an `$or` whose branches carry the scope satisfies the guard
         // alone, but not once it is `$and`-nested under an unscoped cursor clause). See the
         // `Category` note in CLAUDE.md.
@@ -378,7 +378,7 @@ export const computeCurrentCheckpoint = async (
 }
 
 /**
- * Sync endpoints don't distinguish "workspace doesn't exist" from "you're not a member" — both
+ * Sync endpoints don't distinguish "workspace doesn't exist" from "you're not a member" - both
  * collapse to 403 so a caller can't probe for the existence of workspaces they don't belong to.
  */
 export const assertWorkspaceReadable = async (

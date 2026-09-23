@@ -6,7 +6,7 @@ import { authHeader, registerUser } from '@tests/helpers'
 
 /**
  * SEC-59: `duplicateTransaction` must stamp the caller's `userId` on the copy, not the original
- * author's. In a shared workspace any editor can duplicate a row a co-member created — copying
+ * author's. In a shared workspace any editor can duplicate a row a co-member created - copying
  * the source `userId` forges that member's authorship.
  */
 
@@ -45,7 +45,7 @@ async function inviteEditor(ownerToken: string, workspaceId: string, email: stri
         .set(authHeader(inviteeToken))
 }
 
-describe('SEC-59 — duplicateTransaction attributes the copy to the caller', () => {
+describe('SEC-59 - duplicateTransaction attributes the copy to the caller', () => {
     it('a workspace editor duplicating a co-member row gets a copy owned by the editor', async () => {
         const owner = await registerUser(app, { email: 'sec59-owner@example.com' })
         const editor = await registerUser(app, {

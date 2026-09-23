@@ -6,18 +6,18 @@ import { Transaction } from '@modules/transactions'
 import { authHeader, seedUserDirectly } from '@tests/helpers'
 
 /**
- * Acceptance spec for S32 — SEC-52 (`backend/controllers/importController.ts`).
+ * Acceptance spec for S32 - SEC-52 (`backend/controllers/importController.ts`).
  *
  * `resolveRowsAndErrors` returned `parsedRows as ParsedImportRow[]` with no per-row validation,
  * and `commitImport` wrote `type: item.type` straight into `Transaction.create`. Nothing
  * constrained `type` to `income | expense`, so a posted `{ "type": "transfer" }` row created an
  * orphan transfer leg that skews the account balance and is thereafter rejected by
- * `assertEditableTransaction` — an unfixable corrupt row, reachable with no file upload and no
+ * `assertEditableTransaction` - an unfixable corrupt row, reachable with no file upload and no
  * prior `/imports/parse` call.
  *
- * Contract: every entry of a client-supplied `parsedRows` array is validated server-side —
+ * Contract: every entry of a client-supplied `parsedRows` array is validated server-side -
  * `type` constrained to the transaction income/expense enum, `date` to `YYYY-MM-DD`, `title`
- * non-empty, `amount` a finite positive number — and a bad row is a 400 with nothing written.
+ * non-empty, `amount` a finite positive number - and a bad row is a 400 with nothing written.
  */
 
 const createAccount = async (token: string) => {
@@ -42,7 +42,7 @@ const validRow = (overrides: Record<string, unknown> = {}) => ({
     ...overrides,
 })
 
-describe('SEC-52 — server-side parsedRows validation', () => {
+describe('SEC-52 - server-side parsedRows validation', () => {
     it('rejects a commit whose parsedRows carries type "transfer" and writes nothing', async () => {
         const { token, userId } = await seedUserDirectly({ email: 'sec52-transfer@example.com' })
         const account = await createAccount(token)

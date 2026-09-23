@@ -37,8 +37,8 @@ const emptyInviteForm = (): WorkspaceInviteFormData => ({
 })
 
 const INVITE_ROLE_OPTIONS: { value: WorkspaceInviteRole; label: string }[] = [
-    { value: 'editor', label: 'Editor — can add and edit data' },
-    { value: 'viewer', label: 'Viewer — read-only access' },
+    { value: 'editor', label: 'Editor - can add and edit data' },
+    { value: 'viewer', label: 'Viewer - read-only access' },
 ]
 
 interface SelectFieldProps {
@@ -541,7 +541,7 @@ const Workspaces = () => {
             <Modal
                 open={membersOpen}
                 onClose={closeMembers}
-                title={selectedWorkspace ? `${selectedWorkspace.name} — Members` : 'Members'}
+                title={selectedWorkspace ? `${selectedWorkspace.name} - Members` : 'Members'}
                 size="md"
             >
                 {selectedWorkspace && (

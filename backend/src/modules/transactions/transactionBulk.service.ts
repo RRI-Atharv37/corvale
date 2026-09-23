@@ -42,7 +42,7 @@ const resolveTransactionForBulkDelete = async (
 
 export const bulkDeleteTransactions = async (userId: string, transactionIds: string[]) => {
     // Validate every id up front so a bogus or not-owned id anywhere in the batch fails the whole
-    // request before any deletion happens (BUG-03) — no partial delete to roll back.
+    // request before any deletion happens (BUG-03) - no partial delete to roll back.
     const transactions = await mapWithConcurrency(
         transactionIds,
         BULK_VALIDATION_CONCURRENCY,

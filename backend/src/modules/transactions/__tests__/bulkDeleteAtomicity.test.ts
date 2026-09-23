@@ -11,7 +11,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
  *
  * `bulkDeleteTransactions` (transactionController.ts) currently loops over
  * `transactionIds` and deletes each one immediately, throwing the instant it
- * hits an id that doesn't exist or isn't the caller's — after already
+ * hits an id that doesn't exist or isn't the caller's - after already
  * having permanently deleted (and reversed the balance for) every id that
  * came before it in the array. The fix: validate every id up front, then
  * delete only once all pass, wrapped so a mid-loop failure cannot leave a
@@ -19,7 +19,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
  * currently 404s for "doesn't exist" but lets a separate
  * `validateResourceAccess` call 403 for "exists but isn't yours") must
  * collapse into a single uniform 404 for both cases, scoped to this
- * endpoint (S6) — see BUG-03 / SEC-14.
+ * endpoint (S6) - see BUG-03 / SEC-14.
  */
 
 async function createTestAccount(token: string, openingBalance = 500, name = 'Checking') {

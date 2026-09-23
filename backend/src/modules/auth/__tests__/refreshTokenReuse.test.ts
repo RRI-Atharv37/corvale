@@ -11,7 +11,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
  *
  * Today `rotateRefreshToken` (`backend/utils/refreshTokenService.ts`) rotates correctly on a
  * fresh token but treats replay of an already-rotated (revoked) token exactly like any other
- * invalid token — a single `REFRESH_TOKEN_INVALID` 401, nothing more. SEC-20's fix is reuse
+ * invalid token - a single `REFRESH_TOKEN_INVALID` 401, nothing more. SEC-20's fix is reuse
  * *detection*: presenting a token that has already been rotated away is a strong signal that
  * either the legitimate device or an attacker is holding a stolen copy, and the standard
  * response is to revoke every token descended from that same login, not just the one replayed.
@@ -26,7 +26,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
  *     is indistinguishable from "never existed"). Three outcomes:
  *       1. No record at all -> `REFRESH_TOKEN_INVALID` (401), unchanged from today.
  *       2. Record found, `expiresAt` in the past, `revokedAt` still null -> `REFRESH_TOKEN_INVALID`
- *          (401), unchanged from today — a plain expiry, not a reuse signal.
+ *          (401), unchanged from today - a plain expiry, not a reuse signal.
  *       3. Record found with `revokedAt` already set -> **reuse detected**: every unrevoked
  *          token sharing that `familyId` is revoked, the owning `User.tokenVersion` is
  *          incremented (invalidating every outstanding access token immediately, the same
@@ -35,11 +35,11 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
  *          security" notice instead of a generic session-expired one.
  *   - Reuse detection is scoped to the replayed token's own family. A second, independent login
  *     (a different device/browser) is a different family and is not revoked by a replay on the
- *     first — consistent with `SEC-20`'s recommendation, which calls for revoking "the whole
+ *     first - consistent with `SEC-20`'s recommendation, which calls for revoking "the whole
  *     family", not every session the user has.
  *
  * The exact new error message text is intentionally not asserted against a named
- * `ERROR_MESSAGES` key (it doesn't exist yet) — assertions below check status codes and that the
+ * `ERROR_MESSAGES` key (it doesn't exist yet) - assertions below check status codes and that the
  * message is *not* the plain `REFRESH_TOKEN_INVALID` string, so this spec doesn't lock in a
  * specific key name the implementation is free to choose.
  */
@@ -217,7 +217,7 @@ describe('Refresh token reuse detection (S11, SEC-20)', () => {
         expect(loser.body.message).not.toBe(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID)
         expect((await User.findById(userId))!.tokenVersion).toBeGreaterThan(versionBefore)
 
-        // The token both requests presented is spent — replaying it is now a plain reuse.
+        // The token both requests presented is spent - replaying it is now a plain reuse.
         const stale = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie)
         expect(stale.status).toBe(401)
     })

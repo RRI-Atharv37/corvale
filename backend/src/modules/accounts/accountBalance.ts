@@ -29,7 +29,7 @@ const toAccountsLike = (
     accounts.map((account) => ({
         type: account.type,
         // AccountLike/computeAccountTotalsPure operate in major units throughout
-        // (see shared/src/balances.ts) — an account migrated to minor-unit
+        // (see shared/src/balances.ts) - an account migrated to minor-unit
         // storage (Sprint C5) is converted back to major here, at the boundary,
         // so that shared function never needs to know about the flag.
         currentBalance: account.balanceUnit === 'minor' ? fromMinorUnits(account.currentBalance) : account.currentBalance,
@@ -44,7 +44,7 @@ const POSTED_LEDGER_FILTER = {
 
 /**
  * Lifetime posted income/expense totals sourced from the unified
- * `Transaction` collection (BUG-01) — mirrors the exclusions
+ * `Transaction` collection (BUG-01) - mirrors the exclusions
  * `sumPostedTransactionsByType` (dashboardUtils.ts) applies for the
  * period-scoped dashboard summary (posted only, split children excluded,
  * transfers excluded via the `type` match), just without a date bound.
@@ -124,8 +124,8 @@ export const computeUserBalances = async (
 }
 
 /**
- * Recomputes one account's balance from scratch — its opening balance and
- * opening-balance date plus every posted, non-split transaction on it — and
+ * Recomputes one account's balance from scratch - its opening balance and
+ * opening-balance date plus every posted, non-split transaction on it - and
  * returns the result in **major units** (the caller stores it in the account's
  * own `balanceUnit`). Transfer legs are resolved to in/out by creation order
  * relative to their pair, the same technique `deleteTransactionForUser` uses,

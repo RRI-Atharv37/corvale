@@ -23,7 +23,7 @@ describe('isAllowedExternalUrl', () => {
         expect(isAllowedExternalUrl('')).toBe(false)
         expect(isAllowedExternalUrl('   ')).toBe(false)
         expect(isAllowedExternalUrl('not a url')).toBe(false)
-        // @ts-expect-error — guarding the non-string case
+        // @ts-expect-error - guarding the non-string case
         expect(isAllowedExternalUrl(null)).toBe(false)
     })
 })

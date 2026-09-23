@@ -5,7 +5,7 @@ import type { SyncableRecord } from '@platform/db/repositories/Repository'
  * Local-store record shapes: what `JSON.parse(row.data)` yields for each
  * syncable table. Server documents are stored verbatim as JSON (see
  * `db/repositories/Repository.ts`), so dates arrive as ISO strings, not
- * `Date` objects — every domain module that calls into `shared/` (which
+ * `Date` objects - every domain module that calls into `shared/` (which
  * expects `Date`) must convert first. Each extends `SyncableRecord` (rather
  * than redeclaring `_id`/`updatedAt`/`deletedAt`) so `Repository<T>`'s
  * `T extends SyncableRecord` constraint is satisfied structurally.
@@ -39,7 +39,7 @@ export interface LocalTransaction extends SyncableRecord {
   tags?: string[]
   paymentMethod?: string
   source?: string
-  /** OFX `FITID` from a bank-file import — an exact re-import dedupe key (BUG-21). */
+  /** OFX `FITID` from a bank-file import - an exact re-import dedupe key (BUG-21). */
   externalId?: string
   splitTransactionId: string | null
   /** True on a split parent once its child lines exist (BUG-34); mirrors the server field of the

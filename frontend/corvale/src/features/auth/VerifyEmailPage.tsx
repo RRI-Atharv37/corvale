@@ -155,7 +155,7 @@ const VerifyEmail = () => {
                 <h3 className="text-xl font-semibold text-fg">Verify your email</h3>
                 <p className="text-sm text-fg-muted mt-2 mb-4">
                     {emailFromState
-                        ? `Verify your email address to sign in. We sent a link to ${emailFromState} — click it to continue.`
+                        ? `Verify your email address to sign in. We sent a link to ${emailFromState} - click it to continue.`
                         : 'We sent a verification link to your email address. Click it to finish setting up your account.'}
                 </p>
 

@@ -16,7 +16,7 @@ import { assertWorkspaceMembership, validateResourceAccess } from "@modules/work
  * `parseBudgetAmount` (like every other entity's amount parser) expects a
  * REST body's major-unit decimal and converts it to minor units itself. Sync
  * payloads carry `amount` already in minor units (the local SQLite/Budget
- * schema convention) — mirrors the `transaction.create` conversion already
+ * schema convention) - mirrors the `transaction.create` conversion already
  * in `syncController.ts`'s `applyCreateOp`, applied here for the same reason.
  */
 const toMajorAmount = (value: unknown): unknown => (typeof value === 'number' ? fromMinorUnits(value) : value)
@@ -30,7 +30,7 @@ const toMajorAmount = (value: unknown): unknown => (typeof value === 'number' ? 
  */
 
 /**
- * The local-first client never sends `year`/`month` — it resolves `periodStart`/`periodEnd`
+ * The local-first client never sends `year`/`month` - it resolves `periodStart`/`periodEnd`
  * itself (via the same shared `resolveMonthlyPeriod`/`resolveCustomPeriod`) before the record
  * ever reaches the outbox, and syncs the resolved instants (BUG-33). Trust those when both are
  * present, for either period type, the same way this file already trusts a client-resolved

@@ -32,7 +32,7 @@ const seedAccount = async (userId: string, overrides: Partial<Record<string, unk
 
 const seedCategory = async (userId: string, name = 'Groceries') => Category.create({ userId, name })
 
-describe('Sync API — opId idempotency', () => {
+describe('Sync API - opId idempotency', () => {
     let app: Application
     let owner: RegisteredUser
 
@@ -164,7 +164,7 @@ describe('Sync API — opId idempotency', () => {
         expect(count).toBe(2)
     })
 
-    it('scopes opId uniqueness per-user — two users may reuse the same opId independently', async () => {
+    it('scopes opId uniqueness per-user - two users may reuse the same opId independently', async () => {
         const account = await seedAccount(owner.userId)
         const category = await seedCategory(owner.userId)
         const other = await registerUser(app, { email: 'idempotency-other@example.com' })

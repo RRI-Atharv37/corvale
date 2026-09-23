@@ -4,7 +4,7 @@
 //! the auth response body and stores it here, in the OS-provided credential store:
 //! Windows Credential Manager, macOS Keychain, or the Linux Secret Service.
 //!
-//! SEC-42: these commands manage exactly one entry — the refresh token. They take **no
+//! SEC-42: these commands manage exactly one entry - the refresh token. They take **no
 //! caller-supplied key**, so the webview cannot use them as a generic OS-credential-store
 //! read/write/delete primitive over the highest-value store on the machine. `db_key.rs` owns a
 //! separate, equally fixed entry for the SQLCipher key.

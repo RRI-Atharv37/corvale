@@ -3,7 +3,7 @@
 # and that config's build.outDir points at ../../dist/frontend (repo-root-relative) rather than
 # a local dist/ folder - both need the repo root visible in the build context to resolve.
 #
-# Vite bakes VITE_* variables into the built JS at build time, not at container start — so they
+# Vite bakes VITE_* variables into the built JS at build time, not at container start - so they
 # arrive as build ARGs here, not as runtime environment variables. See
 # docs/developers/guides/deployment.md for how docker-compose.yml wires these from a root .env file.
 FROM node:20-alpine AS build
@@ -35,7 +35,7 @@ ENV VITE_API_URL=$VITE_API_URL \
 RUN npm run build
 
 # SEC-67: the unprivileged nginx image runs its master + workers as the `nginx` user (uid 101)
-# and expects its listener on a high port — nginx.conf listens on 8080 to match.
+# and expects its listener on a high port - nginx.conf listens on 8080 to match.
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 USER root
 COPY --from=build /app/dist/frontend /usr/share/nginx/html

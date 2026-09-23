@@ -256,13 +256,8 @@ const BillingPage: React.FC = () => {
                 <CancelFlow
                     periodEnd={entitlements.currentPeriodEnd}
                     retentionDays={overview.retentionDays}
-                    canSwitchToPlus={entitlements.planCode === 'pro'}
                     busy={busy}
                     onKeep={() => setCancelOpen(false)}
-                    onSwitchToPlus={() => {
-                        setPlanCode('plus')
-                        setCancelOpen(false)
-                    }}
                     onConfirm={() => void cancel()}
                 />
             )}
@@ -275,7 +270,7 @@ const BillingPage: React.FC = () => {
                     <IntervalToggle value={interval} onChange={setInterval} />
                 </div>
 
-                <div role="radiogroup" aria-label="Plan" className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div role="radiogroup" aria-label="Plan" className={`mt-4 grid gap-3 ${plans.length > 1 ? 'sm:grid-cols-2' : 'max-w-sm'}`}>
                     {plans.map((plan) => (
                         <PlanOption
                             key={plan.code}

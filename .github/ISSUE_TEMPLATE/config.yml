@@ -2,4 +2,4 @@ blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
     url: https://github.com/RRI-Atharv37/corvale/security/advisories/new
-    about: Please don't file security issues publicly — use private vulnerability reporting instead. See SECURITY.md for details.
+    about: Please don't file security issues publicly - use private vulnerability reporting instead. See SECURITY.md for details.

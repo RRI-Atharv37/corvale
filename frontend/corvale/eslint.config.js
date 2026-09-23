@@ -12,7 +12,7 @@ import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescrip
  * reaches into features/app/platform/domain, `lib/` stays a leaf, the pure `domain/` engine
  * takes no UI import, and `platform/` is consumed by features/app rather than the reverse.
  * RF6 created the dirs and (user decision) relocated every offending file so all four zones
- * pass as `error` on production code. The zones apply to production modules only — a test that
+ * pass as `error` on production code. The zones apply to production modules only - a test that
  * renders a provider or a feature page is not an architecture violation, so the test-file glob
  * block at the end of this config turns the rule off for tests. RF15 tightens further once RF14
  * normalises the layering.
@@ -21,22 +21,22 @@ const BOUNDARY_ZONES = [
   {
     target: './src/ui/**',
     from: ['./src/features/**', './src/app/**', './src/platform/**', './src/domain/**'],
-    message: 'ui/ is the design system — it may import lib/ only, never features/, app/, platform/ or domain/.',
+    message: 'ui/ is the design system - it may import lib/ only, never features/, app/, platform/ or domain/.',
   },
   {
     target: './src/lib/**',
     from: ['./src/features/**', './src/app/**', './src/ui/**', './src/platform/**', './src/domain/**'],
-    message: 'lib/ holds leaf utilities — it must not import app-layer code.',
+    message: 'lib/ holds leaf utilities - it must not import app-layer code.',
   },
   {
     target: './src/domain/**',
     from: ['./src/features/**', './src/app/**', './src/ui/**'],
-    message: 'domain/ is the pure local-first engine — no features/, app/ or ui/ imports.',
+    message: 'domain/ is the pure local-first engine - no features/, app/ or ui/ imports.',
   },
   {
     target: './src/platform/**',
     from: ['./src/features/**', './src/app/**'],
-    message: 'platform/ is the local-first runtime — features/app consume it, not the reverse.',
+    message: 'platform/ is the local-first runtime - features/app consume it, not the reverse.',
   },
 ]
 

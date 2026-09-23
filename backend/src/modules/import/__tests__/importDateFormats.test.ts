@@ -5,7 +5,7 @@ import { authHeader, seedUserDirectly } from '@tests/helpers'
 import { mapCsvRows } from "@modules/import/csvImportUtils";
 
 /**
- * BUG-18 — day-first CSV dates were silently misread (hardcoded month-first + `Date.UTC`
+ * BUG-18 - day-first CSV dates were silently misread (hardcoded month-first + `Date.UTC`
  * month rollover), sometimes landing on a different year with no error. The fix adds a
  * `dateFormat` control (`auto` | `YMD` | `MDY` | `DMY`) to the column mapping, threaded into
  * `parseDateValue`, and rejects an out-of-range date instead of rolling it forward.
@@ -20,7 +20,7 @@ const map = (rows: string[][], dateFormat?: string) =>
         ...(dateFormat ? { dateFormat: dateFormat as 'auto' | 'YMD' | 'MDY' | 'DMY' } : {}),
     })
 
-describe('csvImport date formats (BUG-18) — mapCsvRows unit', () => {
+describe('csvImport date formats (BUG-18) - mapCsvRows unit', () => {
     it('still reads ISO YYYY-MM-DD regardless of the dateFormat setting', () => {
         for (const fmt of [undefined, 'auto', 'MDY', 'DMY', 'YMD']) {
             const { rows, errors } = map([['2026-03-07', 'ISO row', '-10.00']], fmt)
@@ -115,7 +115,7 @@ describe('csvImport date formats (BUG-18) — mapCsvRows unit', () => {
     })
 })
 
-describe('POST /imports/preview + /imports/commit — dateFormat passthrough', () => {
+describe('POST /imports/preview + /imports/commit - dateFormat passthrough', () => {
     async function createAccount(token: string) {
         const res = await request(app)
             .post('/api/v1/accounts')

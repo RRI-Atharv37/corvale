@@ -62,7 +62,7 @@ const getBackupMaxZipEntries = (): number =>
 const getBackupMaxCompressionRatio = (): number =>
     Number(process.env.BACKUP_MAX_COMPRESSION_RATIO) || 100
 // Cap on the deserialized `corvale-backup.json`. The `.json` upload branch always checked this
-// against the raw buffer; the `.zip` branch never did (SEC-50) — the embedded JSON was bounded
+// against the raw buffer; the `.zip` branch never did (SEC-50) - the embedded JSON was bounded
 // only by BACKUP_MAX_UNCOMPRESSED_BYTES (200 MB, and also covering receipt bytes).
 const getBackupMaxJsonBytes = (): number =>
     Number(process.env.BACKUP_MAX_JSON_BYTES) || 10 * 1024 * 1024
@@ -109,7 +109,7 @@ export const parseBackupPayload = (raw: unknown): CorvaleBackupPayload => {
             throw new CustomError(ERROR_MESSAGES.BACKUP.TOO_MANY_RECORDS, 400)
         }
 
-        // Per-record shape check — previously the payload was trusted wholesale past the
+        // Per-record shape check - previously the payload was trusted wholesale past the
         // "is it an array" gate (SEC-28). Every record must be a plain object carrying an id;
         // the restore loop stringifies `record.id` and would otherwise map `"undefined"`.
         for (const record of section) {
@@ -130,8 +130,8 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /**
- * Restore no longer trusts a receipt record's `mimeType`/`size` — both are re-derived from the
- * actual bytes (SEC-28) — but a structurally broken record should still be rejected up front
+ * Restore no longer trusts a receipt record's `mimeType`/`size` - both are re-derived from the
+ * actual bytes (SEC-28) - but a structurally broken record should still be rejected up front
  * rather than blowing up mid-restore. `storedFilename` is the key used to find the file inside
  * the ZIP, so it must be a usable string.
  */
@@ -145,7 +145,7 @@ const validateReceiptRecord = (receipt: Record<string, unknown>): void => {
         throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
     }
 
-    // `mimeType` and `size` are only shape-checked here, not enforced — restore ignores both
+    // `mimeType` and `size` are only shape-checked here, not enforced - restore ignores both
     // and re-derives them from the actual bytes (SEC-28). A pre-S14 backup may carry a
     // declared type outside today's allowlist, and that must still restore.
     if (receipt.mimeType !== undefined && typeof receipt.mimeType !== 'string') {
@@ -332,7 +332,7 @@ export const restoreUserBackup = async (
             type: record.type,
             currency: record.currency,
             // balanceUnit round-trips whatever unit the exported account was actually stored
-            // in (Sprint C5) — a backup predating that field has none, so it correctly
+            // in (Sprint C5) - a backup predating that field has none, so it correctly
             // defaults to 'major', matching what a pre-migration account's raw numbers mean.
             balanceUnit: record.balanceUnit === 'minor' ? 'minor' : 'major',
             openingBalance: record.openingBalance ?? 0,
@@ -488,7 +488,7 @@ export const restoreUserBackup = async (
                     destPath,
                     detectedMimeType
                 )
-                // Object storage is the only durable copy — the local write was staging for the
+                // Object storage is the only durable copy - the local write was staging for the
                 // scan and the upload, exactly as in `uploadReceipt` (SEC-23).
                 deleteReceiptFile(userId, newStoredFilename)
             }
@@ -681,7 +681,7 @@ export const extractBackupFromUpload = (
         }
 
         // V7.3b rename-compat: new exports write `corvale-backup.json`, but a ZIP a tester
-        // downloaded before the rename has `spndr-backup.json` — keep reading both for one
+        // downloaded before the rename has `spndr-backup.json` - keep reading both for one
         // release so backups stay the working escape hatch. See ROADMAP's V7 compat matrix.
         const jsonEntry =
             zip.getEntry('corvale-backup.json') ??

@@ -15,7 +15,7 @@ import {
  * `tests/rlsHookedOperations.test.ts` so a future Mongoose upgrade or a casual edit
  * cannot silently drop coverage (SEC-36).
  *
- * `estimatedDocumentCount` takes no filter, so it can never be user-scoped — hooking it
+ * `estimatedDocumentCount` takes no filter, so it can never be user-scoped - hooking it
  * means it is *rejected* outright while an RLS context is active. Use `countDocuments`
  * with a `userId`/`workspaceId` filter instead, or the `RLS_BYPASS` option for genuine
  * system-wide counts.

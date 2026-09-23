@@ -1,6 +1,6 @@
 //! SEC-40 / SEC-41: the desktop local SQLite store is encrypted with SQLCipher, keyed by a random
 //! 256-bit key held in the OS credential store (Windows Credential Manager, macOS Keychain, Linux
-//! Secret Service). The key is generated once on first run and applied at `db_open` — it is never
+//! Secret Service). The key is generated once on first run and applied at `db_open` - it is never
 //! derived from a user PIN. That decouples encryption-at-rest from the dormant local-lock PIN
 //! feature: the PIN's ~13-bit search space (SEC-41) no longer stands between an attacker with the
 //! file and the plaintext, because the PIN is not the key.
@@ -16,7 +16,7 @@ use keyring::{Entry, Error as KeyringError};
 /// service so both entries sit together in Credential Manager / Keychain Access.
 const SERVICE: &str = "com.corvale.app";
 
-/// Fixed entry name for the one secret this module owns. Not caller-supplied — like the
+/// Fixed entry name for the one secret this module owns. Not caller-supplied - like the
 /// refresh-token `keychain_{set,get,delete}` IPC commands (SEC-42), nothing in the webview can
 /// name, read, or overwrite this entry.
 const DB_KEY_ACCOUNT: &str = "local-db-key";
@@ -48,8 +48,8 @@ fn generate_key_hex() -> Result<String, String> {
 ///
 /// Errors:
 /// - tagged [`KEYCHAIN_UNAVAILABLE`] when the credential store can't be opened, read, or written;
-/// - a plain message when an entry exists but is not a valid key (should never happen — this
-///   module is the only writer — and is surfaced rather than silently regenerated, which would
+/// - a plain message when an entry exists but is not a valid key (should never happen - this
+///   module is the only writer - and is surfaced rather than silently regenerated, which would
 ///   orphan an existing encrypted database).
 pub fn get_or_create_db_key() -> Result<String, String> {
     let entry = db_key_entry()?;

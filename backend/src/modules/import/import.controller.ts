@@ -57,7 +57,7 @@ export const parseImportFile = asyncHandler(async (req: AuthRequest, res: Respon
     }
 
     // An .ofx/.qfx upload whose content is neither OFX nor QIF must not fall through to the CSV
-    // parser — that produced a garbled mapping screen or an opaque error (BUG-23).
+    // parser - that produced a garbled mapping screen or an opaque error (BUG-23).
     if (extension === '.ofx' || extension === '.qfx') {
         throw new CustomError('This file does not look like a valid OFX/QFX or QIF file', 400)
     }

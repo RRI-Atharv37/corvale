@@ -12,7 +12,7 @@ export const errorHandler = (
 ): void => {
     const isCustomError = err instanceof CustomError
     // SEC-60: a malformed ObjectId in a path param that reaches `Model.findById` throws a
-    // Mongoose CastError — a client-input error, not a server fault. Treat it as a 400 so it
+    // Mongoose CastError - a client-input error, not a server fault. Treat it as a 400 so it
     // returns the standard error shape and never reaches Sentry as a false incident. The
     // shared lookup helpers pre-validate now; this is the backstop for every other call site.
     const isCastError = !isCustomError && (err as { name?: string }).name === 'CastError'

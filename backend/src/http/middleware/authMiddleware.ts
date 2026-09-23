@@ -54,7 +54,7 @@ const authenticateRequest = async (req: AuthRequest): Promise<IUser> => {
 }
 
 /**
- * Authenticates the request only — no email-verification check. Reserved for the handful
+ * Authenticates the request only - no email-verification check. Reserved for the handful
  * of routes an unverified-but-logged-in user must still be able to reach (checking their own
  * profile, logging out, resending the verification email).
  */
@@ -73,7 +73,7 @@ export const authenticateOnly = async (req: AuthRequest, res: Response, next: Ne
 /**
  * Attaches `req.user` (and an RLS context) when a valid bearer token is present, but lets the
  * request through unauthenticated otherwise. A *present* but invalid/expired token is still an
- * error. Used by routes that serve both a signed-in and a signed-out caller — e.g. resending a
+ * error. Used by routes that serve both a signed-in and a signed-out caller - e.g. resending a
  * verification email, which a returning unverified user (blocked at login, so no token) must
  * still be able to trigger by email.
  */

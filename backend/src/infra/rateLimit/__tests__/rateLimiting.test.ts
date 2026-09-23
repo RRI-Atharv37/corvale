@@ -15,7 +15,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
  *   - `POST /auth/refresh` and `POST /auth/logout` get the same
  *     `createAuthRateLimiter()` already used on `/register`/`/login`/the
  *     password-reset routes, so a stolen-cookie replay loop is throttled
- *     too (today these two routes are exempt — see authRoutes.ts).
+ *     too (today these two routes are exempt - see authRoutes.ts).
  *   - `app.set('trust proxy', ...)` is driven by a `TRUST_PROXY` env var
  *     rather than left at Express's default (`false`), so a reverse-proxied
  *     deployment sees real client IPs instead of one shared proxy IP.

@@ -109,7 +109,7 @@ export async function createTestExpense(
  * Seeds a posted income/expense Transaction directly (bypassing the
  * `/api/v1/transactions` REST endpoint's account-existence requirement),
  * for tests exercising `computeUserBalances`'s lifetime totals (BUG-01)
- * where the scenario under test deliberately has no active `Account` —
+ * where the scenario under test deliberately has no active `Account` -
  * `accountId` here is a synthetic id never resolved against a real account,
  * since the aggregation that reads it only matches on `userId`/`type`/
  * `status`/`splitTransactionId`.

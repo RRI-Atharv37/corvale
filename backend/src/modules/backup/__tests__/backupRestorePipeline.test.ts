@@ -12,11 +12,11 @@ import { setReceiptObjectStorage } from '@infra/storage/receiptStorage'
 import { RECEIPT_UPLOAD_ROOT, getReceiptFilePath, getUserReceiptStorageUsageBytes } from "@modules/receipts/receiptUtils";
 
 /**
- * Acceptance spec for S21 / SEC-28 — backup restore must not be a side door around the
+ * Acceptance spec for S21 / SEC-28 - backup restore must not be a side door around the
  * controls `POST /receipts` enforces.
  *
  * Before this sprint, `restoreUserBackup` (`utils/backupUtils.ts`) wrote each receipt file
- * straight to disk and copied `mimeType` and `size` verbatim from the backup JSON — no
+ * straight to disk and copied `mimeType` and `size` verbatim from the backup JSON - no
  * magic-byte sniff (SEC-15), no virus scan, no MIME allowlist, and no storage-quota check
  * (SEC-23). A crafted ZIP could therefore:
  *   - park arbitrary bytes on the API origin, served back with an attacker-chosen Content-Type
@@ -30,7 +30,7 @@ import { RECEIPT_UPLOAD_ROOT, getReceiptFilePath, getUserReceiptStorageUsageByte
  *     leaves no file on disk.
  *   - `assertWithinReceiptStorageQuota` applies, counting the real size.
  *   - With object storage configured, the file is pushed through `putObject` and no local copy
- *     is left behind — same as `uploadReceipt`.
+ *     is left behind - same as `uploadReceipt`.
  *   - `parseBackupPayload` rejects structurally broken records instead of trusting the payload
  *     past the "is it an array" gate.
  *   - `ReceiptSchema.mimeType` carries an `enum` as a last line of defence.
@@ -118,7 +118,7 @@ const listUserReceiptFiles = (userId: string): string[] => {
     return fs.existsSync(dir) ? fs.readdirSync(dir) : []
 }
 
-describe('Backup restore — receipt upload pipeline (S21, SEC-28)', () => {
+describe('Backup restore - receipt upload pipeline (S21, SEC-28)', () => {
     it('stores the sniffed MIME type and the real byte size, not the payload values', async () => {
         const { token, userId } = await registerUser(app, { email: 'sec28-sniff@example.com' })
 
@@ -274,7 +274,7 @@ describe('Backup restore — receipt upload pipeline (S21, SEC-28)', () => {
     })
 })
 
-describe('parseBackupPayload — per-record validation (S21, SEC-28)', () => {
+describe('parseBackupPayload - per-record validation (S21, SEC-28)', () => {
     it('rejects a backup whose receipt record is not an object', async () => {
         const { token } = await registerUser(app, { email: 'sec28-badrec@example.com' })
 

@@ -17,7 +17,7 @@ import { requestLogger } from '@http/middleware/requestLoggerMiddleware'
  * TRUST_PROXY is unset (false) by default so req.ip is the socket's own address, matching
  * Express's default. Behind a reverse proxy, set it to the number of hops (e.g. "1") or a
  * trusted IP/CIDR list so the rate limiters key on the real client IP instead of the proxy's
- * (SEC-26) — see https://expressjs.com/en/guide/behind-proxies.html.
+ * (SEC-26) - see https://expressjs.com/en/guide/behind-proxies.html.
  */
 /**
  * SEC-68: deny every powerful browser feature Corvale never uses. Kept identical to the
@@ -58,7 +58,7 @@ export const createApp = (): express.Application => {
 
     /**
      * Pin the query parser to 'simple' explicitly (SEC-35). This is already the Express 5
-     * default, but `sanitizeBody` only guards `req.body` — `req.query` reaches Mongoose
+     * default, but `sanitizeBody` only guards `req.body` - `req.query` reaches Mongoose
      * filters (e.g. `buildListFilter`'s `accountId`) unsanitized. The 'simple' parser
      * (Node's `querystring`) cannot produce nested objects, so a bracketed operator like
      * `?accountId[$ne]=` parses to a literal key rather than `{ $ne: ... }`. Switching this
@@ -79,7 +79,7 @@ export const createApp = (): express.Application => {
             frameguard: { action: 'deny' },
             crossOriginResourcePolicy: { policy: 'same-origin' },
             // SEC-68: align max-age with the frontend nginx layer (both one year,
-            // includeSubDomains). `preload` is deliberately not sent yet — it is a hard-to-reverse
+            // includeSubDomains). `preload` is deliberately not sent yet - it is a hard-to-reverse
             // commitment for every corvale.app subdomain and is gated on an explicit decision.
             hsts: { maxAge: 31536000, includeSubDomains: true },
         })

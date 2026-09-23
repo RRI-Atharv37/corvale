@@ -15,10 +15,10 @@ afterEach(() => {
 })
 
 /**
- * Acceptance spec for S26 (SEC-34, SEC-35) — the two latent injection/bypass traps.
+ * Acceptance spec for S26 (SEC-34, SEC-35) - the two latent injection/bypass traps.
  *
  * SEC-34: `attachBudgetContextToNotifications` must resolve budget progress for a
- *   notification's own budget WITHOUT an RLS bypass — the budget lookup is now scoped
+ *   notification's own budget WITHOUT an RLS bypass - the budget lookup is now scoped
  *   by the caller's `userId`.
  *
  * SEC-35:
@@ -49,7 +49,7 @@ async function getFoodMasterId(token: string): Promise<string> {
     return food._id
 }
 
-describe('SEC-34 — budget context on notifications resolves without an RLS bypass', () => {
+describe('SEC-34 - budget context on notifications resolves without an RLS bypass', () => {
     it('attaches budget progress to an over-limit notification for the budget owner', async () => {
         const { token } = await registerUser(app, { email: 'sec34-owner@example.com' })
         const account = await createTestAccount(token)
@@ -92,7 +92,7 @@ describe('SEC-34 — budget context on notifications resolves without an RLS byp
     })
 })
 
-describe('SEC-35(a) — accountId query filter is validated as an ObjectId', () => {
+describe('SEC-35(a) - accountId query filter is validated as an ObjectId', () => {
     it('rejects a non-ObjectId accountId with 400', async () => {
         const { token } = await registerUser(app, { email: 'sec35-badid@example.com' })
 
@@ -143,7 +143,7 @@ describe('SEC-35(a) — accountId query filter is validated as an ObjectId', () 
     })
 })
 
-describe('SEC-35(c) — sanitizeBody runs after multer on multipart routes', () => {
+describe('SEC-35(c) - sanitizeBody runs after multer on multipart routes', () => {
     it('rejects an operator key in a receipt upload text field', async () => {
         const { token } = await registerUser(app, { email: 'sec35-receipt@example.com' })
 
@@ -208,7 +208,7 @@ describe('SEC-35(c) — sanitizeBody runs after multer on multipart routes', () 
     })
 })
 
-describe('SEC-35 sanity — Types.ObjectId.isValid guards as expected', () => {
+describe('SEC-35 sanity - Types.ObjectId.isValid guards as expected', () => {
     it('rejects short hex-ish strings that are not 24 hex chars', () => {
         expect(Types.ObjectId.isValid('12345')).toBe(false)
     })

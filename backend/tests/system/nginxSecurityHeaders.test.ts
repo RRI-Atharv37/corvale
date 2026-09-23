@@ -7,14 +7,14 @@ import path from 'path'
  * security headers, not rely on the `<meta http-equiv>` CSP in index.html.
  *
  * `frame-ancestors` has no effect from a `<meta>` tag (CSP spec), so before S24 the deployed
- * app — `frontend/corvale/Dockerfile` + `frontend/corvale/nginx.conf` — was framable, exposing
+ * app - `frontend/corvale/Dockerfile` + `frontend/corvale/nginx.conf` - was framable, exposing
  * one-click destructive controls (Delete Account, Logout all sessions, workspace Remove member,
  * invite accept) to clickjacking.
  *
  * This spec pins the static nginx config, since there is no running nginx in the test
  * environment. It asserts the header set is present, that it is declared with `always` (so it
  * also covers error responses such as the 404 branch), and that any `location` block which
- * declares its own `add_header` re-declares the security headers too — nginx's `add_header` is
+ * declares its own `add_header` re-declares the security headers too - nginx's `add_header` is
  * NOT inherited into a block that sets any header of its own, which is the classic footgun here.
  */
 
@@ -100,15 +100,15 @@ describe('nginx security headers (SEC-31, S24)', () => {
     })
 
     it('redirects HTTP to HTTPS when it can tell the external scheme was cleartext', () => {
-        // Behind the required TLS terminator (Caddy, per V10) this is belt-and-braces — Caddy
-        // already 301s http->https before nginx sees the request — but it must be present so a
+        // Behind the required TLS terminator (Caddy, per V10) this is belt-and-braces - Caddy
+        // already 301s http->https before nginx sees the request - but it must be present so a
         // misconfigured proxy that forwards cleartext still upgrades.
         expect(conf).toMatch(/\$http_x_forwarded_proto/)
         expect(conf).toMatch(/return\s+301\s+https:\/\//)
     })
 })
 
-describe('deployment guide — TLS is required, not optional (SEC-31, S24)', () => {
+describe('deployment guide - TLS is required, not optional (SEC-31, S24)', () => {
     const DEPLOY_DOC = path.join(__dirname, '..', '..', '..', 'docs', 'developers', 'guides', 'deployment.md')
     const doc = fs.readFileSync(DEPLOY_DOC, 'utf8')
 

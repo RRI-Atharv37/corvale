@@ -41,7 +41,7 @@ const OFX = [
     '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>',
 ].join('\n')
 
-describe('BUG-21 — OFX FITID / TRNTYPE / CURDEF', () => {
+describe('BUG-21 - OFX FITID / TRNTYPE / CURDEF', () => {
     it('parseOfxContent extracts FITID, maps TRNTYPE, surfaces CURDEF, and reports skipped blocks', () => {
         const withHold = OFX.replace(
             '</BANKTRANLIST>',

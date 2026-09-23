@@ -19,7 +19,7 @@ async function getFoodMasterId(token: string): Promise<string> {
     return res.body.data.masters.find((m: { name: string }) => m.name === 'Food')._id
 }
 
-describe('BUG-13 — non-numeric amount is rejected, not coerced to $0', () => {
+describe('BUG-13 - non-numeric amount is rejected, not coerced to $0', () => {
     describe('parseAmountToMinorUnits (shared)', () => {
         it.each([false, true, [], [5], {}, null, undefined])(
             'throws for %s instead of returning 0',

@@ -84,8 +84,8 @@ export const assertAllowedReceiptMimeType = (mimeType: string): void => {
 }
 
 /**
- * Validates raw receipt bytes the same way the upload endpoint does — size cap, magic-byte
- * sniff, allowlist — and returns the *detected* MIME type. Used by both the multipart upload
+ * Validates raw receipt bytes the same way the upload endpoint does - size cap, magic-byte
+ * sniff, allowlist - and returns the *detected* MIME type. Used by both the multipart upload
  * path and backup restore (SEC-28) so a restored receipt cannot smuggle past the checks a
  * direct upload enforces. The virus scan and storage-quota checks are left to the caller,
  * since they need the file on disk / the caller's accumulated usage respectively.

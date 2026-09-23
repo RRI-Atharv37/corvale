@@ -17,7 +17,7 @@ import { registerUser } from '@tests/helpers'
  *   - A well-formed request body is unaffected.
  */
 
-describe('NoSQL operator injection — body sanitization (SEC-09)', () => {
+describe('NoSQL operator injection - body sanitization (SEC-09)', () => {
     it('rejects a login body using a $gt operator instead of a real email', async () => {
         const app = createApp()
         await registerUser(app, { email: 'victim@example.com' })

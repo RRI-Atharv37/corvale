@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * BUG-27: external links (`Docs` in the dashboard header, the GitHub link, the `/download`
- * installer links) are dead in the Tauri desktop app — the webview no-ops `target="_blank"`. The
+ * installer links) are dead in the Tauri desktop app - the webview no-ops `target="_blank"`. The
  * fix wires the `opener` plugin and routes every external link through `<ExternalLink>`. This spec
  * pins that wiring so a future refactor can't quietly reintroduce a raw `<a target="_blank">` for
  * an external URL.

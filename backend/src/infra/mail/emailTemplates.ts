@@ -37,7 +37,7 @@ const baseEmailTemplate = (title: string, bodyHtml: string): string => `
             </tr>
             <tr>
               <td style="padding:16px 32px 24px;border-top:1px solid #e5e7eb;">
-                <p style="margin:0;font-size:12px;color:#9ca3af;">Corvale — personal finance tracker</p>
+                <p style="margin:0;font-size:12px;color:#9ca3af;">Corvale - personal finance tracker</p>
               </td>
             </tr>
           </table>
@@ -68,7 +68,7 @@ export const passwordResetEmailHtml = (resetUrl: string, expiryMs: number): stri
         </p>
         ${ctaButton(resetUrl, 'Reset password')}
         <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5;">
-            If you didn't request this, you can safely ignore this email — your password won't be changed.
+            If you didn't request this, you can safely ignore this email - your password won't be changed.
         </p>
     `
     return baseEmailTemplate('Reset your password', body)

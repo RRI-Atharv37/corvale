@@ -79,7 +79,7 @@ pub fn db_open(app: AppHandle, state: State<DbState>, filename: String) -> Resul
     let path = dir.join(&filename);
 
     // SEC-40: the store is encrypted with SQLCipher, keyed by a device-local random key from the
-    // OS credential store (never a user PIN — SEC-41). A `KEYCHAIN_UNAVAILABLE`-tagged error here
+    // OS credential store (never a user PIN - SEC-41). A `KEYCHAIN_UNAVAILABLE`-tagged error here
     // aborts the open rather than falling back to plaintext.
     let key_hex = crate::db_key::get_or_create_db_key()?;
 
@@ -91,7 +91,7 @@ pub fn db_open(app: AppHandle, state: State<DbState>, filename: String) -> Resul
     apply_page_key(&conn, &key_hex)?;
     conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;")
         .map_err(to_sql_error)?;
-    // SQLCipher only reports a wrong/half-applied key on first access — force one now so an
+    // SQLCipher only reports a wrong/half-applied key on first access - force one now so an
     // unreadable file surfaces here (→ frontend recovery gate) instead of on the first real query.
     conn.query_row("SELECT count(*) FROM sqlite_master", [], |row| row.get::<_, i64>(0))
         .map_err(|_| {
@@ -111,7 +111,7 @@ fn apply_page_key(conn: &Connection, key_hex: &str) -> Result<(), String> {
 }
 
 /// The 16-byte header every plaintext SQLite file begins with. A SQLCipher-encrypted database's
-/// first page — header included — is ciphertext, so it will not start with this.
+/// first page - header included - is ciphertext, so it will not start with this.
 const SQLITE_PLAINTEXT_MAGIC: &[u8; 16] = b"SQLite format 3\0";
 
 /// True when `path` exists and its first 16 bytes are the plaintext SQLite header. A missing file,
@@ -144,7 +144,7 @@ fn sidecar(path: &Path, suffix: &str) -> std::path::PathBuf {
 /// 4. atomically rename it over the original and drop the stale `-wal`/`-shm`.
 ///
 /// An interrupted run leaves the plaintext original untouched and a `.reencrypting` temp behind,
-/// which the next launch deletes before retrying — the plaintext file is only removed by the
+/// which the next launch deletes before retrying - the plaintext file is only removed by the
 /// rename in step 4, after step 3 has proved the replacement good.
 fn migrate_plaintext_store(path: &Path, key_hex: &str) -> Result<(), String> {
     if !file_starts_with_plaintext_magic(path).map_err(to_sql_error)? {
@@ -187,7 +187,7 @@ fn migrate_plaintext_store(path: &Path, key_hex: &str) -> Result<(), String> {
 
 /// True once the connection's database holds at least one application table (anything not in the
 /// `sqlite_*` reserved namespace). BUG-31: `PRAGMA key` only *initialises* encryption on a fresh
-/// database — run against an already-populated plaintext file it leaves the file half-plaintext /
+/// database - run against an already-populated plaintext file it leaves the file half-plaintext /
 /// half-ciphertext and permanently unreadable (SQLCipher needs `PRAGMA rekey`, or an
 /// `sqlcipher_export` copy, to encrypt data in place). `db_open` runs schema migrations before the
 /// frontend ever calls `db_set_key`, so in the current architecture there is no safe moment to
@@ -205,9 +205,9 @@ fn database_has_application_tables(conn: &Connection) -> rusqlite::Result<bool> 
 /// Derives a 256-bit SQLCipher page key from the PIN via PBKDF2-HMAC-SHA256 and applies it with
 /// `PRAGMA key`, using SQLCipher's raw-key syntax (`x'<hex>'`) so the already-derived key isn't
 /// run through SQLCipher's own internal KDF a second time. A cheap read afterwards is the standard
-/// way to confirm the key was actually correct — SQLCipher only reports a bad key on first access.
+/// way to confirm the key was actually correct - SQLCipher only reports a bad key on first access.
 ///
-/// BUG-31: refuses up front when the database already contains application data — applying a key
+/// BUG-31: refuses up front when the database already contains application data - applying a key
 /// with a bare `PRAGMA key` at that point corrupts the file. The PIN feature stays dormant
 /// (`VITE_LOCAL_PIN` unset) until the key is applied at `db_open` on a DB encrypted from creation.
 #[tauri::command]
@@ -291,7 +291,7 @@ pub fn db_close(state: State<DbState>) -> Result<(), String> {
 /// Removes `<filename>`, `<filename>-wal` and `<filename>-shm` from `dir`, treating a missing file
 /// as success. Pure + `Path`-only so it's unit-testable against a temp directory without a Tauri
 /// app context. A partially-deleted set on a mid-loop error is still an improvement over the
-/// corrupt file it replaces — `db_reset_file`'s caller recreates the DB from an absent/partial
+/// corrupt file it replaces - `db_reset_file`'s caller recreates the DB from an absent/partial
 /// path either way.
 fn remove_local_db_files(dir: &std::path::Path, filename: &str) -> std::io::Result<()> {
     for suffix in ["", "-wal", "-shm"] {
@@ -382,7 +382,7 @@ mod db_set_key_guard_tests {
     use rusqlite::Connection;
 
     /// BUG-31: `db_set_key` must refuse to apply a page key once the database holds application
-    /// data — a bare `PRAGMA key` at that point corrupts the file. The guard keys off whether any
+    /// data - a bare `PRAGMA key` at that point corrupts the file. The guard keys off whether any
     /// non-`sqlite_*` table exists.
     #[test]
     fn reports_no_application_tables_for_a_fresh_database() {
@@ -416,7 +416,7 @@ mod encryption_migration_tests {
     use rusqlite::Connection;
     use std::path::PathBuf;
 
-    /// 64 hex chars — a fixed key is fine for tests; production keys come from the OS keychain.
+    /// 64 hex chars - a fixed key is fine for tests; production keys come from the OS keychain.
     const TEST_KEY: &str = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff0";
 
     struct TempDir(PathBuf);

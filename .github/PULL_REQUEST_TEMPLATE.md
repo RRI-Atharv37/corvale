@@ -8,10 +8,10 @@
 
 ## Checklist
 
-Only check the boxes for workspace(s) this PR actually touches — see
+Only check the boxes for workspace(s) this PR actually touches - see
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the full commands.
 
-- [ ] **backend/** — `npx tsc --noEmit` and `npm test` pass
-- [ ] **frontend/corvale/** — `npm run lint`, `npx tsc --noEmit`, `npm test`, and `npm run build` pass
-- [ ] **docs/** — `npm run build` succeeds
+- [ ] **backend/** - `npx tsc --noEmit` and `npm test` pass
+- [ ] **frontend/corvale/** - `npm run lint`, `npx tsc --noEmit`, `npm test`, and `npm run build` pass
+- [ ] **docs/** - `npm run build` succeeds
 - [ ] No secrets, `.env` values, or credentials are included in this diff

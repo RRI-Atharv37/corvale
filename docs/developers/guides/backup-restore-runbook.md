@@ -4,7 +4,7 @@ title: Backup & Restore Runbook
 
 ## Scope
 
-This is the disaster-recovery runbook for the **hosted MongoDB database** — the operator-level
+This is the disaster-recovery runbook for the **hosted MongoDB database** - the operator-level
 backup of the whole system of record. It is a different thing from the [Backup and Restore
 API](../api/backup-restore-api.md), which lets an individual user export or restore *their own*
 data as JSON/ZIP from inside the app. Losing the underlying MongoDB deployment (bad migration,
@@ -33,18 +33,18 @@ mongodump --uri="<connection-string>" --gzip --out=./corvale-backup-$(date +%Y%m
 
 This dumps every collection in every database the credential can see, as BSON, one file per
 collection plus a `.metadata.json` sidecar with its indexes. Corvale's own data lives in a single
-database (the one named in `MONGO_URI`'s path segment) — add `--db=<name>` to scope the dump to
+database (the one named in `MONGO_URI`'s path segment) - add `--db=<name>` to scope the dump to
 just that database on a shared cluster.
 
 **Cadence.** At minimum, a nightly dump for the G1 private-beta scale this runbook targets. A
 managed provider's continuous/point-in-time backups (MongoDB Atlas backups, or your host's
-volume-snapshot equivalent) are a stronger complement, not a replacement — they protect against
+volume-snapshot equivalent) are a stronger complement, not a replacement - they protect against
 a different failure mode (need to roll back to an exact point in time) than an off-cluster
 `mongodump` archive (protects against losing the cluster/host entirely).
 
 **Storage.** A dump is a plaintext, unencrypted export of every user's financial data. Store it
 encrypted at rest (e.g. a private bucket with server-side encryption) and restrict access to
-whoever is actually on call for restores — treat dump access the same as production database
+whoever is actually on call for restores - treat dump access the same as production database
 access, not as a casual download.
 
 ## Retention
@@ -76,8 +76,8 @@ Policy and Terms of Service, so the published number stays true.
 
 ## Restoring a backup
 
-Restore into a **scratch database or a fresh scratch deployment first** — never straight into
-production — so a bad dump or a wrong `--uri` can't make an active incident worse:
+Restore into a **scratch database or a fresh scratch deployment first** - never straight into
+production - so a bad dump or a wrong `--uri` can't make an active incident worse:
 
 ```bash
 mongorestore --uri="<scratch-connection-string>" --gzip --nsInclude="<db-name>.*" ./corvale-backup-<timestamp>
@@ -87,7 +87,7 @@ Once the scratch restore is verified (see below), point the application's `MONGO
 restored database, or replay the same `mongorestore` command against the real target once
 you're confident it's the right dump.
 
-`mongorestore` does not overwrite existing collections by default — it errors on a duplicate
+`mongorestore` does not overwrite existing collections by default - it errors on a duplicate
 key rather than silently merging. Drop the target database first (`mongosh <uri> --eval
 "db.dropDatabase()"`) if you're intentionally restoring over existing data, or use
 `--drop` to have `mongorestore` do it collection-by-collection as it goes.
@@ -101,7 +101,7 @@ Before treating a restore as complete:
   for `users`, `accounts`, `transactions` at minimum).
 - [ ] Start the API against the restored database and confirm `GET /health` and `GET /ready`
   both pass, then log in as a test account and confirm balances render.
-- [ ] Confirm indexes came back — `mongorestore` recreates them from each collection's
+- [ ] Confirm indexes came back - `mongorestore` recreates them from each collection's
   `.metadata.json`; `db.<collection>.getIndexes()` should match the pre-incident index list.
 
 ## Tested end to end
@@ -114,6 +114,6 @@ the same `mongodump`/`mongorestore` commands documented above (MongoDB Database 
 
 ## Related pages
 
-- [Environment Variables](./environment-variables.md) — `MONGO_URI` and receipt storage driver settings
-- [Backup and Restore API](../api/backup-restore-api.md) — per-user JSON/ZIP export and restore, from inside the app
+- [Environment Variables](./environment-variables.md) - `MONGO_URI` and receipt storage driver settings
+- [Backup and Restore API](../api/backup-restore-api.md) - per-user JSON/ZIP export and restore, from inside the app
 - [Data Migration](./data-migration.md)

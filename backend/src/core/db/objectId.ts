@@ -21,6 +21,6 @@ export const resolveClientObjectId = (value: unknown): Types.ObjectId | undefine
     return new Types.ObjectId(value)
 }
 
-/** Mongo's duplicate-key error (E11000) — thrown when a client _id collides with an existing document. */
+/** Mongo's duplicate-key error (E11000) - thrown when a client _id collides with an existing document. */
 export const isDuplicateKeyError = (error: unknown): boolean =>
     typeof error === 'object' && error !== null && (error as { code?: number }).code === 11000

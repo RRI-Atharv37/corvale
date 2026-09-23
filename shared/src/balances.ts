@@ -146,7 +146,7 @@ export interface RecomputeAccountLike {
     currentBalance?: number
     /**
      * When set, only transactions dated on/after this instant contribute to the
-     * recomputed balance — the opening balance is stated "as of" this date.
+     * recomputed balance - the opening balance is stated "as of" this date.
      * Omitted/null keeps the legacy behavior (every transaction counts). An
      * unparseable value is ignored (treated as null) rather than dropping every
      * transaction.
@@ -172,7 +172,7 @@ export interface RecomputeTransactionLike {
 /**
  * Recomputes an account balance from scratch: opening balance plus every
  * posted, non-split-child transaction's delta. No existing equivalent
- * elsewhere in the codebase — balances have only ever been maintained
+ * elsewhere in the codebase - balances have only ever been maintained
  * incrementally. Used to heal drift after offline replay (Sprint 13.2+).
  *
  * When `account.openingBalanceDate` is set, transactions dated before it are

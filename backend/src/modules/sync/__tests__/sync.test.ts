@@ -51,7 +51,7 @@ const seedAccount = async (userId: string, overrides: Partial<Record<string, unk
 
 const seedCategory = async (userId: string, name = 'Groceries') => Category.create({ userId, name })
 
-describe('Sync API — bootstrap', () => {
+describe('Sync API - bootstrap', () => {
     let app: Application
     let owner: RegisteredUser
 
@@ -110,7 +110,7 @@ describe('Sync API — bootstrap', () => {
     })
 })
 
-describe('Sync API — pull checkpoint pagination', () => {
+describe('Sync API - pull checkpoint pagination', () => {
     let app: Application
     let owner: RegisteredUser
 
@@ -274,7 +274,7 @@ describe('Sync API — pull checkpoint pagination', () => {
     })
 })
 
-describe('Sync API — push ordered apply', () => {
+describe('Sync API - push ordered apply', () => {
     let app: Application
     let owner: RegisteredUser
 

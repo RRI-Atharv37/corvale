@@ -52,6 +52,7 @@ describe('conditional mount', () => {
         expect((await request(app).get(`${ADMIN_BASE}/finance/recognition/summary`).set(bearer(token))).status).toBe(404)
         expect((await request(app).get(`${ADMIN_BASE}/finance/recognition/export.csv`).set(bearer(token))).status).toBe(404)
         expect((await request(app).post(`${ADMIN_BASE}/finance/recognition/run`).set(bearer(token)).send({})).status).toBe(404)
+        expect((await request(app).get(`${ADMIN_BASE}/finance/fy-revenue`).set(bearer(token))).status).toBe(404)
     })
 })
 
@@ -269,6 +270,68 @@ describe('with FINANCE_OPS_ENABLED', () => {
             const all = await request(app).get(`${ADMIN_BASE}/finance/payouts`).set(bearer(token))
             const june = all.body.data.payouts.find((row: { periodMonth: string }) => row.periodMonth === '2026-06')
             expect(june.localRevenueMinor).toBe(1000)
+        })
+    })
+
+    describe('GET /finance/fy-revenue', () => {
+        it('needs metrics.read', async () => {
+            const support = await seedAdmin({ role: 'support' })
+            const { token } = await loginAsAdmin(app, support)
+
+            expect((await request(app).get(`${ADMIN_BASE}/finance/fy-revenue`).set(bearer(token))).status).toBe(403)
+        })
+
+        it('rejects a malformed financialYear', async () => {
+            const finance = await seedAdmin({ role: 'finance' })
+            const { token } = await loginAsAdmin(app, finance)
+
+            const res = await request(app).get(`${ADMIN_BASE}/finance/fy-revenue?financialYear=2026`).set(bearer(token))
+
+            expect(res.status).toBe(400)
+            expect(res.body.message).toBe(ERROR_MESSAGES.ADMIN.INVALID_QUERY)
+        })
+
+        it('defaults to the current financial year and sums recognized revenue by currency, data only', async () => {
+            const finance = await seedAdmin({ role: 'finance' })
+            const { token } = await loginAsAdmin(app, finance)
+            const now = new Date()
+            const currentMonthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+            const { financialYearOf } = await import('@core/billing/financialYear')
+            const providerSubscriptionId = `sub_fy_${Date.now()}`
+            await Subscription.create({
+                userId: new Types.ObjectId(),
+                planCode: 'pro',
+                status: 'active',
+                interval: 'monthly',
+                providerSubscriptionId,
+                providerCustomerId: `cus_${providerSubscriptionId}`,
+            })
+            await BillingEvent.create({
+                providerEventId: `evt_fy_${Date.now()}`,
+                type: 'payment.succeeded',
+                occurredAt: now,
+                payload: { providerSubscriptionId, total: 700, currency: 'usd' },
+            })
+
+            const res = await request(app).get(`${ADMIN_BASE}/finance/fy-revenue`).set(bearer(token))
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.financialYear).toBe(financialYearOf(now))
+            expect(res.body.data.totalsByCurrency.usd).toBe(700)
+            expect(res.body.data.monthsIncluded).toContain(currentMonthKey)
+            expect(res.body.data).not.toHaveProperty('gstDetermination')
+        })
+
+        it('accepts an explicit financialYear and reports zero months not yet elapsed', async () => {
+            const finance = await seedAdmin({ role: 'finance' })
+            const { token } = await loginAsAdmin(app, finance)
+
+            const res = await request(app).get(`${ADMIN_BASE}/finance/fy-revenue?financialYear=2027-28`).set(bearer(token))
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.financialYear).toBe('2027-28')
+            expect(res.body.data.monthsIncluded).toEqual([])
+            expect(res.body.data.totalsByCurrency).toEqual({})
         })
     })
 

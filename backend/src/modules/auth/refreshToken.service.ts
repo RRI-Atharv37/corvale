@@ -59,12 +59,12 @@ export const rotateRefreshToken = async (rawToken: string): Promise<{ userId: st
         throw new CustomError(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID, 401)
     }
 
-    // Already-revoked at read time: a sequential replay of a rotated token — reuse.
+    // Already-revoked at read time: a sequential replay of a rotated token - reuse.
     if (record.revokedAt) {
         await detectReuse(record)
     }
 
-    // A plain expiry is not a reuse signal (SEC-20) — reject without revoking the family, and
+    // A plain expiry is not a reuse signal (SEC-20) - reject without revoking the family, and
     // without marking the row so a second presentation is still just "expired".
     if (record.expiresAt <= new Date()) {
         throw new CustomError(ERROR_MESSAGES.AUTH.REFRESH_TOKEN_INVALID, 401)
@@ -72,7 +72,7 @@ export const rotateRefreshToken = async (rawToken: string): Promise<{ userId: st
 
     // SEC-64: claim the token atomically. `rotateRefreshToken` was a read-check-then-save, so two
     // requests presenting the same valid token could both pass the checks above and both mint a
-    // replacement — two live sessions from one token, and family-revocation never trips. The
+    // replacement - two live sessions from one token, and family-revocation never trips. The
     // conditional update lets exactly one concurrent caller move `revokedAt` off null; the loser
     // sees `modifiedCount: 0` and is treated as the reuse it is.
     const claim = await RefreshToken.updateOne(

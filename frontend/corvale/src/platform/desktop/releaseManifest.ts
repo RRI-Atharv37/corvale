@@ -36,7 +36,7 @@ const ASSETS_URL = `${REPO_URL}/releases/download/${RELEASE_TAG}`
 /**
  * Fetched at runtime by `/download` (V16). `GET /api/v1/desktop/release-manifest` proxies the
  * GitHub Releases API server-side and caches it, so the page always reflects the newest published
- * desktop build with no frontend redeploy — and without the browser needing a CORS exception or a
+ * desktop build with no frontend redeploy - and without the browser needing a CORS exception or a
  * widened CSP (GitHub's own asset URLs send no CORS headers). `getReleaseManifest()` below stays
  * as the build-time fallback the page renders first and keeps showing if this fetch fails.
  */
@@ -140,7 +140,7 @@ export const getReleaseManifest = (): ReleaseManifest => ({
 })
 
 // ---------------------------------------------------------------------------
-// V16 — live `/download` manifest (fetched at runtime from the published release)
+// V16 - live `/download` manifest (fetched at runtime from the published release)
 // ---------------------------------------------------------------------------
 
 /** One installer file listed on the release, as published in `download-manifest.json`. */
@@ -301,7 +301,7 @@ export const parseDownloadManifestWire = (raw: unknown): DownloadManifestWire =>
 
 /**
  * Fetch the live release manifest from the backend proxy and fold it into the editorial templates.
- * Rejects on a network failure, a non-2xx response, or a malformed payload — `/download` catches
+ * Rejects on a network failure, a non-2xx response, or a malformed payload - `/download` catches
  * that and keeps the built-in fallback.
  */
 export const fetchLiveReleaseManifest = async (): Promise<ReleaseManifest> => {

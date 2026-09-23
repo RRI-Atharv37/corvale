@@ -52,7 +52,7 @@ async function seedTransactionVolume(token: string, userId: string, count: numbe
     return { account, foodMasterId }
 }
 
-describe('G2 load sanity — reports', () => {
+describe('G2 load sanity - reports', () => {
     it('serves report endpoints concurrently against a realistic dataset within budget', async () => {
         const { token, userId } = await seedUserDirectly()
         await seedTransactionVolume(token, userId, TRANSACTION_COUNT)
@@ -87,7 +87,7 @@ describe('G2 load sanity — reports', () => {
     })
 })
 
-describe('G2 load sanity — backup export/restore', () => {
+describe('G2 load sanity - backup export/restore', () => {
     it('round-trips a realistic-size backup within budget', async () => {
         const { token, userId } = await seedUserDirectly({ email: 'backup-load@example.com' })
         await seedTransactionVolume(token, userId, TRANSACTION_COUNT)
@@ -124,7 +124,7 @@ interface QueryPlannerExplain {
     queryPlanner: { winningPlan: unknown }
 }
 
-describe('G2 load sanity — index coverage', () => {
+describe('G2 load sanity - index coverage', () => {
     it('report-shaped Transaction queries are index-covered for both personal and workspace scope', async () => {
         const { token, userId } = await seedUserDirectly({ email: 'index-review@example.com' })
         const foodMasterId = await getFoodMasterId(token)

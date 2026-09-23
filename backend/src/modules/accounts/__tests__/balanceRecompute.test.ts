@@ -89,7 +89,7 @@ describe('recomputeAccountBalance (shared pure function)', () => {
     // Transfer-leg direction (outbound vs inbound) can't be derived from the
     // documented element type alone: both legs persist with type: 'transfer'
     // (see transactionController.ts's createTransfer) and only creation-time
-    // context — which leg was written first — distinguishes them, which this
+    // context - which leg was written first - distinguishes them, which this
     // function's signature doesn't carry. Transfer-pair correctness is
     // exercised end-to-end via the recompute-balance endpoint below instead.
 

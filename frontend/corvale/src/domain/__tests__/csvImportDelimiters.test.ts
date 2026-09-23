@@ -3,7 +3,7 @@ import { sniffDelimiter, parseCsvContent } from '@shared/csvImport'
 import { parseLocalImportFile } from '../importTransactions'
 
 /**
- * BUG-19 — a semicolon / tab / pipe delimited CSV (the default Excel export outside the US)
+ * BUG-19 - a semicolon / tab / pipe delimited CSV (the default Excel export outside the US)
  * must parse into real columns, not collapse into one field. Mirrors
  * `backend/tests/importDelimiters.test.ts`.
  */

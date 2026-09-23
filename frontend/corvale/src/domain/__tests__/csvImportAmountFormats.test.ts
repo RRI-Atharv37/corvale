@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mapCsvRows } from '@shared/csvImport'
 
 /**
- * BUG-20 — locale-formatted CSV amounts. Client-side parity check for the shared
+ * BUG-20 - locale-formatted CSV amounts. Client-side parity check for the shared
  * `parseImportAmount` helper (non-`$` symbols, decimal-comma inference, grouped digits).
  * Mirrors `backend/tests/importAmountFormats.test.ts`.
  */

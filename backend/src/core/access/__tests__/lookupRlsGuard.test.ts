@@ -21,14 +21,14 @@ const categoryLookup = {
 }
 
 /**
- * P6 / SEC-58 (S33) — the RLS aggregate guard only inspects outer `$match` stages, so a
+ * P6 / SEC-58 (S33) - the RLS aggregate guard only inspects outer `$match` stages, so a
  * `$lookup` (or `$graphLookup` / `$unionWith`) pulls a whole other collection past the
  * tenancy boundary unnoticed. The guard now rejects every cross-collection stage while an
  * RLS context is active unless the caller opts in with `.option({ [RLS_ALLOW_LOOKUP]: true })`
  * (a deliberate "I have scoped the joined collection myself" acknowledgement) or the full
  * `RLS_BYPASS`.
  */
-describe('P6 / SEC-58 — RLS aggregate cross-collection guard', () => {
+describe('P6 / SEC-58 - RLS aggregate cross-collection guard', () => {
     it('rejects an aggregate $lookup under an RLS context even with a scoped outer $match', async () => {
         const user = await registerUser(app)
         await runWithRlsContext({ userId: user.userId }, async () => {

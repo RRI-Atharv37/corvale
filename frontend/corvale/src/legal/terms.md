@@ -7,7 +7,7 @@ covering your use of **the hosted Corvale service** at corvale.app. By creating 
 accept them.
 
 They do **not** cover self-hosted installations. The Corvale software is licensed separately
-under the GNU AGPL v3.0 — see [Open-source software](#open-source-software) below.
+under the GNU AGPL v3.0 - see [Open-source software](#open-source-software) below.
 
 ## Who can use Corvale
 
@@ -17,14 +17,14 @@ you may not create an account. See the age section of the [Privacy Policy](./pri
 One account is for one person. Do not share your login.
 
 **Where we offer the service.** Corvale is operated from India, and your data is hosted and
-stored in the United States on Google Cloud infrastructure — the [Privacy Policy](./privacy.md)
+stored in the United States on Google Cloud infrastructure - the [Privacy Policy](./privacy.md)
 explains this and the basis for it. You may use it from anywhere, with one exception: **we do not
 offer the service in the European Economic Area or the UK.** If you are in one of those, please do
-not create an account — we have not appointed a data protection representative there, and the
+not create an account - we have not appointed a data protection representative there, and the
 [Privacy Policy](./privacy.md) explains why.
 
 This eligibility rule is a condition of using **the hosted service**. It does not restrict who may
-obtain, study, modify or run the AGPL-licensed software — see
+obtain, study, modify or run the AGPL-licensed software - see
 [Open-source software](#open-source-software).
 
 ## Your account
@@ -67,7 +67,7 @@ Two features are easy to misread, so to be explicit:
 
 - **The saver** only lowers the spendable balance Corvale displays. It is an earmark. No money
   moves and no transaction is created.
-- **A rollover** — the feature the app calls **Pushover** — snapshots your saver balance into
+- **A rollover** - the feature the app calls **Pushover** - snapshots your saver balance into
   history and resets the saver to zero. Again, no money moves.
 
 Your bank account is never touched by anything you do in Corvale.
@@ -90,7 +90,7 @@ anything else you enter or upload.
 
 You keep all rights to Your Content. You grant us only the limited, non-exclusive permission
 needed to store it, process it, back it up, and show it back to you and to anyone you have
-deliberately shared a workspace with — nothing more. That permission ends when you delete the
+deliberately shared a workspace with - nothing more. That permission ends when you delete the
 content or your account, except for backup copies still inside their retention window. We do not
 use Your Content for any other purpose, we do not sell it, and we do not use it to train machine
 learning models.
@@ -101,11 +101,11 @@ Everything that is not Your Content stays ours. We and our licensors retain all 
 Corvale software, the hosted service, its interface and design, the Corvale name and logo and
 other branding, the documentation, and the underlying methods and calculations.
 
-Nothing in these terms transfers any of that to you. "Your data is yours" means exactly that —
-your data — and not the product it is stored in.
+Nothing in these terms transfers any of that to you. "Your data is yours" means exactly that -
+your data - and not the product it is stored in.
 
 The **software** is separately licensed to everyone under the AGPL v3.0, which grants rights in
-the code. It does not grant rights in the Corvale name, logo, or other trademarks — see
+the code. It does not grant rights in the Corvale name, logo, or other trademarks - see
 [Open-source software](#open-source-software).
 
 ## Acceptable use
@@ -146,14 +146,14 @@ Corvale lets you share a workspace with other people as owner, editor, or viewer
 
 - Anyone with access to a workspace can see the records inside it.
 - You can only invite someone who already has a Corvale account. Sending an invite therefore tells
-  you whether an email address is registered here — invite only people who are expecting it.
+  you whether an email address is registered here - invite only people who are expecting it.
 - If you invite someone, you are responsible for having a proper reason to share whatever
   personal or financial information you put in that workspace.
 - A workspace owner controls membership and roles.
 - **If you leave a workspace, or an owner removes you from it,** the records you added stay in
   that workspace and remain visible to its members. You lose access to them.
 - **If you delete your account,** everything you kept privately is erased. Records you added to a
-  workspace that still has other members are **kept, with the link to you removed** — the shared
+  workspace that still has other members are **kept, with the link to you removed** - the shared
   ledger stays intact and its balances stay correct, but those records are no longer connected to
   your account or attributed to you. If no other member is left in a workspace, its records are
   erased along with everything else. Receipts you uploaded are always deleted, wherever they were
@@ -200,7 +200,7 @@ offline for maintenance without notice.
 ## Backups are your responsibility too
 
 You can export a complete copy of your data at any time from Settings, as JSON or as a ZIP
-including receipts. **Export is never restricted** — not while your account is inactive, not
+including receipts. **Export is never restricted** - not while your account is inactive, not
 during any billing state, not ever. We consider that a floor, not a feature.
 
 We keep our own backups so the service can be recovered after a failure. Those backups are kept
@@ -216,14 +216,14 @@ data loss.
 The hosted service is **free**. There are no paid plans, no trial that turns into a charge, and no
 payment details for you to give us.
 
-Paid plans may exist one day. If they do, we will publish subscription terms — pricing, trial
-length, renewal, cancellation, and refunds — and ask you to accept an updated version of these
+Paid plans may exist one day. If they do, we will publish subscription terms - pricing, trial
+length, renewal, cancellation, and refunds - and ask you to accept an updated version of these
 terms before any charge is ever made. Nothing in this document authorises us to charge you.
 
 ## Ending your account
 
 **You** can delete your account at any time from Settings. Deletion immediately removes your
-account, your records and your uploaded receipts from the live service, and it cannot be undone —
+account, your records and your uploaded receipts from the live service, and it cannot be undone -
 there is no grace period. Backup copies may still contain your data for up to 30 days, as
 described above, after which they are deleted. Export first if you want a copy.
 
@@ -278,7 +278,7 @@ telecommunications networks, power outages, and the failure, suspension or disco
 hosting, storage, email, or other upstream provider we depend on.
 
 If such an event lasts long enough to make the service unusable, either of us may end this
-agreement. Your right to export your data is not suspended by this section — we will keep export
+agreement. Your right to export your data is not suspended by this section - we will keep export
 available for as long as we are technically able to.
 
 ## If part of these terms does not hold
@@ -316,14 +316,14 @@ run, study, modify and redistribute it under that licence, including hosting you
 
 The licence governs the **code**. These terms govern **our hosted service**. Nothing in these
 terms limits, adds conditions to, or otherwise modifies the rights the AGPL grants you in the
-software — including the age requirement above, which is a condition of using the hosted service
+software - including the age requirement above, which is a condition of using the hosted service
 only.
 
 **Trademarks are not covered by the licence.** The AGPL grants rights in the code, not in names or
 branding. "Corvale", the Corvale logo, and our other brand assets remain ours. If you run a
 modified version or your own instance, do not present it in a way that suggests it is the official
-Corvale service or that we operate, endorse, or support it. Nominative references — saying your
-instance is based on Corvale — are fine.
+Corvale service or that we operate, endorse, or support it. Nominative references - saying your
+instance is based on Corvale - are fine.
 
 If you run your own instance, these terms and our Privacy Policy do not apply to it. The operator
 of that instance is responsible for deciding how it processes personal data and for providing any

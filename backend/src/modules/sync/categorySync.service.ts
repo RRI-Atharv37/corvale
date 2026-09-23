@@ -10,8 +10,8 @@ import { ensureMasterCategoriesSeeded, isMasterCategory } from "@modules/categor
  * Sprint 13.9: create/update/delete logic for POST /sync/push, mirroring
  * categoryController's createCategory/updateCategory/archiveCategory.
  *
- * Categories predate Sprint 13.2's client-generated-`_id` convention — the
- * REST createCategory endpoint doesn't call resolveClientObjectId — but a
+ * Categories predate Sprint 13.2's client-generated-`_id` convention - the
+ * REST createCategory endpoint doesn't call resolveClientObjectId - but a
  * sync create absolutely needs it: without it, an offline-created category
  * would get a server-assigned id that never matches the local SQLite row's
  * id. This adds resolveClientObjectId support here (not to the REST
@@ -38,7 +38,7 @@ const getMasterCategory = async (masterCategoryId: string): Promise<ICategory> =
  * Categories have a `userId: null` master-category concept (seeded, shared,
  * never client-writable). A sync op targeting a master must be rejected
  * with the same CANNOT_MODIFY_MASTER error the REST endpoints use rather
- * than crashing on a null userId comparison — this is why category can't
+ * than crashing on a null userId comparison - this is why category can't
  * reuse the generic validateResourceAccess helper the other archive-flag
  * entities use.
  */
@@ -202,7 +202,7 @@ export const deleteCategoryForOp = async (
 
     // Unlike the REST archive endpoint, a sync delete op landing on an
     // already-archived category resolves as a no-op rather than throwing
-    // CATEGORY_ALREADY_ARCHIVED — see archiveEntityForOp's doc comment in
+    // CATEGORY_ALREADY_ARCHIVED - see archiveEntityForOp's doc comment in
     // syncEntityHelpers.ts for why.
     if (category.isArchived) {
         return { status: 'noop', resultId: category._id.toString() }

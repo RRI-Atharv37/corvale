@@ -8,7 +8,7 @@ import path from 'path'
  * not port-mapped must be recorded on the service itself.
  *
  * Before S28 the `mongo` service set no `MONGO_INITDB_ROOT_USERNAME` / `_PASSWORD` and
- * `MONGO_URI` carried no credentials — the entire financial dataset was reachable
+ * `MONGO_URI` carried no credentials - the entire financial dataset was reachable
  * unauthenticated by anything that could reach the container's network, and the only thing
  * keeping that safe (the absent `ports:` mapping) was invisible and one line from being lost.
  *
@@ -50,7 +50,7 @@ function serviceBlock(source: string, name: string): string {
     return body.join('\n')
 }
 
-describe('bundled MongoDB — authentication (SEC-37, S28)', () => {
+describe('bundled MongoDB - authentication (SEC-37, S28)', () => {
     const mongo = serviceBlock(COMPOSE, 'mongo')
     const backend = serviceBlock(COMPOSE, 'backend')
 
@@ -105,7 +105,7 @@ describe('bundled MongoDB — authentication (SEC-37, S28)', () => {
     })
 })
 
-describe('bundled MongoDB — documented for self-hosters (SEC-37, S28)', () => {
+describe('bundled MongoDB - documented for self-hosters (SEC-37, S28)', () => {
     it('root .env.example declares the mongo credential vars', () => {
         expect(ROOT_ENV_EXAMPLE).toMatch(/^MONGO_ROOT_USERNAME=/m)
         expect(ROOT_ENV_EXAMPLE).toMatch(/^MONGO_ROOT_PASSWORD=/m)

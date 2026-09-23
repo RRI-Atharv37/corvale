@@ -29,7 +29,7 @@ const createAccount = async (token: string, openingBalance: number, name = 'Chec
 
 let app: Application
 
-describe('Sync wire format — migrated (minor-unit) account balances', () => {
+describe('Sync wire format - migrated (minor-unit) account balances', () => {
     let owner: RegisteredUser
 
     beforeEach(async () => {

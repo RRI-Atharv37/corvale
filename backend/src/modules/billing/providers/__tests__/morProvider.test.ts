@@ -137,6 +137,26 @@ describe('morConfigFromEnv', () => {
 
         expect(() => morConfigFromEnv({ ...full, MOR_VARIANTS: partial })).toThrow('MOR_VARIANTS')
     })
+
+    it('accepts a flat plan_interval map', () => {
+        const flat = JSON.stringify({
+            plus_monthly: '101',
+            plus_annual: '102',
+            pro_monthly: '201',
+            pro_annual: '202',
+        })
+
+        expect(morConfigFromEnv({ ...full, MOR_VARIANTS: flat }).variants).toEqual(config.variants)
+    })
+
+    it('accepts numeric variant ids', () => {
+        const numeric = JSON.stringify({
+            plus: { monthly: 101, annual: 102 },
+            pro: { monthly: 201, annual: 202 },
+        })
+
+        expect(morConfigFromEnv({ ...full, MOR_VARIANTS: numeric }).variants).toEqual(config.variants)
+    })
 })
 
 describe('verifyWebhook', () => {

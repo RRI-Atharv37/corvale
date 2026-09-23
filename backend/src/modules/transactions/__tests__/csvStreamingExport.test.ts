@@ -6,11 +6,11 @@ import { authHeader, seedUserDirectly } from '@tests/helpers'
 import { toMinorUnits } from '@shared/money'
 
 /**
- * Acceptance spec for C8 (streaming CSV export for large date ranges — the remaining half of the
+ * Acceptance spec for C8 (streaming CSV export for large date ranges - the remaining half of the
  * old Phase 18.3; quoting/formula-injection neutralization was already fixed under C4).
  *
  * The prior implementation loaded every matching transaction into an array, rendered the whole
- * CSV into one string, then sent it via `res.send()` — Express computes and sets `Content-Length`
+ * CSV into one string, then sent it via `res.send()` - Express computes and sets `Content-Length`
  * for a `send()` body, so the entire file exists in memory at once before the first byte reaches
  * the client. A large date range (thousands of transactions) means a correspondingly large
  * in-memory array of Mongoose docs plus a second full-size string.
@@ -33,7 +33,7 @@ async function getFoodMasterId(token: string): Promise<string> {
 }
 
 /** Seed a wide, multi-year spread of posted transactions directly, bypassing per-request REST
- * overhead — the point is exercising the *export* read path at realistic volume, not creation. */
+ * overhead - the point is exercising the *export* read path at realistic volume, not creation. */
 async function seedWideDateRangeTransactions(userId: string, accountId: string, categoryId: string) {
     const docs = Array.from({ length: TRANSACTION_COUNT }, (_, i) => ({
         userId,
@@ -53,7 +53,7 @@ async function seedWideDateRangeTransactions(userId: string, accountId: string, 
     await Transaction.insertMany(docs)
 }
 
-describe('C8 — streaming CSV export for large date ranges', () => {
+describe('C8 - streaming CSV export for large date ranges', () => {
     it('streams the CSV response (chunked, no Content-Length) instead of buffering it', async () => {
         const { token, userId } = await seedUserDirectly({ email: 'csv-stream-headers@example.com' })
         const accountRes = await request(app)

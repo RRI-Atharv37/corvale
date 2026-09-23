@@ -37,13 +37,6 @@ export const plans = (overrides: Partial<PublicPlans> = {}): PublicPlans => ({
     trialDays: 30,
     plans: [
         {
-            code: 'plus',
-            name: 'Plus',
-            prices: { monthly: 600, annual: 6000 },
-            features: { workspaces: false, prioritySupport: false, bankSync: false },
-            limits: { receiptStorageBytes: 1024 ** 3, syncDevices: 1, workspaceMembers: null },
-        },
-        {
             code: 'pro',
             name: 'Pro',
             prices: { monthly: 1200, annual: 9600 },

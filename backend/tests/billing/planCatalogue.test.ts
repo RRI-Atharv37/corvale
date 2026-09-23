@@ -16,16 +16,8 @@ const byCode = (code: string) => {
 }
 
 describe('DEFAULT_PLAN_CATALOGUE', () => {
-    it('contains exactly Plus and Pro - there is no free tier (decision #4)', () => {
-        expect(DEFAULT_PLAN_CATALOGUE.map((p) => p.code).sort()).toEqual(['plus', 'pro'])
-    })
-
-    it('Plus: $6/mo, $60/yr, 1 GB receipts, 1 sync device, no workspaces, no priority support', () => {
-        const plus = byCode('plus')
-
-        expect(plus.prices).toEqual({ monthly: 600, annual: 6000 })
-        expect(plus.limits).toEqual({ receiptStorageBytes: 1 * GB, syncDevices: 1, workspaceMembers: null })
-        expect(plus.features).toEqual({ workspaces: false, prioritySupport: false, bankSync: false })
+    it('contains exactly one plan, Pro - there is no free tier (decision #4) and no Plus tier (2026-09-22: $6/mo does not cover hosting/overhead)', () => {
+        expect(DEFAULT_PLAN_CATALOGUE.map((p) => p.code).sort()).toEqual(['pro'])
     })
 
     it('Pro: $12/mo, $96/yr launch price, 10 GB receipts, unlimited devices, workspaces + priority support + bank sync', () => {
@@ -36,21 +28,36 @@ describe('DEFAULT_PLAN_CATALOGUE', () => {
         expect(pro.features).toEqual({ workspaces: true, prioritySupport: true, bankSync: true })
     })
 
-    it('seedPlanCatalogue writes both plans and is idempotent', async () => {
+    it('seedPlanCatalogue writes the plan and is idempotent', async () => {
         await seedPlanCatalogue()
         await seedPlanCatalogue()
 
         const plans = await Plan.find({}).lean()
-        expect(plans.map((p) => p.code).sort()).toEqual(['plus', 'pro'])
+        expect(plans.map((p) => p.code).sort()).toEqual(['pro'])
     })
 
     it('seedPlanCatalogue restores a drifted row to the catalogue values', async () => {
         await seedPlanCatalogue()
-        await Plan.updateOne({ code: 'plus' }, { $set: { 'limits.syncDevices': 99 } })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'limits.syncDevices': 99 } })
 
         await seedPlanCatalogue()
 
-        const plus = await Plan.findOne({ code: 'plus' }).lean()
-        expect(plus?.limits.syncDevices).toBe(1)
+        const pro = await Plan.findOne({ code: 'pro' }).lean()
+        expect(pro?.limits.syncDevices).toBe(null)
+    })
+
+    it('seedPlanCatalogue removes a plan row whose code is no longer in the catalogue', async () => {
+        await Plan.create({
+            code: 'plus',
+            name: 'Plus',
+            prices: { monthly: 600, annual: 6000 },
+            limits: { receiptStorageBytes: 1 * GB, syncDevices: 1, workspaceMembers: null },
+            features: { workspaces: false, prioritySupport: false, bankSync: false },
+        })
+
+        await seedPlanCatalogue()
+
+        const plans = await Plan.find({}).lean()
+        expect(plans.map((p) => p.code).sort()).toEqual(['pro'])
     })
 })

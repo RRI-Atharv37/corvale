@@ -13,7 +13,7 @@ import { RECEIPT_UPLOAD_ROOT } from "@modules/receipts/receiptUtils";
  * Today `middleware/receiptUploadMiddleware.ts`'s `fileFilter` only checks `file.mimetype`,
  * which multer reads verbatim from the attacker-controlled multipart part header, and
  * `controllers/receiptController.ts` persists and later echoes that same declared value as
- * the download response's `Content-Type` with `Content-Disposition: inline` — there is no
+ * the download response's `Content-Type` with `Content-Disposition: inline` - there is no
  * check that the declared type matches the file's actual bytes.
  *
  * Contract assumed here for a new `backend/utils/fileSignature.ts` module:
@@ -25,9 +25,9 @@ import { RECEIPT_UPLOAD_ROOT } from "@modules/receipts/receiptUtils";
  * `uploadReceipt` wiring assumed in `receiptController.ts`, running after the existing
  * `assertWithinReceiptStorageQuota` check and before (or alongside) `scanUploadedFile`:
  *   - Reads the uploaded file's bytes, runs `detectReceiptSignature`.
- *   - Rejects with `ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE` (400) — the same message already
+ *   - Rejects with `ERROR_MESSAGES.RECEIPT.INVALID_FILE_TYPE` (400) - the same message already
  *     used for a disallowed declared type, since a spoofed declaration is indistinguishable
- *     from an honestly-wrong one at the API boundary — when detection returns `null` *or*
+ *     from an honestly-wrong one at the API boundary - when detection returns `null` *or*
  *     disagrees with the client-declared `mimetype`. The temp file is deleted on rejection,
  *     mirroring the existing quota/virus-scan reject-and-delete paths.
  *   - Persists the **detected** type as `Receipt.mimeType`, not the declared header, so nothing

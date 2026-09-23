@@ -35,7 +35,9 @@
     "reconcile:billing": "ts-node scripts/reconcileBilling.ts",
     "sweep:billing": "ts-node scripts/sweepBilling.ts",
     "admin:create": "ts-node scripts/adminCreate.ts",
-    "admin:break-glass": "ts-node scripts/adminBreakGlass.ts"
+    "admin:break-glass": "ts-node scripts/adminBreakGlass.ts",
+    "seed:plans": "ts-node scripts/seedPlans.ts",
+    "seed:demo-account": "ts-node scripts/seedDemoAccount.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",

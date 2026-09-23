@@ -182,6 +182,32 @@ describe('Login - unverified account (V9 hard gate)', () => {
     })
 })
 
+describe('Login - demo entry point (M9)', () => {
+    beforeEach(() => {
+        vi.stubEnv('VITE_DEMO_EMAIL', 'demo@corvale.app')
+        vi.stubEnv('VITE_DEMO_PASSWORD', 'CorvaleDemo!2026')
+    })
+
+    afterEach(() => {
+        vi.unstubAllEnvs()
+    })
+
+    it('prefills the demo credentials when arriving via ?demo=1', () => {
+        renderWithProviders(<Login />, { route: '/login?demo=1' })
+
+        expect(screen.getByPlaceholderText('you@example.com')).toHaveValue('demo@corvale.app')
+        expect(screen.getByPlaceholderText('Enter your password')).toHaveValue('CorvaleDemo!2026')
+        expect(screen.getByText(/demo credentials filled in/i)).toBeInTheDocument()
+    })
+
+    it('leaves the form empty on a normal visit', () => {
+        renderWithProviders(<Login />, { route: '/login' })
+
+        expect(screen.getByPlaceholderText('you@example.com')).toHaveValue('')
+        expect(screen.queryByText(/demo credentials filled in/i)).not.toBeInTheDocument()
+    })
+})
+
 describe('Login - offline', () => {
     it('disables submission and shows an offline notice', () => {
         setOnline(false)

@@ -30,7 +30,7 @@ const parseOpeningBalance = (value: unknown): number => {
 }
 
 /**
- * The date the opening balance is stated "as of" — transactions before it don't
+ * The date the opening balance is stated "as of" - transactions before it don't
  * move `currentBalance` (see shared/src/balances.ts). `undefined`/`null`/`''`
  * means "no cutoff" (legacy: every transaction counts).
  */

@@ -1,10 +1,10 @@
-/** Shared copy — keep headlines, ads, and in-app messaging aligned. */
+/** Shared copy - keep headlines, ads, and in-app messaging aligned. */
 export const BRAND = {
     name: 'Corvale',
-    tagline: 'Stop guessing. Start knowing.',
-    headline: 'Know where every dollar went',
-    audience: 'Students and young adults with irregular income',
-    adHook: 'Your balance dropped $800. Name one purchase.',
+    tagline: 'Yours to leave, anytime.',
+    headline: 'Offline-first. Self-hosted. Yours to leave',
+    audience: 'For people done handing banks and budget apps their data',
+    adHook: 'No bank login. No cloud lock-in. No subscription holding your ledger hostage.',
     cta: 'Start tracking free',
     ctaSecondary: 'See how it works',
 } as const
@@ -16,53 +16,53 @@ export const AUTHOR = {
 
 export const PAIN_POINTS = [
     {
-        title: 'Balance shock',
-        scenario: 'You open your banking app and you\'re $847 lower than you expected.',
+        title: 'The app you trusted disappears',
+        scenario: 'Mint shut down overnight and took years of spending history with it. Every "free" budgeting app runs on someone else\'s roadmap, not yours.',
         consequence:
-            'No single purchase explains it — just coffee, delivery, subscriptions, and "small things" that quietly add up to rent money.',
-        stat: '$847',
-        statLabel: 'unaccounted for',
+            'Your financial history should outlive a company\'s pivot, acquisition, or shutdown decision - not depend on it.',
+        stat: '0',
+        statLabel: 'notice you get when they sunset it',
     },
     {
-        title: 'Rent-week panic',
-        scenario: 'Rent is due in four days. Your paycheck hit checking, but half already moved to Venmo and a savings app you forgot about.',
+        title: 'Your bank login, copied five times',
+        scenario: 'Every aggregator-based tracker asks for your real bank credentials or a broker connection just to show you a chart.',
         consequence:
-            'You\'re doing math in your head at 11pm instead of sleeping — and still not sure if you\'ll overdraft.',
-        stat: '4 days',
-        statLabel: 'until rent',
+            'Corvale never asks for a bank login. You import a statement, or you type it in - the data stays on your device unless you choose to sync it.',
+        stat: '0',
+        statLabel: 'bank credentials stored',
     },
 ] as const
 
 export const FEATURES = [
     {
-        title: 'Track every transaction',
-        description: 'Log income and spending in one place — no more reconstructing the month from three apps.',
+        title: 'Works fully offline',
+        description: 'A real local-first engine - not a cache. Add transactions, check budgets, and see reports with no connection at all, on desktop or in the browser.',
     },
     {
-        title: 'Set budgets that stick',
-        description: 'Category limits with real numbers, not a spreadsheet you abandoned in week two.',
+        title: 'Self-host it, or don\'t',
+        description: 'AGPL-licensed and Docker-deployable. Run it on your own server if you want total control, or use the hosted version - same codebase, your call.',
     },
     {
-        title: 'Save toward goals',
-        description: 'Name what you\'re saving for and watch progress instead of hoping something\'s left at month-end.',
+        title: 'Export everything, always',
+        description: 'Full JSON or ZIP backup on every plan, including if you stop paying. Your ledger is a file you own, not a hostage.',
     },
     {
-        title: 'See where it goes',
-        description: 'Reports and charts that answer "where did my money go?" in seconds, not hours.',
+        title: 'No bank connection required',
+        description: 'Import CSV/OFX/QIF statements or log transactions by hand. Nothing ever asks for your online banking password.',
     },
 ] as const
 
 export const STEPS = [
     {
         step: 'Log',
-        description: 'Add transactions as they happen — takes ten seconds on your phone.',
+        description: 'Add transactions as they happen - on your phone, your desktop, or with no signal at all.',
     },
     {
         step: 'Budget',
         description: 'Set limits for food, fun, and bills based on what you actually earn.',
     },
     {
-        step: 'Know',
-        description: 'Check your dashboard before you swipe — not after the damage is done.',
+        step: 'Own it',
+        description: 'Your data lives on your device first and syncs on your terms - export it whenever, keep it forever.',
     },
 ] as const

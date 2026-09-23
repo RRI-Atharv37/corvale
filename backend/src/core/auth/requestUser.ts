@@ -3,7 +3,7 @@ import { Types } from 'mongoose'
 import { CustomError } from '../errors/customError'
 import { ERROR_MESSAGES } from '../errors/errorMessages'
 
-/** Structural — any request carrying an authenticated `user` (see `@http/middleware/authTypes`). */
+/** Structural - any request carrying an authenticated `user` (see `@http/middleware/authTypes`). */
 interface RequestWithUser {
     user?: { _id?: Types.ObjectId }
 }

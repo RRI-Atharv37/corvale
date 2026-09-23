@@ -36,7 +36,7 @@ export interface ITransaction extends Document {
     reconciledAt?: Date | null
     /**
      * Stable per-transaction id from an imported bank file (OFX `FITID`). Used as an exact
-     * dedupe key on re-import — `importController.ts` matches it against this field before the
+     * dedupe key on re-import - `importController.ts` matches it against this field before the
      * fuzzy date/amount/description fingerprint (BUG-21). Absent for manually-created rows.
      */
     externalId?: string

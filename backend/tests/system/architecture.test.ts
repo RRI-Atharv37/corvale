@@ -4,13 +4,13 @@ import { dirname, join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * RF0 (structural refactor, Phase 1) — the boundary guard, written before any file moves.
+ * RF0 (structural refactor, Phase 1) - the boundary guard, written before any file moves.
  *
  * It encodes the module/layer contract from ROADMAP § *Target Repository Structure*. The target
  * layout (`src/http`, `src/core`, `src/infra`, `src/modules`) does not exist yet, so every
  * assertion below passes vacuously today and starts biting as RF2/RF3 relocate code into those
- * directories. The set of `it()` blocks is fixed — each one scans whatever exists rather than
- * generating a case per module — so the count stays stable for the RF9 parity check.
+ * directories. The set of `it()` blocks is fixed - each one scans whatever exists rather than
+ * generating a case per module - so the count stays stable for the RF9 parity check.
  */
 
 const BACKEND_ROOT = resolve(__dirname, '..', '..')
@@ -58,7 +58,7 @@ const resolveRelative = (fromFile: string, spec: string): string | null => {
     return resolve(dirname(fromFile), spec)
 }
 
-describe('architecture — module structure (RF0 guard, latent until RF3)', () => {
+describe('architecture - module structure (RF0 guard, latent until RF3)', () => {
     it('every src/modules/* exposes an index.ts', () => {
         const offenders = listDirs(MODULES_DIR).filter(
             (mod) => !existsSync(join(MODULES_DIR, mod, 'index.ts'))
@@ -102,7 +102,7 @@ describe('architecture — module structure (RF0 guard, latent until RF3)', () =
     })
 })
 
-describe('architecture — layer purity (RF0 guard, latent until RF2)', () => {
+describe('architecture - layer purity (RF0 guard, latent until RF2)', () => {
     it('src/core/** imports nothing from modules/ or infra/', () => {
         const violations: string[] = []
         for (const file of walkTsFiles(CORE_DIR)) {
@@ -136,7 +136,7 @@ describe('architecture — layer purity (RF0 guard, latent until RF2)', () => {
     })
 })
 
-describe('architecture — route mount table (RF0 guard, latent until RF3)', () => {
+describe('architecture - route mount table (RF0 guard, latent until RF3)', () => {
     it('every module base path in http/routes.ts resolves to a real module directory', () => {
         if (!existsSync(ROUTES_TABLE)) return
         const src = readFileSync(ROUTES_TABLE, 'utf8')
@@ -152,9 +152,9 @@ describe('architecture — route mount table (RF0 guard, latent until RF3)', () 
 })
 
 /**
- * RF15 (Phase 3) — the intra-module contract. A `*.controller.ts` runs no Mongoose query of its
+ * RF15 (Phase 3) - the intra-module contract. A `*.controller.ts` runs no Mongoose query of its
  * own and does no minor-unit money math; a `*.service.ts` never touches Express. `eslint.config.mjs`
- * enforces the same thing as a lint error — this is the redundant, CI-cheap backstop and the home
+ * enforces the same thing as a lint error - this is the redundant, CI-cheap backstop and the home
  * of the ratchet: `CONTROLLERS_WITH_LEGACY_DB_ACCESS` is the set RF14 has not yet normalized and it
  * may only shrink.
  */
@@ -200,7 +200,7 @@ const CONTROLLERS_WITH_LEGACY_DB_ACCESS = [
 const MONGOOSE_CALL_RE =
     /\b[A-Z][A-Za-z]+\.(find|findOne|findById|findByIdAndUpdate|findOneAndUpdate|findByIdAndDelete|findOneAndDelete|findOneAndReplace|create|aggregate|updateOne|updateMany|replaceOne|deleteOne|deleteMany|countDocuments|estimatedDocumentCount|insertMany|bulkWrite|distinct)\(/
 
-describe('architecture — intra-module contract (RF15)', () => {
+describe('architecture - intra-module contract (RF15)', () => {
     it('a normalized *.controller.ts issues no Mongoose query of its own', () => {
         const offenders = moduleFiles('.controller.ts')
             .filter((file) => MONGOOSE_CALL_RE.test(readFileSync(file, 'utf8')))
@@ -220,7 +220,7 @@ describe('architecture — intra-module contract (RF15)', () => {
         )
         expect(
             staleExceptions,
-            `RF14 has normalized these — drop them from CONTROLLERS_WITH_LEGACY_DB_ACCESS here and in eslint.config.mjs:\n${staleExceptions.join('\n')}`
+            `RF14 has normalized these - drop them from CONTROLLERS_WITH_LEGACY_DB_ACCESS here and in eslint.config.mjs:\n${staleExceptions.join('\n')}`
         ).toEqual([])
     })
 
@@ -258,7 +258,7 @@ describe('architecture — intra-module contract (RF15)', () => {
         }
         expect(
             offenders,
-            `a *.service.ts takes plain arguments — no Express:\n${offenders.join('\n')}`
+            `a *.service.ts takes plain arguments - no Express:\n${offenders.join('\n')}`
         ).toEqual([])
     })
 })

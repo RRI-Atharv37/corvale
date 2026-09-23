@@ -269,10 +269,21 @@ export const startEnrolment = async (token: unknown, now: Date = new Date()): Pr
     const admin = await findEnrolmentTarget(token, now)
     const key = getAdminTotpKey()
 
-    let secret = admin.pendingTotpSecretEnc ? decryptSecret(admin.pendingTotpSecretEnc) : null
+    let secret = decryptSecret(admin.pendingTotpSecretEnc)
     if (!secret) {
-        secret = generateTotpSecret()
-        await AdminUser.updateOne({ _id: admin._id }, { $set: { pendingTotpSecretEnc: sealSecret(secret, key) } })
+        const generated = generateTotpSecret()
+        const claimed = await AdminUser.findOneAndUpdate(
+            { _id: admin._id, pendingTotpSecretEnc: admin.pendingTotpSecretEnc ?? null },
+            { $set: { pendingTotpSecretEnc: sealSecret(generated, key) } },
+            { new: true }
+        )
+        if (claimed) {
+            secret = generated
+        } else {
+            const latest = await AdminUser.findById(admin._id)
+            secret = decryptSecret(latest?.pendingTotpSecretEnc ?? null)
+            if (!secret) throw new CustomError(ERROR_MESSAGES.ADMIN.ENROLMENT_INVALID, 400)
+        }
     }
 
     return {

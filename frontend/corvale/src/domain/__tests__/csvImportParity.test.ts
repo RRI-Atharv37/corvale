@@ -357,7 +357,7 @@ describe('domain/importTransactions: duplicate detection parity (backend/tests/i
     expect(preview.summary.duplicates).toBe(1)
   })
 
-  it('does not flag an equal-magnitude refund (income) as a duplicate of the original charge (expense) — BUG-22', async () => {
+  it('does not flag an equal-magnitude refund (income) as a duplicate of the original charge (expense) - BUG-22', async () => {
     const db = await freshDb()
     const { accountId, categoryId } = await seedAccountAndCategory(db)
     await seedExisting(db, accountId, categoryId, 'ACME', 50, '2026-03-01')

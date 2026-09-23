@@ -64,7 +64,7 @@ erase, not a hidden flag. It removes:
 - Every active session, so you are signed out everywhere
 
 It does **not** remove records created by other people in a workspace that carries on, and it does
-not reach into backup copies that have not yet been overwritten — see [Backups](#backups) below.
+not reach into backup copies that have not yet been overwritten - see [Backups](#backups) below.
 
 ### If you share a workspace
 
@@ -105,7 +105,7 @@ period is stated in the [Privacy Policy](./privacy.md) and the [Terms of Service
   credentials, your real balances, or any transaction you did not enter or import yourself.
 - **No analytics.** No page-view tracking, no product analytics, no session recording.
 - **No advertising or third-party trackers**, and no device fingerprinting.
-- **No externally hosted fonts, and no third-party scripts** — except hCaptcha on the signup page,
+- **No externally hosted fonts, and no third-party scripts** - except hCaptcha on the signup page,
   and only where the signup captcha is switched on. Everything else the app loads comes from
   Corvale's own servers, so no third party learns that you visited.
 - **No date of birth.** Corvale asks only whether you are 18 or older, and stores just that answer.

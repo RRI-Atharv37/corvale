@@ -66,7 +66,7 @@ JWT_EXPIRY=7d
 CLIENT_URL=http://localhost:5173
 ```
 
-Replace the `JWT_SECRET` value with a unique random string — the server refuses to start if it's
+Replace the `JWT_SECRET` value with a unique random string - the server refuses to start if it's
 left at a placeholder or a well-known weak value. Generate one with:
 
 ```bash

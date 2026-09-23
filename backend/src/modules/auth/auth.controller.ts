@@ -48,7 +48,7 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync('corvale::no-such-account::timing-eq
  * `includeRefreshTokenInBody` is set for the desktop (Tauri) client only (SEC-11 / BUG-24): it is
  * cross-site to the API and never gets the `SameSite=Lax` refresh cookie back, so it also receives
  * the refresh token in the response body to persist in the OS keychain. The cookie is still set
- * regardless — harmless for the desktop webview, and keeps the web path byte-identical.
+ * regardless - harmless for the desktop webview, and keeps the web path byte-identical.
  */
 const issueAuthSession = async (
     user: IUser,
@@ -68,7 +68,7 @@ const issueAuthSession = async (
 }
 
 /**
- * Mints a fresh email-verification token for `user` and delivers the link — over SMTP when it's
+ * Mints a fresh email-verification token for `user` and delivers the link - over SMTP when it's
  * configured, otherwise to the console (dev). A send failure is logged, never surfaced, so it
  * can't become a probing oracle or a new outage mode.
  */
@@ -127,8 +127,8 @@ export const registerUser = asyncHandler(async (req: AuthRequest, res: Response)
     const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
         // SEC-32: this response discloses that an address is registered. The enumeration-safe
-        // alternative — accept the signup, issue no error, and reveal the collision only by
-        // email — is incompatible with register auto-issuing a session so a fresh signup lands
+        // alternative - accept the signup, issue no error, and reveal the collision only by
+        // email - is incompatible with register auto-issuing a session so a fresh signup lands
         // on the in-app verify screen (V9). Accepted residual risk for v1.0.0; the mitigation
         // is the dedicated `auth-register` rate limiter (routes/authRoutes.ts), a separate
         // budget from login. Squatting a victim's address is bounded by the unverified-account
@@ -319,7 +319,7 @@ export const confirmEmailVerification = asyncHandler(async (req: AuthRequest, re
 
 
 export const resendEmailVerification = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-    // Authenticated caller — the in-app verify screen. Resolve to their own account and answer
+    // Authenticated caller - the in-app verify screen. Resolve to their own account and answer
     // precisely (including "already verified").
     if (req.user?._id) {
         const user = (await User.findById(req.user._id)) as IUser | null
@@ -338,7 +338,7 @@ export const resendEmailVerification = asyncHandler(async (req: AuthRequest, res
         return
     }
 
-    // Unauthenticated caller — a returning user blocked at login, so no token. Look up by email
+    // Unauthenticated caller - a returning user blocked at login, so no token. Look up by email
     // and stay enumeration-safe: the response is identical whether or not that account exists or
     // is already verified.
     const email = typeof req.body?.email === 'string' ? normalizeEmail(req.body.email) : ''

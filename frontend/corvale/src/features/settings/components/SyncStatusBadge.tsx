@@ -127,7 +127,7 @@ const SyncStatusBadge: React.FC = () => {
                         )}
                         {failedCount > 0 && (
                             <p className="text-destructive font-medium">
-                                {failedCount} change{failedCount === 1 ? '' : 's'} rejected by the server — needs your attention
+                                {failedCount} change{failedCount === 1 ? '' : 's'} rejected by the server - needs your attention
                             </p>
                         )}
                         {waitingCount === 0 && failedCount === 0 && (

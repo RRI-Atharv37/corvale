@@ -16,9 +16,9 @@ import { authHeader, registerUser } from '@tests/helpers'
  * `userId`, both covered by the published privacy policy's "erases your account and every
  * private record attached to it" claim:
  *
- *   - `WorkspaceInvite` — never imported into `accountDeletionUtils.ts`. Invites the user sent
+ *   - `WorkspaceInvite` - never imported into `accountDeletionUtils.ts`. Invites the user sent
  *     or received stayed `pending` forever.
- *   - `SyncOperation` — no delete in the cascade and no TTL on the schema, so the per-user
+ *   - `SyncOperation` - no delete in the cascade and no TTL on the schema, so the per-user
  *     idempotency ledger persisted indefinitely.
  *
  * Fix: both are deleted by the cascade now, and `SyncOperationSchema` carries a TTL index so

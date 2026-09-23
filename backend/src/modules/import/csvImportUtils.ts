@@ -54,7 +54,7 @@ export { normalizeImportDescription, buildImportFingerprint, toImportIsoDate, pa
 
 /**
  * Translates the shared parser/mapper's plain `Error` into a `CustomError(400)` to preserve
- * existing API behavior — every import-related error in the pre-extraction module was a 400.
+ * existing API behavior - every import-related error in the pre-extraction module was a 400.
  */
 const withImportError = <T>(fn: () => T): T => {
     try {

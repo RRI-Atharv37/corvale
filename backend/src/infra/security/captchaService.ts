@@ -32,7 +32,7 @@ const buildProviderVerifier = (): CaptchaVerifier => {
 const getVerifier = (): CaptchaVerifier => testVerifier ?? buildProviderVerifier()
 
 /**
- * Always resolves true when CAPTCHA is disabled (today's behavior, byte-for-byte) — gated off
+ * Always resolves true when CAPTCHA is disabled (today's behavior, byte-for-byte) - gated off
  * by default like every other env-driven seam in this codebase (ClamAV, Sentry, SMTP).
  */
 export const verifyCaptcha = async (token: string | undefined): Promise<boolean> => {

@@ -270,7 +270,7 @@ describe('Import duplicate detection', () => {
         expect(res.body.data.items[0].duplicateOf).toBeUndefined()
     })
 
-    it('does not flag an equal-magnitude refund (income) as a duplicate of the original charge (expense) — BUG-22', async () => {
+    it('does not flag an equal-magnitude refund (income) as a duplicate of the original charge (expense) - BUG-22', async () => {
         const { token } = await seedUserDirectly({ email: 'dup-type-refund@example.com' })
         const account = await createTestAccount(token)
         const categoryId = await getFoodMasterId(token)

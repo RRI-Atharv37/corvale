@@ -7,7 +7,7 @@ import { TOMBSTONE_RETENTION_DAYS } from '@core/softDelete/softDelete'
 
 /**
  * SEC-54: `purge:tombstones` is a destructive, RLS-bypassing script with no `:dry-run` counterpart
- * (every other destructive script in package.json has one) and no `--retention-days` validation —
+ * (every other destructive script in package.json has one) and no `--retention-days` validation -
  * `--retention-days=0` permanently purges every tombstone for every user.
  */
 
@@ -32,7 +32,7 @@ beforeEach(async () => {
     await seedRow(Tag, daysAgo(TOMBSTONE_RETENTION_DAYS + 10)) // expired tombstone
 })
 
-describe('purgeExpiredTombstones — retention validation (SEC-54)', () => {
+describe('purgeExpiredTombstones - retention validation (SEC-54)', () => {
     for (const bad of [0, -1, -90, NaN]) {
         it(`rejects a non-positive / non-finite retention window (${bad})`, async () => {
             await expect(purgeExpiredTombstones(bad)).rejects.toThrow(/retention/i)
@@ -46,7 +46,7 @@ describe('purgeExpiredTombstones — retention validation (SEC-54)', () => {
     })
 })
 
-describe('purgeExpiredTombstones — dry run (SEC-54)', () => {
+describe('purgeExpiredTombstones - dry run (SEC-54)', () => {
     it('reports the rows that would be purged without deleting them', async () => {
         const results = await purgeExpiredTombstones(TOMBSTONE_RETENTION_DAYS, { dryRun: true })
 
@@ -60,7 +60,7 @@ describe('purgeExpiredTombstones — dry run (SEC-54)', () => {
     })
 })
 
-describe('purgeExpiredTombstones — real run (regression)', () => {
+describe('purgeExpiredTombstones - real run (regression)', () => {
     it('permanently removes only tombstones older than the retention window', async () => {
         const results = await purgeExpiredTombstones(TOMBSTONE_RETENTION_DAYS)
 

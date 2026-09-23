@@ -11,25 +11,25 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
  *
  * Three endpoints disclosed whether an email address has a Corvale account:
  *
- *   1. POST /workspaces/:workspaceId/members — looked the invitee up by email and 404'd
+ *   1. POST /workspaces/:workspaceId/members - looked the invitee up by email and 404'd
  *      (`WORKSPACE.USER_NOT_FOUND`) when there was no match, metered only by the global
  *      300/15min mutating limiter (~28,800 probes/day). Fix: its own tight limiter
  *      (`createWorkspaceInviteRateLimiter`, env `WORKSPACE_INVITE_RATE_LIMIT_MAX` /
  *      `WORKSPACE_INVITE_RATE_LIMIT_WINDOW_MS`, default 30 / 15 min), separate budget from
  *      login so a probing burst can't lock a real user out.
- *   2. POST /auth/register — still returns `USER.USER_ALREADY_EXISTS` for a taken address.
+ *   2. POST /auth/register - still returns `USER.USER_ALREADY_EXISTS` for a taken address.
  *      Making it enumeration-safe means suppressing that signal and disclosing the collision
  *      only by email, which breaks the auto-session / in-app verify-screen signup flow (V9).
  *      For v1.0.0 the accepted mitigation is the pre-existing dedicated `auth-register`
  *      limiter; this spec pins that the duplicate response is deliberate and that a register
  *      burst does not consume the login budget.
- *   3. POST /auth/login — returned before `comparePassword` when the user was not found, so a
+ *   3. POST /auth/login - returned before `comparePassword` when the user was not found, so a
  *      bcrypt-cost-12 hash ran only for real accounts (a measurable timing oracle). Fix:
  *      always run a bcrypt comparison against a fixed dummy hash when the user is missing.
  */
 
 describe('Account enumeration hardening (S25 / SEC-32)', () => {
-    describe('POST /auth/login — constant-time regardless of whether the account exists', () => {
+    describe('POST /auth/login - constant-time regardless of whether the account exists', () => {
         it('returns the same 400 INVALID_CREDENTIALS for an unknown email and a wrong password', async () => {
             const app = createApp()
             await registerUser(app, { email: 'login-oracle@example.com', password: 'RightPassword123!' })
@@ -64,7 +64,7 @@ describe('Account enumeration hardening (S25 / SEC-32)', () => {
         })
     })
 
-    describe('POST /workspaces/:workspaceId/members — dedicated invite rate limiter', () => {
+    describe('POST /workspaces/:workspaceId/members - dedicated invite rate limiter', () => {
         const originalMax = process.env.WORKSPACE_INVITE_RATE_LIMIT_MAX
         const originalWindow = process.env.WORKSPACE_INVITE_RATE_LIMIT_WINDOW_MS
 
@@ -96,7 +96,7 @@ describe('Account enumeration hardening (S25 / SEC-32)', () => {
                 statuses.push(res.status)
             }
 
-            // First 3 are 404 (no such user — the oracle), then the limiter takes over.
+            // First 3 are 404 (no such user - the oracle), then the limiter takes over.
             expect(statuses.slice(0, 3)).toEqual([404, 404, 404])
             expect(statuses).toContain(429)
         })
@@ -125,7 +125,7 @@ describe('Account enumeration hardening (S25 / SEC-32)', () => {
         })
     })
 
-    describe('POST /auth/register — duplicate signal is deliberate, budget is isolated', () => {
+    describe('POST /auth/register - duplicate signal is deliberate, budget is isolated', () => {
         it('still reports USER_ALREADY_EXISTS for a taken address (accepted residual risk, V9 UX)', async () => {
             const app = createApp()
             await registerUser(app, { email: 'taken@example.com' })

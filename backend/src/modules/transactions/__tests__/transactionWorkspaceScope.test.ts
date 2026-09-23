@@ -60,7 +60,7 @@ async function seedWorkspace() {
     return { owner, editor, workspaceId }
 }
 
-describe('SEC-57 — assertAccountMatchesWorkspace helper', () => {
+describe('SEC-57 - assertAccountMatchesWorkspace helper', () => {
     const wsA = new Types.ObjectId()
     const wsB = new Types.ObjectId()
 
@@ -93,7 +93,7 @@ describe('SEC-57 — assertAccountMatchesWorkspace helper', () => {
     })
 })
 
-describe('SEC-57 — updateTransaction pins account/workspace scope (the two gap sites)', () => {
+describe('SEC-57 - updateTransaction pins account/workspace scope (the two gap sites)', () => {
     it('rejects moving a workspace transaction onto a personal account', async () => {
         const { owner, workspaceId } = await seedWorkspace()
         const wsAccount = await createAccount(owner.token, { workspaceId, name: 'WS' })
@@ -173,7 +173,7 @@ describe('SEC-57 — updateTransaction pins account/workspace scope (the two gap
     })
 })
 
-describe('SEC-57 — the other client-account write paths still reject a cross-workspace account', () => {
+describe('SEC-57 - the other client-account write paths still reject a cross-workspace account', () => {
     it('POST /transactions (createTransactionForUser)', async () => {
         const { owner, workspaceId } = await seedWorkspace()
         const personalAccount = await createAccount(owner.token, { name: 'Personal' })
@@ -287,7 +287,7 @@ describe('SEC-57 — the other client-account write paths still reject a cross-w
     })
 })
 
-describe('SEC-58 — sortBy=category $lookup does not leak a co-member private category', () => {
+describe('SEC-58 - sortBy=category $lookup does not leak a co-member private category', () => {
     async function seedLeakScenario() {
         const { owner, editor, workspaceId } = await seedWorkspace()
         const wsAccount = await createAccount(owner.token, { workspaceId, name: 'WS' })

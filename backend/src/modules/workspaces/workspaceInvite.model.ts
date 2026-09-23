@@ -35,7 +35,7 @@ WorkspaceInviteSchema.index(
     { unique: true, partialFilterExpression: { status: 'pending' } }
 )
 
-// No row-level-security plugin (SEC-30): a WorkspaceInvite has no `userId` field — it is scoped
+// No row-level-security plugin (SEC-30): a WorkspaceInvite has no `userId` field - it is scoped
 // by `inviteeUserId` / `inviterUserId`, which the plugin's `'userId' in filter` guard cannot
 // express. `controllers/workspaceController.ts` checks invitee/inviter identity by hand. Note:
 // adding the plugin here *without* `supportsWorkspace` would also make register's P2 live again

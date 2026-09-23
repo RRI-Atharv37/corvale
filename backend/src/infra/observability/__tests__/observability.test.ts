@@ -15,7 +15,7 @@ import { errorHandler } from '@http/middleware/errorMiddleware'
 import { CustomError } from '@core/errors/customError'
 
 /**
- * Acceptance spec for L4 — error tracking + structured logging + uptime monitoring.
+ * Acceptance spec for L4 - error tracking + structured logging + uptime monitoring.
  *
  * Contract assumed here, mirroring `mailService.ts`'s injectable-transport seam:
  *

@@ -19,7 +19,7 @@ The import wizard guides you through uploading a file and reviewing every row be
 
 ## Handling duplicates
 
-Corvale compares each row against your existing posted transactions on the chosen account to detect likely duplicates. It matches on the date, whether the row is money in or money out, the amount, and the description — so a refund never looks like a duplicate of the original charge. For OFX and QFX files, Corvale also matches on the bank's own transaction ID, so re-importing the same statement reliably finds every row even if the bank changed the wording between exports. Flagged rows show a duplicate action you can set individually or in bulk:
+Corvale compares each row against your existing posted transactions on the chosen account to detect likely duplicates. It matches on the date, whether the row is money in or money out, the amount, and the description - so a refund never looks like a duplicate of the original charge. For OFX and QFX files, Corvale also matches on the bank's own transaction ID, so re-importing the same statement reliably finds every row even if the bank changed the wording between exports. Flagged rows show a duplicate action you can set individually or in bulk:
 
 | Action | Result |
 |--------|--------|

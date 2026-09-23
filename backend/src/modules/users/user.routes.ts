@@ -12,7 +12,7 @@ import {
 
 /**
  * User-account routes. Mounted by the auth module under `/api/v1/auth` (`auth.routes.ts`), so
- * the paths below stay `/auth/user`, `/auth/legal/accept`, `/auth/account/*` — RF3 moved no URL.
+ * the paths below stay `/auth/user`, `/auth/legal/accept`, `/auth/account/*` - RF3 moved no URL.
  */
 export const createUserRoutes = (): express.Router => {
     const router = express.Router()

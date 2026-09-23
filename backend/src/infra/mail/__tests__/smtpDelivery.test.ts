@@ -7,7 +7,7 @@ import { setMailTransport, sendPasswordResetEmail } from '@infra/mail/mailServic
 /**
  * Acceptance spec for production SMTP password-reset delivery (S7).
  *
- * Production password-reset delivery does not exist yet — today
+ * Production password-reset delivery does not exist yet - today
  * `requestPasswordReset` always calls `logPasswordResetLink`, which prints
  * the reset URL to the console (and prints the full URL outside
  * production). Contract assumed for the new `backend/utils/mailService.ts`
@@ -24,7 +24,7 @@ import { setMailTransport, sendPasswordResetEmail } from '@infra/mail/mailServic
  * `SMTP_PASS` env vars; tests inject a mock implementing `MailTransport`
  * so no real network call is ever made. `authController.requestPasswordReset`
  * must call `sendPasswordResetEmail` when `isSmtpConfigured()` is true, and
- * keep today's `logPasswordResetLink` console fallback when it's false —
+ * keep today's `logPasswordResetLink` console fallback when it's false -
  * so a `.env`-less dev environment keeps working exactly as it does now.
  * Either way the HTTP response stays the generic, enumeration-safe message
  * it returns today, and a mail-send failure must not surface as a 500 to

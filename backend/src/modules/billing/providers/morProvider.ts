@@ -45,6 +45,23 @@ const SETTINGS = {
     variants: 'MOR_VARIANTS',
 } as const
 
+const asVariantId = (value: unknown): string | undefined => {
+    if (typeof value === 'string') {
+        const id = value.trim()
+        return id === '' ? undefined : id
+    }
+    if (typeof value === 'number' && Number.isInteger(value)) return String(value)
+    return undefined
+}
+
+const planEntry = (parsed: Record<string, unknown>, plan: PlanCode): Record<string, unknown> | undefined => {
+    const nested = parsed[plan]
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) return nested as Record<string, unknown>
+
+    const flat = Object.fromEntries(BILLING_INTERVALS.map((interval) => [interval, parsed[`${plan}_${interval}`]]))
+    return BILLING_INTERVALS.every((interval) => asVariantId(flat[interval]) !== undefined) ? flat : undefined
+}
+
 const parseVariants = (raw: string): MorVariants => {
     const invalid = (): Error =>
         new Error(
@@ -57,17 +74,18 @@ const parseVariants = (raw: string): MorVariants => {
     } catch {
         throw invalid()
     }
-    if (!parsed || typeof parsed !== 'object') throw invalid()
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw invalid()
 
+    const record = parsed as Record<string, unknown>
     const seen = new Set<string>()
     const variants = {} as MorVariants
     for (const plan of PLAN_CODES) {
-        const entry = (parsed as Record<string, unknown>)[plan]
-        if (!entry || typeof entry !== 'object') throw invalid()
+        const entry = planEntry(record, plan)
+        if (!entry) throw invalid()
         variants[plan] = {} as MorVariants[PlanCode]
         for (const interval of BILLING_INTERVALS) {
-            const id = (entry as Record<string, unknown>)[interval]
-            if (typeof id !== 'string' || id.trim() === '' || seen.has(id)) throw invalid()
+            const id = asVariantId(entry[interval])
+            if (!id || seen.has(id)) throw invalid()
             seen.add(id)
             variants[plan][interval] = id
         }

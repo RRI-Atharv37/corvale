@@ -5,7 +5,7 @@
  *
  * On the first rejection the remaining workers stop pulling new items and the returned promise
  * rejects with that error (in-flight items already started still settle, but their outcome is
- * ignored) — so a bad item does not leave a trail of unhandled rejections.
+ * ignored) - so a bad item does not leave a trail of unhandled rejections.
  */
 export const mapWithConcurrency = async <T, R>(
     items: readonly T[],

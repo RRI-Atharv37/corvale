@@ -16,7 +16,7 @@ export interface MigrateAccountBalancesResult {
  * major-unit floats to integer minor units (Sprint C5), mirroring the
  * storage format Transaction.amount already uses. Idempotency is tracked
  * per-account via balanceUnit (Account.ts) rather than inspecting the
- * numeric value — an already-minor balance and an unconverted major balance
+ * numeric value - an already-minor balance and an unconverted major balance
  * can both be valid integers (e.g. $50 vs 5000 cents), so the flag is the
  * only reliable signal. Every account not yet flagged 'minor' is converted
  * and flagged, regardless of when it was created; accounts already flagged
@@ -27,7 +27,7 @@ export interface MigrateAccountBalancesResult {
  * push-conflict paths emit Account balances as major-unit decimals with
  * balanceUnit 'major' regardless of storage (accountWireFormat.ts). A
  * migrated account therefore syncs down to an offline/desktop client
- * (VITE_LOCAL_FIRST) unchanged from the client's point of view — the local
+ * (VITE_LOCAL_FIRST) unchanged from the client's point of view - the local
  * engine, which assumes major units throughout, never sees the minor-unit
  * form. This is what makes running the migration against a live deployment
  * safe; the frontend domain engine itself was deliberately left major-only.

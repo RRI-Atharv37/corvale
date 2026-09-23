@@ -27,7 +27,7 @@ const PrivacyDataSettings: React.FC = () => {
                     <p className="mt-1 text-sm leading-relaxed text-text-secondary">
                         Your name and email, your preferences, and the financial records you enter
                         yourself. Corvale has no bank connection, runs no analytics, and sets one cookie
-                        — the one that keeps you signed in.
+                        - the one that keeps you signed in.
                     </p>
                 </div>
 

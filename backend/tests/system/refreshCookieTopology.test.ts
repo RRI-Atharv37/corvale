@@ -7,18 +7,18 @@ import { createApp } from '@http/app'
  *
  * Today `setRefreshTokenCookie`/`clearRefreshTokenCookie` (`backend/utils/tokenUtils.ts`)
  * hardcode `sameSite: 'lax'`. That is the right choice for Corvale's pinned deployment
- * topology (frontend and API sharing a registrable domain) but breaks silently — no error,
- * just an unnoticed 15-minute logout loop — the moment someone deploys frontend and API on
+ * topology (frontend and API sharing a registrable domain) but breaks silently - no error,
+ * just an unnoticed 15-minute logout loop - the moment someone deploys frontend and API on
  * unrelated domains (SEC-11's reported symptom).
  *
  * Contract assumed here (implemented in S13):
  *   - A new `getRefreshCookieSameSite(env)` in `backend/utils/tokenUtils.ts` reads an
- *     optional `REFRESH_COOKIE_SAME_SITE` env var, defaulting to `'lax'` — the pinned,
+ *     optional `REFRESH_COOKIE_SAME_SITE` env var, defaulting to `'lax'` - the pinned,
  *     same-site topology stays the silent default, unchanged for every existing deployment.
  *   - An explicit value must be one of `lax` | `strict` | `none`; anything else throws.
  *   - `none` (the opt-in for a genuinely cross-site deployment) is only accepted when
  *     `NODE_ENV=production`, because a `SameSite=None` cookie without `Secure` is rejected
- *     outright by browsers, and `Secure` here is only ever true in production — so an
+ *     outright by browsers, and `Secure` here is only ever true in production - so an
  *     operator who sets `none` in dev/test gets a loud startup error instead of a cookie
  *     that silently never arrives.
  *   - `validateEnv` (`backend/utils/envValidation.ts`), already called at the top of

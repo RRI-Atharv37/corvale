@@ -58,7 +58,7 @@ ctx.addEventListener('message', (event) => {
 // covers browsers without Background Sync support (Safari/Firefox) and the "no client open" gap.
 ctx.addEventListener('sync', (event) => {
     // V7.3d: a Background Sync tag registered before the Corvale rename (LEGACY_OUTBOX_SYNC_TAG)
-    // still fires here after the new SW activates — accept it alongside the current tag for one
+    // still fires here after the new SW activates - accept it alongside the current tag for one
     // release so queued pre-rename offline writes flush. See src/pwa/constants.ts.
     if (event.tag !== OUTBOX_SYNC_TAG && event.tag !== LEGACY_OUTBOX_SYNC_TAG) return
     event.waitUntil(

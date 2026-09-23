@@ -3,8 +3,8 @@ import mongoose, { Document, Model, Schema } from 'mongoose'
 /**
  * Backs the shared rate-limit store (SEC-26/S18): counters live in Mongo instead of
  * per-process memory, so horizontally-scaled instances share one budget per client
- * instead of each instance getting its own. Not user data — keys are namespaced per
- * limiter + client (usually an IP), never per userId — so this sits outside row-level
+ * instead of each instance getting its own. Not user data - keys are namespaced per
+ * limiter + client (usually an IP), never per userId - so this sits outside row-level
  * security, unlike every other model in this directory.
  */
 export interface IRateLimitCounter extends Document {

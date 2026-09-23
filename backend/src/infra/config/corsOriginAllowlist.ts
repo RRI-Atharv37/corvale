@@ -15,7 +15,7 @@ export const buildCorsOriginAllowlist = (clientUrl: string): string[] => [
 
 /**
  * True when the request comes from the packaged desktop (Tauri) webview, identified by its fixed
- * `Origin` header. The webview — like any browser — forbids page scripts from setting `Origin`,
+ * `Origin` header. The webview - like any browser - forbids page scripts from setting `Origin`,
  * so this can't be forged by a web page or an XSS payload running on the web app's own origin.
  * That is why it is safe to gate the SEC-11 body-delivered refresh token on it (BUG-24): the
  * desktop client is cross-site to the API and never receives the `SameSite=Lax` refresh cookie,

@@ -1,11 +1,11 @@
 // `'spndr_export'` is the pre-rename spelling of `'corvale_export'`, kept valid for one release
-// as a rename-compat shim (V7.3c) — mirrors `shared/src/csvImport.ts`'s `ImportFormat`.
+// as a rename-compat shim (V7.3c) - mirrors `shared/src/csvImport.ts`'s `ImportFormat`.
 export type ImportFormat = 'generic' | 'chase' | 'corvale_export' | 'spndr_export' | 'ofx' | 'qif'
 
-// Mirrors `shared/src/csvImport.ts`'s `ImportDateFormat` — token order for slash/dot/dash dates.
+// Mirrors `shared/src/csvImport.ts`'s `ImportDateFormat` - token order for slash/dot/dash dates.
 export type ImportDateFormat = 'auto' | 'YMD' | 'MDY' | 'DMY'
 
-// Mirrors `shared/src/csvImport.ts`'s `IMPORT_DELIMITERS` — the field separators the CSV parser
+// Mirrors `shared/src/csvImport.ts`'s `IMPORT_DELIMITERS` - the field separators the CSV parser
 // can sniff / be forced to (BUG-19).
 export type ImportDelimiter = ',' | ';' | '\t' | '|'
 
@@ -31,7 +31,7 @@ export interface ParsedImportRow {
     description?: string
     amount: number
     type: 'income' | 'expense'
-    /** OFX `FITID` — an exact re-import dedupe key (BUG-21). */
+    /** OFX `FITID` - an exact re-import dedupe key (BUG-21). */
     externalId?: string
 }
 
@@ -46,7 +46,7 @@ export interface ImportParseResponse {
     parsedRows?: ParsedImportRow[]
     /** Skipped-block reasons from the OFX/QIF parser, carried into preview/commit (BUG-21/BUG-23). */
     parsedRowErrors?: ImportRowError[]
-    /** OFX `<CURDEF>` — informational; the UI warns on a mismatch with the target account. */
+    /** OFX `<CURDEF>` - informational; the UI warns on a mismatch with the target account. */
     statementCurrency?: string
     /** The delimiter the CSV parser used (sniffed or forced). */
     delimiter?: ImportDelimiter

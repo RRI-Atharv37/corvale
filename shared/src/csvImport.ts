@@ -4,7 +4,7 @@
  * from `backend/utils/csvImportUtils.ts` (Sprint 13.10) so the frontend can
  * run the same import pipeline entirely client-side while offline.
  *
- * Throws plain `Error` (not a backend `CustomError`) — every call site on
+ * Throws plain `Error` (not a backend `CustomError`) - every call site on
  * the backend must catch and translate to `CustomError(message, 400)` to
  * preserve existing API behavior (every import error in the original
  * module was a 400). See `backend/utils/csvImportUtils.ts`'s `withImportError`.
@@ -66,7 +66,7 @@ export interface ParsedImportRow {
     type: 'income' | 'expense'
     /**
      * A stable per-transaction id supplied by the source file (OFX `FITID`). When present it is
-     * an exact dedupe key — `backend/controllers/importController.ts` matches it against
+     * an exact dedupe key - `backend/controllers/importController.ts` matches it against
      * `Transaction.externalId` before falling back to the fuzzy date/amount/description
      * fingerprint (BUG-21).
      */
@@ -95,7 +95,7 @@ const IMPORT_EXTERNAL_ID_MAX = 256
  * rows, but the commit/preview call takes that array straight back from the client, so it is
  * untrusted: `type` must be the transaction income/expense enum (a stray `"transfer"` would
  * create an orphan transfer leg), `date` an ISO `YYYY-MM-DD`, `title` non-empty, `amount` a
- * finite positive number. Throws a plain `Error` on the first bad row — the backend translates
+ * finite positive number. Throws a plain `Error` on the first bad row - the backend translates
  * it to a 400, as with every other error out of this module.
  */
 export const sanitizeParsedImportRows = (value: unknown): ParsedImportRow[] => {
@@ -506,7 +506,7 @@ const parseDateValue = (value: string, order: ResolvedDateOrder = 'MDY'): Date |
             day = t2
             year = expandTwoDigitYear(t3)
         }
-        // A numeric date that doesn't resolve is rejected outright — never fall through to
+        // A numeric date that doesn't resolve is rejected outright - never fall through to
         // `new Date()`, which would guess (or roll a bad month forward) with no error (BUG-18).
         return buildUtcDate(year, month, day)
     }
@@ -517,7 +517,7 @@ const parseDateValue = (value: string, order: ResolvedDateOrder = 'MDY'): Date |
 
 /**
  * Parse a money value from a bank export, tolerant of locale formatting (BUG-20). Both the
- * signed-amount column and the debit/credit columns run through this — the normalization used to
+ * signed-amount column and the debit/credit columns run through this - the normalization used to
  * be `.replace(/[$,\s]/g, '')`, which failed any non-`$` symbol and turned European `1.234,56`
  * into `1.23456`.
  *
@@ -810,7 +810,7 @@ export const parseOfxContent = (content: string): ParsedStatementResult => {
 /**
  * Parse a QIF file (BUG-23). Line-oriented: `!Type:` control lines, then transaction records
  * terminated by `^`. Fields used: `D` date, `T`/`U` amount, `P` payee, `M` memo, `N` cheque
- * number / action. `L` (category) is intentionally ignored — Corvale categorises its own way.
+ * number / action. `L` (category) is intentionally ignored - Corvale categorises its own way.
  */
 export const parseQifContent = (content: string): ParsedStatementResult => {
     const lines = content.split(/\r\n|\r|\n/)

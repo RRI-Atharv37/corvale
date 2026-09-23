@@ -31,7 +31,7 @@ const SOFT_DELETABLE_MODELS: Model<any>[] = [
     Notification,
 ]
 
-describe('SEC-47 — tombstone TTL index', () => {
+describe('SEC-47 - tombstone TTL index', () => {
     for (const model of SOFT_DELETABLE_MODELS) {
         it(`${model.modelName} has a partial TTL index on deletedAt`, async () => {
             await model.init()

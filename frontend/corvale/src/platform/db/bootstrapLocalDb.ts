@@ -116,7 +116,7 @@ export const rebuildLocalDb = async (): Promise<void> => {
 
 /**
  * SEC-40 recovery step: re-attempt the open without touching the store on disk. Used when the
- * failure was transient — the desktop SQLCipher key lives in the OS credential store, and a
+ * failure was transient - the desktop SQLCipher key lives in the OS credential store, and a
  * locked login keyring (or a keychain-access prompt the user dismissed) makes `db_open` fail with
  * a `KEYCHAIN_UNAVAILABLE` tag until it is unlocked. Destroying the store there would throw away
  * unsynced offline changes over a problem a retry fixes.

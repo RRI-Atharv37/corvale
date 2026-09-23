@@ -173,7 +173,7 @@ export interface UpdateSavingsGoalInput {
     /** `undefined` = leave unchanged; `null` = clear; a Date = set. */
     targetDate?: Date | null
     accountId?: Types.ObjectId | null
-    /** The raw `body.autoContribution` value — resolved against the stored goal here. */
+    /** The raw `body.autoContribution` value - resolved against the stored goal here. */
     autoContributionRaw: unknown
 }
 

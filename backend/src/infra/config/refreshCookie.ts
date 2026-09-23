@@ -18,12 +18,12 @@ const LEGACY_REFRESH_TOKEN_COOKIE = 'spndr_refresh'
 /**
  * SEC-11: Corvale's pinned deployment topology is same-site (frontend and API share a
  * registrable domain), so the refresh cookie defaults to `SameSite=Lax`. A cross-site
- * deployment must opt in explicitly via `REFRESH_COOKIE_SAME_SITE=none` — silently
+ * deployment must opt in explicitly via `REFRESH_COOKIE_SAME_SITE=none` - silently
  * switching topologies without changing this setting is exactly what caused SEC-11 (an
  * unnoticed 15-minute logout loop, since the cookie stopped being sent but no error
  * surfaced anywhere). `none` is only accepted when `NODE_ENV=production` because a
  * `SameSite=None` cookie without `Secure` is rejected outright by browsers, and `Secure`
- * below is only ever true in production — so a misconfigured `none` fails loudly at
+ * below is only ever true in production - so a misconfigured `none` fails loudly at
  * startup instead of shipping a cookie that silently never arrives.
  */
 export const getRefreshCookieSameSite = (env: NodeJS.ProcessEnv = process.env): RefreshCookieSameSite => {
@@ -101,7 +101,7 @@ export const getRefreshTokenFromRequest = (cookies: Record<string, string | unde
 
 /**
  * SEC-11 / BUG-24: the desktop client can't rely on the refresh cookie (cross-site to the API),
- * so it presents the refresh token in the request body instead. Accepted from any caller — the
+ * so it presents the refresh token in the request body instead. Accepted from any caller - the
  * token itself is the credential; only the desktop path (gated on `isDesktopClientRequest`) gets
  * a rotated token back in the response body.
  */

@@ -1,7 +1,7 @@
 [package]
 name = "corvale"
 version = "1.0.3"
-description = "Corvale desktop shell — personal finance tracker"
+description = "Corvale desktop shell - personal finance tracker"
 authors = ["Corvale"]
 edition = "2021"
 rust-version = "1.77"
@@ -21,7 +21,7 @@ tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
-# BUG-27: hand external URLs (docs site, GitHub, installer downloads) to the OS default browser —
+# BUG-27: hand external URLs (docs site, GitHub, installer downloads) to the OS default browser -
 # a Tauri webview silently no-ops `target="_blank"` / `window.open`, so without this there is no
 # path out of the app.
 tauri-plugin-opener = "2"
@@ -33,7 +33,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # `bundled-sqlcipher-vendored-openssl` compiles SQLCipher (and its own OpenSSL) from source rather
 # than linking a system SQLite/OpenSSL, so `cargo build` doesn't depend on what's preinstalled on
-# the machine — the tradeoff is a much longer first build. See docs/desktop/building-the-desktop-app.md.
+# the machine - the tradeoff is a much longer first build. See docs/desktop/building-the-desktop-app.md.
 rusqlite = { version = "0.31", features = ["bundled-sqlcipher-vendored-openssl"] }
 pbkdf2 = "0.12"
 hmac = "0.12"

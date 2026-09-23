@@ -27,13 +27,13 @@ const EXPECTED_HOOKED_OPERATIONS = [
 ]
 
 /**
- * SEC-36 (S27) — the RLS plugin must hook every filter-bearing query operation, not just
+ * SEC-36 (S27) - the RLS plugin must hook every filter-bearing query operation, not just
  * the nine it originally covered. `updateOne` / `deleteOne` / `replaceOne` /
  * `findOneAndReplace` / `estimatedDocumentCount` were the gap.
  */
-describe('SEC-36 — RLS hooked-operation coverage (S27)', () => {
+describe('SEC-36 - RLS hooked-operation coverage (S27)', () => {
     it('pins the exact set of hooked query operations so it cannot drift', () => {
-        // If you are changing this list, you are changing the RLS guarantee — update the
+        // If you are changing this list, you are changing the RLS guarantee - update the
         // CLAUDE.md RLS section and SECURITY.md alongside it.
         expect([...QUERY_OPERATIONS].sort()).toEqual([...EXPECTED_HOOKED_OPERATIONS].sort())
     })

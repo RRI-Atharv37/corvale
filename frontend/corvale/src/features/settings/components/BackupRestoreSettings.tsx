@@ -134,7 +134,7 @@ const BackupRestoreSettings: React.FC = () => {
                 ? await localBackup.commitLocalRestoreFile(selectedFile)
                 : await commitBackupRestore(selectedFile, activeWorkspaceId)
             const totalCreated = Object.values(result.created).reduce((sum, count) => sum + count, 0)
-            toast.success(`Restore complete — ${totalCreated} records created`)
+            toast.success(`Restore complete - ${totalCreated} records created`)
             setSelectedFile(null)
             setPreview(null)
             if (fileInputRef.current) {
@@ -152,8 +152,8 @@ const BackupRestoreSettings: React.FC = () => {
             <p className="section-label mb-3">Backup &amp; restore</p>
             <p className="text-sm text-text-muted mb-4">
                 {localFirst
-                    ? `Export all ${scopeLabel} as JSON from the local store, or restore a JSON backup — works fully offline. Restore creates new records with remapped ids; it does not overwrite existing data.`
-                    : `Export all ${scopeLabel} as JSON, or ZIP with receipt files. Restore creates new records with remapped ids — it does not overwrite existing data.`}
+                    ? `Export all ${scopeLabel} as JSON from the local store, or restore a JSON backup - works fully offline. Restore creates new records with remapped ids; it does not overwrite existing data.`
+                    : `Export all ${scopeLabel} as JSON, or ZIP with receipt files. Restore creates new records with remapped ids - it does not overwrite existing data.`}
             </p>
             {localFirst && (
                 <p className="mb-4 text-xs text-text-quiet">

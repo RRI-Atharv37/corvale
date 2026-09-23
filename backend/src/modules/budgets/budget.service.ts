@@ -135,7 +135,7 @@ export interface UpdateBudgetInput {
     budgetId: string
     userId: string
     timezone: string
-    /** Present when the request touched periodType / year / month — resolved against the stored budget. */
+    /** Present when the request touched periodType / year / month - resolved against the stored budget. */
     periodBody?: PeriodBody
     /** Present when the request touched only periodStart / periodEnd on a custom budget. */
     customPeriodPatch?: { periodStart?: string; periodEnd?: string }

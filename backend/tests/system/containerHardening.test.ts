@@ -25,7 +25,7 @@ function finalUser(dockerfile: string): string | null {
     return matches.length ? matches[matches.length - 1][1] : null
 }
 
-describe('SEC-67 — backend container runs as non-root with a healthcheck', () => {
+describe('SEC-67 - backend container runs as non-root with a healthcheck', () => {
     it('switches to a non-root USER before the CMD', () => {
         const user = finalUser(BACKEND_DOCKERFILE)
         expect(user).not.toBeNull()
@@ -43,7 +43,7 @@ describe('SEC-67 — backend container runs as non-root with a healthcheck', () 
     })
 })
 
-describe('SEC-67 — frontend container runs as non-root with a healthcheck', () => {
+describe('SEC-67 - frontend container runs as non-root with a healthcheck', () => {
     it('runs on a non-root USER', () => {
         // Either an explicit `USER` line, or the nginx unprivileged base image (USER 101 / nginx).
         const explicit = finalUser(FRONTEND_DOCKERFILE)

@@ -17,8 +17,8 @@ your bank. Every number in it comes from something you typed in or imported your
 Two features are worth calling out because they are easy to misread:
 
 - **Adding to your saver** moves no money and creates no transaction. It lowers the spendable
-  balance Corvale displays — an earmark to remind you that amount is set aside.
-- **A rollover** — the feature the app calls **Pushover** — moves no money either. It snapshots
+  balance Corvale displays - an earmark to remind you that amount is set aside.
+- **A rollover** - the feature the app calls **Pushover** - moves no money either. It snapshots
   your saver balance into history and resets the saver to zero.
 
 Your bank account is untouched by both.
@@ -50,7 +50,7 @@ It is not a recommendation about what you should spend.
 
 The dashboard, the budget pages, the calendar and the report builder carry no note like the ones
 above, and that is deliberate rather than an oversight. Those screens only total figures you
-already recorded — they describe what happened, they do not project what will. Wherever Corvale
+already recorded - they describe what happened, they do not project what will. Wherever Corvale
 does project something, the screen says so.
 
 ## Accuracy is your side of the bargain
@@ -60,7 +60,7 @@ that imported oddly will all produce confident-looking numbers that are wrong.
 
 **We give no guarantee that imported data is complete or correct.** Bank and card files come in
 many shapes, some of them undocumented and some of them inconsistent between statements. Corvale
-parses them on a best-effort basis, and a file can be misread — a wrong sign, a mangled date, a
+parses them on a best-effort basis, and a file can be misread - a wrong sign, a mangled date, a
 duplicated row, a column mapped to the wrong field, or a transaction skipped entirely.
 
 **You remain responsible for reviewing imported data before relying on it.** Check it against your
@@ -70,8 +70,8 @@ Corvale's copy of it.
 
 ## Before you decide something important
 
-Talk to a qualified professional — a licensed financial adviser, an accountant, or a tax
-specialist — before making a decision that matters. They can account for your full circumstances
+Talk to a qualified professional - a licensed financial adviser, an accountant, or a tax
+specialist - before making a decision that matters. They can account for your full circumstances
 in a way that a personal ledger cannot.
 
 ## Liability
@@ -81,11 +81,11 @@ you entered or imported, or for any loss arising from acting on a figure Corvale
 
 This page does not create liability separate from the [Terms of Service](./terms.md), and it does
 not widen it. The warranty disclaimer and the limitation of liability in the **Warranties and
-liability** section of the Terms — including the cap at the greater of what you paid us in the
-twelve months before the claim or ₹1,000 — apply in full to everything described here. Nothing in
+liability** section of the Terms - including the cap at the greater of what you paid us in the
+twelve months before the claim or ₹1,000 - apply in full to everything described here. Nothing in
 either document excludes liability that cannot lawfully be excluded.
 
 ## Questions
 
-support@corvale.app — though note we cannot answer questions about what you should do with your
+support@corvale.app - though note we cannot answer questions about what you should do with your
 money, only about how Corvale works.

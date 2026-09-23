@@ -275,8 +275,8 @@ Copyright © 2026 **[Atharv Dewangan](https://github.com/RRI-Atharv37)**
 
 Licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-or-later`).
 
-> **v1.0.0 is the first AGPL release.** Every earlier release — up to and including **v0.17.0**
-> — was published under the Apache License 2.0, and that grant is irrevocable for those
+> **v1.0.0 is the first AGPL release.** Every earlier release - up to and including **v0.17.0**
+> - was published under the Apache License 2.0, and that grant is irrevocable for those
 > versions.
 
 ---

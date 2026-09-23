@@ -1,6 +1,6 @@
 # Security Policy
 
-Corvale takes security seriously, especially given the app handles personal financial data —
+Corvale takes security seriously, especially given the app handles personal financial data -
 transaction history, account balances, and receipt images. If you've found a vulnerability,
 please report it responsibly using the process below.
 
@@ -11,7 +11,7 @@ an unpatched issue puts every user at risk.
 
 Instead, use GitHub's private vulnerability reporting for this repository: go to the
 **Security** tab → **Report a vulnerability**. This opens a private draft security advisory
-visible only to the maintainer — nothing is public until a fix ships and the advisory is
+visible only to the maintainer - nothing is public until a fix ships and the advisory is
 published.
 
 ### What to include
@@ -27,8 +27,8 @@ To help triage and fix the issue quickly, please include:
 ## Scope
 
 **In scope:**
-- The backend API — authentication, authorization, row-level security, workspace access control
-- Data encryption — offline/local storage, desktop app database encryption
+- The backend API - authentication, authorization, row-level security, workspace access control
+- Data encryption - offline/local storage, desktop app database encryption
 - The web frontend and the Tauri desktop client
 - Session and token handling (JWT, refresh tokens)
 
@@ -42,21 +42,21 @@ To help triage and fix the issue quickly, please include:
 
 ## What to expect
 
-This project is maintained by a single developer, so there's no guaranteed SLA — but reports
+This project is maintained by a single developer, so there's no guaranteed SLA - but reports
 are taken seriously and acknowledged as soon as possible. Once a report is triaged, you'll
 be kept updated on the fix timeline directly in the advisory thread.
 
 ## Disclosure timeline
 
-Please allow a reasonable window — around 90 days is the general norm for coordinated
-disclosure — for a fix to ship before any public write-up or disclosure of the issue. If a fix
+Please allow a reasonable window - around 90 days is the general norm for coordinated
+disclosure - for a fix to ship before any public write-up or disclosure of the issue. If a fix
 is going to take longer, that will be communicated in the advisory.
 
 ## Safe harbor
 
-Good-faith security research conducted under this policy — reporting privately, not accessing
+Good-faith security research conducted under this policy - reporting privately, not accessing
 or modifying data beyond what's needed to demonstrate the issue, and not disrupting the
-service for other users — will not be treated as unauthorized access or met with legal action.
+service for other users - will not be treated as unauthorized access or met with legal action.
 
 ## Credit
 

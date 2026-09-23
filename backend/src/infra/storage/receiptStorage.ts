@@ -11,18 +11,18 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 /**
  * L3 / SEC-23: receipts move off ephemeral local disk onto S3-compatible object storage.
- * Mirrors the `mailService.ts` seam (`setMailTransport`) — env-driven selection in
+ * Mirrors the `mailService.ts` seam (`setMailTransport`) - env-driven selection in
  * production, an injectable fake in tests so no real network call is ever made.
  */
 export interface ReceiptObjectStorage {
     putObject(key: string, sourceFilePath: string, contentType: string): Promise<void>
-    /** Full object bytes — used by the ZIP backup export (SEC-53), which cannot redirect. */
+    /** Full object bytes - used by the ZIP backup export (SEC-53), which cannot redirect. */
     getObjectBuffer(key: string): Promise<Buffer>
     getSignedDownloadUrl(key: string, expiresInSeconds: number): Promise<string>
     deleteObject(key: string): Promise<void>
 }
 
-// Short-lived, per SEC-23's recommendation — a few minutes, not hours.
+// Short-lived, per SEC-23's recommendation - a few minutes, not hours.
 export const RECEIPT_SIGNED_URL_EXPIRY_SECONDS = 5 * 60
 
 let testAdapter: ReceiptObjectStorage | null = null

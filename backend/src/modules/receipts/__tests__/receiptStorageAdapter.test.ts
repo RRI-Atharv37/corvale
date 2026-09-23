@@ -34,14 +34,14 @@ import { RECEIPT_UPLOAD_ROOT } from "@modules/receipts/receiptUtils";
  * Production builds `ReceiptObjectStorage` from an S3-compatible client configured via
  * `RECEIPT_S3_*` env vars (bucket, region, endpoint, credentials) and applies server-side
  * encryption on every `putObject`; that construction is intentionally not exercised here (it
- * would require a real or heavily-mocked AWS SDK) — this spec instead pins the *contract* the
+ * would require a real or heavily-mocked AWS SDK) - this spec instead pins the *contract* the
  * controllers must honor against any conforming adapter, exactly as `smtpDelivery.test.ts` pins
  * `mailService`'s contract without asserting on nodemailer internals.
  *
  * Controller wiring assumed in `receiptController.ts`:
  *   - `uploadReceipt`: once virus scanning passes, if `isObjectStorageConfigured()` is true, the
  *     file is pushed through `putObject` under `receiptObjectKey(userId, storedFilename)` and the
- *     local temp copy multer wrote is deleted immediately after — object storage becomes the only
+ *     local temp copy multer wrote is deleted immediately after - object storage becomes the only
  *     copy, so a redeploy can no longer lose it.
  *   - `getReceiptFile`: when object storage is configured, responds `302` with `Location` set to
  *     `getSignedDownloadUrl(...)` rather than streaming the file itself.

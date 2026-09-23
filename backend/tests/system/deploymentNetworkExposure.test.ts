@@ -9,7 +9,7 @@ import path from 'path'
  * API to the internet regardless of a host firewall.
  *
  * Before S34 both services mapped `'5000:5000'` / `'8080:80'` (all interfaces), and the
- * loopback fix lived only in `docker-compose.override.example.yml` — a file `.gitignore`
+ * loopback fix lived only in `docker-compose.override.example.yml` - a file `.gitignore`
  * excludes in its real form and no documentation referenced, so a `git pull` deployment never
  * got it.
  *
@@ -65,7 +65,7 @@ function portMappings(block: string): string[] {
     return out
 }
 
-describe('Docker Compose — public network exposure (SEC-65, S34)', () => {
+describe('Docker Compose - public network exposure (SEC-65, S34)', () => {
     const backend = serviceBlock(COMPOSE, 'backend')
     const frontend = serviceBlock(COMPOSE, 'frontend')
 
@@ -99,7 +99,7 @@ describe('Docker Compose — public network exposure (SEC-65, S34)', () => {
     })
 })
 
-describe('Docker Compose — loopback binding documented (SEC-65, S34)', () => {
+describe('Docker Compose - loopback binding documented (SEC-65, S34)', () => {
     it('the deployment guide explains the loopback port binding and the override', () => {
         expect(DEPLOY_DOC).toMatch(/127\.0\.0\.1/)
         expect(DEPLOY_DOC).toMatch(/docker-compose\.override/)

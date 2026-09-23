@@ -6,7 +6,7 @@ import { isTauriRuntime } from '@lib/isTauri'
  * sees the Rust log trail without opening the OS log file.
  *
  * This is Rust → WebView only (P10): `attachConsole()` does NOT pipe WebView `console.*` calls
- * into the log file, and it must not be "fixed" to — axios errors in the console carry
+ * into the log file, and it must not be "fixed" to - axios errors in the console carry
  * `Authorization` headers, which would then be written to disk. The on-disk trail comes solely
  * from Rust `log::*` calls. No-op outside the Tauri runtime (web / PWA / tests).
  *

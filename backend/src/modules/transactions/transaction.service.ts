@@ -84,7 +84,7 @@ const createSplitChildren = async (
 /**
  * Core create-transaction logic, extracted from transactionController so it
  * can be reused by both the REST endpoint and POST /sync/push (Sprint 13.2).
- * Pure refactor of the previous controller body — same validation, same
+ * Pure refactor of the previous controller body - same validation, same
  * categorization-rule and split handling, same account balance side effect.
  */
 export const createTransactionForUser = async (
@@ -246,7 +246,7 @@ export const createTransactionForUser = async (
  * decision ("... never a syncable field ... out-of-order
  * offline replay would drift silently with no way to heal it"), an
  * offline-originated delete can arrive out of order relative to other
- * offline mutations, so incremental reversal here is unsafe — this only
+ * offline mutations, so incremental reversal here is unsafe - this only
  * tombstones the record (and cascades to its transfer-pair/split-children).
  * Balance correctness after a sync session is restored via
  * POST /accounts/:accountId/recompute-balance, not incremental math.
@@ -376,7 +376,7 @@ export const updateTransactionForOp = async (
  * Transfer-create logic for POST /sync/push (Sprint 13.3), mirroring
  * transactionController.createTransfer. `payload.amount` is minor units
  * directly (the sync wire convention), unlike the REST endpoint's
- * major-unit body — callers must not run this through the
+ * major-unit body - callers must not run this through the
  * fromMinorUnits/parseClientAmount round-trip used for plain transaction.create.
  */
 export const createTransferForOp = async (

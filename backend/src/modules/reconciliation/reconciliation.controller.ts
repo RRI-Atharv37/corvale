@@ -76,7 +76,7 @@ export const createReconciliationSession = asyncHandler(async (req: AuthRequest,
     // income/expense transactions feed the reconciliation balance. When the
     // account carries an openingBalanceDate, activity before it is already folded
     // into openingBalance (see shared/src/balances.ts) and must not be summed
-    // again — so it's excluded with a lower date bound.
+    // again - so it's excluded with a lower date bound.
     const dateFilter: Record<string, Date> = { $lte: new Date(statementEndDate) }
     if (account.openingBalanceDate) {
         dateFilter.$gte = new Date(account.openingBalanceDate)

@@ -22,7 +22,7 @@ export const createAuthRoutes = (): express.Router => {
     // Separate instance (not shared with register/login) so a burst of refresh/logout
     // replay attempts can't also lock a legitimate user out of signing in (SEC-26).
     const sessionRateLimiter = createAuthRateLimiter('auth-session')
-    // Password reset now sends a real email (S7), giving it a real abuse cost — its own
+    // Password reset now sends a real email (S7), giving it a real abuse cost - its own
     // instance keeps a reset-spam burst from also locking a legitimate user out of login.
     const passwordResetRateLimiter = createAuthRateLimiter('auth-password-reset')
     // Same reasoning for email verification (resend/confirm).

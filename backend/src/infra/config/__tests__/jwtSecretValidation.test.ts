@@ -11,7 +11,7 @@ import {
  * `backend/.env.example` ships a literal `JWT_SECRET=replace-with-a-long-random-string`, and
  * `validateEnv` previously checked only presence. A self-hoster who copies the example file
  * and misses that one line gets a running, healthy-looking service whose access tokens are
- * signed with a value published in the public repo — anyone can then mint a token for an
+ * signed with a value published in the public repo - anyone can then mint a token for an
  * arbitrary `userId` (the default `tokenVersion` is `0`, so a forged `tv: 0` passes too) and
  * read or modify every user's financial data.
  *

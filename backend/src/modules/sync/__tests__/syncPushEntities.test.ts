@@ -17,7 +17,7 @@ import { authHeader, ensureTimestampAdvances, registerUser, RegisteredUser } fro
  * (syncController.ts's ENTITY_HANDLERS): every non-transaction syncable
  * entity now has working create/update/delete handling, not just
  * "Unsupported sync entity". This isn't exhaustive per-entity field
- * validation (that's covered by each entity's own REST-endpoint tests) —
+ * validation (that's covered by each entity's own REST-endpoint tests) -
  * it proves the generic dispatch mechanism is sound for both "delete"
  * semantics (archive-flag vs true soft-delete) using representative
  * entities: `account` (archive-flag), `tag` (soft-delete), and the new
@@ -37,7 +37,7 @@ const seedAccount = async (userId: string, overrides: Partial<Record<string, unk
 
 const seedCategory = async (userId: string, name = 'Groceries') => Category.create({ userId, name })
 
-describe('Sync API — push: account (archive-flag entity)', () => {
+describe('Sync API - push: account (archive-flag entity)', () => {
     let app: Application
     let owner: RegisteredUser
 
@@ -181,7 +181,7 @@ describe('Sync API — push: account (archive-flag entity)', () => {
         const stored = await Account.findById(account._id)
         expect(stored?.isArchived).toBe(true)
 
-        // A second delete op (different opId — a genuine replay, not the
+        // A second delete op (different opId - a genuine replay, not the
         // opId-level idempotency short-circuit) against the now-archived
         // account must resolve as a harmless no-op, not
         // ACCOUNT_ALREADY_ARCHIVED the way the REST archive endpoint would.
@@ -205,7 +205,7 @@ describe('Sync API — push: account (archive-flag entity)', () => {
     })
 })
 
-describe('Sync API — push: tag (soft-delete entity)', () => {
+describe('Sync API - push: tag (soft-delete entity)', () => {
     let app: Application
     let owner: RegisteredUser
 
@@ -332,7 +332,7 @@ describe('Sync API — push: tag (soft-delete entity)', () => {
     })
 })
 
-describe('Sync API — push: transactionTemplate (new entity)', () => {
+describe('Sync API - push: transactionTemplate (new entity)', () => {
     let app: Application
     let owner: RegisteredUser
 
@@ -504,7 +504,7 @@ describe('Sync API — push: transactionTemplate (new entity)', () => {
     })
 })
 
-describe('Sync API — push: workspace membership is re-validated at op-apply time', () => {
+describe('Sync API - push: workspace membership is re-validated at op-apply time', () => {
     let app: Application
     let owner: RegisteredUser
     let outsider: RegisteredUser
@@ -671,14 +671,14 @@ describe('Sync API — push: workspace membership is re-validated at op-apply ti
 })
 
 /**
- * BUG-33: the local-first client never sends `year`/`month` for a monthly budget — it resolves
+ * BUG-33: the local-first client never sends `year`/`month` for a monthly budget - it resolves
  * `periodStart`/`periodEnd` itself (via the shared `resolveMonthlyPeriod`) and stores/syncs only
  * those. The pre-fix `resolvePeriodFromBody` in `budgetSync.service.ts` demanded `year`/`month`
  * unconditionally for `periodType: 'monthly'`, so every real local-first budget create/update was
  * rejected. These cover the actual client payload shape, not the hand-written year/month shape the
  * older tests above use (kept passing as the documented fallback).
  */
-describe('Sync API — push: budget period resolution from a client-resolved payload (BUG-33)', () => {
+describe('Sync API - push: budget period resolution from a client-resolved payload (BUG-33)', () => {
     let app: Application
     let owner: RegisteredUser
 

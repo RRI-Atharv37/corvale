@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { MemorySqliteDriver } from '../MemorySqliteDriver'
 import type { LocalDb } from '../LocalDb'
-// Sprint 13.4 deliverables — none of these modules exist yet. Per the project's
+// Sprint 13.4 deliverables - none of these modules exist yet. Per the project's
 // test-first rule, these are the acceptance criteria for that sprint, written
 // now against the `MemorySqliteDriver` built in 13.0. Expected to fail at
 // module resolution until 13.4 lands; do not implement them here.

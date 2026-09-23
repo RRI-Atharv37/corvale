@@ -16,15 +16,12 @@ export interface PlanCatalogueEntry {
     }
 }
 
-/** Launch catalogue, ROADMAP § Pricing architecture. Prices are USD minor units; null = unlimited. */
+/**
+ * Launch catalogue, ROADMAP § Pricing architecture. Prices are USD minor units; null = unlimited.
+ * Single plan only (2026-09-22): the earlier Plus tier ($6/mo) was dropped - it didn't cover
+ * hosting/overhead, so there is no cheaper landing spot below Pro.
+ */
 export const DEFAULT_PLAN_CATALOGUE: readonly PlanCatalogueEntry[] = [
-    {
-        code: 'plus',
-        name: 'Plus',
-        prices: { monthly: 600, annual: 6000 },
-        features: { workspaces: false, prioritySupport: false, bankSync: false },
-        limits: { receiptStorageBytes: 1 * GB, syncDevices: 1, workspaceMembers: null },
-    },
     {
         code: 'pro',
         name: 'Pro',
@@ -35,9 +32,12 @@ export const DEFAULT_PLAN_CATALOGUE: readonly PlanCatalogueEntry[] = [
 ]
 
 export const seedPlanCatalogue = async (): Promise<void> => {
+    const codes = DEFAULT_PLAN_CATALOGUE.map((entry) => entry.code)
+
     await Plan.bulkWrite(
         DEFAULT_PLAN_CATALOGUE.map(({ code, ...fields }) => ({
             updateOne: { filter: { code }, update: { $set: fields }, upsert: true },
         }))
     )
+    await Plan.deleteMany({ code: { $nin: codes } })
 }

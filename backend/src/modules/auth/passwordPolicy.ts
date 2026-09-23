@@ -5,7 +5,7 @@ export const MIN_PASSWORD_LENGTH = 12
 export const MAX_PASSWORD_BYTES = 72
 
 /**
- * Type-checks before ever reading `.length` (BUG-14 — a non-empty array body
+ * Type-checks before ever reading `.length` (BUG-14 - a non-empty array body
  * value passes a bare truthiness check and previously reached `.length`
  * unchecked), then enforces a floor and an explicit ceiling so bcrypt's
  * silent 72-byte truncation never happens without the caller knowing (SEC-22).

@@ -123,7 +123,7 @@ export interface UpdateSavedReportInput {
     reportId: string
     userId: string
     name?: string
-    /** The raw request body — a config re-parse is triggered when it carries `periodType`. */
+    /** The raw request body - a config re-parse is triggered when it carries `periodType`. */
     body: Record<string, unknown>
 }
 

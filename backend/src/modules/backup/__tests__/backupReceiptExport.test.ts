@@ -14,8 +14,8 @@ import { createBackupZipStream, exportUserBackup } from "@modules/backup/backupU
 /**
  * SEC-53: the ZIP backup export must read every receipt from the *configured* storage driver,
  * or fail loudly. Before this it only ever read `uploads/receipts/<userId>/` from local disk
- * (`fs.existsSync` + `archive.file`), so under `RECEIPT_STORAGE_DRIVER=s3` — where the local
- * copy is deleted right after upload — the export silently shipped a ZIP with the backup JSON
+ * (`fs.existsSync` + `archive.file`), so under `RECEIPT_STORAGE_DRIVER=s3` - where the local
+ * copy is deleted right after upload - the export silently shipped a ZIP with the backup JSON
  * but zero receipt files, contradicting the `privacy.md` "you can export all your data" promise.
  */
 
@@ -85,7 +85,7 @@ afterEach(() => {
     vi.restoreAllMocks()
 })
 
-describe('Backup ZIP export — receipt bytes (SEC-53)', () => {
+describe('Backup ZIP export - receipt bytes (SEC-53)', () => {
     it('includes the receipt file from local disk on the default driver (regression)', async () => {
         const { token, userId } = await registerUser(app)
         await uploadAndAttachReceipt(token, userId)
@@ -124,7 +124,7 @@ describe('Backup ZIP export — receipt bytes (SEC-53)', () => {
         const payload = await exportUserBackup(userId, null)
         const storedFilename = String(payload.receipts[0].storedFilename)
 
-        // The local staging copy is gone under the s3 driver — the export must not depend on it.
+        // The local staging copy is gone under the s3 driver - the export must not depend on it.
         expect(fs.existsSync(getReceiptFilePath(userId, storedFilename))).toBe(false)
 
         const { stream } = await createBackupZipStream(userId, payload)

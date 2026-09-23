@@ -29,7 +29,7 @@ export type DeleteOpOutcome =
  * Fetch-plus-ownership-check, inlined identically into both helpers below
  * rather than factored into a third shared generic function: Mongoose's
  * Model<T> isn't structurally covariant enough for TS to unify two
- * independently-generic functions both parameterized over Model<T> — a
+ * independently-generic functions both parameterized over Model<T> - a
  * still-abstract Model<T> passed as an argument into another such generic
  * function breaks inference even though each type-checks fine standalone
  * (see workspaceUtils.validateResourceAccess, which this mirrors).
@@ -37,7 +37,7 @@ export type DeleteOpOutcome =
 
 /**
  * Archive-flag entities (account, category, budget, savingsGoal,
- * recurringRule) have no `deletedAt` field at all — a sync
+ * recurringRule) have no `deletedAt` field at all - a sync
  * `operation: 'delete'` op is translated into the entity's REST "archive"
  * behavior instead. Unlike the REST archive endpoint, landing against an
  * already-archived record resolves as a harmless no-op rather than an
@@ -80,15 +80,15 @@ export const archiveEntityForOp = async <T extends EntityDoc>(
 
 /**
  * True soft-delete entities (tag, categorizationRule, transactionTemplate)
- * tombstone unconditionally on delete — delete-always-wins, mirroring
+ * tombstone unconditionally on delete - delete-always-wins, mirroring
  * deleteTransactionForOp's semantics but without any of transaction's
  * transfer-pair/split-child cascade logic, which doesn't apply here.
  *
  * `findById` bypasses the soft-delete plugin's default `deletedAt: null`
  * filter (mirroring fetchCurrentForConflictCheck's rationale for
  * transaction) so a delete op racing a second device's delete of the same
- * record — a distinct opId, since a fresh one is minted per outbox enqueue,
- * so the top-level SyncOperation idempotency check doesn't catch this case —
+ * record - a distinct opId, since a fresh one is minted per outbox enqueue,
+ * so the top-level SyncOperation idempotency check doesn't catch this case -
  * resolves as an idempotent no-op instead of a spurious 404.
  */
 export const softDeleteEntityForOp = async <T extends EntityDoc & { deletedAt?: Date | null }>(
@@ -125,7 +125,7 @@ export const softDeleteEntityForOp = async <T extends EntityDoc & { deletedAt?: 
 /**
  * Sync ops don't carry a `req.user` (there's no request-scoped user object
  * on the push path the way REST controllers have via `getUserTimezone(req)`)
- * — period/date resolution that's timezone-sensitive (budget periods,
+ * - period/date resolution that's timezone-sensitive (budget periods,
  * savings goal target dates, recurring rule due dates) looks the caller's
  * timezone up directly so sync-created records resolve the same
  * boundaries the REST endpoints would for the same user.

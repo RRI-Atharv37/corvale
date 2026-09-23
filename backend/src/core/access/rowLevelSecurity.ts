@@ -51,7 +51,7 @@ const isObjectIdLike = (value: unknown): boolean => {
 }
 
 const isIdListLookup = (idValue: unknown): boolean => {
-    // `{ _id: { $in: [<ObjectId>, ...] } }` — the filter Mongoose's `populate()` issues, and
+    // `{ _id: { $in: [<ObjectId>, ...] } }` - the filter Mongoose's `populate()` issues, and
     // the shape of any post-fetch "load these specific rows I already hold ids for" join.
     // Treated the same as a bare `{ _id: <ObjectId> }`: the caller must already possess the
     // ids (which came from a row it was itself allowed to read), so it cannot widen tenancy.
@@ -75,7 +75,7 @@ const isFindByIdFilter = (filter: Record<string, unknown>): boolean => {
 }
 
 /**
- * SEC-60: a sole `{ _id: <string> }` filter whose value is not a valid ObjectId — i.e.
+ * SEC-60: a sole `{ _id: <string> }` filter whose value is not a valid ObjectId - i.e.
  * `Model.findById('<garbage from a path param>')` on a guarded model. That is malformed client
  * input, not an unscoped-query bug, so `assertQueryIsScoped` reports it as a 400 rather than the
  * 500 the RLS guard would otherwise raise (or the CastError Mongoose would raise on a non-guarded
@@ -125,7 +125,7 @@ export const filterHasOwnershipScope = (
     }
 
     if ('$or' in scopedFilter && Array.isArray(scopedFilter.$or)) {
-        // SEC-63: mirror the plain `workspaceId` branch above — a top-level `workspaceId` is only
+        // SEC-63: mirror the plain `workspaceId` branch above - a top-level `workspaceId` is only
         // a tenancy key when the model opts into workspace scoping.
         const hasTopLevelUserScope =
             'userId' in scopedFilter ||

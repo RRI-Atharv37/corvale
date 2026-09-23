@@ -233,7 +233,7 @@ export const createBackupZipStream = async (
 
     // SEC-53: read every receipt from the configured storage driver. Under
     // RECEIPT_STORAGE_DRIVER=s3 there is no local copy, so the export must fetch the bytes
-    // from object storage — and fail loudly rather than ship a ZIP that looks complete but
+    // from object storage - and fail loudly rather than ship a ZIP that looks complete but
     // silently omits every receipt (the `privacy.md` export promise).
     const fromObjectStorage = isObjectStorageConfigured()
 

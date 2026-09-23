@@ -32,11 +32,11 @@ export interface TombstonePurgeResult {
 /**
  * Permanently removes tombstones (deletedAt set) older than the retention
  * window. Runs outside any RLS context (a cron/CLI job, not a request), so
- * it intentionally bypasses per-user scoping — it purges across all users by
+ * it intentionally bypasses per-user scoping - it purges across all users by
  * design, the same way the RLS plugin already treats un-scoped code paths
  * that never enter runWithRlsContext.
  *
- * SEC-54: a non-positive / non-finite retention window is rejected outright — `0` would
+ * SEC-54: a non-positive / non-finite retention window is rejected outright - `0` would
  * permanently purge every tombstone for every user. `dryRun` counts the matching rows
  * without deleting anything.
  */

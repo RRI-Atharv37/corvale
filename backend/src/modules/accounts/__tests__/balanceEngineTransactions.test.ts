@@ -13,9 +13,9 @@ import { authHeader, registerUser } from '@tests/helpers'
  * `Expense` collections, so both are `0` for every user who only ever used
  * the unified `Transaction` model (i.e. every user created after the
  * Phase 1c migration). The fix must source these totals from posted,
- * non-draft, non-split-child `Transaction` rows instead — mirroring the
+ * non-draft, non-split-child `Transaction` rows instead - mirroring the
  * exclusions `sumPostedTransactionsByType` (dashboardUtils.ts) already
- * applies for the period-scoped dashboard summary — while leaving the
+ * applies for the period-scoped dashboard summary - while leaving the
  * legacy collections readable (for the migration script) but out of the
  * balance engine entirely.
  *
@@ -140,7 +140,7 @@ describe('Balance engine reads lifetime totals from Transaction, not legacy Inco
         expect(res.body.data.data.totalExpenses).toBe(100)
     })
 
-    it('scopes totals per user — one user\'s transactions do not leak into another\'s totals', async () => {
+    it('scopes totals per user - one user\'s transactions do not leak into another\'s totals', async () => {
         const { token: tokenA } = await registerUser(app, { email: 'balance-c1-e@example.com' })
         const { token: tokenB } = await registerUser(app, { email: 'balance-c1-f@example.com' })
 

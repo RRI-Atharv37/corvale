@@ -8,7 +8,7 @@ import { authHeader, registerUser } from '@tests/helpers'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 /**
- * S35d — malformed client input must be a 4xx, never a 500 (no stack, no false Sentry incident).
+ * S35d - malformed client input must be a 4xx, never a 500 (no stack, no false Sentry incident).
  *   SEC-56: a malformed sync checkpoint.
  *   SEC-60: a malformed ObjectId in a path param.
  */
@@ -16,7 +16,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 const encodeCheckpoint = (obj: unknown): string =>
     Buffer.from(JSON.stringify(obj)).toString('base64url')
 
-describe('SEC-56 — malformed sync checkpoint → 400', () => {
+describe('SEC-56 - malformed sync checkpoint → 400', () => {
     it('rejects a checkpoint that is not valid base64url/JSON', async () => {
         const app = createApp()
         const { token } = await registerUser(app)
@@ -62,7 +62,7 @@ describe('SEC-56 — malformed sync checkpoint → 400', () => {
     })
 })
 
-describe('SEC-60 — malformed ObjectId path param → 4xx, not 500', () => {
+describe('SEC-60 - malformed ObjectId path param → 4xx, not 500', () => {
     it('validateResourceAccess collapses a non-ObjectId id into the not-found response (404)', async () => {
         const app = createApp()
         const { token } = await registerUser(app)
@@ -83,7 +83,7 @@ describe('SEC-60 — malformed ObjectId path param → 4xx, not 500', () => {
         const app = createApp()
         const { token } = await registerUser(app)
 
-        // getTagById → validateUserTag → Tag.findById(<bad id>) — no pre-validation there, so the
+        // getTagById → validateUserTag → Tag.findById(<bad id>) - no pre-validation there, so the
         // Mongoose CastError has to be caught centrally.
         const res = await request(app)
             .get('/api/v1/tags/not-a-valid-object-id')

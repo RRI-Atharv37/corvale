@@ -529,7 +529,7 @@ export const buildTransactionSort = (
  * sub-pipeline is scoped to the caller's own categories plus the shared masters and projects
  * `name` alone, so a co-member's personal category cannot leak through the joined document.
  * Callers must also drop `category` from the response with a trailing `{ $project: { category: 0 } }`
- * (it is not part of the transaction response contract — the non-sorted path returns only
+ * (it is not part of the transaction response contract - the non-sorted path returns only
  * `categoryId`) and set `.option({ [RLS_ALLOW_LOOKUP]: true })` so the RLS guard admits the join.
  */
 export const buildCategorySortLookupStages = (userId: string): PipelineStage[] => [
@@ -587,7 +587,7 @@ export const CSV_HEADERS = [
 export const escapeCsvValue = (value: string): string => {
     // Formula-injection neutralization (SEC-17, SEC-29): a leading =/+/-/@/tab/CR is prefixed
     // with a single quote so spreadsheet software does not evaluate it. Applied at the start of
-    // every embedded line too — a newline inside an RFC-4180-quoted field still renders as a
+    // every embedded line too - a newline inside an RFC-4180-quoted field still renders as a
     // physical line break, so a description like "legit\n=cmd|calc" would otherwise put a
     // formula at the start of a visible row.
     const neutralized = value.replace(/(^|\r\n|\r|\n)([=+\-@\t\r])/g, "$1'$2")

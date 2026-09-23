@@ -85,7 +85,7 @@ const DeleteAccountSettings: React.FC = () => {
                 <div className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
                     <p className="text-sm text-text-primary">
                         Deleting your account permanently erases your transactions, accounts, budgets, and
-                        every other record tied to it. Export your data first if you want a copy — this
+                        every other record tied to it. Export your data first if you want a copy - this
                         cannot be undone.
                     </p>
                     {impact && impact.retainedRecordCount > 0 && (

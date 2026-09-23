@@ -17,12 +17,10 @@ beforeEach(() => {
 const renderPricing = (signedIn = false) => renderWithUser(<PricingPage />, { signedIn, route: '/pricing' })
 
 describe('PricingPage', () => {
-    it('lists both plans with monthly prices first', async () => {
+    it('lists the plan with its monthly price first', async () => {
         renderPricing()
 
-        expect(await screen.findByRole('heading', { name: 'Plus' })).toBeInTheDocument()
-        expect(screen.getByRole('heading', { name: 'Pro' })).toBeInTheDocument()
-        expect(screen.getByText('$6')).toBeInTheDocument()
+        expect(await screen.findByRole('heading', { name: 'Pro' })).toBeInTheDocument()
         expect(screen.getByText('$12')).toBeInTheDocument()
     })
 
@@ -33,21 +31,16 @@ describe('PricingPage', () => {
 
         await user.click(screen.getByRole('radio', { name: /annual/i }))
 
-        expect(screen.getByText('$60')).toBeInTheDocument()
         expect(screen.getByText('$96')).toBeInTheDocument()
         expect(screen.getByText(/save 33%/i)).toBeInTheDocument()
     })
 
-    it('shows what each plan includes and does not include', async () => {
+    it('shows what the plan includes', async () => {
         renderPricing()
         await screen.findByRole('heading', { name: 'Pro' })
 
-        const plusCard = screen.getByRole('heading', { name: 'Plus' }).closest('article') as HTMLElement
         const proCard = screen.getByRole('heading', { name: 'Pro' }).closest('article') as HTMLElement
 
-        expect(plusCard).toHaveTextContent('1 GB')
-        expect(plusCard).toHaveTextContent('1 device')
-        expect(plusCard).toHaveTextContent(/workspaces.*not included/i)
         expect(proCard).toHaveTextContent('10 GB')
         expect(proCard).toHaveTextContent(/unlimited devices/i)
         expect(proCard).not.toHaveTextContent(/workspaces.*not included/i)

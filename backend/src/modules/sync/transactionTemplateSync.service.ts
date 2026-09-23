@@ -13,7 +13,7 @@ import { validateResourceAccess } from "@modules/workspaces/access";
 /**
  * `parseTemplateAmount` expects a REST body's major-unit decimal and
  * converts it to minor units itself. Sync payloads carry `amount` already in
- * minor units (the local SQLite/TransactionTemplate schema convention) —
+ * minor units (the local SQLite/TransactionTemplate schema convention) -
  * mirrors the `transaction.create` conversion already in
  * `syncController.ts`'s `applyCreateOp`, applied here for the same reason.
  */
@@ -25,7 +25,7 @@ const toMajorAmount = (value: unknown): unknown => (typeof value === 'number' ? 
  * updateTransactionTemplate/deleteTransactionTemplate exactly. Real
  * `deletedAt` soft-delete, so delete tombstones unconditionally.
  * applyTransactionTemplate stays REST-only (creates a transaction as a side
- * effect — not a raw field edit on the template itself).
+ * effect - not a raw field edit on the template itself).
  */
 
 const validateUserTemplateForOp = async (

@@ -7,12 +7,12 @@ import { logPasswordResetLink } from "@modules/auth/passwordResetUtils";
 import { logEmailVerificationLink } from "@modules/auth/emailVerificationUtils";
 
 /**
- * Acceptance spec for SEC-69 (S34): password-reset and email-verification URLs — which carry a
- * raw account-takeover token — must never be logged unless an operator explicitly opts in with
+ * Acceptance spec for SEC-69 (S34): password-reset and email-verification URLs - which carry a
+ * raw account-takeover token - must never be logged unless an operator explicitly opts in with
  * `MAIL_DEV_LOG=true`, and the token must be redacted from the logged URL regardless.
  *
  * Before S34 the guard was `NODE_ENV !== 'production'`, and `.env.example` ships
- * `NODE_ENV=development` — so any deployment that forgot to set `NODE_ENV` logged working
+ * `NODE_ENV=development` - so any deployment that forgot to set `NODE_ENV` logged working
  * takeover tokens straight into the container log driver. Fail-open by default.
  */
 
@@ -114,7 +114,7 @@ describe('logPasswordResetLink / logEmailVerificationLink (SEC-69, S34)', () => 
     })
 })
 
-describe('POST /auth/password-reset/request — no token in logs (SEC-69, S34)', () => {
+describe('POST /auth/password-reset/request - no token in logs (SEC-69, S34)', () => {
     const originalDevLog = process.env.MAIL_DEV_LOG
     const originalSmtpHost = process.env.SMTP_HOST
 

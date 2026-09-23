@@ -77,7 +77,7 @@ interface SyncableRow extends LocalDbRow {
  * Columns promoted out of `data` per table (see `sql/0001_init.sql` and
  * `sql/0002_local_domain_entities.sql`), by the same field name the server
  * document uses. Several of these are `NOT NULL` with no default (e.g.
- * `accounts.userId`), so `upsertFromServer` must populate them explicitly —
+ * `accounts.userId`), so `upsertFromServer` must populate them explicitly -
  * inserting only the metadata columns fails the very first real seed.
  */
 const PROMOTED_COLUMNS: Record<SyncableTableName, readonly string[]> = {

@@ -42,7 +42,7 @@ const QIF = [
     '^',
 ].join('\n')
 
-describe('BUG-23 — QIF parser and QFX detection', () => {
+describe('BUG-23 - QIF parser and QFX detection', () => {
     it('isQifContent recognises a !Type: header', () => {
         expect(isQifContent(QIF)).toBe(true)
         expect(isQifContent('Date,Amount\n2026-01-01,5')).toBe(false)

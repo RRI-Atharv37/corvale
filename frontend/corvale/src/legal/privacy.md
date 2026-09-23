@@ -1,6 +1,6 @@
 **Effective date:** 2026-09-01 · **Version:** 2026-09-01
 
-## Scope — what this policy covers
+## Scope - what this policy covers
 
 This policy covers **the hosted Corvale service** operated by Atharv Dewangan at
 corvale.app.
@@ -12,7 +12,7 @@ them. Ask them for their own policy.
 
 ## The short version
 
-We collect very little **about** you — a name, an email address, a few preferences. There is no
+We collect very little **about** you - a name, an email address, a few preferences. There is no
 bank connection, no analytics, no advertising, and no profiling.
 
 But the information you choose to **put into** Corvale is your financial life: what you earn, what
@@ -28,12 +28,12 @@ Under India's Digital Personal Data Protection Act 2023 we act as the **data fid
 personal data described below. That is the framework this policy is built on.
 
 The service is operated from India, but **your data is hosted and stored in the United States**,
-on Google Cloud infrastructure in South Carolina — that is where the application servers, the
+on Google Cloud infrastructure in South Carolina - that is where the application servers, the
 database and the backups run. [Where your data goes](#where-your-data-goes) explains this and the
 legal basis for it.
 
 You are welcome to use Corvale from anywhere, with one exception: **we do not offer it in the
-European Economic Area or the UK, and we have not appointed a representative there** — see
+European Economic Area or the UK, and we have not appointed a representative there** - see
 [If you are in the EEA or the UK](#if-you-are-in-the-eea-or-the-uk) for what that means and what
 you can still ask of us.
 
@@ -71,7 +71,7 @@ a document has changed materially enough to ask you to read it again.
 
 These are **not** consent records for optional processing, and we do not treat them as one. Where
 something we do actually depends on your consent, that is described where the consent is asked
-for, and it can be withdrawn separately — see [Your rights](#your-rights).
+for, and it can be withdrawn separately - see [Your rights](#your-rights).
 
 ### The financial information you enter
 
@@ -82,7 +82,7 @@ saved reports, and workspaces you create or join.
 **You enter all of this yourself.** Corvale has no bank connection and never retrieves data from
 your bank or any other financial institution.
 
-This is the most sensitive category of information in the service. It is not "just numbers" — a
+This is the most sensitive category of information in the service. It is not "just numbers" - a
 transaction history describes where you go, what you buy, who you pay and what you owe.
 
 ### People you invite to a workspace
@@ -101,7 +101,7 @@ remaining members, and you lose access to them.
 If you **delete your account**, those records are kept but the link to you is severed: they remain
 in the workspace so the other members' balances and history stay correct, and they stop being
 connected to your account or attributed to you. We do this because a shared ledger is not only
-your data — the other members relied on those entries — while severing the link means the record
+your data - the other members relied on those entries - while severing the link means the record
 no longer identifies you. If no other member is left in the workspace, the records are erased with
 the rest of your account. Receipts are always deleted outright, wherever they were attached,
 because a receipt image can carry personal information that anonymising a record would not remove.
@@ -135,7 +135,7 @@ records, and avoid uploading information about other people that serves no purpo
 - When server error reporting is switched on, an unexpected server failure is sent to our
   error-tracking provider as the error message, its stack trace, and the request's method and
   path. We do not attach your IP address, your request body, or your records to those reports.
-  Ordinary errors — a validation failure, a wrong password, a page that does not exist — are
+  Ordinary errors - a validation failure, a wrong password, a page that does not exist - are
   never reported. A stack trace is produced by the failure itself, so we cannot rule out that an
   identifier such as a record ID appears inside one; we configure the reporting to send as little
   as it can, and we do not use these reports to look at anyone's data.
@@ -153,7 +153,7 @@ those releases. It sends nothing about you or your records.
 
 ### The devices you sync from
 
-Each copy of Corvale you use — a browser tab, the installed web app, the desktop app — makes up a
+Each copy of Corvale you use - a browser tab, the installed web app, the desktop app - makes up a
 random device ID the first time it runs and keeps it on that device. When it syncs it sends that
 ID, and one of three labels (desktop app, web browser or installed web app), so we can tell your
 copies apart. Against your account we keep the ID, the label, when the device first and last
@@ -161,7 +161,7 @@ synced, and a name only if you choose to give it one.
 
 We use this for two things: to apply any limit your plan puts on how many devices can upload
 changes, and to show you your devices in your billing settings so you can rename one or remove it.
-Removing a device deletes that record and nothing else — your records are not touched, and a
+Removing a device deletes that record and nothing else - your records are not touched, and a
 device that syncs again is simply added back. These records are erased with the rest of your
 account when you delete it.
 
@@ -178,7 +178,7 @@ We think this list matters as much as the one above.
 - **No analytics.** No page-view tracking, no product analytics, no session recording.
 - **No advertising or third-party trackers.** Corvale does not carry any.
 - **No device fingerprinting.**
-- **No externally hosted fonts, and no third-party scripts** — with one exception: when the signup
+- **No externally hosted fonts, and no third-party scripts** - with one exception: when the signup
   captcha is switched on, hCaptcha's script loads on the signup page only. Everything else the app
   loads comes from our own servers, so no third party learns that you visited.
 - **No date of birth.** We ask only whether you are 18 or older, and store just that answer.
@@ -197,21 +197,21 @@ In every case: we collect only what the features you use actually require, and u
 the purposes listed here. **We do not sell your data. We do not share it for advertising. We do
 not use it to train machine learning models. We do not profile you.**
 
-### India — under the DPDP Act 2023
+### India - under the DPDP Act 2023
 
 Under the DPDP Act we process personal data for lawful purposes, on the basis of your consent or
 of a legitimate use permitted by the Act, and only for the purpose the data was given for.
 
 | What we use it for | Basis |
 | --- | --- |
-| Creating your account and running the service — storing and showing you your own records | The purpose for which you gave us the data when you signed up and as you use the app |
+| Creating your account and running the service - storing and showing you your own records | The purpose for which you gave us the data when you signed up and as you use the app |
 | Signing you in and keeping your session alive | Same |
 | Sending password-reset and email-verification messages | Same |
 | Rate limiting, abuse prevention, and security monitoring | Necessary to operate the service securely and to prevent misuse |
 | Diagnosing server errors | Necessary to keep the service working |
 | Keeping the account, terms and age records described above | Necessary to administer your account and to evidence the terms it was created under |
 
-You can withdraw at any time by deleting your account, which stops all of it — see
+You can withdraw at any time by deleting your account, which stops all of it - see
 [Your rights](#your-rights) for what withdrawal means in practice and what happens to processing
 we are separately required to carry out.
 
@@ -224,7 +224,7 @@ use of the service, these are the lawful bases we would rely on.
 
 | What we use it for | Lawful basis |
 | --- | --- |
-| Running the service — storing and showing you your own records | Performance of our contract with you (Art. 6(1)(b)) |
+| Running the service - storing and showing you your own records | Performance of our contract with you (Art. 6(1)(b)) |
 | Signing you in and keeping your session alive | Performance of our contract |
 | Sending password-reset and email-verification messages | Performance of our contract |
 | Rate limiting, abuse prevention, and security monitoring | Our legitimate interests in keeping the service safe (Art. 6(1)(f)) |
@@ -271,7 +271,7 @@ purposes.
 The service is operated from India by an India-based data fiduciary, **but your data itself is
 stored and processed in the United States.** Google Cloud runs the application servers, the
 database and the backups from a region in South Carolina, and that is where your account and your
-records live. A few other sub-processors also operate in the United States — the table above says
+records live. A few other sub-processors also operate in the United States - the table above says
 which.
 
 This is a deliberate arrangement, so two things follow from it.
@@ -310,8 +310,8 @@ Nothing here is an attempt to contract out of a law that applies. If the GDPR do
 despite the above, it applies whatever this page says, and we would rather tell you where we stand
 than quietly leave the question open.
 
-**What you can ask of us regardless.** The rights in [Your rights](#your-rights) — export,
-correction, deletion, and the rest — are not conditional on where you live. Everyone gets the same
+**What you can ask of us regardless.** The rights in [Your rights](#your-rights) - export,
+correction, deletion, and the rest - are not conditional on where you live. Everyone gets the same
 in-app tools and the same grievance route, and we answer requests from anywhere within the window
 stated above. If you believe a supervisory authority in your country has jurisdiction over us, you
 are free to complain to it.
@@ -322,7 +322,7 @@ and you can export everything and delete your account at any time.
 ## How long we keep it
 
 - **Your account and everything in it:** for as long as your account exists. When you delete your
-  account it is erased from the live service immediately — see below.
+  account it is erased from the live service immediately - see below.
 - **Login sessions:** refresh tokens expire on their own, by default after 7 days.
 - **Rate-limit counters:** expire automatically, within minutes.
 - **Deleted records:** Corvale keeps a short-lived marker so the deletion syncs to your other
@@ -380,10 +380,10 @@ You can:
   do so yourself. Email privacy@corvale.app to record a nomination.
 - **Complain.** Contact our Grievance Officer using the details above. In India, if you are not
   satisfied with our response, you may complain to the Data Protection Board of India. If a data
-  protection authority elsewhere has jurisdiction over you, you are free to complain to it — see
+  protection authority elsewhere has jurisdiction over you, you are free to complain to it - see
   [If you are in the EEA or the UK](#if-you-are-in-the-eea-or-the-uk) for our position on that.
 
-Use the in-app tools first — they are immediate and need no request. If you would rather we
+Use the in-app tools first - they are immediate and need no request. If you would rather we
 handled it, email privacy@corvale.app and we will respond within 30 days.
 
 We may need to confirm who you are before acting on a request, so that nobody else can use these
@@ -391,13 +391,13 @@ rights against your account.
 
 ## If you are in the United States
 
-You are welcome to use Corvale. We are not a US business — the service is operated from India —
+You are welcome to use Corvale. We are not a US business - the service is operated from India -
 but your data is stored in the United States on Google Cloud infrastructure. See
 [Where your data goes](#where-your-data-goes).
 
 We do not sell your personal information, and we do not share it for cross-context behavioural
 advertising or targeted advertising. We have never done either, and there is nothing to opt out
-of — no "Do Not Sell or Share My Personal Information" mechanism is required, because no such
+of - no "Do Not Sell or Share My Personal Information" mechanism is required, because no such
 sale or sharing happens.
 
 We do not use your information for automated decision-making or profiling. State privacy laws
@@ -406,7 +406,7 @@ the tools in [Your rights](#your-rights) provide all of them to everyone, whatev
 in, and we do not discriminate against anyone for exercising them.
 
 Corvale is not a bank, lender, broker, or payment service, and it has no connection to your
-financial accounts — see [Corvale never moves money](./terms.md) in the Terms.
+financial accounts - see [Corvale never moves money](./terms.md) in the Terms.
 
 ## Age requirement
 
@@ -428,7 +428,7 @@ that licence grants.
 ## If something goes wrong
 
 If we become aware of a personal data breach, we will assess it and respond in accordance with
-applicable law — including notifying the Data Protection Board of India and affected Data
+applicable law - including notifying the Data Protection Board of India and affected Data
 Principals where required, and, where the GDPR applies, the relevant supervisory authority and
 affected individuals within the timeframes it sets.
 

@@ -9,7 +9,7 @@ import RateLimitCounter from './rateLimitCounter.model'
  *
  * `prefix` namespaces keys per logical limiter (e.g. "auth-login", "global") so
  * limiters that key on the same client (typically an IP) don't share a counter with each
- * other — mirroring how separate `MemoryStore` instances never did before this change.
+ * other - mirroring how separate `MemoryStore` instances never did before this change.
  *
  * `increment` uses a single atomic aggregation-pipeline update rather than a read-then-write,
  * so two concurrent requests from the same client can't race past the actual limit.

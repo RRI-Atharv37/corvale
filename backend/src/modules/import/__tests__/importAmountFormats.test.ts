@@ -5,7 +5,7 @@ import { authHeader, seedUserDirectly } from '@tests/helpers'
 import { mapCsvRows } from "@modules/import/csvImportUtils";
 
 /**
- * BUG-20 — amount parsing stripped only `$` and commas, so a non-`$` currency symbol failed the
+ * BUG-20 - amount parsing stripped only `$` and commas, so a non-`$` currency symbol failed the
  * row and a European-formatted number (`.` thousands, `,` decimal) was silently misread by up to
  * 1000x (`1.234,56` → `1.23456`). The fix routes the signed-amount column and the debit/credit
  * columns through a shared `parseImportAmount` that strips any surrounding symbol/code and infers
@@ -25,7 +25,7 @@ const mapAmounts = (amountCells: string[]) =>
         { date: 'Date', description: 'Description', amount: 'Amount' }
     )
 
-describe('csvImport amount formats (BUG-20) — mapCsvRows unit', () => {
+describe('csvImport amount formats (BUG-20) - mapCsvRows unit', () => {
     it('still strips a leading $, thousands commas and parens/sign (unchanged US behaviour)', () => {
         const { rows, errors } = mapAmounts(['$1,250.00', '-$40.00', '(40.00)', '2000'])
         expect(errors).toHaveLength(0)
@@ -108,7 +108,7 @@ describe('csvImport amount formats (BUG-20) — mapCsvRows unit', () => {
     })
 })
 
-describe('POST /imports/preview + /imports/commit — locale amount passthrough', () => {
+describe('POST /imports/preview + /imports/commit - locale amount passthrough', () => {
     async function createAccount(token: string) {
         const res = await request(app)
             .post('/api/v1/accounts')

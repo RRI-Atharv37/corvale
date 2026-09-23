@@ -13,7 +13,7 @@ node_modules/
 uploads/
 
 # Local-only planning docs (ROADMAP, TODO, TODO.completed, BUGS, SECURITY, BRD,
-# T4_TEST_PLAN, devtest) — not part of the published repo
+# T4_TEST_PLAN, devtest) - not part of the published repo
 /.project/
 
 # Other local-only working docs kept at the repo root
@@ -24,3 +24,5 @@ track-m-notes.html
 docker-compose.override.yml
 /.cursor
 /.claude
+
+/frontend/corvale/src/compare/

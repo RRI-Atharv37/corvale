@@ -65,7 +65,7 @@ Response: `{ imported, merged, skipped, transactionIds, mergedTransactionIds, su
 
 A row matches an existing posted transaction on the target account when **either**:
 
-- the row has an `externalId` (OFX `FITID`) equal to the existing transaction's `externalId` — an exact match, checked first; or
+- the row has an `externalId` (OFX `FITID`) equal to the existing transaction's `externalId` - an exact match, checked first; or
 - the fuzzy fingerprint agrees: date, direction (`income`/`expense`), minor-unit amount, and a normalized (lowercased, punctuation-stripped) description.
 
 Imported OFX rows persist their `FITID` to `Transaction.externalId`, so a later re-import of the same statement dedupes reliably even if the bank changed the payee text.

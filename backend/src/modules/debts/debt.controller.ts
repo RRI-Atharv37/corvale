@@ -40,7 +40,7 @@ const buildDebtInput = (account: IAccount): DebtInput => {
     }
 
     // account.currentBalance is already minor units for a migrated (balanceUnit: 'minor')
-    // account (Sprint C5) — converting it again here would double-scale by 100x.
+    // account (Sprint C5) - converting it again here would double-scale by 100x.
     const balanceMinor =
         account.balanceUnit === 'minor'
             ? Math.abs(account.currentBalance)

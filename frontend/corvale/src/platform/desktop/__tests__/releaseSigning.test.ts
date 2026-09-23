@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
  * `src-tauri/tauri.conf.json` today ships `plugins.updater.pubkey` as the literal placeholder
  * `"REPLACE_WITH_KEY_FROM_TAURI_SIGNER_GENERATE"` with the updater `active: true` and pointed at
  * a live GitHub Releases URL, `bundle.windows` has no certificate configuration, and
- * `bundle.macOS` doesn't exist. SEC-05 calls this a hard blocker on distributing any `.exe` —
+ * `bundle.macOS` doesn't exist. SEC-05 calls this a hard blocker on distributing any `.exe` -
  * Tauri refuses to install an update it can't verify, so this fails closed, but it also means
  * the update path is currently non-functional and the installer itself is unsigned.
  *
@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest'
  *   - macOS signing + notarization configured under `bundle.macOS`
  *   - a release workflow that publishes checksums alongside built artifacts
  *
- * It is expected to fail until D1 lands — that is the point of a test-first acceptance spec.
+ * It is expected to fail until D1 lands - that is the point of a test-first acceptance spec.
  */
 
 const testDir = dirname(fileURLToPath(import.meta.url))

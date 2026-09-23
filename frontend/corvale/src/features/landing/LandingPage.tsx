@@ -7,7 +7,14 @@ import { AUTHOR, BRAND, PAIN_POINTS, FEATURES, STEPS } from '@lib/brand'
 import ExternalLink from '@ui/ExternalLink'
 import { LEGAL_DOCUMENTS } from '@/legal'
 
+// Public by design (M9): a shared, read-only demo account. Unset on a self-hosted build with no
+// demo account seeded, which hides the entry point rather than linking to credentials that don't
+// exist. Read fresh (not module-scoped) so it reflects the env at render time in tests.
+const isDemoLoginEnabled = (): boolean =>
+    Boolean(import.meta.env.VITE_DEMO_EMAIL && import.meta.env.VITE_DEMO_PASSWORD)
+
 const Landing: React.FC = () => {
+    const demoLoginEnabled = isDemoLoginEnabled()
     return (
         <div className="min-h-screen bg-page text-text-primary">
             {/* Floating pill nav */}
@@ -29,7 +36,7 @@ const Landing: React.FC = () => {
             </header>
 
             <main>
-                {/* ATTENTION — hero */}
+                {/* ATTENTION - hero */}
                 <section className="relative overflow-hidden px-4 pt-10 pb-20 sm:px-6 sm:pt-16 sm:pb-28">
                     <div className="landing-glow pointer-events-none absolute inset-0" aria-hidden="true" />
                     <div className="landing-hero-glow pointer-events-none absolute inset-x-0 top-0 h-[480px]" aria-hidden="true" />
@@ -44,8 +51,8 @@ const Landing: React.FC = () => {
                                     <span className="text-gradient-accent">.</span>
                                 </h1>
                                 <p className="mt-5 max-w-lg text-lg text-text-secondary leading-relaxed">
-                                    {BRAND.adHook} {BRAND.name} shows you where your money actually goes — before rent
-                                    week turns into panic.
+                                    {BRAND.adHook} {BRAND.name} tracks every transaction on your terms - works with no
+                                    connection at all, and you can walk away with your data any time.
                                 </p>
 
                                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -58,7 +65,7 @@ const Landing: React.FC = () => {
                                 </div>
 
                                 <p className="mt-6 text-xs text-text-muted-bright">
-                                    Free to start · No credit card · Built for irregular income
+                                    Free to start · No credit card · Works offline from day one
                                 </p>
 
                                 <p className="mt-3 text-xs text-text-muted-bright">
@@ -67,6 +74,15 @@ const Landing: React.FC = () => {
                                         Get the desktop app
                                     </Link>
                                 </p>
+
+                                {demoLoginEnabled && (
+                                    <p className="mt-1 text-xs text-text-muted-bright">
+                                        Not ready to sign up?{' '}
+                                        <Link to="/login?demo=1" className="font-semibold text-accent hover:underline">
+                                            View the demo
+                                        </Link>
+                                    </p>
+                                )}
                             </div>
 
                             <div className="animate-fade-up lg:animate-none" style={{ animationDelay: '0.1s' }}>
@@ -78,16 +94,16 @@ const Landing: React.FC = () => {
 
                 <LedgerPulse variant="wide" className="max-w-4xl mx-auto opacity-60" />
 
-                {/* PAIN — agitate with consequences */}
+                {/* PAIN - agitate with consequences */}
                 <section className="border-t border-border-subtle bg-bg-secondary/50 px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-6xl">
                         <p className="section-label">The problem</p>
                         <h2 className="font-display mt-3 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-                            Money leaves quietly. The stress doesn&apos;t.
+                            Your financial history shouldn&apos;t depend on someone else&apos;s company.
                         </h2>
                         <p className="mt-4 max-w-2xl text-text-secondary leading-relaxed">
-                            You&apos;re not bad with money. You&apos;re flying blind — and the cost isn&apos;t just
-                            dollars. It&apos;s the overdraft fee, the plan you skip, the sleep you lose before rent.
+                            Cloud budgeting apps get acquired, change their pricing, or shut down and take your
+                            history with them. Most of them also want your real bank login just to draw a chart.
                         </p>
 
                         <div className="mt-12 grid gap-4 md:grid-cols-2">
@@ -114,22 +130,23 @@ const Landing: React.FC = () => {
                     </div>
                 </section>
 
-                {/* RESONATE — mirror their inner voice */}
+                {/* RESONATE - mirror their inner voice */}
                 <section className="px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="section-label">Sound familiar?</p>
                         <blockquote className="font-display mt-6 text-2xl sm:text-3xl font-semibold leading-snug text-text-primary text-balance">
-                            &ldquo;I make enough. I just don&apos;t know where it goes. And every month I promise
-                            myself I&apos;ll figure it out — then I don&apos;t.&rdquo;
+                            &ldquo;I don&apos;t want another app with my bank password in it. I just want to know
+                            where my money went - without handing my whole financial life to someone else&apos;s
+                            server.&rdquo;
                         </blockquote>
                         <p className="mt-6 text-text-secondary">
-                            That&apos;s not a discipline problem. It&apos;s a visibility problem. And visibility is
-                            fixable.
+                            That&apos;s a reasonable line to draw. Corvale draws it for you - by design, not as a
+                            privacy policy promise.
                         </p>
                     </div>
                 </section>
 
-                {/* EDUCATE — who, how, simplify into steps */}
+                {/* EDUCATE - who, how, simplify into steps */}
                 <section id="how-it-works" className="border-t border-border-subtle bg-bg-secondary/50 px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-6xl">
                         <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
@@ -139,21 +156,21 @@ const Landing: React.FC = () => {
                                     Who {BRAND.name} is for
                                 </h2>
                                 <p className="mt-4 text-text-secondary leading-relaxed">
-                                    {BRAND.audience}. Part-time jobs, side gigs, student loans, split rent — your
-                                    income isn&apos;t a neat salary, and your tools shouldn&apos;t assume one.
+                                    {BRAND.audience}. If you&apos;ve ever hesitated before typing a bank password
+                                    into a budgeting app, {BRAND.name} was built for that hesitation.
                                 </p>
                                 <ul className="mt-6 space-y-3 text-sm text-text-secondary">
                                     <li className="flex gap-3">
                                         <span className="text-accent shrink-0">→</span>
-                                        You check your balance and feel a punch you can&apos;t explain
+                                        You don&apos;t want a bank login stored in yet another app
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="text-accent shrink-0">→</span>
-                                        You&apos;ve tried spreadsheets or apps and stopped within a month
+                                        You&apos;ve watched a &ldquo;free&rdquo; finance app get acquired or shut down
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="text-accent shrink-0">→</span>
-                                        You want to save for something real, not just &ldquo;be better with money&rdquo;
+                                        You want the option to self-host, even if you never actually do
                                     </li>
                                 </ul>
                             </div>
@@ -165,7 +182,7 @@ const Landing: React.FC = () => {
                                 </h2>
                                 <p className="mt-4 text-text-secondary leading-relaxed">
                                     {BRAND.name} replaces the mental math. Log what you spend, set limits that match
-                                    your life, and check a dashboard that tells the truth — not the story you tell
+                                    your life, and check a dashboard that tells the truth - not the story you tell
                                     yourself.
                                 </p>
                                 <div className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -183,7 +200,7 @@ const Landing: React.FC = () => {
                     </div>
                 </section>
 
-                {/* INTEREST + DESIRE — what the product offers */}
+                {/* INTEREST + DESIRE - what the product offers */}
                 <section className="px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-6xl">
                         <p className="section-label">What you get</p>
@@ -191,7 +208,7 @@ const Landing: React.FC = () => {
                             Everything to stop guessing
                         </h2>
                         <p className="mt-4 max-w-2xl text-text-secondary">
-                            {BRAND.tagline} Track transactions, set budgets, hit savings goals, and pull reports —
+                            {BRAND.tagline} Track transactions, set budgets, hit savings goals, and pull reports -
                             without learning accounting.
                         </p>
 
@@ -216,7 +233,24 @@ const Landing: React.FC = () => {
                     </div>
                 </section>
 
-                {/* OFFER + ACTION — final CTA with urgency */}
+                {/* Pricing teaser - links out to the full plan comparison */}
+                <section className="border-t border-border-subtle bg-bg-secondary/50 px-4 py-16 sm:px-6">
+                    <div className="mx-auto flex max-w-4xl flex-col items-center gap-5 text-center">
+                        <p className="section-label">Pricing</p>
+                        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+                            Free to start. Simple plans if you outgrow it.
+                        </h2>
+                        <p className="max-w-xl text-text-secondary leading-relaxed">
+                            Every plan exports your data on demand - even if you cancel. Self-hosting it yourself
+                            costs nothing at all.
+                        </p>
+                        <Link to="/pricing" className="btn-secondary sm:w-auto">
+                            See pricing
+                        </Link>
+                    </div>
+                </section>
+
+                {/* OFFER + ACTION - final CTA with urgency */}
                 <section className="relative px-4 py-24 sm:px-6 overflow-hidden">
                     <div
                         className="pointer-events-none absolute inset-0"
@@ -232,7 +266,7 @@ const Landing: React.FC = () => {
                             <span className="text-gradient-accent">.</span>
                         </h2>
                         <p className="mt-4 text-lg text-text-secondary">
-                            {BRAND.tagline} Join free — no credit card, no lecture about lattes.
+                            {BRAND.tagline} Join free - no credit card, no lecture about lattes.
                         </p>
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
                             <Link to="/signup" className="btn-primary sm:w-auto sm:min-w-[220px]">

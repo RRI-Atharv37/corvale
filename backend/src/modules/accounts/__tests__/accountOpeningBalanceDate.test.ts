@@ -7,7 +7,7 @@ import { authHeader, seedUserDirectly } from '@tests/helpers'
 /**
  * Option 1 ("balance as of a date"): an account's openingBalance is stated as of
  * openingBalanceDate. Transactions dated before that instant are informational
- * only — they must never move currentBalance, whether applied incrementally on
+ * only - they must never move currentBalance, whether applied incrementally on
  * write or via a from-scratch recompute. Absent openingBalanceDate keeps the
  * legacy behavior (every transaction counts).
  */

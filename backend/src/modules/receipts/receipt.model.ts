@@ -26,7 +26,7 @@ const ReceiptSchema = new Schema<IReceipt>(
             required: true,
             trim: true,
             // Second line of defence behind the sniff-and-store logic in the upload and
-            // restore paths (SEC-28) — the DB itself refuses a type outside the allowlist.
+            // restore paths (SEC-28) - the DB itself refuses a type outside the allowlist.
             enum: [...RECEIPT_ALLOWED_MIME_TYPES],
         },
         size: { type: Number, required: true, min: 0 },

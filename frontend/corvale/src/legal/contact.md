@@ -1,7 +1,7 @@
 **Last updated:** 2026-08-29
 
 Corvale is operated by Atharv Dewangan, an individual resident in India. Pick the route that
-matches what you need — it gets you a useful answer faster.
+matches what you need - it gets you a useful answer faster.
 
 ## Privacy and your data
 
@@ -13,9 +13,9 @@ handle it.
 - **Response time:** within 30 days
 
 This is the route for privacy and data-rights grievances, and the response period above is the
-one commitment on this page with a number attached. Support requests do not have one — see below.
+one commitment on this page with a number attached. Support requests do not have one - see below.
 
-Before you write, check whether the app already does what you need — these are immediate and need
+Before you write, check whether the app already does what you need - these are immediate and need
 no request:
 
 - **Export your data:** Settings → Backup and Restore. JSON, or ZIP with receipts.
@@ -40,8 +40,8 @@ issues before opening a new one.
 **Do not report security vulnerabilities through public issues.**
 
 Use GitHub's private vulnerability reporting on the repository's **Security** tab. The security
-policy published there — scope, what is out of scope, the roughly 90-day disclosure window, and a
-safe-harbour commitment for good-faith research — governs that process.
+policy published there - scope, what is out of scope, the roughly 90-day disclosure window, and a
+safe-harbour commitment for good-faith research - governs that process.
 
 If private vulnerability reporting is unavailable to you, email security@corvale.app instead. The
 same policy applies to reports that arrive that way.
@@ -53,7 +53,7 @@ anything not covered above.
 
 - **Email:** support@corvale.app
 
-Copyright complaints about material stored in Corvale have their own route — see
+Copyright complaints about material stored in Corvale have their own route - see
 **Copyright and takedown requests** in the [Terms of Service](./terms.md).
 
 ## What we cannot help with
@@ -65,7 +65,7 @@ your money. We can explain how Corvale works and what its numbers mean. See the
 ## Self-hosted Corvale
 
 If you use a Corvale instance that someone else runs, we cannot help with your account or your
-data — only the operator of that instance can. These contacts cover the hosted service at
+data - only the operator of that instance can. These contacts cover the hosted service at
 corvale.app only.
 
 Bug reports about the software itself are always welcome on GitHub, wherever you run it.

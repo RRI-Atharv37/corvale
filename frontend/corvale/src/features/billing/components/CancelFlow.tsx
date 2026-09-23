@@ -6,22 +6,12 @@ interface CancelFlowProps {
     periodEnd: string | null
     /** Set only while the server is enforcing a retention window; otherwise nothing about erasure is said. */
     retentionDays: number | null
-    canSwitchToPlus: boolean
     busy: boolean
     onKeep: () => void
-    onSwitchToPlus: () => void
     onConfirm: () => void
 }
 
-const CancelFlow: React.FC<CancelFlowProps> = ({
-    periodEnd,
-    retentionDays,
-    canSwitchToPlus,
-    busy,
-    onKeep,
-    onSwitchToPlus,
-    onConfirm,
-}) => (
+const CancelFlow: React.FC<CancelFlowProps> = ({ periodEnd, retentionDays, busy, onKeep, onConfirm }) => (
     <section
         aria-labelledby="cancel-flow-heading"
         className="space-y-4 rounded-xl border border-border-subtle bg-bg-secondary/60 p-4"
@@ -52,11 +42,6 @@ const CancelFlow: React.FC<CancelFlowProps> = ({
             <button type="button" onClick={onKeep} disabled={busy} className="btn-primary">
                 Keep my subscription
             </button>
-            {canSwitchToPlus && (
-                <button type="button" onClick={onSwitchToPlus} disabled={busy} className="btn-ghost">
-                    Switch to Plus instead
-                </button>
-            )}
             <button
                 type="button"
                 onClick={onConfirm}

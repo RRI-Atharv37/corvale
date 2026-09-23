@@ -167,6 +167,17 @@ describe('enrolment', () => {
         expect(stored?.pendingTotpSecretEnc).not.toContain(first.body.data.secret)
     })
 
+    it('concurrent starts keep a single secret so the authenticator matches what complete will check', async () => {
+        const { enrolmentToken } = await createBootstrapOwner({ email: 'founder@ops.example.com', secret: BOOTSTRAP_SECRET })
+
+        const [first, second] = await Promise.all([start(enrolmentToken), start(enrolmentToken)])
+
+        expect(first.status).toBe(200)
+        expect(second.status).toBe(200)
+        expect(first.body.data.secret).toBe(second.body.data.secret)
+        expect(first.body.data.secret).toMatch(/^[A-Z2-7]{32}$/)
+    })
+
     it.each([['garbage'], [''], ['a'.repeat(43)]])('start refuses the token %j with a generic error', async (token) => {
         const res = await start(token)
 

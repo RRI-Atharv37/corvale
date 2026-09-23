@@ -149,7 +149,7 @@ const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean }
 
 const Download: React.FC = () => {
     // Render the build-time fallback immediately, then upgrade to the live manifest published with
-    // the newest release (V16). A failed fetch — offline, GitHub down, no release yet — silently
+    // the newest release (V16). A failed fetch - offline, GitHub down, no release yet - silently
     // keeps the fallback.
     const [manifest, setManifest] = useState(() => getReleaseManifest())
     const detected = useMemo(() => detectPlatform(), [])

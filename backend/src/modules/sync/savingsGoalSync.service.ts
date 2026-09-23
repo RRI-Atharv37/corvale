@@ -16,7 +16,7 @@ import { assertWorkspaceMembership, validateResourceAccess } from "@modules/work
  * `parseGoalAmount` (used for both `targetAmount` and the nested
  * `autoContribution.amount`) expects a REST body's major-unit decimal and
  * converts it to minor units itself. Sync payloads carry these already in
- * minor units (the local SQLite/SavingsGoal schema convention) — mirrors the
+ * minor units (the local SQLite/SavingsGoal schema convention) - mirrors the
  * `transaction.create` conversion already in `syncController.ts`'s
  * `applyCreateOp`, applied here for the same reason.
  */
@@ -40,7 +40,7 @@ const withMajorUnitAmounts = (payload: Record<string, unknown>): Record<string, 
  * Sprint 13.9: create/update/delete logic for POST /sync/push, mirroring
  * savingsGoalController's createSavingsGoal/updateSavingsGoal/
  * archiveSavingsGoal exactly. Only create/update/archive are in scope here
- * — pause/resume/complete/contribute/processAutoContribution stay
+ * - pause/resume/complete/contribute/processAutoContribution stay
  * server-authoritative REST-only actions per the sprint's design (they have
  * server-computed side effects, not raw field edits).
  */

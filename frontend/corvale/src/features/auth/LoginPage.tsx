@@ -16,12 +16,13 @@ import { useOnlineStatus } from '@platform/offline/useOnlineStatus'
 import OfflineNotice from '@ui/OfflineNotice'
 
 const Login = () => {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
+    const location = useLocation()
+    const isDemoRequest = new URLSearchParams(location.search).get('demo') === '1'
+    const [email, setEmail] = useState(isDemoRequest ? (import.meta.env.VITE_DEMO_EMAIL ?? '') : '')
+    const [password, setPassword] = useState(isDemoRequest ? (import.meta.env.VITE_DEMO_PASSWORD ?? '') : '')
     const [error, setError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const navigate = useNavigate()
-    const location = useLocation()
     const { updateUser } = useUser()
     const online = useOnlineStatus()
     const from = (location.state as { from?: string } | null)?.from
@@ -73,6 +74,13 @@ const Login = () => {
             <div>
                 <h3 className="text-xl font-semibold text-fg">Welcome back</h3>
                 <p className="text-xs text-fg-muted mt-1 mb-6">Sign in to your account</p>
+
+                {isDemoRequest && (
+                    <p className="text-xs text-accent mb-4">
+                        Demo credentials filled in - sign in to look around. Nothing you change is saved past the
+                        next nightly reset.
+                    </p>
+                )}
 
                 <form onSubmit={handleLogin}>
                     <Input
