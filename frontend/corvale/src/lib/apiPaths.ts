@@ -16,6 +16,7 @@ export const API_PATHS = {
         DELETE_ACCOUNT: '/auth/account',
         DELETE_ACCOUNT_IMPACT: '/auth/account/deletion-impact',
         LEGAL_ACCEPT: '/auth/legal/accept',
+        EMAIL_PREFERENCES_UNSUBSCRIBE: '/auth/email-preferences/unsubscribe',
     },
     SAVER: {
         ADD: '/saver/add',

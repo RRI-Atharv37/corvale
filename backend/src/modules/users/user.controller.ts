@@ -12,6 +12,7 @@ import { parseDateFormat, parsePageSize } from './userPreferencesUtils'
 import { assertAccountDeletionAllowed, computeAccountDeletionImpact, deleteUserAccountCascade } from './accountDeletionUtils'
 import { syncUserCurrencyData } from './currencySync'
 import { buildLegalAcceptance, toPublicUser } from './userSerialization'
+import { unsubscribeFromMarketing } from './emailPreferences.service'
 import { clearRefreshTokenCookie } from "@infra/config/refreshCookie";
 import { getUserEntitlementSnapshot } from "@modules/billing";
 import { parseNotificationPreferences } from "@modules/notifications/notificationUtils";
@@ -161,4 +162,10 @@ export const deleteUserAccount = asyncHandler(async (req: AuthRequest, res: Resp
 
     clearRefreshTokenCookie(res)
     handleResponses(res, 200, { message: 'Account deleted successfully' })
+})
+
+export const unsubscribeMarketingEmail = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+    await unsubscribeFromMarketing(req.body?.token)
+
+    handleResponses(res, 200, { message: 'Unsubscribed' })
 })

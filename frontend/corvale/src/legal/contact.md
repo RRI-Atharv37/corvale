@@ -1,4 +1,4 @@
-**Last updated:** 2026-08-29
+**Last updated:** 2026-09-25
 
 Corvale is operated by Atharv Dewangan, an individual resident in India. Pick the route that
 matches what you need - it gets you a useful answer faster.
@@ -13,7 +13,8 @@ handle it.
 - **Response time:** within 30 days
 
 This is the route for privacy and data-rights grievances, and the response period above is the
-one commitment on this page with a number attached. Support requests do not have one - see below.
+one commitment on this page for that route. Support has its own, separate commitment for paid plans
+- see below.
 
 Before you write, check whether the app already does what you need - these are immediate and need
 no request:
@@ -31,9 +32,26 @@ See the [Privacy Policy](./privacy.md) for what we hold and why.
 Bugs, questions, and feature requests go through GitHub issues, where they are public, searchable,
 and do not get lost in an inbox.
 
-Corvale is built and maintained by one person, so please be patient. Bug reports and feature
-requests have **no guaranteed response time**, unlike the privacy route above. Search existing
-issues before opening a new one.
+Corvale is built and maintained by one person, so please be patient. Issues opened on GitHub have
+**no guaranteed response time**. Search existing issues before opening a new one.
+
+### Priority support on a paid plan
+
+If your plan includes priority support, email **support@corvale.app** from the address on your
+account instead of opening an issue. We will send a first reply within **3 business days**
+(Monday to Friday, India Standard Time, excluding public holidays in India). During the free
+trial the window is **3 to 5 business days**. Put the word
+"priority" in the subject line if you like, but it is not required - we identify you by the
+address your account uses.
+
+That is a commitment to reply, not to fix. A first reply tells you we have read it, what we
+understand the problem to be, and what happens next. Fixes follow the same order of priority as
+before, and we will say so if we expect one to take longer. Do not send passwords, card numbers, or
+financial records by email - describe the problem and we will tell you what else we need.
+
+These windows apply to accounts whose plan or trial includes priority support, and only to the
+hosted service. It does not apply to GitHub issues, or to requests about your personal data, which use the
+privacy route above.
 
 ## Security
 

@@ -4,6 +4,9 @@ Corvale is built and maintained by one person. There is a hosted service, but th
 team behind it, so there's no guaranteed response time on anything in this file. That said,
 reports and questions are read and answered on a best-effort basis.
 
+**Paid plans with priority support have a stated response time and their own route** - see
+[Priority support](#priority-support-paid-plans) below. Everything else on this page is best-effort.
+
 **Privacy and data-rights requests do not go here.** Those have their own route and their own
 stated response window - see the Contact page on the docs site or in the app.
 
@@ -28,9 +31,17 @@ If your question isn't answered, open an issue; there's no dedicated Q&A forum f
 **Don't open a public issue.** See [SECURITY.md](./SECURITY.md) for private reporting
 instructions instead.
 
+## Priority support (paid plans)
+
+If your plan includes priority support, email support@corvale.app from your account's address
+rather than opening an issue. You get a first reply within **3 business days** (Monday to Friday,
+India Standard Time, excluding public holidays in India), or **3 to 5 business days** during the
+free trial. That is a commitment to reply, not to fix.
+The full wording is on the Contact page, which is the canonical statement of this commitment.
+
 ## What to expect
 
-- Bug reports and PRs are triaged as time allows - there's no SLA.
+- Bug reports and PRs opened on GitHub are triaged as time allows - there's no SLA.
 - Security reports are prioritized over everything else; see SECURITY.md for that process's
   own (faster) expectations.
 - Requests about your own data on the hosted service - export, correction, deletion, or a

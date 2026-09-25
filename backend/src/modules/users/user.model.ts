@@ -17,6 +17,10 @@ export interface NotificationPreferences {
     billReminderDaysBefore: number
 }
 
+export interface EmailPreferences {
+    marketing: boolean
+}
+
 /**
  * Proof that this user accepted the published Terms and Privacy Policy, and attested to being 18
  * or older (M0c / M0c2). Versions are stamped by the server from `utils/legalVersions.ts` - the
@@ -39,6 +43,7 @@ export interface IUser extends Document {
     dateFormat: DateFormat
     pageSize: number
     notificationPreferences: NotificationPreferences
+    emailPreferences: EmailPreferences
     exchangeRates: Record<string, number>
     tokenVersion: number
     passwordResetTokenHash?: string
@@ -92,6 +97,9 @@ const userSchema = new Schema<IUser>({
     notificationPreferences: {
         billRemindersEnabled: { type: Boolean, default: true },
         billReminderDaysBefore: { type: Number, default: 3, min: 0, max: 30 },
+    },
+    emailPreferences: {
+        marketing: { type: Boolean, default: true },
     },
     exchangeRates: { type: Schema.Types.Mixed, default: {} },
     tokenVersion: { type: Number, default: 0 },

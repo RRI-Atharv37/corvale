@@ -1,11 +1,14 @@
 import nodemailer from 'nodemailer'
 import type { DunningStage } from '@core/billing/dunning'
+import type { LifecycleEmailStage } from '@core/billing/lifecycleEmail'
 import type { RetentionStage } from '@core/billing/retention'
 import {
     passwordResetEmailHtml,
     emailVerificationEmailHtml,
     dunningEmailContent,
     retentionEmailContent,
+    lifecycleEmailContent,
+    type LifecycleEmailInput,
     adminSecurityNoticeContent,
     type AdminSecurityEvent,
 } from './emailTemplates'
@@ -15,6 +18,7 @@ export interface MailMessage {
     subject: string
     html: string
     text?: string
+    headers?: Record<string, string>
 }
 
 export interface MailTransport {
@@ -98,6 +102,14 @@ export const sendRetentionEmail = async (
     const { subject, html, text } = retentionEmailContent(content.stage, content.deletionDate, content.billingUrl)
 
     await getTransport().sendMail({ to: email, subject, html, text })
+}
+
+export const sendLifecycleEmail = async (email: string, content: { stage: LifecycleEmailStage } & LifecycleEmailInput): Promise<void> => {
+    const { stage, ...input } = content
+    const { subject, html, text } = lifecycleEmailContent(stage, input)
+    const headers = input.unsubscribeUrl ? { 'List-Unsubscribe': `<${input.unsubscribeUrl}>` } : undefined
+
+    await getTransport().sendMail({ to: email, subject, html, text, headers })
 }
 
 export const sendAdminSecurityNotice = async (email: string, content: { event: AdminSecurityEvent; when: Date }): Promise<void> => {

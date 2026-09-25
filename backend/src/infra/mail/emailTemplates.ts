@@ -1,4 +1,5 @@
 import type { DunningStage } from '@core/billing/dunning'
+import type { LifecycleEmailStage } from '@core/billing/lifecycleEmail'
 import type { RetentionStage } from '@core/billing/retention'
 
 const formatExpiry = (expiryMs: number): string => {
@@ -193,6 +194,95 @@ export const retentionEmailContent = (stage: RetentionStage, deletionDate: Date,
     const { subject, title, lines, cta } = copy[stage]
     const html = baseEmailTemplate(title, `${lines.map(paragraph).join('')}${ctaButton(billingUrl, cta)}`)
     const text = `${lines.join('\n\n')}\n\n${cta}: ${billingUrl}`
+
+    return { subject, html, text }
+}
+
+export interface LifecycleEmailInput {
+    trialEndsAt: Date | null
+    daysLeft: number
+    appUrl: string
+    billingUrl: string
+    unsubscribeUrl?: string
+}
+
+const daysPhrase = (days: number): string => (days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`)
+const daysCount = (days: number): string => (days === 1 ? '1 day' : `${days} days`)
+
+export const lifecycleEmailContent = (stage: LifecycleEmailStage, input: LifecycleEmailInput): DunningEmailContent => {
+    const { trialEndsAt, daysLeft, appUrl, billingUrl, unsubscribeUrl } = input
+    const endsOn = trialEndsAt ? formatUtcDate(trialEndsAt) : 'the end of your trial'
+    const exportAnytime = 'You can export a full copy of your data from Settings → Backup and Restore at any time, including while your account is read-only.'
+    const readOnlyNote =
+        'When the trial ends your account becomes read-only: you can still view and export everything, but you cannot add or change anything until you choose a plan.'
+
+    const copy: Record<LifecycleEmailStage, { subject: string; title: string; lines: string[]; cta: string; url: string }> = {
+        trial_welcome: {
+            subject: 'Your Corvale trial has started',
+            title: 'Your Corvale trial has started',
+            lines: [
+                `You have full access to Corvale until ${endsOn}. No payment details are needed and nothing is charged automatically.`,
+                exportAnytime,
+            ],
+            cta: 'Open Corvale',
+            url: appUrl,
+        },
+        trial_day_7: {
+            subject: `${daysCount(daysLeft)} left in your Corvale trial`,
+            title: `${daysCount(daysLeft)} left in your trial`,
+            lines: [
+                `Your Corvale trial runs until ${endsOn}. If you have a bank export, importing a CSV or OFX file is the quickest way to see a full month in one place.`,
+                readOnlyNote,
+            ],
+            cta: 'Open Corvale',
+            url: appUrl,
+        },
+        trial_day_21: {
+            subject: `${daysCount(daysLeft)} left in your Corvale trial`,
+            title: `${daysCount(daysLeft)} left in your trial`,
+            lines: [`You have ${daysCount(daysLeft)} left: your Corvale trial ends on ${endsOn}.`, readOnlyNote, exportAnytime],
+            cta: 'See plans',
+            url: billingUrl,
+        },
+        trial_ending: {
+            subject: `Your Corvale trial ends ${daysPhrase(daysLeft)}`,
+            title: `Your trial ends ${daysPhrase(daysLeft)}`,
+            lines: [
+                `Your Corvale trial ends on ${endsOn}. ${readOnlyNote}`,
+                'Nothing is deleted when the trial ends, and choosing a plan later picks up exactly where you left off.',
+            ],
+            cta: 'Choose a plan',
+            url: billingUrl,
+        },
+        trial_expired: {
+            subject: 'Your Corvale trial has ended',
+            title: 'Your trial has ended',
+            lines: [
+                'Your Corvale account is now read-only. You can view everything and export your data at any time, but you cannot add or change anything.',
+                'Choose a plan and everything picks up exactly where you left off. Nothing has been deleted.',
+            ],
+            cta: 'Choose a plan',
+            url: billingUrl,
+        },
+        win_back: {
+            subject: 'Your Corvale data is still here',
+            title: 'Your data is still here',
+            lines: [
+                'Your Corvale account has been read-only for a couple of weeks. Your accounts, transactions and receipts are all still there, and you can view or export them at any time.',
+                'If you would like to start adding to them again, you can reactivate from your billing page and everything continues from where you stopped. This is the only email of this kind we will send you.',
+            ],
+            cta: 'Reactivate',
+            url: billingUrl,
+        },
+    }
+
+    const { subject, title, lines, cta, url } = copy[stage]
+    const unsubscribeHtml = unsubscribeUrl
+        ? `<p style="margin:16px 0 0;font-size:12px;color:#9ca3af;line-height:1.5;">Do not want emails like this? <a href="${unsubscribeUrl}" style="color:#6b7280;">Unsubscribe</a>.</p>`
+        : ''
+    const html = baseEmailTemplate(title, `${lines.map(paragraph).join('')}${ctaButton(url, cta)}${unsubscribeHtml}`)
+    const unsubscribeText = unsubscribeUrl ? `\n\nDo not want emails like this? Unsubscribe: ${unsubscribeUrl}` : ''
+    const text = `${lines.join('\n\n')}\n\n${cta}: ${url}${unsubscribeText}`
 
     return { subject, html, text }
 }

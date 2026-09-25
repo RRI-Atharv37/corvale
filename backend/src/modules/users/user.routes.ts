@@ -8,6 +8,7 @@ import {
     acceptLegalTerms,
     getAccountDeletionImpact,
     deleteUserAccount,
+    unsubscribeMarketingEmail,
 } from './user.controller'
 
 /**
@@ -20,6 +21,11 @@ export const createUserRoutes = (): express.Router => {
     // Account deletion re-checks the password like login does, so it gets the same
     // brute-force protection, on its own instance so it can't lock a user out of login.
     const accountDeletionRateLimiter = createAuthRateLimiter('auth-account-deletion')
+
+    // Public on purpose: the win-back email's opt-out must work without a session. The signed token is the
+    // credential, and it can do nothing but opt that one user out.
+    const unsubscribeRateLimiter = createAuthRateLimiter('auth-unsubscribe')
+    router.post('/email-preferences/unsubscribe', unsubscribeRateLimiter, unsubscribeMarketingEmail)
 
     router.get('/user', authenticateOnly, getUserInfo)
     router.patch('/user', protect, updateUserPreferences)

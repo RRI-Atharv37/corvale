@@ -30,6 +30,7 @@ export const ERROR_MESSAGES = {
     USER: {
         USER_ALREADY_EXISTS: 'User already exists',
         USER_NOT_FOUND: 'User not found',
+        UNSUBSCRIBE_INVALID: 'Invalid unsubscribe link',
     },
     GENERAL: {
         JWT_SECRET_MISSING: 'JWT_SECRET is not defined in environment variables',

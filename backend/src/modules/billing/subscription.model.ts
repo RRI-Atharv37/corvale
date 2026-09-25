@@ -12,6 +12,7 @@ import {
 } from '@core/billing/constants'
 import { ADMIN_GRANT_KINDS, type AdminGrantSnapshot } from '@core/billing/entitlements'
 import { DUNNING_STAGES, type DunningStage } from '@core/billing/dunning'
+import { LIFECYCLE_EMAIL_STAGES, type LifecycleEmailStage } from '@core/billing/lifecycleEmail'
 import { RETENTION_STAGES, type RetentionStage } from '@core/billing/retention'
 
 import { BILLING_INTERVALS, type BillingInterval } from './providers/billingProvider'
@@ -33,6 +34,7 @@ export interface ISubscription extends Document {
     cancelAtPeriodEnd: boolean
     pastDueSince: Date | null
     dunningStage: DunningStage | null
+    lifecycleEmailStage: LifecycleEmailStage | null
     lapsedAt: Date | null
     retentionStage: RetentionStage | null
     retentionStageAt: Date | null
@@ -74,6 +76,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
         cancelAtPeriodEnd: { type: Boolean, default: false },
         pastDueSince: { type: Date, default: null },
         dunningStage: { type: String, enum: [null, ...DUNNING_STAGES], default: null },
+        lifecycleEmailStage: { type: String, enum: [null, ...LIFECYCLE_EMAIL_STAGES], default: null },
         lapsedAt: { type: Date, default: null },
         retentionStage: { type: String, enum: [null, ...RETENTION_STAGES], default: null },
         retentionStageAt: { type: Date, default: null },

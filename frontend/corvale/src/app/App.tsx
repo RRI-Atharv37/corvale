@@ -7,6 +7,7 @@ import Signup from '@features/auth/SignupPage'
 import ForgotPassword from '@features/auth/ForgotPasswordPage'
 import ResetPassword from '@features/auth/ResetPasswordPage'
 import VerifyEmail from '@features/auth/VerifyEmailPage'
+import Unsubscribe from '@features/auth/UnsubscribePage'
 import UserProvider from './providers/UserContext'
 import WorkspaceProvider from './providers/WorkspaceContext'
 import ProtectedRoute from './routes/ProtectedRoute'
@@ -59,6 +60,7 @@ const AppRoutes = () => {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route
                 path="/download"
                 element={
