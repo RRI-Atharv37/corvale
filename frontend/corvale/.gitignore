@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .env
+
+# Competitor comparison / migration landing content (SEO pages), not ready to publish yet.
+src/compare/

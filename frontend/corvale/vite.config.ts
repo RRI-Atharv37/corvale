@@ -46,7 +46,7 @@ const ALIASES = [
  * base `<meta>` policy - blob: frames are same-origin and page-generated - so it needs no widening
  * here; `tauri.conf.json` still has to list it explicitly since Tauri's policy is separate.)
  */
-const desktopCspPlugin = (): Plugin => ({
+export const desktopCspPlugin = (): Plugin => ({
     name: 'corvale-desktop-csp',
     transformIndexHtml: (html) =>
         html
@@ -58,11 +58,15 @@ const desktopCspPlugin = (): Plugin => ({
             ),
 })
 
-const captchaCspPlugin = (): Plugin => ({
+export const captchaCspPlugin = (): Plugin => ({
     name: 'corvale-captcha-csp',
     transformIndexHtml: (html) =>
         html
-            .replace("script-src 'self';", "script-src 'self' https://js.hcaptcha.com;")
+            // Regex, not a literal-string replace: on desktop builds `desktopCspPlugin` runs
+            // first and already rewrites the base "script-src 'self';" to include
+            // 'wasm-unsafe-eval', so a literal match here would silently no-op and hCaptcha's
+            // script origin would never be admitted (BUG-40).
+            .replace(/script-src 'self'[^;]*;/, (match) => `${match.slice(0, -1)} https://js.hcaptcha.com;`)
             .replace(
                 "style-src 'self' 'unsafe-inline';",
                 "style-src 'self' 'unsafe-inline' https://newassets.hcaptcha.com;"
