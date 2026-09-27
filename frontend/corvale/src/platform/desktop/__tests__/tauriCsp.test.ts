@@ -93,17 +93,41 @@ describe('Strict Tauri CSP (D2, SEC-04)', () => {
         expect(connectSrc).toContain('https://api.corvale.app')
     })
 
-    it('frame-src allows blob: (the in-app PDF receipt viewer, BUG-25) but no remote origin', () => {
+    it('frame-src allows blob: (the in-app PDF receipt viewer, BUG-25) and only the named hCaptcha challenge origin - no other remote origin (BUG-40)', () => {
         const csp = readCsp()
         const frameSrc = csp.match(/frame-src([^;]*)/)?.[1] ?? ''
-        expect(frameSrc).toContain("'self'")
-        expect(frameSrc).toContain('blob:')
-        expect(frameSrc).not.toMatch(/https?:\/\//)
+        const sources = frameSrc.trim().split(/\s+/)
+        expect(sources).toContain("'self'")
+        expect(sources).toContain('blob:')
+        for (const source of sources) {
+            if (source.startsWith('http')) {
+                expect(source).toBe('https://newassets.hcaptcha.com')
+            }
+        }
     })
 
     it('connect-src only reaches remote origins over TLS, never plain http', () => {
         const csp = readCsp()
         const connectSrc = csp.match(/connect-src([^;]*)/)?.[1] ?? ''
         expect(connectSrc).not.toMatch(/\bhttp:\/\/(?!ipc\.localhost|asset\.localhost)/)
+    })
+})
+
+describe('hCaptcha CSP origins on desktop (BUG-40)', () => {
+    // Desktop is a single fixed build target pinned to production (.env.desktop), unlike the web
+    // build's conditional captchaCspPlugin - so these origins are unconditionally present here,
+    // matching production's CAPTCHA_ENABLED=true rather than toggling on an env flag.
+    it('script-src and style-src admit the hCaptcha script/challenge-asset origins', () => {
+        const csp = readCsp()
+        expect(csp.match(/script-src([^;]*)/)?.[1] ?? '').toContain('https://js.hcaptcha.com')
+        expect(csp.match(/style-src([^;]*)/)?.[1] ?? '').toContain('https://newassets.hcaptcha.com')
+    })
+
+    it('connect-src admits hcaptcha.com and newassets.hcaptcha.com alongside the API origin', () => {
+        const csp = readCsp()
+        const connectSrc = csp.match(/connect-src([^;]*)/)?.[1] ?? ''
+        expect(connectSrc).toContain('https://hcaptcha.com')
+        expect(connectSrc).toContain('https://newassets.hcaptcha.com')
+        expect(connectSrc).toContain('https://api.corvale.app')
     })
 })

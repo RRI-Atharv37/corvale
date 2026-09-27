@@ -13,7 +13,7 @@ matching the pushed tag for the GitHub Release body.
 
 ## [Unreleased]
 
-## [1.0.4] - 2026-09-17
+## [1.0.4] - 2026-09-27
 
 ### Fixed
 
@@ -32,6 +32,9 @@ matching the pushed tag for the GitHub Release body.
 - **A transfer between accounts no longer looks like a duplicate transaction in the list.** Both
   legs of a transfer now show a signed amount (+/−) like other transactions, instead of an
   identical unsigned amount that only a small account-name label distinguished.
+- **Fixed desktop app signup being blocked by a CAPTCHA that never appeared ([#53](https://github.com/RRI-Atharv37/corvale/issues/53)).**
+  Every sign-up from the desktop app was rejected with "CAPTCHA verification failed," with no
+  CAPTCHA ever shown to complete. The desktop build now renders it correctly.
 
 ## [1.0.3] - 2026-09-01
 
