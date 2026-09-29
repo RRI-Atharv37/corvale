@@ -15,18 +15,18 @@ import { createFakeBillingProvider } from '../fakeBillingProvider'
 const ENV_KEYS = [
     'BILLING_PROVIDER',
     'MOR_API_KEY',
-    'MOR_STORE_ID',
+    'MOR_ENVIRONMENT',
     'MOR_WEBHOOK_SECRET',
-    'MOR_VARIANTS',
+    'MOR_PRICES',
 ] as const
 
 const saved = Object.fromEntries([...ENV_KEYS, 'BILLING_ENABLED'].map((key) => [key, process.env[key]]))
 
 const configureMor = (): void => {
     process.env.MOR_API_KEY = 'mor_key'
-    process.env.MOR_STORE_ID = '9'
+    process.env.MOR_ENVIRONMENT = 'sandbox'
     process.env.MOR_WEBHOOK_SECRET = 'mor_secret'
-    process.env.MOR_VARIANTS = JSON.stringify({
+    process.env.MOR_PRICES = JSON.stringify({
         plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     })

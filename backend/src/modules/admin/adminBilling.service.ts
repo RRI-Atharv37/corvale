@@ -105,8 +105,8 @@ export const refundInvoice = async (
 // -------- cancel --------
 
 /**
- * At period end, or now. The real MoR adapter's cancel call has no expire-now (`morProvider.ts`); `immediate`
- * is honoured only as far as the provider allows, same caveat as the erasure-time cancel (M7.0). Verify at M0.
+ * At period end, or now: the MoR adapter maps `immediate` to Paddle's `effective_from: immediately`, the same
+ * call the erasure-time cancel uses (M7.0).
  */
 const cancel = async (
     actor: AdminPrincipal,

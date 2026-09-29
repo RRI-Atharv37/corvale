@@ -11,6 +11,8 @@ import {
     type LifecycleEmailInput,
     adminSecurityNoticeContent,
     type AdminSecurityEvent,
+    billingDisputeAlertContent,
+    type BillingDisputeAlert,
 } from './emailTemplates'
 
 export interface MailMessage {
@@ -114,6 +116,12 @@ export const sendLifecycleEmail = async (email: string, content: { stage: Lifecy
 
 export const sendAdminSecurityNotice = async (email: string, content: { event: AdminSecurityEvent; when: Date }): Promise<void> => {
     const { subject, html, text } = adminSecurityNoticeContent(content.event, content.when)
+
+    await getTransport().sendMail({ to: email, subject, html, text })
+}
+
+export const sendBillingDisputeAlert = async (email: string, content: BillingDisputeAlert): Promise<void> => {
+    const { subject, html, text } = billingDisputeAlertContent(content)
 
     await getTransport().sendMail({ to: email, subject, html, text })
 }

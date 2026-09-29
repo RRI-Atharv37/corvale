@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
 import app from '@http/app'
+import { setMailTransport, type MailMessage } from '@infra/mail/mailService'
 import { Subscription, applyBillingEvent, type NormalizedBillingEvent } from '@modules/billing'
 import { registerUser, type RegisteredUser } from '@tests/helpers'
 import { BILLING_STATES, DAY_MS, daysFromNow, setSubscription } from '@tests/billingHelpers'
@@ -278,5 +279,115 @@ describe('record-only and unknown events', () => {
 
     it('an event type outside the known set is applied as a no-op', async () => {
         expect((await applyBillingEvent(event({ type: 'customer.updated' }))).status).toBe('applied')
+    })
+})
+
+describe('dispute revokes access, refund does not (Refund Policy, 2026-09-28)', () => {
+    it('cancels a matching subscription the moment a dispute opens', async () => {
+        await setSubscription(user.userId, BILLING_STATES.active)
+
+        const outcome = await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        expect(outcome.status).toBe('applied')
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.pastDueSince).toBeNull()
+    })
+
+    it('clears an in-progress dunning stage when a dispute cancels the subscription', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.past_due_in_grace, dunningStage: 'reminder' })
+
+        await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.dunningStage).toBeNull()
+    })
+
+    it('a dispute with no matching subscription stays record-only, same as before', async () => {
+        const outcome = await applyBillingEvent(
+            event({ type: 'dispute.opened', providerCustomerId: 'cus_stranger', providerSubscriptionId: 'sub_stranger' })
+        )
+
+        expect(outcome.status).toBe('applied')
+        expect(await Subscription.countDocuments({})).toBe(0)
+    })
+
+    it('a refund never changes subscription status, only the ledger and metrics', async () => {
+        await setSubscription(user.userId, BILLING_STATES.active)
+
+        await applyBillingEvent(event({ type: 'refund.issued' }))
+
+        const stored = await sub()
+        expect(stored?.status).toBe('active')
+    })
+})
+
+describe('dispute alert email', () => {
+    let sent: MailMessage[]
+    let sendMail: Mock<(message: MailMessage) => Promise<{ messageId: string }>>
+
+    beforeEach(() => {
+        sent = []
+        sendMail = vi.fn(async (message: MailMessage) => {
+            sent.push(message)
+            return { messageId: `m-${sent.length}` }
+        })
+        setMailTransport({ sendMail })
+    })
+
+    afterEach(() => {
+        delete process.env.SMTP_HOST
+        delete process.env.BILLING_ALERT_EMAIL
+        setMailTransport(null)
+    })
+
+    it('alerts the configured address when a dispute opens', async () => {
+        process.env.SMTP_HOST = 'smtp.test.local'
+        process.env.BILLING_ALERT_EMAIL = 'billing@corvale.example'
+
+        const outcome = await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        expect(outcome.status).toBe('applied')
+        expect(sent).toHaveLength(1)
+        expect(sent[0]?.to).toBe('billing@corvale.example')
+        expect(sent[0]?.subject).toMatch(/dispute/i)
+    })
+
+    it('does not alert on a plain refund, only a dispute', async () => {
+        process.env.SMTP_HOST = 'smtp.test.local'
+        process.env.BILLING_ALERT_EMAIL = 'billing@corvale.example'
+
+        await applyBillingEvent(event({ type: 'refund.issued' }))
+
+        expect(sent).toHaveLength(0)
+    })
+
+    it('sends nothing when no alert address is configured', async () => {
+        process.env.SMTP_HOST = 'smtp.test.local'
+        delete process.env.BILLING_ALERT_EMAIL
+
+        await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        expect(sent).toHaveLength(0)
+    })
+
+    it('sends nothing when SMTP is not configured', async () => {
+        delete process.env.SMTP_HOST
+        process.env.BILLING_ALERT_EMAIL = 'billing@corvale.example'
+
+        await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        expect(sent).toHaveLength(0)
+    })
+
+    it('still applies the event when the mail transport fails', async () => {
+        process.env.SMTP_HOST = 'smtp.test.local'
+        process.env.BILLING_ALERT_EMAIL = 'billing@corvale.example'
+        sendMail.mockRejectedValueOnce(new Error('smtp down'))
+
+        const outcome = await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        expect(outcome.status).toBe('applied')
     })
 })

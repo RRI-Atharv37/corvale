@@ -3,6 +3,7 @@ import { Types } from 'mongoose'
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
 import { PLAN_CODES, SUBSCRIPTION_STATUSES, type PlanCode } from '@core/billing/constants'
 import { isDuplicateKeyError } from '@core/db/objectId'
+import { isSmtpConfigured, sendBillingDisputeAlert } from '@infra/mail/mailService'
 import { logger } from '@infra/observability/logger'
 import { User } from '@modules/users'
 
@@ -191,7 +192,9 @@ const handlePaymentSucceeded: BillingEventHandler = async (event) => {
     return applyChanges(row, event, changes)
 }
 
-// Recorded on the ledger and logged for a human; whether either revokes access is a policy call for later.
+// Refund Policy (2026-09-28): a refund never auto-revokes access on its own - it is an operator-
+// initiated action (via the provider dashboard), so the operator already controls its timing and
+// can downgrade a subscription by hand if a specific case warrants it. Recorded and logged only.
 const handleRefundIssued: BillingEventHandler = async (event) => {
     logger.warn('Billing refund issued', { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
     const total = typeof event.payload?.total === 'number' ? event.payload.total : 0
@@ -199,10 +202,40 @@ const handleRefundIssued: BillingEventHandler = async (event) => {
     return APPLIED
 }
 
+/**
+ * Best effort, like `notifyAdminSecurityEvent`: a mail outage must never turn a correctly-ledgered
+ * dispute into an "unapplied" event, so failures are logged and swallowed here.
+ */
+const alertBillingDispute = async (event: NormalizedBillingEvent): Promise<void> => {
+    const address = (process.env.BILLING_ALERT_EMAIL ?? '').trim()
+    if (!address || !isSmtpConfigured()) return
+
+    try {
+        await sendBillingDisputeAlert(address, {
+            providerEventId: event.providerEventId,
+            providerSubscriptionId: event.providerSubscriptionId,
+            occurredAt: event.occurredAt,
+            amountMinor: typeof event.payload?.total === 'number' ? event.payload.total : undefined,
+            currency: typeof event.payload?.currency === 'string' ? event.payload.currency : undefined,
+        })
+    } catch (error) {
+        logger.warn('Billing dispute alert could not be delivered', { message: error instanceof Error ? error.message : 'unknown' })
+    }
+}
+
+// Refund Policy (2026-09-28): unlike a refund, a dispute is adversarial - the customer went around
+// Corvale to their card issuer - and even a dispute the operator wins still costs a non-refundable
+// provider fee and counts against the chargeback ratio, so access is revoked the moment one opens
+// rather than waiting to see the outcome. A matching subscription is downgraded the same way a
+// provider-side deletion is; an unlinked/unknown id stays record-only, same as before.
 const handleDisputeOpened: BillingEventHandler = async (event) => {
     logger.warn('Billing dispute opened', { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
     await recordTransitionMetrics(event.providerEventId, event.occurredAt, { disputes: 1 })
-    return APPLIED
+    await alertBillingDispute(event)
+
+    const row = await findByProviderIds(event)
+    if (!row) return APPLIED
+    return applyChanges(row, event, { status: 'cancelled', pastDueSince: null, dunningStage: null })
 }
 
 const HANDLERS: Record<KnownBillingEventType, BillingEventHandler> = {

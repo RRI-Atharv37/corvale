@@ -15,13 +15,15 @@ import {
     type ProviderSubscriptionSnapshot,
 } from './billingProvider'
 
-export type MorVariants = Record<PlanCode, Record<(typeof BILLING_INTERVALS)[number], string>>
+export type MorEnvironment = 'sandbox' | 'production'
+
+export type MorPrices = Record<PlanCode, Record<(typeof BILLING_INTERVALS)[number], string>>
 
 export interface MorConfig {
     apiKey: string
-    storeId: string
+    environment: MorEnvironment
     webhookSecret: string
-    variants: MorVariants
+    prices: MorPrices
 }
 
 export interface MorOptions {
@@ -30,22 +32,27 @@ export interface MorOptions {
     timeoutMs?: number
 }
 
-const DEFAULT_API_BASE = 'https://api.lemonsqueezy.com'
+const PADDLE_SANDBOX_API_BASE = 'https://sandbox-api.paddle.com'
+const PADDLE_PRODUCTION_API_BASE = 'https://api.paddle.com'
 const DEFAULT_TIMEOUT_MS = 10_000
-const JSON_API = 'application/vnd.api+json'
-const SIGNATURE_HEADER = 'x-signature'
-const LIST_PAGE_SIZE = 100
-const INVOICE_PAGE_SIZE = 50
+const JSON_CONTENT = 'application/json'
+const SIGNATURE_HEADER = 'paddle-signature'
+const SIGNATURE_TOLERANCE_SECONDS = 5
+const LIST_PAGE_SIZE = 200
+const TRANSACTION_PAGE_SIZE = 30
 const MAX_LIST_PAGES = 500
+const INVOICE_STATUSES = 'billed,paid,completed,past_due,canceled'
+const PRORATION_BILLING_MODE = 'prorated_immediately'
+const REFUND_REASON = 'Refund requested by Corvale staff'
 
 const SETTINGS = {
     apiKey: 'MOR_API_KEY',
-    storeId: 'MOR_STORE_ID',
+    environment: 'MOR_ENVIRONMENT',
     webhookSecret: 'MOR_WEBHOOK_SECRET',
-    variants: 'MOR_VARIANTS',
+    prices: 'MOR_PRICES',
 } as const
 
-const asVariantId = (value: unknown): string | undefined => {
+const asPriceId = (value: unknown): string | undefined => {
     if (typeof value === 'string') {
         const id = value.trim()
         return id === '' ? undefined : id
@@ -59,13 +66,13 @@ const planEntry = (parsed: Record<string, unknown>, plan: PlanCode): Record<stri
     if (nested && typeof nested === 'object' && !Array.isArray(nested)) return nested as Record<string, unknown>
 
     const flat = Object.fromEntries(BILLING_INTERVALS.map((interval) => [interval, parsed[`${plan}_${interval}`]]))
-    return BILLING_INTERVALS.every((interval) => asVariantId(flat[interval]) !== undefined) ? flat : undefined
+    return BILLING_INTERVALS.every((interval) => asPriceId(flat[interval]) !== undefined) ? flat : undefined
 }
 
-const parseVariants = (raw: string): MorVariants => {
+const parsePrices = (raw: string): MorPrices => {
     const invalid = (): Error =>
         new Error(
-            `${SETTINGS.variants} must be JSON like {"plus":{"monthly":"<id>","annual":"<id>"},"pro":{...}} with a distinct variant id for every plan and interval`
+            `${SETTINGS.prices} must be JSON like {"plus":{"monthly":"<id>","annual":"<id>"},"pro":{...}} with a distinct price id for every plan and interval`
         )
 
     let parsed: unknown
@@ -78,19 +85,26 @@ const parseVariants = (raw: string): MorVariants => {
 
     const record = parsed as Record<string, unknown>
     const seen = new Set<string>()
-    const variants = {} as MorVariants
+    const prices = {} as MorPrices
     for (const plan of PLAN_CODES) {
         const entry = planEntry(record, plan)
         if (!entry) throw invalid()
-        variants[plan] = {} as MorVariants[PlanCode]
+        prices[plan] = {} as MorPrices[PlanCode]
         for (const interval of BILLING_INTERVALS) {
-            const id = asVariantId(entry[interval])
+            const id = asPriceId(entry[interval])
             if (!id || seen.has(id)) throw invalid()
             seen.add(id)
-            variants[plan][interval] = id
+            prices[plan][interval] = id
         }
     }
-    return variants
+    return prices
+}
+
+const asEnvironment = (value: string): MorEnvironment => {
+    if (value !== 'sandbox' && value !== 'production') {
+        throw new Error(`${SETTINGS.environment} must be "sandbox" or "production"`)
+    }
+    return value
 }
 
 export const morConfigFromEnv = (env: NodeJS.ProcessEnv = process.env): MorConfig => {
@@ -102,25 +116,32 @@ export const morConfigFromEnv = (env: NodeJS.ProcessEnv = process.env): MorConfi
 
     return {
         apiKey: read(SETTINGS.apiKey),
-        storeId: read(SETTINGS.storeId),
+        environment: asEnvironment(read(SETTINGS.environment)),
         webhookSecret: read(SETTINGS.webhookSecret),
-        variants: parseVariants(read(SETTINGS.variants)),
+        prices: parsePrices(read(SETTINGS.prices)),
     }
 }
 
 const EVENT_TYPES: Readonly<Record<string, KnownBillingEventType>> = {
-    subscription_created: 'subscription.created',
-    subscription_updated: 'subscription.updated',
-    subscription_resumed: 'subscription.updated',
-    subscription_unpaused: 'subscription.updated',
-    subscription_paused: 'subscription.updated',
-    subscription_cancelled: 'subscription.updated',
-    subscription_expired: 'subscription.deleted',
-    subscription_payment_success: 'payment.succeeded',
-    subscription_payment_recovered: 'payment.succeeded',
-    subscription_payment_failed: 'payment.failed',
-    subscription_payment_refunded: 'refund.issued',
-    order_refunded: 'refund.issued',
+    'subscription.created': 'subscription.created',
+    'subscription.updated': 'subscription.updated',
+    'subscription.activated': 'subscription.updated',
+    'subscription.trialing': 'subscription.updated',
+    'subscription.past_due': 'subscription.updated',
+    'subscription.paused': 'subscription.updated',
+    'subscription.resumed': 'subscription.updated',
+    'subscription.canceled': 'subscription.deleted',
+    'transaction.completed': 'payment.succeeded',
+    'transaction.payment_failed': 'payment.failed',
+}
+
+// Paddle has no dispute entity: a chargeback arrives as an adjustment. Warnings and reversals are recorded but never mapped, so they cannot revoke access or count as a refund.
+// A refund is only real once Paddle approves it - it starts as pending_approval and can be rejected - so it is counted on the event that carries `approved`; a chargeback opens a dispute once, on creation.
+const adjustmentEventType = (eventType: string, action: string | undefined, status: string | undefined): KnownBillingEventType | undefined => {
+    const created = eventType === 'adjustment.created'
+    if (!created && eventType !== 'adjustment.updated') return undefined
+    if ((action === 'refund' || action === 'credit') && status === 'approved') return 'refund.issued'
+    return created && action === 'chargeback' ? 'dispute.opened' : undefined
 }
 
 type Json = Record<string, unknown>
@@ -136,10 +157,35 @@ const asDate = (value: unknown): Date | undefined => {
     return Number.isNaN(date.getTime()) ? undefined : date
 }
 
+const asMinorUnits = (value: unknown): number | undefined => {
+    const amount = typeof value === 'string' && /^\d{1,15}$/.test(value) ? Number(value) : value
+    return typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0 ? amount : undefined
+}
+
 const compact = (source: Json): Json => Object.fromEntries(Object.entries(source).filter(([, value]) => value !== undefined))
 
 const payloadInvalid = (): CustomError => new CustomError(ERROR_MESSAGES.BILLING.WEBHOOK_PAYLOAD_INVALID, 400)
 const requestFailed = (): CustomError => new CustomError(ERROR_MESSAGES.BILLING.PROVIDER_REQUEST_FAILED, 502)
+
+const parseSignatureHeader = (header: string): { timestamp: string; signatures: string[] } | null => {
+    let timestamp: string | undefined
+    const signatures: string[] = []
+    for (const part of header.split(';')) {
+        const separator = part.indexOf('=')
+        if (separator === -1) return null
+        const key = part.slice(0, separator).trim()
+        const value = part.slice(separator + 1).trim()
+
+        if (key === 'ts') {
+            if (timestamp !== undefined || !/^\d{1,12}$/.test(value)) return null
+            timestamp = value
+        } else if (key === 'h1') {
+            if (!/^(?:[0-9a-f]{2})+$/i.test(value)) return null
+            signatures.push(value)
+        }
+    }
+    return timestamp !== undefined && signatures.length > 0 ? { timestamp, signatures } : null
+}
 
 const isHttps = (value: unknown): value is string => {
     if (typeof value !== 'string') return false
@@ -155,16 +201,16 @@ export const createMorProvider = (
     options: MorOptions = {}
 ): BillingProvider => {
     const fetchImpl = options.fetchImpl ?? fetch
-    const apiBase = options.apiBase ?? DEFAULT_API_BASE
+    const apiBase = options.apiBase ?? (config.environment === 'production' ? PADDLE_PRODUCTION_API_BASE : PADDLE_SANDBOX_API_BASE)
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
-    const planByVariant = new Map<string, PlanCode>()
-    const intervalByVariant = new Map<string, (typeof BILLING_INTERVALS)[number]>()
+    const planByPrice = new Map<string, PlanCode>()
+    const intervalByPrice = new Map<string, (typeof BILLING_INTERVALS)[number]>()
     for (const plan of PLAN_CODES) {
         for (const interval of BILLING_INTERVALS) {
-            const variant = config.variants[plan][interval]
-            planByVariant.set(variant, plan)
-            intervalByVariant.set(variant, interval)
+            const variant = config.prices[plan][interval]
+            planByPrice.set(variant, plan)
+            intervalByPrice.set(variant, interval)
         }
     }
 
@@ -174,9 +220,9 @@ export const createMorProvider = (
             response = await fetchImpl(`${apiBase}${path}`, {
                 method: init.method,
                 headers: {
-                    Accept: JSON_API,
+                    Accept: JSON_CONTENT,
                     Authorization: `Bearer ${config.apiKey}`,
-                    ...(init.body === undefined ? {} : { 'Content-Type': JSON_API }),
+                    ...(init.body === undefined ? {} : { 'Content-Type': JSON_CONTENT }),
                 },
                 body: init.body === undefined ? undefined : JSON.stringify(init.body),
                 signal: AbortSignal.timeout(timeoutMs),
@@ -201,78 +247,80 @@ export const createMorProvider = (
         throw requestFailed()
     }
 
-    const attributesOf = (body: Json): Json => {
-        const data = body.data
-        return isObject(data) && isObject(data.attributes) ? data.attributes : {}
-    }
+    const dataOf = (body: Json): Json => (isObject(body.data) ? body.data : {})
 
-    const mapStatus = (providerStatus: unknown, endsAt: Date | undefined, occurredAt: Date): SubscriptionStatus | undefined => {
+    const mapSubscriptionStatus = (providerStatus: unknown): SubscriptionStatus | undefined => {
         switch (providerStatus) {
-            case 'on_trial':
+            case 'trialing':
                 return 'trialing'
             case 'active':
                 return 'active'
             case 'past_due':
-            case 'unpaid':
                 return 'past_due'
-            case 'expired':
+            case 'canceled':
                 return 'cancelled'
-            case 'cancelled':
-                return endsAt && endsAt.getTime() > occurredAt.getTime() ? 'active' : 'cancelled'
             default:
                 return undefined
         }
     }
 
-    const lastPageOf = (body: Json): number => {
-        const meta = body.meta
-        const pageMeta = isObject(meta) ? meta.page : undefined
-        const lastPage = isObject(pageMeta) ? pageMeta.lastPage : undefined
-        return typeof lastPage === 'number' && Number.isInteger(lastPage) && lastPage >= 1 ? lastPage : 1
+    const readSubscription = (data: Json) => {
+        const items = Array.isArray(data.items) ? data.items.filter(isObject) : []
+        const priceIds = items.map((item) => (isObject(item.price) ? asId(item.price.id) : undefined))
+        const priceId = priceIds.find((id) => id !== undefined && planByPrice.has(id)) ?? priceIds.find((id) => id !== undefined)
+        const trialEndsAt = items
+            .map((item) => (isObject(item.trial_dates) ? asDate(item.trial_dates.ends_at) : undefined))
+            .find((date) => date !== undefined)
+        const scheduledChange = isObject(data.scheduled_change) ? data.scheduled_change : undefined
+        const scheduledChangeAction = typeof scheduledChange?.action === 'string' ? scheduledChange.action : undefined
+        const cancelAtPeriodEnd = scheduledChangeAction === 'cancel'
+        const billingPeriod = isObject(data.current_billing_period) ? data.current_billing_period : undefined
+        const currentPeriodEnd = cancelAtPeriodEnd
+            ? (asDate(scheduledChange?.effective_at) ?? asDate(billingPeriod?.ends_at))
+            : (asDate(billingPeriod?.ends_at) ?? asDate(data.next_billed_at))
+
+        return {
+            providerCustomerId: asId(data.customer_id),
+            priceId,
+            trialEndsAt,
+            scheduledChangeAction,
+            cancelAtPeriodEnd,
+            currentPeriodEnd,
+        }
     }
 
     const toInvoice = (entry: unknown): ProviderInvoice | null => {
         if (!isObject(entry)) return null
         const id = asId(entry.id)
-        const attributes = isObject(entry.attributes) ? entry.attributes : {}
-        const issuedAt = asDate(attributes.created_at)
+        const issuedAt = asDate(entry.billed_at) ?? asDate(entry.created_at)
         if (!id || !issuedAt) return null
 
-        const urls = isObject(attributes.urls) ? attributes.urls : {}
-        const providerStatus = attributes.status
-        const status: ProviderInvoiceStatus =
-            attributes.refunded === true || providerStatus === 'refunded' || providerStatus === 'partial_refund'
-                ? 'refunded'
-                : providerStatus === 'paid'
-                  ? 'paid'
-                  : providerStatus === 'void'
-                    ? 'void'
-                    : 'pending'
+        const totals = isObject(entry.details) && isObject(entry.details.totals) ? entry.details.totals : undefined
+        const adjustments = isObject(entry.adjustments_totals) ? entry.adjustments_totals : undefined
+        const breakdown = adjustments && isObject(adjustments.breakdown) ? adjustments.breakdown : undefined
+        const refunded = (asMinorUnits(breakdown?.refund) ?? 0) > 0
+
+        const providerStatus = entry.status
+        const status: ProviderInvoiceStatus = refunded
+            ? 'refunded'
+            : providerStatus === 'completed' || providerStatus === 'paid'
+              ? 'paid'
+              : providerStatus === 'canceled'
+                ? 'void'
+                : 'pending'
 
         return {
             id,
             issuedAt,
-            total: typeof attributes.total === 'number' ? attributes.total : 0,
-            currency: typeof attributes.currency === 'string' ? attributes.currency : 'USD',
+            total: asMinorUnits(totals?.total) ?? 0,
+            currency: typeof entry.currency_code === 'string' ? entry.currency_code : 'USD',
             status,
-            url: isHttps(urls.invoice_url) ? urls.invoice_url : null,
+            url: null,
         }
     }
 
-    const variantFor = (planCode: PlanCode, interval: (typeof BILLING_INTERVALS)[number]): number | string => {
-        const variant = config.variants[planCode][interval]
-        return Number.isInteger(Number(variant)) ? Number(variant) : variant
-    }
-
     const subscriptionPath = (providerSubscriptionId: string): string =>
-        `/v1/subscriptions/${encodeURIComponent(providerSubscriptionId)}`
-
-    const patchSubscription = async (operation: string, providerSubscriptionId: string, attributes: Json): Promise<void> => {
-        await call(operation, subscriptionPath(providerSubscriptionId), {
-            method: 'PATCH',
-            body: { data: { type: 'subscriptions', id: providerSubscriptionId, attributes } },
-        })
-    }
+        `/subscriptions/${encodeURIComponent(providerSubscriptionId)}`
 
     const toSnapshot = (entry: unknown): ProviderSubscriptionSnapshot => {
         const providerSubscriptionId = isObject(entry) ? asId(entry.id) : undefined
@@ -281,22 +329,16 @@ export const createMorProvider = (
             throw requestFailed()
         }
 
-        const attributes = isObject(entry.attributes) ? entry.attributes : {}
-        const updatedAt = asDate(attributes.updated_at) ?? asDate(attributes.created_at) ?? new Date(0)
-        const variantId = asId(attributes.variant_id)
-        const endsAt = asDate(attributes.ends_at)
-        const renewsAt = asDate(attributes.renews_at)
-        const cancelled = attributes.cancelled === true
-
+        const facts = readSubscription(entry)
         return compact({
             providerSubscriptionId,
-            providerCustomerId: asId(attributes.customer_id),
-            planCode: variantId ? planByVariant.get(variantId) : undefined,
-            status: mapStatus(attributes.status, endsAt, updatedAt),
-            currentPeriodEnd: cancelled ? (endsAt ?? renewsAt) : renewsAt,
-            trialEndsAt: asDate(attributes.trial_ends_at),
-            cancelAtPeriodEnd: cancelled,
-            updatedAt,
+            providerCustomerId: facts.providerCustomerId,
+            planCode: facts.priceId ? planByPrice.get(facts.priceId) : undefined,
+            status: mapSubscriptionStatus(entry.status),
+            currentPeriodEnd: facts.currentPeriodEnd,
+            trialEndsAt: facts.trialEndsAt,
+            cancelAtPeriodEnd: facts.cancelAtPeriodEnd,
+            updatedAt: asDate(entry.updated_at) ?? asDate(entry.created_at) ?? new Date(0),
         }) as unknown as ProviderSubscriptionSnapshot
     }
 
@@ -310,7 +352,7 @@ export const createMorProvider = (
             try {
                 response = await fetchImpl(`${apiBase}${subscriptionPath(providerSubscriptionId)}`, {
                     method: 'GET',
-                    headers: { Accept: JSON_API, Authorization: `Bearer ${config.apiKey}` },
+                    headers: { Accept: JSON_CONTENT, Authorization: `Bearer ${config.apiKey}` },
                     signal: AbortSignal.timeout(timeoutMs),
                 })
             } catch (error) {
@@ -338,37 +380,46 @@ export const createMorProvider = (
 
         async listSubscriptions() {
             const snapshots: ProviderSubscriptionSnapshot[] = []
-            let pageNumber = 1
-            let lastPage = 1
+            let after: string | undefined
+            let pages = 0
 
-            do {
-                const query = new URLSearchParams({
-                    'filter[store_id]': config.storeId,
-                    'page[number]': String(pageNumber),
-                    'page[size]': String(LIST_PAGE_SIZE),
-                })
-                const body = await call('listSubscriptions', `/v1/subscriptions?${query.toString()}`, { method: 'GET' })
-
-                lastPage = lastPageOf(body)
-                if (lastPage > MAX_LIST_PAGES) {
-                    logger.error('Billing provider reported an implausible page count', { operation: 'listSubscriptions', lastPage })
+            for (;;) {
+                pages += 1
+                if (pages > MAX_LIST_PAGES) {
+                    logger.error('Billing provider paged past the sane limit', { operation: 'listSubscriptions', pages })
                     throw requestFailed()
                 }
 
-                if (Array.isArray(body.data)) snapshots.push(...body.data.map(toSnapshot))
-                pageNumber += 1
-            } while (pageNumber <= lastPage)
+                const query = new URLSearchParams({ per_page: String(LIST_PAGE_SIZE), order_by: 'id[ASC]' })
+                if (after !== undefined) query.set('after', after)
+                const body = await call('listSubscriptions', `/subscriptions?${query.toString()}`, { method: 'GET' })
 
-            return snapshots
+                const entries = Array.isArray(body.data) ? body.data : []
+                snapshots.push(...entries.map(toSnapshot))
+
+                const pagination = isObject(body.meta) && isObject(body.meta.pagination) ? body.meta.pagination : undefined
+                if (pagination?.has_more !== true) return snapshots
+
+                const last: unknown = entries[entries.length - 1]
+                const cursor = isObject(last) ? asId(last.id) : undefined
+                if (!cursor || cursor === after) {
+                    logger.error('Billing provider reported more pages but no usable cursor', { operation: 'listSubscriptions' })
+                    throw requestFailed()
+                }
+                after = cursor
+            }
         },
 
+        // Links are left null: Paddle's invoice PDF link is a separate call per transaction and expires in an hour; the customer portal carries the full history.
         async listInvoices({ providerSubscriptionId }) {
             const query = new URLSearchParams({
-                'filter[store_id]': config.storeId,
-                'filter[subscription_id]': providerSubscriptionId,
-                'page[size]': String(INVOICE_PAGE_SIZE),
+                subscription_id: providerSubscriptionId,
+                status: INVOICE_STATUSES,
+                include: 'adjustments_totals',
+                order_by: 'created_at[DESC]',
+                per_page: String(TRANSACTION_PAGE_SIZE),
             })
-            const body = await call('listInvoices', `/v1/subscription-invoices?${query.toString()}`, { method: 'GET' })
+            const body = await call('listInvoices', `/transactions?${query.toString()}`, { method: 'GET' })
 
             const entries = Array.isArray(body.data) ? body.data : []
             return entries
@@ -378,62 +429,107 @@ export const createMorProvider = (
         },
 
         async changePlan({ providerSubscriptionId, planCode, interval }) {
-            await patchSubscription('changePlan', providerSubscriptionId, { variant_id: variantFor(planCode, interval) })
-        },
-
-        // The provider's cancel call stops all further charges but has no expire-now; `immediate` is honoured to that extent.
-        async cancelSubscription({ providerSubscriptionId }) {
-            await call('cancelSubscription', subscriptionPath(providerSubscriptionId), { method: 'DELETE' })
-        },
-
-        async resumeSubscription({ providerSubscriptionId }) {
-            await patchSubscription('resumeSubscription', providerSubscriptionId, { cancelled: false })
-        },
-
-        // Ask-only, like the calls above: the resulting invoice status arrives on the refund.issued webhook.
-        async refundInvoice({ providerInvoiceId, amountMinor }) {
-            await call('refundInvoice', `/v1/subscription-invoices/${encodeURIComponent(providerInvoiceId)}/refund`, {
-                method: 'POST',
-                body: { data: { type: 'subscription-invoices', id: providerInvoiceId, attributes: { amount: amountMinor } } },
+            await call('changePlan', subscriptionPath(providerSubscriptionId), {
+                method: 'PATCH',
+                body: {
+                    items: [{ price_id: config.prices[planCode][interval], quantity: 1 }],
+                    proration_billing_mode: PRORATION_BILLING_MODE,
+                },
             })
         },
 
-        async createCheckoutSession({ userId, email, planCode, interval, returnUrl }) {
-            const body = {
-                data: {
-                    type: 'checkouts',
-                    attributes: {
-                        checkout_data: { email, custom: { user_id: userId } },
-                        ...(returnUrl ? { product_options: { redirect_url: returnUrl } } : {}),
-                    },
-                    relationships: {
-                        store: { data: { type: 'stores', id: config.storeId } },
-                        variant: { data: { type: 'variants', id: config.variants[planCode][interval] } },
-                    },
-                },
+        async cancelSubscription({ providerSubscriptionId, immediate }) {
+            await call('cancelSubscription', `${subscriptionPath(providerSubscriptionId)}/cancel`, {
+                method: 'POST',
+                body: { effective_from: immediate === true ? 'immediately' : 'next_billing_period' },
+            })
+        },
+
+        // A canceled subscription can never be reinstated; what this undoes is a cancel still scheduled for the period end.
+        async resumeSubscription({ providerSubscriptionId }) {
+            await call('resumeSubscription', subscriptionPath(providerSubscriptionId), {
+                method: 'PATCH',
+                body: { scheduled_change: null },
+            })
+        },
+
+        // Ask-only, like the calls above: the refund's approval arrives on the adjustment.updated webhook. A refund below the total needs the transaction's one line item to point at, hence the lookup.
+        async refundInvoice({ providerInvoiceId, amountMinor }) {
+            if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+                logger.error('Billing refund refused: amount is not a positive whole number of minor units', { operation: 'refundInvoice' })
+                throw requestFailed()
             }
 
-            const url = attributesOf(await call('createCheckoutSession', '/v1/checkouts', { method: 'POST', body })).url
-            if (!isHttps(url)) throw requestFailed()
-            return { url }
+            const transaction = dataOf(await call('refundInvoice', `/transactions/${encodeURIComponent(providerInvoiceId)}`, { method: 'GET' }))
+            const details = isObject(transaction.details) ? transaction.details : {}
+            const total = asMinorUnits(isObject(details.totals) ? details.totals.total : undefined)
+            if (total === undefined || amountMinor > total) {
+                logger.error('Billing refund refused: amount exceeds the transaction total or the total is unknown', { operation: 'refundInvoice' })
+                throw requestFailed()
+            }
+
+            const base = { action: 'refund', transaction_id: providerInvoiceId, reason: REFUND_REASON }
+            if (amountMinor === total) {
+                await call('refundInvoice', '/adjustments', { method: 'POST', body: { ...base, type: 'full' } })
+                return
+            }
+
+            const lineItems = Array.isArray(details.line_items) ? details.line_items.filter(isObject) : []
+            const itemId = lineItems.length === 1 ? asId(lineItems[0].id) : undefined
+            if (!itemId) {
+                logger.error('Billing refund refused: a partial refund needs exactly one line item', { operation: 'refundInvoice' })
+                throw requestFailed()
+            }
+            await call('refundInvoice', '/adjustments', {
+                method: 'POST',
+                body: { ...base, type: 'partial', items: [{ item_id: itemId, type: 'partial', amount: String(amountMinor) }] },
+            })
+        },
+
+        // The payment link is the account's default payment link plus `?_ptxn=<id>`; it only works once that page runs Paddle.js, and Paddle returns no link until a default one is approved.
+        async createCheckoutSession({ userId, planCode, interval }) {
+            const body = {
+                items: [{ price_id: config.prices[planCode][interval], quantity: 1 }],
+                custom_data: { user_id: userId },
+            }
+
+            const url = dataOf(await call('createCheckoutSession', '/transactions', { method: 'POST', body })).checkout
+            const link = isObject(url) ? url.url : undefined
+            if (!isHttps(link)) throw requestFailed()
+            return { url: link }
         },
 
         async getPortalUrl({ providerCustomerId }) {
-            const response = await call('getPortalUrl', `/v1/customers/${encodeURIComponent(providerCustomerId)}`, { method: 'GET' })
-            const urls = attributesOf(response).urls
-            const url = isObject(urls) ? urls.customer_portal : undefined
+            const session = dataOf(
+                await call('getPortalUrl', `/customers/${encodeURIComponent(providerCustomerId)}/portal-sessions`, { method: 'POST', body: {} })
+            )
+            const urls = session.urls
+            const general = isObject(urls) ? urls.general : undefined
+            const url = isObject(general) ? general.overview : undefined
             if (!isHttps(url)) throw requestFailed()
             return { url }
         },
 
         verifyWebhook(rawBody, headers) {
             const provided = headers[SIGNATURE_HEADER]
-            if (typeof provided !== 'string' || provided === '' || rawBody.length === 0) return false
+            if (typeof provided !== 'string' || rawBody.length === 0) return false
 
-            const expected = crypto.createHmac('sha256', config.webhookSecret).update(rawBody).digest('hex')
-            const a = Buffer.from(provided)
-            const b = Buffer.from(expected)
-            return a.length === b.length && crypto.timingSafeEqual(a, b)
+            const parsed = parseSignatureHeader(provided)
+            if (!parsed) return false
+
+            const ageSeconds = Math.abs(Date.now() / 1000 - Number(parsed.timestamp))
+            if (!Number.isFinite(ageSeconds) || ageSeconds > SIGNATURE_TOLERANCE_SECONDS) return false
+
+            const expected = crypto
+                .createHmac('sha256', config.webhookSecret)
+                .update(`${parsed.timestamp}:`)
+                .update(rawBody)
+                .digest()
+
+            return parsed.signatures.reduce((matched, candidate) => {
+                const signature = Buffer.from(candidate, 'hex')
+                return (signature.length === expected.length && crypto.timingSafeEqual(signature, expected)) || matched
+            }, false)
         },
 
         parseEvent(rawBody): NormalizedBillingEvent {
@@ -443,46 +539,42 @@ export const createMorProvider = (
             } catch {
                 throw payloadInvalid()
             }
-            if (!isObject(root) || !isObject(root.meta) || !isObject(root.data) || !isObject(root.data.attributes)) {
-                throw payloadInvalid()
-            }
-            const eventName = root.meta.event_name
-            if (typeof eventName !== 'string' || eventName === '') throw payloadInvalid()
+            if (!isObject(root) || !isObject(root.data)) throw payloadInvalid()
+            const providerEventId = typeof root.event_id === 'string' && root.event_id !== '' ? root.event_id : undefined
+            const eventType = root.event_type
+            if (!providerEventId || typeof eventType !== 'string' || eventType === '') throw payloadInvalid()
 
-            const attributes = root.data.attributes
-            const mappedType = EVENT_TYPES[eventName]
-            const providerEventId = `mor_${crypto.createHash('sha256').update(rawBody).digest('hex')}`
+            const data = root.data
+            const isSubscriptionResource = eventType.startsWith('subscription.')
+            const isAdjustment = eventType.startsWith('adjustment.')
+            const adjustmentAction = isAdjustment && typeof data.action === 'string' ? data.action : undefined
+            const providerStatus = typeof data.status === 'string' ? data.status : undefined
+            const mappedType = isAdjustment ? adjustmentEventType(eventType, adjustmentAction, providerStatus) : EVENT_TYPES[eventType]
 
-            const stamp = attributes.updated_at ?? attributes.created_at
-            const occurredAt = asDate(stamp)
+            const occurredAt = asDate(root.occurred_at)
             if (!occurredAt && mappedType) throw payloadInvalid()
 
-            const isSubscriptionResource = eventName.startsWith('subscription_') && !eventName.startsWith('subscription_payment_')
-            const providerCustomerId = asId(attributes.customer_id)
-            const providerSubscriptionId = isSubscriptionResource ? asId(root.data.id) : asId(attributes.subscription_id)
-            const variantId = asId(attributes.variant_id)
-            const endsAt = asDate(attributes.ends_at)
-            const renewsAt = asDate(attributes.renews_at)
-            const trialEndsAt = asDate(attributes.trial_ends_at)
+            const providerSubscriptionId = isSubscriptionResource ? asId(data.id) : asId(data.subscription_id)
+            const { providerCustomerId, priceId, trialEndsAt, scheduledChangeAction, cancelAtPeriodEnd, currentPeriodEnd } = readSubscription(data)
+            const totals = isObject(data.totals) ? data.totals : isObject(data.details) && isObject(data.details.totals) ? data.details.totals : undefined
 
             const payload = compact({
-                providerEventName: eventName,
+                providerEventName: eventType,
                 providerCustomerId,
                 providerSubscriptionId,
-                providerStatus: typeof attributes.status === 'string' ? attributes.status : undefined,
-                variantId,
-                cancelled: typeof attributes.cancelled === 'boolean' ? attributes.cancelled : undefined,
-                renewsAt: renewsAt?.toISOString(),
-                endsAt: endsAt?.toISOString(),
+                providerStatus,
+                priceId,
+                scheduledChangeAction,
+                currentPeriodEnd: isSubscriptionResource ? currentPeriodEnd?.toISOString() : undefined,
                 trialEndsAt: trialEndsAt?.toISOString(),
-                billingReason: typeof attributes.billing_reason === 'string' ? attributes.billing_reason : undefined,
-                total: typeof attributes.total === 'number' ? attributes.total : undefined,
-                currency: typeof attributes.currency === 'string' ? attributes.currency : undefined,
-                refunded: typeof attributes.refunded === 'boolean' ? attributes.refunded : undefined,
+                adjustmentAction,
+                origin: typeof data.origin === 'string' ? data.origin : undefined,
+                total: asMinorUnits(totals?.total),
+                currency: typeof data.currency_code === 'string' ? data.currency_code : undefined,
             })
 
             if (!mappedType) {
-                return { providerEventId, type: eventName, occurredAt: occurredAt ?? new Date(), payload }
+                return { providerEventId, type: eventType, occurredAt: occurredAt ?? new Date(), payload }
             }
 
             const event: NormalizedBillingEvent = {
@@ -495,19 +587,13 @@ export const createMorProvider = (
             }
 
             if (isSubscriptionResource) {
-                const customData = root.meta.custom_data
-                const userId = isObject(customData) && typeof customData.user_id === 'string' ? customData.user_id : undefined
-                const cancelled = attributes.cancelled === true
-
-                event.userId = userId
-                event.planCode = variantId ? planByVariant.get(variantId) : undefined
-                event.interval = variantId ? (intervalByVariant.get(variantId) ?? null) : undefined
-                event.status =
-                    eventName === 'subscription_expired'
-                        ? 'cancelled'
-                        : mapStatus(attributes.status, endsAt, occurredAt as Date)
-                event.cancelAtPeriodEnd = cancelled
-                event.currentPeriodEnd = cancelled ? (endsAt ?? renewsAt) : renewsAt
+                const customData = data.custom_data
+                event.userId = isObject(customData) && typeof customData.user_id === 'string' ? customData.user_id : undefined
+                event.planCode = priceId ? planByPrice.get(priceId) : undefined
+                event.interval = priceId ? (intervalByPrice.get(priceId) ?? null) : undefined
+                event.status = eventType === 'subscription.canceled' ? 'cancelled' : mapSubscriptionStatus(data.status)
+                event.cancelAtPeriodEnd = cancelAtPeriodEnd
+                event.currentPeriodEnd = currentPeriodEnd
                 event.trialEndsAt = trialEndsAt
             }
 

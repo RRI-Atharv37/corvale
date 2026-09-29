@@ -129,8 +129,9 @@ export interface BillingProvider {
      * resulting state arrives on a signed webhook, like every other entitlement change.
      */
     changePlan(input: PlanChangeInput): Promise<void>
-    /** Ends the subscription at the close of the paid period; the provider keeps billing until then. */
+    /** Ends the subscription at the close of the paid period (the provider keeps billing until then), or right away when `immediate` is set. */
     cancelSubscription(input: CancelSubscriptionInput): Promise<void>
+    /** Undoes a cancel still scheduled for the period end; a subscription that has already ended cannot be resumed. */
     resumeSubscription(input: SubscriptionRef): Promise<void>
     /** Full or partial refund of one invoice. Record-only until `refund.issued` arrives - nothing here changes entitlement. */
     refundInvoice(input: RefundInvoiceInput): Promise<void>

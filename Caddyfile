@@ -13,3 +13,27 @@ corvale.app {
 api.corvale.app {
 	reverse_proxy 127.0.0.1:5000
 }
+
+# Paddle.js payment-link page (frontend/pay/public). Its own origin on purpose: Paddle's script never
+# runs on the app's origin, so the app's strict CSP stays untouched. Copy frontend/pay/public/* to
+# /srv/corvale-pay and give Caddy its settings, e.g. in the caddy.service unit:
+#   Environment=PADDLE_CLIENT_TOKEN=live_...   (client-side token only, never the API key)
+#   Environment=PADDLE_ENVIRONMENT=production  (sandbox with a test_ token while testing)
+#   Environment=CORVALE_APP_URL=https://corvale.app
+# In the Paddle dashboard, set this origin as an approved domain and its /?_ptxn link as the default
+# payment link. The CSP was tested against Paddle.js loading in sandbox (script, stylesheet and checkout
+# frame all load; style-src needs 'unsafe-inline' and Paddle's CDN because Paddle.js injects styles).
+# A full checkout with a real transaction is not yet tested - watch the browser console there.
+pay.corvale.app {
+	root * /srv/corvale-pay
+	templates
+	file_server
+
+	header {
+		Content-Security-Policy "default-src 'none'; script-src 'self' https://cdn.paddle.com; style-src 'self' 'unsafe-inline' https://*.paddle.com; img-src 'self' data: https://*.paddle.com; frame-src https://*.paddle.com; connect-src https://*.paddle.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+		Cache-Control "no-store"
+		-Server
+	}
+}

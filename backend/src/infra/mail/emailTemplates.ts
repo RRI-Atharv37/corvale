@@ -312,3 +312,32 @@ export const adminSecurityNoticeContent = (event: AdminSecurityEvent, when: Date
         text: `${summary} When: ${at}. If you did not expect this, treat it as a security incident.`,
     }
 }
+
+export interface BillingDisputeAlert {
+    providerEventId: string
+    providerSubscriptionId?: string
+    occurredAt: Date
+    amountMinor?: number
+    currency?: string
+}
+
+const formatMinorAmount = (amountMinor: number, currency: string): string => `${(amountMinor / 100).toFixed(2)} ${currency.toUpperCase()}`
+
+export const billingDisputeAlertContent = (input: BillingDisputeAlert): DunningEmailContent => {
+    const at = input.occurredAt.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC')
+    const amount = input.amountMinor !== undefined && input.currency ? formatMinorAmount(input.amountMinor, input.currency) : null
+
+    const lines = [
+        'A payment dispute (chargeback) was opened on a Corvale subscription.',
+        `When: ${at}.`,
+        input.providerSubscriptionId ? `Subscription: ${input.providerSubscriptionId}.` : null,
+        amount ? `Amount: ${amount}.` : null,
+        'If this arrived as a pre-chargeback alert, refund it from the provider dashboard within the window given there to avoid it counting against the chargeback ratio.',
+    ].filter((line): line is string => line !== null)
+
+    return {
+        subject: 'Corvale billing: dispute opened',
+        html: baseEmailTemplate('Dispute opened', lines.map(paragraph).join('')),
+        text: lines.join('\n\n'),
+    }
+}

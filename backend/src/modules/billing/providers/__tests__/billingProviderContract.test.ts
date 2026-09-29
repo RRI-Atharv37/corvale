@@ -41,71 +41,68 @@ const MOR_SECRET = 'mor_contract_secret'
 
 const morConfig = (): MorConfig => ({
     apiKey: 'mor_key',
-    storeId: '9',
+    environment: 'sandbox',
     webhookSecret: MOR_SECRET,
-    variants: {
+    prices: {
         plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     },
 })
 
 const jsonResponse = (body: unknown): Response =>
-    new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/vnd.api+json' } })
+    new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
 
 const morHarness = (): ProviderHarness => {
     const fetchImpl = async (input: string | URL | Request): Promise<Response> => {
         const url = String(input)
-        if (url.endsWith('/v1/checkouts')) {
-            return jsonResponse({ data: { attributes: { url: 'https://store.example.test/checkout/custom/abc' } } })
+        if (url.includes('/transactions?')) return jsonResponse({ data: [] })
+        if (url.endsWith('/transactions')) return jsonResponse({ data: { checkout: { url: 'https://app.example.test/pay?_ptxn=txn_1' } } })
+        if (/\/transactions\/[^/?]+$/.test(url)) {
+            return jsonResponse({ data: { id: 'inv_1', details: { totals: { total: '500' }, line_items: [{ id: 'txnitm_1' }] } } })
         }
-        if (url.includes('/v1/subscription-invoices')) return jsonResponse({ data: [] })
-        if (url.includes('/v1/subscriptions/')) return jsonResponse({ data: { id: '77', attributes: {} } })
-        return jsonResponse({ data: { attributes: { urls: { customer_portal: 'https://store.example.test/billing?x=1' } } } })
+        if (url.endsWith('/adjustments')) return jsonResponse({ data: { id: 'adj_1', status: 'pending_approval' } })
+        if (url.endsWith('/portal-sessions')) {
+            return jsonResponse({ data: { urls: { general: { overview: 'https://customer-portal.example.test/p?action=overview' } } } })
+        }
+        return jsonResponse({ data: { id: '77' } })
     }
     const provider = createMorProvider(morConfig(), { fetchImpl: fetchImpl as typeof fetch })
 
-    const eventNames: Record<DeliverySpec['type'], string> = {
-        'subscription.created': 'subscription_created',
-        'subscription.updated': 'subscription_updated',
-        'payment.failed': 'subscription_payment_failed',
-        unknown: 'license_key_created',
+    const eventTypes: Record<DeliverySpec['type'], string> = {
+        'subscription.created': 'subscription.created',
+        'subscription.updated': 'subscription.updated',
+        'payment.failed': 'transaction.payment_failed',
+        unknown: 'customer.updated',
     }
-    const variants: Record<PlanCode, string> = { plus: '101', pro: '201' }
+    const prices: Record<PlanCode, string> = { plus: '101', pro: '201' }
 
     return {
         name: 'mor',
         provider,
-        signedHeaders: (rawBody) => ({
-            'x-signature': crypto.createHmac('sha256', MOR_SECRET).update(rawBody).digest('hex'),
-        }),
+        signedHeaders: (rawBody) => {
+            const ts = Math.floor(Date.now() / 1000)
+            const h1 = crypto.createHmac('sha256', MOR_SECRET).update(`${ts}:`).update(rawBody).digest('hex')
+            return { 'paddle-signature': `ts=${ts};h1=${h1}` }
+        },
         deliver(spec) {
-            const isInvoice = spec.type === 'payment.failed'
             const at = spec.occurredAt.toISOString()
+            const isTransaction = spec.type === 'payment.failed'
             const body = {
-                meta: {
-                    event_name: eventNames[spec.type],
-                    custom_data: spec.userId ? { user_id: spec.userId } : {},
-                },
-                data: {
-                    type: isInvoice ? 'subscription-invoices' : 'subscriptions',
-                    id: isInvoice ? '9001' : spec.providerSubscriptionId,
-                    attributes: {
-                        customer_id: Number(spec.providerCustomerId),
-                        ...(isInvoice ? { subscription_id: Number(spec.providerSubscriptionId), status: 'pending' } : {}),
-                        ...(!isInvoice
-                            ? {
-                                  variant_id: Number(variants[spec.planCode ?? 'plus']),
-                                  status: 'active',
-                                  cancelled: false,
-                                  trial_ends_at: null,
-                                  renews_at: '2099-01-01T00:00:00.000000Z',
-                                  ends_at: null,
-                              }
-                            : {}),
-                        created_at: at,
-                        updated_at: at,
-                    },
-                },
+                event_id: `evt_${spec.type}_${spec.occurredAt.getTime()}_${spec.providerSubscriptionId}`,
+                event_type: eventTypes[spec.type],
+                occurred_at: at,
+                notification_id: 'ntf_1',
+                data: isTransaction
+                    ? { id: 'txn_1', status: 'past_due', customer_id: spec.providerCustomerId, subscription_id: spec.providerSubscriptionId }
+                    : {
+                          id: spec.providerSubscriptionId,
+                          status: 'active',
+                          customer_id: spec.providerCustomerId,
+                          custom_data: spec.userId ? { user_id: spec.userId } : null,
+                          items: [{ status: 'active', quantity: 1, trial_dates: null, price: { id: prices[spec.planCode ?? 'plus'] } }],
+                          current_billing_period: { starts_at: at, ends_at: '2099-01-01T00:00:00.000000Z' },
+                          scheduled_change: null,
+                      },
             }
             const rawBody = Buffer.from(JSON.stringify(body))
             return { rawBody, headers: this.signedHeaders(rawBody) }

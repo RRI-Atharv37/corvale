@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
@@ -13,15 +13,19 @@ import {
 
 const SECRET = 'mor_secret'
 
-const config: MorConfig = {
+// storeId is Lemon-Squeezy-shaped and no longer part of MorConfig (M3f.1); kept here only so the
+// createCheckoutSession/listSubscriptions/listInvoices bodies below - not yet rewritten for Paddle
+// (M3f.4-M3f.5) - still have a value to read at runtime.
+const config = {
     apiKey: 'mor_live_key',
     storeId: '9',
+    environment: 'sandbox',
     webhookSecret: SECRET,
-    variants: {
+    prices: {
         plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     },
-}
+} as unknown as MorConfig
 
 const USER_ID = '64b7f0c2a1b2c3d4e5f60718'
 
@@ -33,83 +37,113 @@ const stubFetch = (responder: (url: string, init: RequestInit) => Response | Pro
     return fn as typeof fn & typeof fetch
 }
 
-const subscriptionAttributes = (overrides: Record<string, unknown> = {}) => ({
-    store_id: 9,
-    customer_id: 55,
-    order_id: 300,
-    product_id: 40,
-    variant_id: 201,
+const OCCURRED_AT = '2026-03-01T10:00:00.000000Z'
+
+const envelope = (eventType: string, data: unknown, overrides: Record<string, unknown> = {}) =>
+    Buffer.from(
+        JSON.stringify({
+            event_id: 'evt_01',
+            event_type: eventType,
+            occurred_at: OCCURRED_AT,
+            notification_id: 'ntf_01',
+            data,
+            ...overrides,
+        })
+    )
+
+const subscriptionData = (
+    overrides: Record<string, unknown> = {},
+    customData: Record<string, unknown> | null = { user_id: USER_ID }
+) => ({
+    id: 'sub_77',
     status: 'active',
-    cancelled: false,
-    user_name: 'Ada Lovelace',
-    user_email: 'ada@example.com',
-    trial_ends_at: null,
-    renews_at: '2026-04-01T00:00:00.000000Z',
-    ends_at: null,
-    urls: { customer_portal: 'https://store.example.test/billing?expires=1&signature=s' },
+    customer_id: 'ctm_55',
+    address_id: 'add_1',
+    currency_code: 'USD',
     created_at: '2026-03-01T09:00:00.000000Z',
     updated_at: '2026-03-01T10:00:00.000000Z',
+    started_at: '2026-03-01T09:00:00.000000Z',
+    first_billed_at: '2026-03-01T09:00:00.000000Z',
+    next_billed_at: '2026-04-01T00:00:00.000000Z',
+    paused_at: null,
+    canceled_at: null,
+    collection_mode: 'automatic',
+    billing_details: { additional_information: 'Ada Lovelace ada@example.com' },
+    current_billing_period: { starts_at: '2026-03-01T00:00:00.000000Z', ends_at: '2026-04-01T00:00:00.000000Z' },
+    scheduled_change: null,
+    management_urls: {
+        update_payment_method: 'https://buyer-portal.paddle.com/subscriptions/sub_77/update?token=secret-token',
+        cancel: 'https://buyer-portal.paddle.com/subscriptions/sub_77/cancel?token=secret-token',
+    },
+    items: [{ status: 'active', quantity: 1, recurring: true, trial_dates: null, price: { id: '201', name: 'Pro monthly' } }],
+    custom_data: customData,
     ...overrides,
 })
 
 const subscriptionBody = (
-    eventName: string,
-    attributes: Record<string, unknown> = {},
-    custom: Record<string, unknown> | undefined = { user_id: USER_ID }
-) =>
-    Buffer.from(
-        JSON.stringify({
-            meta: { event_name: eventName, webhook_id: 'wh_1', ...(custom ? { custom_data: custom } : {}) },
-            data: { type: 'subscriptions', id: '77', attributes: subscriptionAttributes(attributes) },
-        })
-    )
+    eventType: string,
+    overrides: Record<string, unknown> = {},
+    customData: Record<string, unknown> | null = { user_id: USER_ID },
+    envelopeOverrides: Record<string, unknown> = {}
+) => envelope(eventType, subscriptionData(overrides, customData), envelopeOverrides)
 
-const invoiceBody = (eventName: string, attributes: Record<string, unknown> = {}) =>
-    Buffer.from(
-        JSON.stringify({
-            meta: { event_name: eventName, webhook_id: 'wh_1' },
-            data: {
-                type: 'subscription-invoices',
-                id: '9001',
-                attributes: {
-                    store_id: 9,
-                    customer_id: 55,
-                    subscription_id: 77,
-                    billing_reason: 'renewal',
-                    status: 'paid',
-                    total: 1200,
-                    currency: 'USD',
-                    refunded: false,
-                    user_email: 'ada@example.com',
-                    user_name: 'Ada Lovelace',
-                    created_at: '2026-04-01T00:00:00.000000Z',
-                    updated_at: '2026-04-01T00:00:05.000000Z',
-                    ...attributes,
-                },
-            },
-        })
-    )
+const transactionBody = (eventType: string, overrides: Record<string, unknown> = {}) =>
+    envelope(eventType, {
+        id: 'txn_9001',
+        status: 'completed',
+        customer_id: 'ctm_55',
+        subscription_id: 'sub_77',
+        origin: 'subscription_recurring',
+        currency_code: 'USD',
+        billing_period: { starts_at: '2026-04-01T00:00:00.000000Z', ends_at: '2026-05-01T00:00:00.000000Z' },
+        custom_data: null,
+        billed_at: '2026-04-01T00:00:00.000000Z',
+        created_at: '2026-04-01T00:00:00.000000Z',
+        payments: [{ payment_method_id: 'paymtd_1', method_details: { type: 'card', card: { last4: '4242', cardholder_name: 'Ada Lovelace' } } }],
+        details: { totals: { subtotal: '1000', tax: '200', total: '1200' } },
+        ...overrides,
+    })
+
+const adjustmentBody = (action: string, overrides: Record<string, unknown> = {}, eventType = 'adjustment.created') =>
+    envelope(eventType, {
+        id: 'adj_1',
+        action,
+        type: 'partial',
+        status: 'pending_approval',
+        transaction_id: 'txn_9001',
+        subscription_id: 'sub_77',
+        customer_id: 'ctm_55',
+        currency_code: 'USD',
+        totals: { total: '100', subtotal: '92', tax: '8', fee: '5', earnings: '87' },
+        created_at: '2026-04-15T08:48:20.239695Z',
+        updated_at: '2026-04-15T08:48:20.239695Z',
+        ...overrides,
+    })
 
 const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({})) })
 
 describe('morConfigFromEnv', () => {
     const full = {
         MOR_API_KEY: 'k',
-        MOR_STORE_ID: '9',
+        MOR_ENVIRONMENT: 'sandbox',
         MOR_WEBHOOK_SECRET: 's',
-        MOR_VARIANTS: JSON.stringify(config.variants),
+        MOR_PRICES: JSON.stringify(config.prices),
     }
 
     it('reads all four settings', () => {
         expect(morConfigFromEnv(full)).toEqual({
             apiKey: 'k',
-            storeId: '9',
+            environment: 'sandbox',
             webhookSecret: 's',
-            variants: config.variants,
+            prices: config.prices,
         })
     })
 
-    it.each(['MOR_API_KEY', 'MOR_STORE_ID', 'MOR_WEBHOOK_SECRET', 'MOR_VARIANTS'])(
+    it('reads a production environment', () => {
+        expect(morConfigFromEnv({ ...full, MOR_ENVIRONMENT: 'production' }).environment).toBe('production')
+    })
+
+    it.each(['MOR_API_KEY', 'MOR_ENVIRONMENT', 'MOR_WEBHOOK_SECRET', 'MOR_PRICES'])(
         'names %s when it is missing',
         (key) => {
             const env = { ...full, [key]: undefined }
@@ -119,23 +153,27 @@ describe('morConfigFromEnv', () => {
     )
 
     it('reports every missing setting at once', () => {
-        expect(() => morConfigFromEnv({})).toThrow(/MOR_API_KEY.*MOR_STORE_ID/s)
+        expect(() => morConfigFromEnv({})).toThrow(/MOR_API_KEY.*MOR_ENVIRONMENT/s)
     })
 
-    it('rejects variants that are not valid JSON', () => {
-        expect(() => morConfigFromEnv({ ...full, MOR_VARIANTS: '{nope' })).toThrow('MOR_VARIANTS')
+    it('rejects an environment that is neither sandbox nor production', () => {
+        expect(() => morConfigFromEnv({ ...full, MOR_ENVIRONMENT: 'staging' })).toThrow('MOR_ENVIRONMENT')
     })
 
-    it('rejects a variant id used for two plans or intervals, which would make the plan ambiguous', () => {
+    it('rejects prices that are not valid JSON', () => {
+        expect(() => morConfigFromEnv({ ...full, MOR_PRICES: '{nope' })).toThrow('MOR_PRICES')
+    })
+
+    it('rejects a price id used for two plans or intervals, which would make the plan ambiguous', () => {
         const clash = JSON.stringify({ plus: { monthly: '101', annual: '101' }, pro: { monthly: '201', annual: '202' } })
 
-        expect(() => morConfigFromEnv({ ...full, MOR_VARIANTS: clash })).toThrow('MOR_VARIANTS')
+        expect(() => morConfigFromEnv({ ...full, MOR_PRICES: clash })).toThrow('MOR_PRICES')
     })
 
-    it('rejects a variants map missing a plan or interval', () => {
+    it('rejects a prices map missing a plan or interval', () => {
         const partial = JSON.stringify({ plus: { monthly: '101' }, pro: { monthly: '201', annual: '202' } })
 
-        expect(() => morConfigFromEnv({ ...full, MOR_VARIANTS: partial })).toThrow('MOR_VARIANTS')
+        expect(() => morConfigFromEnv({ ...full, MOR_PRICES: partial })).toThrow('MOR_PRICES')
     })
 
     it('accepts a flat plan_interval map', () => {
@@ -146,66 +184,145 @@ describe('morConfigFromEnv', () => {
             pro_annual: '202',
         })
 
-        expect(morConfigFromEnv({ ...full, MOR_VARIANTS: flat }).variants).toEqual(config.variants)
+        expect(morConfigFromEnv({ ...full, MOR_PRICES: flat }).prices).toEqual(config.prices)
     })
 
-    it('accepts numeric variant ids', () => {
+    it('accepts numeric price ids', () => {
         const numeric = JSON.stringify({
             plus: { monthly: 101, annual: 102 },
             pro: { monthly: 201, annual: 202 },
         })
 
-        expect(morConfigFromEnv({ ...full, MOR_VARIANTS: numeric }).variants).toEqual(config.variants)
+        expect(morConfigFromEnv({ ...full, MOR_PRICES: numeric }).prices).toEqual(config.prices)
     })
 })
 
 describe('verifyWebhook', () => {
-    it('is HMAC-SHA256 over the raw bytes, hex, in x-signature', () => {
-        const raw = subscriptionBody('subscription_created')
-        const signature = crypto.createHmac('sha256', SECRET).update(raw).digest('hex')
+    const NOW = new Date('2026-09-29T12:00:00.000Z')
+    const nowSeconds = Math.floor(NOW.getTime() / 1000)
+    const raw = subscriptionBody('subscription_created')
 
-        expect(provider.verifyWebhook(raw, { 'x-signature': signature })).toBe(true)
+    const h1Of = (body: Buffer, ts: number | string, secret = SECRET): string =>
+        crypto.createHmac('sha256', secret).update(`${ts}:`).update(body).digest('hex')
+    const header = (ts: number | string, h1: string): string => `ts=${ts};h1=${h1}`
+
+    beforeEach(() => {
+        vi.useFakeTimers()
+        vi.setSystemTime(NOW)
+    })
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
+    it('is HMAC-SHA256 over "<ts>:<raw body>", hex, in Paddle-Signature', () => {
+        const headers = { 'paddle-signature': header(nowSeconds, h1Of(raw, nowSeconds)) }
+
+        expect(provider.verifyWebhook(raw, headers)).toBe(true)
     })
 
     it('does not honour a signature made with another secret', () => {
-        const raw = subscriptionBody('subscription_created')
-        const signature = crypto.createHmac('sha256', 'someone_elses_secret').update(raw).digest('hex')
+        const headers = { 'paddle-signature': header(nowSeconds, h1Of(raw, nowSeconds, 'someone_elses_secret')) }
 
-        expect(provider.verifyWebhook(raw, { 'x-signature': signature })).toBe(false)
+        expect(provider.verifyWebhook(raw, headers)).toBe(false)
     })
 
-    it('does not read the signature from any header other than x-signature', () => {
-        const raw = subscriptionBody('subscription_created')
-        const signature = crypto.createHmac('sha256', SECRET).update(raw).digest('hex')
+    it('does not honour a signature over the body alone, without the timestamp', () => {
+        const bare = crypto.createHmac('sha256', SECRET).update(raw).digest('hex')
 
-        expect(provider.verifyWebhook(raw, { 'x-hub-signature-256': signature })).toBe(false)
+        expect(provider.verifyWebhook(raw, { 'paddle-signature': header(nowSeconds, bare) })).toBe(false)
+    })
+
+    it('does not honour a timestamp that was altered after signing', () => {
+        const h1 = h1Of(raw, nowSeconds - 3)
+
+        expect(provider.verifyWebhook(raw, { 'paddle-signature': header(nowSeconds, h1) })).toBe(false)
+    })
+
+    it('does not honour a body altered after signing', () => {
+        const headers = { 'paddle-signature': header(nowSeconds, h1Of(raw, nowSeconds)) }
+
+        expect(provider.verifyWebhook(Buffer.from(raw.toString('utf8').replace('77', '78')), headers)).toBe(false)
+    })
+
+    it('does not read the signature from any header other than Paddle-Signature', () => {
+        const value = header(nowSeconds, h1Of(raw, nowSeconds))
+
+        expect(provider.verifyWebhook(raw, { 'x-signature': value })).toBe(false)
+        expect(provider.verifyWebhook(raw, { 'x-hub-signature-256': value })).toBe(false)
+    })
+
+    it('accepts a timestamp exactly at the tolerance and rejects one just past it, in either direction', () => {
+        const verify = (ts: number) => provider.verifyWebhook(raw, { 'paddle-signature': header(ts, h1Of(raw, ts)) })
+
+        expect(verify(nowSeconds - 5)).toBe(true)
+        expect(verify(nowSeconds + 5)).toBe(true)
+        expect(verify(nowSeconds - 6)).toBe(false)
+        expect(verify(nowSeconds + 6)).toBe(false)
+    })
+
+    it('rejects a stale but otherwise valid delivery (replay)', () => {
+        const stale = nowSeconds - 3600
+
+        expect(provider.verifyWebhook(raw, { 'paddle-signature': header(stale, h1Of(raw, stale)) })).toBe(false)
+    })
+
+    it('accepts any one valid h1 when the header carries several (secret rotation)', () => {
+        const value = `ts=${nowSeconds};h1=${h1Of(raw, nowSeconds, 'retired_secret')};h1=${h1Of(raw, nowSeconds)}`
+
+        expect(provider.verifyWebhook(raw, { 'paddle-signature': value })).toBe(true)
+    })
+
+    it.each([
+        ['an empty header', ''],
+        ['no ts', 'h1=abcd'],
+        ['no h1', `ts=${1}`],
+        ['a non-numeric ts', 'ts=yesterday;h1=abcd'],
+        ['a fractional ts', 'ts=1.5;h1=abcd'],
+        ['a signed ts', 'ts=-1;h1=abcd'],
+        ['a repeated ts', `ts=${1};ts=${2};h1=abcd`],
+        ['a non-hex h1', `ts=${1};h1=not-hex`],
+        ['garbage', 'not a signature header'],
+    ])('rejects %s without throwing', (_label, value) => {
+        expect(() => provider.verifyWebhook(raw, { 'paddle-signature': value })).not.toThrow()
+        expect(provider.verifyWebhook(raw, { 'paddle-signature': value })).toBe(false)
+    })
+
+    it('rejects a missing, undefined or repeated (array) header and an empty body', () => {
+        const value = header(nowSeconds, h1Of(raw, nowSeconds))
+
+        expect(provider.verifyWebhook(raw, {})).toBe(false)
+        expect(provider.verifyWebhook(raw, { 'paddle-signature': undefined })).toBe(false)
+        expect(provider.verifyWebhook(raw, { 'paddle-signature': [value, value] })).toBe(false)
+        expect(provider.verifyWebhook(Buffer.alloc(0), { 'paddle-signature': header(nowSeconds, h1Of(Buffer.alloc(0), nowSeconds)) })).toBe(false)
     })
 })
 
 describe('parseEvent - subscription events', () => {
     it.each([
-        ['subscription_created', 'subscription.created'],
-        ['subscription_updated', 'subscription.updated'],
-        ['subscription_resumed', 'subscription.updated'],
-        ['subscription_unpaused', 'subscription.updated'],
-        ['subscription_paused', 'subscription.updated'],
-        ['subscription_cancelled', 'subscription.updated'],
-        ['subscription_expired', 'subscription.deleted'],
+        ['subscription.created', 'subscription.created'],
+        ['subscription.updated', 'subscription.updated'],
+        ['subscription.activated', 'subscription.updated'],
+        ['subscription.trialing', 'subscription.updated'],
+        ['subscription.past_due', 'subscription.updated'],
+        ['subscription.paused', 'subscription.updated'],
+        ['subscription.resumed', 'subscription.updated'],
+        ['subscription.canceled', 'subscription.deleted'],
     ])('maps %s to %s', (providerType, expected) => {
-        const attributes = providerType === 'subscription_expired' ? { status: 'expired', ends_at: '2026-03-01T00:00:00Z' } : {}
+        const overrides = providerType === 'subscription.canceled' ? { status: 'canceled', canceled_at: '2026-03-01T10:00:00Z' } : {}
 
-        expect(provider.parseEvent(subscriptionBody(providerType, attributes)).type).toBe(expected)
+        expect(provider.parseEvent(subscriptionBody(providerType, overrides)).type).toBe(expected)
     })
 
-    it('reads ids, user, plan and period from the subscription resource', () => {
-        const event = provider.parseEvent(subscriptionBody('subscription_created'))
+    it('reads ids, user, plan, interval and period from the subscription resource', () => {
+        const event = provider.parseEvent(subscriptionBody('subscription.created'))
 
         expect(event).toMatchObject({
             type: 'subscription.created',
             userId: USER_ID,
-            providerCustomerId: '55',
-            providerSubscriptionId: '77',
+            providerCustomerId: 'ctm_55',
+            providerSubscriptionId: 'sub_77',
             planCode: 'pro',
+            interval: 'monthly',
             status: 'active',
             cancelAtPeriodEnd: false,
         })
@@ -214,51 +331,66 @@ describe('parseEvent - subscription events', () => {
     })
 
     it.each([
-        ['101', 'plus'],
-        ['102', 'plus'],
-        ['201', 'pro'],
-        ['202', 'pro'],
-    ])('resolves variant %s to plan %s regardless of interval', (variantId, plan) => {
-        const event = provider.parseEvent(subscriptionBody('subscription_updated', { variant_id: Number(variantId) }))
+        ['101', 'plus', 'monthly'],
+        ['102', 'plus', 'annual'],
+        ['201', 'pro', 'monthly'],
+        ['202', 'pro', 'annual'],
+    ])('resolves price %s to plan %s and interval %s', (priceId, plan, interval) => {
+        const items = [{ status: 'active', quantity: 1, trial_dates: null, price: { id: priceId } }]
+        const event = provider.parseEvent(subscriptionBody('subscription.updated', { items }))
 
         expect(event.planCode).toBe(plan)
+        expect(event.interval).toBe(interval)
     })
 
-    it('leaves planCode undefined for a variant it does not know', () => {
-        const event = provider.parseEvent(subscriptionBody('subscription_updated', { variant_id: 999999 }))
+    it('leaves planCode undefined for a price it does not know', () => {
+        const items = [{ status: 'active', quantity: 1, trial_dates: null, price: { id: 'pri_unknown' } }]
+        const event = provider.parseEvent(subscriptionBody('subscription.updated', { items }))
 
         expect(event.planCode).toBeUndefined()
     })
 
-    it('maps on_trial to trialing and carries the trial end', () => {
-        const event = provider.parseEvent(
-            subscriptionBody('subscription_created', { status: 'on_trial', trial_ends_at: '2026-03-15T00:00:00.000000Z' })
-        )
+    it('takes the plan from the first item whose price it knows', () => {
+        const items = [
+            { status: 'active', quantity: 1, trial_dates: null, price: { id: 'pri_addon' } },
+            { status: 'active', quantity: 1, trial_dates: null, price: { id: '102' } },
+        ]
+
+        expect(provider.parseEvent(subscriptionBody('subscription.updated', { items })).planCode).toBe('plus')
+    })
+
+    it('maps trialing to trialing and carries the trial end from the item', () => {
+        const items = [
+            { status: 'trialing', quantity: 1, price: { id: '201' }, trial_dates: { starts_at: '2026-03-01T00:00:00Z', ends_at: '2026-03-15T00:00:00.000000Z' } },
+        ]
+        const event = provider.parseEvent(subscriptionBody('subscription.trialing', { status: 'trialing', items }))
 
         expect(event.status).toBe('trialing')
         expect(event.trialEndsAt).toEqual(new Date('2026-03-15T00:00:00.000Z'))
     })
 
-    it.each([
-        ['past_due', 'past_due'],
-        ['unpaid', 'past_due'],
-    ])('maps provider status %s to %s', (providerStatus, expected) => {
-        expect(provider.parseEvent(subscriptionBody('subscription_updated', { status: providerStatus })).status).toBe(expected)
+    it('leaves trialEndsAt undefined when no item is on a trial', () => {
+        expect(provider.parseEvent(subscriptionBody('subscription.updated')).trialEndsAt).toBeUndefined()
+    })
+
+    it('maps past_due to past_due', () => {
+        expect(provider.parseEvent(subscriptionBody('subscription.past_due', { status: 'past_due' })).status).toBe('past_due')
     })
 
     it('leaves status undefined for paused, which has no equivalent local state', () => {
-        const event = provider.parseEvent(subscriptionBody('subscription_paused', { status: 'paused' }))
+        const event = provider.parseEvent(subscriptionBody('subscription.paused', { status: 'paused', paused_at: '2026-03-01T10:00:00Z' }))
 
         expect(event.status).toBeUndefined()
     })
 
-    it('treats cancelled-with-time-remaining as active until the end date, flagged to cancel', () => {
+    it('leaves status undefined for a status it does not know', () => {
+        expect(provider.parseEvent(subscriptionBody('subscription.updated', { status: 'brand_new' })).status).toBeUndefined()
+    })
+
+    it('reads a scheduled cancel as active until the effective date, flagged to cancel', () => {
         const event = provider.parseEvent(
-            subscriptionBody('subscription_cancelled', {
-                status: 'cancelled',
-                cancelled: true,
-                renews_at: null,
-                ends_at: '2026-05-01T00:00:00.000000Z',
+            subscriptionBody('subscription.updated', {
+                scheduled_change: { action: 'cancel', effective_at: '2026-05-01T00:00:00.000000Z', resume_at: null },
             })
         )
 
@@ -267,169 +399,309 @@ describe('parseEvent - subscription events', () => {
         expect(event.currentPeriodEnd).toEqual(new Date('2026-05-01T00:00:00.000Z'))
     })
 
-    it('treats an expired subscription as cancelled', () => {
+    it('does not treat a scheduled pause as a cancel', () => {
         const event = provider.parseEvent(
-            subscriptionBody('subscription_expired', { status: 'expired', cancelled: true, renews_at: null, ends_at: '2026-03-01T00:00:00Z' })
+            subscriptionBody('subscription.updated', {
+                scheduled_change: { action: 'pause', effective_at: '2026-05-01T00:00:00.000000Z', resume_at: null },
+            })
         )
+
+        expect(event.cancelAtPeriodEnd).toBe(false)
+        expect(event.currentPeriodEnd).toEqual(new Date('2026-04-01T00:00:00.000Z'))
+    })
+
+    it('falls back to next_billed_at when the resource has no billing period', () => {
+        const event = provider.parseEvent(subscriptionBody('subscription.updated', { current_billing_period: null }))
+
+        expect(event.currentPeriodEnd).toEqual(new Date('2026-04-01T00:00:00.000Z'))
+    })
+
+    it('treats a canceled subscription as cancelled whatever else it says', () => {
+        const event = provider.parseEvent(subscriptionBody('subscription.canceled', { status: 'canceled', canceled_at: '2026-03-01T10:00:00Z' }))
 
         expect(event.type).toBe('subscription.deleted')
         expect(event.status).toBe('cancelled')
+        expect(event.cancelAtPeriodEnd).toBe(false)
     })
 
     it('leaves userId undefined when the checkout carried no custom data', () => {
-        const event = provider.parseEvent(subscriptionBody('subscription_updated', {}, undefined))
+        const event = provider.parseEvent(subscriptionBody('subscription.updated', {}, null))
 
         expect(event.userId).toBeUndefined()
     })
 
     it('ignores a non-string user_id in custom data', () => {
-        const event = provider.parseEvent(subscriptionBody('subscription_created', {}, { user_id: { $ne: null } }))
+        const event = provider.parseEvent(subscriptionBody('subscription.created', {}, { user_id: { $ne: null } }))
 
         expect(event.userId).toBeUndefined()
     })
 })
 
 describe('parseEvent - payment, refund and unknown events', () => {
-    it('maps a successful renewal to payment.succeeded, linked by subscription_id', () => {
-        const event = provider.parseEvent(invoiceBody('subscription_payment_success'))
+    it('maps a completed transaction to payment.succeeded, linked by subscription_id', () => {
+        const event = provider.parseEvent(transactionBody('transaction.completed'))
 
         expect(event).toMatchObject({
             type: 'payment.succeeded',
-            providerCustomerId: '55',
-            providerSubscriptionId: '77',
+            providerCustomerId: 'ctm_55',
+            providerSubscriptionId: 'sub_77',
         })
-        expect(event.occurredAt).toEqual(new Date('2026-04-01T00:00:05.000Z'))
+        expect(event.occurredAt).toEqual(new Date('2026-03-01T10:00:00.000Z'))
     })
 
-    it('maps a recovered payment to payment.succeeded', () => {
-        expect(provider.parseEvent(invoiceBody('subscription_payment_recovered')).type).toBe('payment.succeeded')
+    it('does not map transaction.paid, which can arrive before the subscription link exists', () => {
+        const event = provider.parseEvent(transactionBody('transaction.paid', { status: 'paid', subscription_id: null }))
+
+        expect(event.type).toBe('transaction.paid')
     })
 
-    it('maps a failed payment to payment.failed', () => {
-        expect(provider.parseEvent(invoiceBody('subscription_payment_failed', { status: 'void' })).type).toBe('payment.failed')
+    it('maps a failed transaction payment to payment.failed', () => {
+        const event = provider.parseEvent(transactionBody('transaction.payment_failed', { status: 'past_due' }))
+
+        expect(event).toMatchObject({ type: 'payment.failed', providerSubscriptionId: 'sub_77', providerCustomerId: 'ctm_55' })
     })
 
-    it.each(['subscription_payment_refunded', 'order_refunded'])('maps %s to refund.issued', (providerType) => {
-        expect(provider.parseEvent(invoiceBody(providerType, { refunded: true })).type).toBe('refund.issued')
+    it.each(['refund', 'credit'])('maps an approved %s adjustment to refund.issued', (action) => {
+        const event = provider.parseEvent(adjustmentBody(action, { status: 'approved' }))
+
+        expect(event).toMatchObject({ type: 'refund.issued', providerSubscriptionId: 'sub_77', providerCustomerId: 'ctm_55' })
     })
 
-    it('carries no period end on payment events (the paired subscription_updated does)', () => {
-        expect(provider.parseEvent(invoiceBody('subscription_payment_success')).currentPeriodEnd).toBeUndefined()
+    it('counts a refund when adjustment.updated approves it, not when it is first created pending approval', () => {
+        const created = provider.parseEvent(adjustmentBody('refund'))
+        const approved = provider.parseEvent(adjustmentBody('refund', { status: 'approved' }, 'adjustment.updated'))
+
+        expect(created.type).toBe('adjustment.created')
+        expect(approved).toMatchObject({ type: 'refund.issued', providerSubscriptionId: 'sub_77', providerCustomerId: 'ctm_55' })
+        expect(approved.payload).toMatchObject({ total: 100, currency: 'USD' })
     })
 
-    it('passes an unmapped provider event name through as its own type', () => {
-        const event = provider.parseEvent(subscriptionBody('license_key_created'))
+    it.each([
+        ['adjustment.created', 'pending_approval'],
+        ['adjustment.created', 'rejected'],
+        ['adjustment.updated', 'pending_approval'],
+        ['adjustment.updated', 'rejected'],
+        ['adjustment.updated', 'reversed'],
+    ])('passes a refund on %s with status %s through unmapped, so it is never counted', (eventType, status) => {
+        const event = provider.parseEvent(adjustmentBody('refund', { status }, eventType))
 
-        expect(event.type).toBe('license_key_created')
+        expect(event.type).toBe(eventType)
+        expect(event.userId).toBeUndefined()
+    })
+
+    it('passes a refund adjustment with no status through unmapped', () => {
+        const event = provider.parseEvent(adjustmentBody('refund', { status: undefined }))
+
+        expect(event.type).toBe('adjustment.created')
+    })
+
+    it('maps a chargeback adjustment to dispute.opened, since Paddle has no separate dispute event', () => {
+        const event = provider.parseEvent(adjustmentBody('chargeback', { status: 'approved', type: 'full' }))
+
+        expect(event).toMatchObject({ type: 'dispute.opened', providerSubscriptionId: 'sub_77', providerCustomerId: 'ctm_55' })
+    })
+
+    it('opens a dispute once, on creation: a later adjustment.updated for the chargeback is not a second dispute', () => {
+        const event = provider.parseEvent(adjustmentBody('chargeback', { status: 'approved' }, 'adjustment.updated'))
+
+        expect(event.type).toBe('adjustment.updated')
+    })
+
+    it.each(['chargeback_warning', 'chargeback_reverse', 'chargeback_warning_reverse', 'credit_reverse', 'something_new'])(
+        'passes an approved %s adjustment through unmapped, so it cannot revoke access or count as a refund',
+        (action) => {
+            for (const eventType of ['adjustment.created', 'adjustment.updated']) {
+                const event = provider.parseEvent(adjustmentBody(action, { status: 'approved' }, eventType))
+
+                expect(event.type).toBe(eventType)
+                expect(event.userId).toBeUndefined()
+                expect(event.status).toBeUndefined()
+            }
+        }
+    )
+
+    it('carries no period end on payment events (the paired subscription.updated does)', () => {
+        expect(provider.parseEvent(transactionBody('transaction.completed')).currentPeriodEnd).toBeUndefined()
+    })
+
+    it('passes an unmapped provider event type through as its own type', () => {
+        const event = provider.parseEvent(envelope('customer.updated', { id: 'ctm_55' }))
+
+        expect(event.type).toBe('customer.updated')
     })
 
     it('never emits a plan or status for an event type it does not map', () => {
-        const event = provider.parseEvent(subscriptionBody('license_key_created'))
+        const event = provider.parseEvent(subscriptionBody('subscription.imported'))
 
+        expect(event.type).toBe('subscription.imported')
         expect(event.planCode).toBeUndefined()
         expect(event.status).toBeUndefined()
         expect(event.userId).toBeUndefined()
     })
+
+    it('accepts an unmapped event with an unparseable timestamp rather than failing the delivery', () => {
+        const event = provider.parseEvent(envelope('customer.updated', { id: 'ctm_55' }, { occurred_at: 'whenever' }))
+
+        expect(event.occurredAt).toBeInstanceOf(Date)
+    })
 })
 
 describe('parseEvent - event id and stored payload', () => {
-    it('derives providerEventId from the body, as the provider sends no event id', () => {
-        const raw = subscriptionBody('subscription_updated')
-        const digest = crypto.createHash('sha256').update(raw).digest('hex')
-
-        expect(provider.parseEvent(raw).providerEventId).toBe(`mor_${digest}`)
+    it('uses the provider event_id as providerEventId', () => {
+        expect(provider.parseEvent(subscriptionBody('subscription.updated')).providerEventId).toBe('evt_01')
     })
 
-    it('changes the id when updated_at changes', () => {
-        const a = provider.parseEvent(subscriptionBody('subscription_updated'))
-        const b = provider.parseEvent(subscriptionBody('subscription_updated', { updated_at: '2026-03-01T10:00:01.000000Z' }))
+    it('keeps the id across a redelivery whose bytes differ', () => {
+        const a = provider.parseEvent(subscriptionBody('subscription.updated', {}, null, { notification_id: 'ntf_01' }))
+        const b = provider.parseEvent(subscriptionBody('subscription.updated', {}, null, { notification_id: 'ntf_02' }))
+
+        expect(b.providerEventId).toBe(a.providerEventId)
+    })
+
+    it('gives distinct events distinct ids', () => {
+        const a = provider.parseEvent(subscriptionBody('subscription.updated'))
+        const b = provider.parseEvent(subscriptionBody('subscription.updated', {}, null, { event_id: 'evt_02' }))
 
         expect(b.providerEventId).not.toBe(a.providerEventId)
     })
 
-    it('stores a minimised payload with no email or name (billing ledger outlives erasure)', () => {
-        const stored = JSON.stringify(provider.parseEvent(subscriptionBody('subscription_created')).payload)
+    it('stores a minimised payload with no email, name, card or portal token (billing ledger outlives erasure)', () => {
+        const stored = [
+            provider.parseEvent(subscriptionBody('subscription.created')),
+            provider.parseEvent(transactionBody('transaction.completed')),
+        ]
+            .map((event) => JSON.stringify(event.payload))
+            .join()
 
-        expect(stored).not.toContain('ada@example.com')
-        expect(stored).not.toContain('Ada')
-        expect(stored).not.toContain('Lovelace')
-        expect(stored).not.toContain('signature=')
+        for (const banned of ['ada@example.com', 'Ada', 'Lovelace', '4242', 'secret-token', 'buyer-portal']) {
+            expect(stored).not.toContain(banned)
+        }
     })
 
-    it('keeps the fields needed to audit an event', () => {
-        const payload = provider.parseEvent(subscriptionBody('subscription_created')).payload as Record<string, unknown>
+    it('keeps the fields needed to audit a subscription event', () => {
+        const payload = provider.parseEvent(subscriptionBody('subscription.created')).payload as Record<string, unknown>
 
         expect(payload).toMatchObject({
-            providerEventName: 'subscription_created',
+            providerEventName: 'subscription.created',
             providerStatus: 'active',
-            variantId: '201',
-            providerCustomerId: '55',
-            providerSubscriptionId: '77',
+            priceId: '201',
+            providerCustomerId: 'ctm_55',
+            providerSubscriptionId: 'sub_77',
         })
     })
 
-    it('keeps amount and currency for a payment event, still without personal data', () => {
-        const payload = provider.parseEvent(invoiceBody('subscription_payment_success')).payload as Record<string, unknown>
+    it('keeps a scheduled change action for audit', () => {
+        const payload = provider.parseEvent(
+            subscriptionBody('subscription.updated', { scheduled_change: { action: 'cancel', effective_at: '2026-05-01T00:00:00Z', resume_at: null } })
+        ).payload as Record<string, unknown>
 
-        expect(payload).toMatchObject({ providerEventName: 'subscription_payment_success', total: 1200, currency: 'USD' })
-        expect(JSON.stringify(payload)).not.toContain('ada@example.com')
+        expect(payload.scheduledChangeAction).toBe('cancel')
+    })
+
+    it('keeps amount, currency and origin for a transaction event, as a number of minor units', () => {
+        const payload = provider.parseEvent(transactionBody('transaction.completed')).payload as Record<string, unknown>
+
+        expect(payload).toMatchObject({
+            providerEventName: 'transaction.completed',
+            providerStatus: 'completed',
+            origin: 'subscription_recurring',
+            total: 1200,
+            currency: 'USD',
+        })
+    })
+
+    it('keeps amount, currency, action and status for an adjustment, as a number of minor units', () => {
+        const payload = provider.parseEvent(adjustmentBody('refund')).payload as Record<string, unknown>
+
+        expect(payload).toMatchObject({
+            providerEventName: 'adjustment.created',
+            adjustmentAction: 'refund',
+            providerStatus: 'pending_approval',
+            total: 100,
+            currency: 'USD',
+        })
+    })
+
+    it.each([['not-a-number'], ['12.5'], ['-5'], [null], [{ $gt: 0 }]])('drops an amount of %j rather than guessing', (total) => {
+        const payload = provider.parseEvent(adjustmentBody('refund', { totals: { total } })).payload as Record<string, unknown>
+
+        expect(payload.total).toBeUndefined()
     })
 
     it('stores a minimised payload even for an event type it does not map', () => {
-        const stored = JSON.stringify(provider.parseEvent(subscriptionBody('license_key_created')).payload)
+        const stored = JSON.stringify(provider.parseEvent(subscriptionBody('subscription.imported')).payload)
 
-        expect(stored).not.toContain('ada@example.com')
-        expect(stored).toContain('license_key_created')
+        for (const banned of ['ada@example.com', 'Lovelace', 'secret-token']) {
+            expect(stored).not.toContain(banned)
+        }
+        expect(stored).toContain('subscription.imported')
     })
 })
 
 describe('parseEvent - malformed input', () => {
     it.each([
-        ['no meta', { data: { type: 'subscriptions', id: '77', attributes: {} } }],
-        ['no data', { meta: { event_name: 'subscription_created' } }],
-        ['no event_name', { meta: {}, data: { type: 'subscriptions', id: '77', attributes: {} } }],
-        ['non-string event_name', { meta: { event_name: 7 }, data: { type: 'subscriptions', id: '77', attributes: {} } }],
+        ['no event_id', { event_type: 'subscription.created', occurred_at: OCCURRED_AT, data: { id: 'sub_77' } }],
+        ['an empty event_id', { event_id: '', event_type: 'subscription.created', occurred_at: OCCURRED_AT, data: { id: 'sub_77' } }],
+        ['a non-string event_id', { event_id: 7, event_type: 'subscription.created', occurred_at: OCCURRED_AT, data: { id: 'sub_77' } }],
+        ['no event_type', { event_id: 'evt_01', occurred_at: OCCURRED_AT, data: { id: 'sub_77' } }],
+        ['a non-string event_type', { event_id: 'evt_01', event_type: 7, occurred_at: OCCURRED_AT, data: { id: 'sub_77' } }],
+        ['no data', { event_id: 'evt_01', event_type: 'subscription.created', occurred_at: OCCURRED_AT }],
+        ['array data', { event_id: 'evt_01', event_type: 'subscription.created', occurred_at: OCCURRED_AT, data: [] }],
     ])('rejects a payload with %s', (_label, body) => {
         expect(() => provider.parseEvent(Buffer.from(JSON.stringify(body)))).toThrow(CustomError)
     })
 
-    it('rejects a mapped event whose timestamp is unparseable', () => {
-        expect(() => provider.parseEvent(subscriptionBody('subscription_updated', { updated_at: 'yesterday-ish' }))).toThrow(
+    it('rejects a body that is not JSON', () => {
+        expect(() => provider.parseEvent(Buffer.from('not json'))).toThrow(ERROR_MESSAGES.BILLING.WEBHOOK_PAYLOAD_INVALID)
+    })
+
+    it.each([
+        ['an unparseable', { occurred_at: 'yesterday-ish' }],
+        ['a missing', { occurred_at: undefined }],
+    ])('rejects a mapped event with %s timestamp', (_label, overrides) => {
+        expect(() => provider.parseEvent(subscriptionBody('subscription.updated', {}, null, overrides))).toThrow(
             ERROR_MESSAGES.BILLING.WEBHOOK_PAYLOAD_INVALID
         )
     })
 })
 
-describe('createCheckoutSession', () => {
-    const checkoutResponse = () =>
-        json({ data: { type: 'checkouts', id: 'c1', attributes: { url: 'https://store.example.test/checkout/custom/c1?signature=z' } } }, 201)
+const paddleJson = (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
-    it('POSTs a JSON:API checkout for the store and the plan/interval variant', async () => {
+describe('createCheckoutSession', () => {
+    const PAYMENT_LINK = 'https://app.corvale.test/pay?_ptxn=txn_01'
+    const checkoutResponse = () =>
+        paddleJson({ data: { id: 'txn_01', status: 'ready', checkout: { url: PAYMENT_LINK } }, meta: { request_id: 'r1' } }, 201)
+    const input = { userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' } as const
+
+    it('POSTs a transaction for the plan/interval price, tagged with our user id, and returns its payment link', async () => {
         const fetchImpl = stubFetch(checkoutResponse)
         const p = createMorProvider(config, { fetchImpl })
 
-        const session = await p.createCheckoutSession({
-            userId: USER_ID,
-            email: 'ada@example.com',
-            planCode: 'pro',
-            interval: 'annual',
-        })
+        const session = await p.createCheckoutSession({ ...input, planCode: 'pro', interval: 'annual' })
 
-        expect(session.url).toBe('https://store.example.test/checkout/custom/c1?signature=z')
+        expect(session.url).toBe(PAYMENT_LINK)
         expect(fetchImpl).toHaveBeenCalledTimes(1)
         const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
-        expect(url).toBe('https://api.lemonsqueezy.com/v1/checkouts')
+        expect(url).toBe('https://sandbox-api.paddle.com/transactions')
         expect(init.method).toBe('POST')
         const headers = init.headers as Record<string, string>
         expect(headers.Authorization).toBe('Bearer mor_live_key')
-        expect(headers.Accept).toBe('application/vnd.api+json')
-        expect(headers['Content-Type']).toBe('application/vnd.api+json')
-        const body = JSON.parse(String(init.body))
-        expect(body.data.type).toBe('checkouts')
-        expect(body.data.relationships.store.data).toEqual({ type: 'stores', id: '9' })
-        expect(body.data.relationships.variant.data).toEqual({ type: 'variants', id: '202' })
-        expect(body.data.attributes.checkout_data.email).toBe('ada@example.com')
-        expect(body.data.attributes.checkout_data.custom).toEqual({ user_id: USER_ID })
+        expect(headers.Accept).toBe('application/json')
+        expect(headers['Content-Type']).toBe('application/json')
+        expect(JSON.parse(String(init.body))).toEqual({
+            items: [{ price_id: '202', quantity: 1 }],
+            custom_data: { user_id: USER_ID },
+        })
+    })
+
+    it('uses the production API host in the production environment', async () => {
+        const fetchImpl = stubFetch(checkoutResponse)
+        const p = createMorProvider({ ...config, environment: 'production' }, { fetchImpl })
+
+        await p.createCheckoutSession(input)
+
+        expect((fetchImpl.mock.calls[0] as [string, RequestInit])[0]).toBe('https://api.paddle.com/transactions')
     })
 
     it.each([
@@ -437,42 +709,32 @@ describe('createCheckoutSession', () => {
         ['plus', 'annual', '102'],
         ['pro', 'monthly', '201'],
         ['pro', 'annual', '202'],
-    ] as const)('uses variant for %s %s', async (planCode, interval, variantId) => {
+    ] as const)('uses price %s %s -> %s', async (planCode, interval, priceId) => {
         const fetchImpl = stubFetch(checkoutResponse)
         const p = createMorProvider(config, { fetchImpl })
 
-        await p.createCheckoutSession({ userId: USER_ID, email: 'a@b.co', planCode, interval })
+        await p.createCheckoutSession({ ...input, planCode, interval })
 
         const body = JSON.parse(String((fetchImpl.mock.calls[0] as [string, RequestInit])[1].body))
-        expect(body.data.relationships.variant.data.id).toBe(variantId)
+        expect(body.items).toEqual([{ price_id: priceId, quantity: 1 }])
     })
 
-    it('passes returnUrl as the post-purchase redirect only when given', async () => {
+    it('does not send the email to the provider, which collects it at checkout', async () => {
         const fetchImpl = stubFetch(checkoutResponse)
         const p = createMorProvider(config, { fetchImpl })
 
-        await p.createCheckoutSession({ userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' })
-        await p.createCheckoutSession({
-            userId: USER_ID,
-            email: 'a@b.co',
-            planCode: 'plus',
-            interval: 'monthly',
-            returnUrl: 'https://app.corvale.test/settings/billing',
-        })
+        await p.createCheckoutSession({ ...input, email: 'ada@example.com' })
 
-        const first = JSON.parse(String((fetchImpl.mock.calls[0] as [string, RequestInit])[1].body))
-        const second = JSON.parse(String((fetchImpl.mock.calls[1] as [string, RequestInit])[1].body))
-        expect(first.data.attributes.product_options?.redirect_url).toBeUndefined()
-        expect(second.data.attributes.product_options.redirect_url).toBe('https://app.corvale.test/settings/billing')
+        expect(String((fetchImpl.mock.calls[0] as [string, RequestInit])[1].body)).not.toContain('ada@example.com')
     })
 
     it('is a 502 with the generic message when the provider answers non-2xx, leaking neither key nor body', async () => {
-        const fetchImpl = stubFetch(() => json({ errors: [{ detail: 'secret upstream detail mor_live_key' }] }, 422))
+        const fetchImpl = stubFetch(() => paddleJson({ error: { detail: 'secret upstream detail mor_live_key' } }, 422))
         const p = createMorProvider(config, { fetchImpl })
 
         let thrown: unknown
         try {
-            await p.createCheckoutSession({ userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' })
+            await p.createCheckoutSession(input)
         } catch (error) {
             thrown = error
         }
@@ -488,80 +750,101 @@ describe('createCheckoutSession', () => {
         })
         const p = createMorProvider(config, { fetchImpl })
 
-        await expect(
-            p.createCheckoutSession({ userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' })
-        ).rejects.toMatchObject({ statusCode: 502, message: ERROR_MESSAGES.BILLING.PROVIDER_REQUEST_FAILED })
+        await expect(p.createCheckoutSession(input)).rejects.toMatchObject({
+            statusCode: 502,
+            message: ERROR_MESSAGES.BILLING.PROVIDER_REQUEST_FAILED,
+        })
     })
 
-    it('is a 502 when the response carries no checkout url', async () => {
-        const fetchImpl = stubFetch(() => json({ data: { attributes: {} } }))
-        const p = createMorProvider(config, { fetchImpl })
+    it.each([
+        ['no checkout object', { data: { id: 'txn_01' } }],
+        ['a null checkout url (no default payment link configured)', { data: { id: 'txn_01', checkout: { url: null } } }],
+        ['an empty checkout url', { data: { id: 'txn_01', checkout: { url: '' } } }],
+        ['no data', {}],
+    ])('is a 502 when the response carries %s', async (_label, body) => {
+        const p = createMorProvider(config, { fetchImpl: stubFetch(() => paddleJson(body)) })
 
-        await expect(
-            p.createCheckoutSession({ userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' })
-        ).rejects.toMatchObject({ statusCode: 502 })
+        await expect(p.createCheckoutSession(input)).rejects.toMatchObject({ statusCode: 502 })
     })
 
-    it('refuses to hand back a non-https checkout url', async () => {
-        const fetchImpl = stubFetch(() => json({ data: { attributes: { url: 'javascript:alert(1)' } } }))
-        const p = createMorProvider(config, { fetchImpl })
+    it.each(['javascript:alert(1)', 'http://app.corvale.test/pay?_ptxn=txn_01', 'not a url'])(
+        'refuses to hand back the non-https payment link %s',
+        async (url) => {
+            const p = createMorProvider(config, { fetchImpl: stubFetch(() => paddleJson({ data: { checkout: { url } } })) })
 
-        await expect(
-            p.createCheckoutSession({ userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' })
-        ).rejects.toMatchObject({ statusCode: 502 })
-    })
+            await expect(p.createCheckoutSession(input)).rejects.toMatchObject({ statusCode: 502 })
+        }
+    )
 
     it('sends a timeout signal so a hung provider cannot hang the request', async () => {
         const fetchImpl = stubFetch(checkoutResponse)
         const p = createMorProvider(config, { fetchImpl })
 
-        await p.createCheckoutSession({ userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' })
+        await p.createCheckoutSession(input)
 
         expect((fetchImpl.mock.calls[0] as [string, RequestInit])[1].signal).toBeInstanceOf(AbortSignal)
     })
 })
 
 describe('getPortalUrl', () => {
-    it('GETs the customer and returns its portal url', async () => {
-        const fetchImpl = stubFetch(() =>
-            json({ data: { type: 'customers', id: '55', attributes: { urls: { customer_portal: 'https://store.example.test/billing?s=1' } } } })
-        )
+    const OVERVIEW = 'https://customer-portal.paddle.com/cpl_01?action=overview&token=pga_secret'
+    const portalResponse = () =>
+        paddleJson({
+            data: {
+                id: 'cpls_01',
+                customer_id: 'ctm_55',
+                urls: { general: { overview: OVERVIEW }, subscriptions: [] },
+                created_at: '2026-09-29T10:00:00Z',
+            },
+        })
+
+    it('creates a portal session for the customer and returns its overview url', async () => {
+        const fetchImpl = stubFetch(portalResponse)
         const p = createMorProvider(config, { fetchImpl })
 
-        const portal = await p.getPortalUrl({ providerCustomerId: '55' })
+        const portal = await p.getPortalUrl({ providerCustomerId: 'ctm_55' })
 
-        expect(portal.url).toBe('https://store.example.test/billing?s=1')
+        expect(portal.url).toBe(OVERVIEW)
         const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
-        expect(url).toBe('https://api.lemonsqueezy.com/v1/customers/55')
-        expect(init.method ?? 'GET').toBe('GET')
-        expect((init.headers as Record<string, string>).Authorization).toBe('Bearer mor_live_key')
+        expect(url).toBe('https://sandbox-api.paddle.com/customers/ctm_55/portal-sessions')
+        expect(init.method).toBe('POST')
+        const headers = init.headers as Record<string, string>
+        expect(headers.Authorization).toBe('Bearer mor_live_key')
+        expect(headers['Content-Type']).toBe('application/json')
+        expect(JSON.parse(String(init.body))).toEqual({})
     })
 
     it('url-encodes the customer id so it cannot rewrite the request path', async () => {
-        const fetchImpl = stubFetch(() => json({ data: { attributes: { urls: { customer_portal: 'https://x.test/p' } } } }))
+        const fetchImpl = stubFetch(portalResponse)
         const p = createMorProvider(config, { fetchImpl })
 
-        await p.getPortalUrl({ providerCustomerId: '55/../../subscriptions/1' })
+        await p.getPortalUrl({ providerCustomerId: 'ctm_55/../../subscriptions/1' })
 
         expect((fetchImpl.mock.calls[0] as [string, RequestInit])[0]).toBe(
-            'https://api.lemonsqueezy.com/v1/customers/55%2F..%2F..%2Fsubscriptions%2F1'
+            'https://sandbox-api.paddle.com/customers/ctm_55%2F..%2F..%2Fsubscriptions%2F1/portal-sessions'
         )
     })
 
-    it('is a 502 when the customer has no portal url', async () => {
-        const fetchImpl = stubFetch(() => json({ data: { attributes: { urls: {} } } }))
-        const p = createMorProvider(config, { fetchImpl })
+    it.each([
+        ['no overview url', { data: { urls: { general: {} } } }],
+        ['no urls', { data: {} }],
+        ['a non-https overview url', { data: { urls: { general: { overview: 'http://customer-portal.paddle.com/x' } } } }],
+        ['a javascript overview url', { data: { urls: { general: { overview: 'javascript:alert(1)' } } } }],
+    ])('is a 502 when the session has %s', async (_label, body) => {
+        const p = createMorProvider(config, { fetchImpl: stubFetch(() => paddleJson(body)) })
 
-        await expect(p.getPortalUrl({ providerCustomerId: '55' })).rejects.toMatchObject({
+        await expect(p.getPortalUrl({ providerCustomerId: 'ctm_55' })).rejects.toMatchObject({
             statusCode: 502,
             message: ERROR_MESSAGES.BILLING.PROVIDER_REQUEST_FAILED,
         })
     })
 
-    it('is a 502 on a non-2xx answer', async () => {
-        const fetchImpl = stubFetch(() => json({}, 404))
-        const p = createMorProvider(config, { fetchImpl })
+    it('is a 502 on a non-2xx answer, without leaking the provider body', async () => {
+        const p = createMorProvider(config, { fetchImpl: stubFetch(() => paddleJson({ error: { detail: 'pga_secret' } }, 404)) })
 
-        await expect(p.getPortalUrl({ providerCustomerId: '55' })).rejects.toMatchObject({ statusCode: 502 })
+        await expect(p.getPortalUrl({ providerCustomerId: 'ctm_55' })).rejects.toMatchObject({
+            statusCode: 502,
+            message: ERROR_MESSAGES.BILLING.PROVIDER_REQUEST_FAILED,
+        })
     })
 })
