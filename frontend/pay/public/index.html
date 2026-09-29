@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="paddle-client-token" content='{{env "PADDLE_CLIENT_TOKEN" | html}}' />
+    <meta name="paddle-environment" content='{{env "PADDLE_ENVIRONMENT" | html}}' />
+    <meta name="corvale-app-url" content='{{env "CORVALE_APP_URL" | html}}' />
+    <title>Corvale checkout</title>
+    <link rel="stylesheet" href="/pay.css" />
+    <script type="module" src="/pay.mjs"></script>
+  </head>
+  <body>
+    <main class="card">
+      <p class="brand">Corvale</p>
+
+      <section data-view="loading">
+        <h1>Opening secure checkout</h1>
+        <p>This takes a moment. Your payment is handled by Paddle, our payment provider.</p>
+      </section>
+
+      <section data-view="paying" hidden>
+        <h1>Complete your payment</h1>
+        <p>Finish in the checkout window. Your card details go straight to Paddle - Corvale never sees them.</p>
+      </section>
+
+      <section data-view="completed" hidden>
+        <h1>Payment received</h1>
+        <p>Thank you. Your plan updates in Corvale within a moment. You can close this tab and go back to the app.</p>
+        <a class="button" data-return-link href="#">Back to Corvale</a>
+      </section>
+
+      <section data-view="closed" hidden>
+        <h1>Checkout closed</h1>
+        <p>No payment was taken. To try again, start checkout again from Corvale's billing page.</p>
+        <a class="button" data-return-link href="#">Back to Corvale</a>
+      </section>
+
+      <section data-view="error" hidden>
+        <h1>Checkout could not load</h1>
+        <p>Nothing was charged. Please go back to Corvale and try again in a moment.</p>
+        <a class="button" data-return-link href="#">Back to Corvale</a>
+      </section>
+
+      <section data-view="invalid" hidden>
+        <h1>This payment link is not valid</h1>
+        <p>Please start checkout again from Corvale's billing page.</p>
+      </section>
+
+      <noscript>
+        <p>Checkout needs JavaScript to run. Please enable it and reload this page.</p>
+      </noscript>
+    </main>
+  </body>
+</html>

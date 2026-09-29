@@ -1,4 +1,4 @@
-**Effective date:** 2026-09-01 · **Version:** 2026-09-01
+**Effective date:** 2026-09-29 · **Version:** 2026-09-29
 
 ## Scope - what this policy covers
 
@@ -169,6 +169,35 @@ The ID is random. It is not derived from your browser, your hardware or anything
 machine, and we do not record your IP address, browser, operating system or any other description
 of the device.
 
+### Billing and payment data
+
+If you subscribe to a paid plan, our payment processor and merchant of record (see
+[Who else processes your data](#who-else-processes-your-data)) collects and holds your payment
+details, billing name and email, and your full purchase history for the subscription. **We never
+see or store your card details ourselves.** You pay on a separate checkout page at pay.corvale.app,
+where the payment processor's script shows the payment window; the
+[Cookie Policy](./cookies.md#third-party-services) says what that script may store in your
+browser.
+
+What we hold on our own side is narrower: your plan, its status (trialing, active, past due,
+cancelled), your renewal and trial dates, and the identifiers the payment processor uses for your
+customer and subscription record there. Those identifiers are enough to look your record up in the
+payment processor's own system, so we treat them as identifying, even though they are not a name
+or an email address by themselves.
+
+We also keep an append-only **billing ledger** - a record of what each billing event said (a
+subscription created, a renewal, a failed payment, a refund, a dispute) and when it happened. We
+keep it for accurate financial record-keeping and to reconcile our own records against the payment
+processor's - see [How long we keep it](#how-long-we-keep-it) for how long, and when the
+identifiers inside it are removed.
+
+We send email tied to a paid plan or trial: payment reminders, a trial-ending notice, and an
+account-retention notice if a subscription lapses. These are account notices, not marketing, and
+we send them regardless of your email preferences because they tell you something about your own
+access. The one exception is a **win-back email** sent after a subscription has lapsed for a
+while, which is optional marketing: it honours your marketing-email preference and every copy
+includes an unsubscribe link.
+
 ## What we do not collect
 
 We think this list matters as much as the one above.
@@ -178,9 +207,11 @@ We think this list matters as much as the one above.
 - **No analytics.** No page-view tracking, no product analytics, no session recording.
 - **No advertising or third-party trackers.** Corvale does not carry any.
 - **No device fingerprinting.**
-- **No externally hosted fonts, and no third-party scripts** - with one exception: when the signup
-  captcha is switched on, hCaptcha's script loads on the signup page only. Everything else the app
-  loads comes from our own servers, so no third party learns that you visited.
+- **No externally hosted fonts, and no third-party scripts** - with two exceptions, neither inside
+  the app: when the signup captcha is switched on, hCaptcha's script loads on the signup page only;
+  and when you start paying for a plan, Paddle's script runs on the separate checkout page at
+  pay.corvale.app. Everything else the app loads comes from our own servers, so no third party
+  learns that you visited it.
 - **No date of birth.** We ask only whether you are 18 or older, and store just that answer.
 - **We do not keep your IP address or device details as part of your account profile or your
   login-session records.** The only thing we keep about a device is the random ID, coarse type and
@@ -207,6 +238,7 @@ of a legitimate use permitted by the Act, and only for the purpose the data was 
 | Creating your account and running the service - storing and showing you your own records | The purpose for which you gave us the data when you signed up and as you use the app |
 | Signing you in and keeping your session alive | Same |
 | Sending password-reset and email-verification messages | Same |
+| Billing a paid plan through our merchant of record, and keeping the billing ledger | The purpose for which you gave us the data when you subscribed |
 | Rate limiting, abuse prevention, and security monitoring | Necessary to operate the service securely and to prevent misuse |
 | Diagnosing server errors | Necessary to keep the service working |
 | Keeping the account, terms and age records described above | Necessary to administer your account and to evidence the terms it was created under |
@@ -227,6 +259,7 @@ use of the service, these are the lawful bases we would rely on.
 | Running the service - storing and showing you your own records | Performance of our contract with you (Art. 6(1)(b)) |
 | Signing you in and keeping your session alive | Performance of our contract |
 | Sending password-reset and email-verification messages | Performance of our contract |
+| Billing a paid plan through our merchant of record, and keeping the billing ledger | Performance of our contract; and, for the ledger, compliance with a legal obligation to keep accurate financial records (Art. 6(1)(c)) |
 | Rate limiting, abuse prevention, and security monitoring | Our legitimate interests in keeping the service safe (Art. 6(1)(f)) |
 | Diagnosing server errors | Our legitimate interests in a working service |
 | Keeping the account, terms and age records described above | Our legitimate interests in administering the account and evidencing its terms; and, where we must keep them, compliance with a legal obligation (Art. 6(1)(c)) |
@@ -238,7 +271,10 @@ Because the financial records you enter can reveal a lot about you, we apply the
 ## Cookies and local storage
 
 Corvale sets **one cookie**, and it is the one that keeps you signed in. There are no analytics
-or advertising cookies, and therefore no cookie consent banner.
+or advertising cookies in the app, and therefore no cookie consent banner in it. The one place a
+third party's script runs is the checkout page you open when you start paying for a plan, where
+Paddle's script may set its own cookies and browser storage - see
+[Third-party services](./cookies.md#third-party-services) in the Cookie Policy.
 
 See the [Cookie Policy](./cookies.md) for the full detail, including what Corvale stores in your
 browser's local storage.
@@ -248,6 +284,9 @@ local copy of your data held on your device, a few fields used for on-device sea
 (such as amounts and dates) are kept readable rather than encrypted, even when an app PIN is set.
 The protections on your data are unchanged; only the description was imprecise.
 
+The 2026-09-29 version discloses that Paddle's checkout script runs on our separate checkout page
+(pay.corvale.app) while you pay. What we collect and why is unchanged.
+
 ## Who else processes your data
 
 These are our sub-processors. Several are optional and may not be switched on for the instance
@@ -256,7 +295,8 @@ you use.
 | Sub-processor | What they do | Where they process | Always on? |
 | --- | --- | --- | --- |
 | Google LLC (Google Cloud) | Runs the application servers, the database, receipt storage and the backups; also hosts the mailbox that receives messages sent to our published addresses | United States (South Carolina) | Yes |
-| Resend (Resend, Inc.) | Sends password-reset and email-verification messages only | United States | Yes |
+| Resend (Resend, Inc.) | Sends account email: password reset and email verification for everyone, plus payment reminders, trial-ending and account-retention notices, and the optional win-back email for paid/trialing accounts | United States | Yes |
+| Paddle (Paddle.com Market Limited) | Our payment processor and merchant of record for paid plans - processes your payment, holds your payment details, billing name/email and purchase history, and is the legal seller on the transaction; its script runs on our separate checkout page (pay.corvale.app) while you pay | United Kingdom | Only if you subscribe to a paid plan |
 | Cloudflare, Inc. | Provides DNS for corvale.app and routes email sent to our published addresses to our mailbox | United States, over a global edge network | Yes |
 | GitHub, Inc. | Serves desktop-app updates | United States | Only for the desktop app |
 | Sentry | Reports unexpected server errors so we can fix them | United States or the European Union, depending on the project region | Only when error reporting is enabled |
@@ -327,6 +367,11 @@ and you can export everything and delete your account at any time.
 - **Rate-limit counters:** expire automatically, within minutes.
 - **Deleted records:** Corvale keeps a short-lived marker so the deletion syncs to your other
   devices, and then purges the marker.
+- **The billing ledger:** kept indefinitely for financial record-keeping and to reconcile our
+  records against the payment processor's, but the payment-processor identifiers inside it are
+  removed - immediately when you delete your account, and automatically from any entry that was
+  never linked to an account after 30 days. What is left describes what happened and when, not who
+  it happened to.
 - **Error reports:** retained by our error-tracking provider for their standard retention period
   and then deleted.
 - **Our backups:** kept for 30 days, then deleted, and stored in the United States alongside the
@@ -347,6 +392,12 @@ and you can export everything and delete your account at any time.
 - Uploaded receipts are stored on the same Google Cloud infrastructure as your other data, and
   every request for a receipt file is checked against your account before the file is served.
 - Login, signup, password reset and write operations are all rate limited.
+- **Our own access to billing and account data is narrow, logged, and never reaches your financial
+  records.** We look at billing and account metadata - plan, status, payment-processor identifiers
+  - only through an internal tool that requires two-factor authentication to sign in, and every
+  action taken through it is written to an append-only audit log that cannot be edited or deleted,
+  even by us. That tool cannot show your transactions, receipts, budgets, or any other financial
+  content you record in Corvale - only billing and account state.
 
 No system is perfectly secure, and we do not claim otherwise. What we can tell you is exactly
 which controls are in place, which is what this section is for. Our security policy and how to
@@ -427,10 +478,11 @@ that licence grants.
 
 ## If something goes wrong
 
-If we become aware of a personal data breach, we will assess it and respond in accordance with
-applicable law - including notifying the Data Protection Board of India and affected Data
-Principals where required, and, where the GDPR applies, the relevant supervisory authority and
-affected individuals within the timeframes it sets.
+We maintain an internal procedure for this: detect, contain, assess, and notify. If we become
+aware of a personal data breach, we will assess it and respond in accordance with applicable law -
+including notifying the Data Protection Board of India and affected Data Principals where
+required, and, where the GDPR applies, the relevant supervisory authority and affected individuals
+within the timeframes it sets.
 
 Where we notify you, we will tell you what happened, what data was involved, what we have done
 about it, and what you can do.

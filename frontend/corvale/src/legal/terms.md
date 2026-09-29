@@ -1,4 +1,4 @@
-**Effective date:** 2026-08-29 · **Version:** 2026-08-29
+**Effective date:** 2026-09-28 · **Version:** 2026-09-28
 
 ## Agreeing to these terms
 
@@ -213,19 +213,58 @@ data loss.
 
 ## What it costs
 
-The hosted service is **free**. There are no paid plans, no trial that turns into a charge, and no
-payment details for you to give us.
+Corvale Pro costs **$12/month or $96/year**, billed in USD. There is one plan - no tiers to choose
+between, no feature you have to pay more to unlock beyond having Pro at all.
 
-Paid plans may exist one day. If they do, we will publish subscription terms - pricing, trial
-length, renewal, cancellation, and refunds - and ask you to accept an updated version of these
-terms before any charge is ever made. Nothing in this document authorises us to charge you.
+### Trial
+
+Every account starts with a **30-day free trial** of Pro. No card is required to start it, and
+nothing is charged automatically when it ends.
+
+### Auto-renewal and cancellation
+
+A paid subscription **renews automatically** at the end of each billing period (monthly or
+annual) until you cancel. Cancel any time from Settings → Billing; this stops the next renewal but
+does not cut off access early - you keep Pro through the end of the period you already paid for.
+See the [Refund Policy](./refund-policy.md) for exactly how cancellation, refunds and disputes
+work, including what each one does to your access.
+
+### Refunds
+
+Covered in full in the [Refund Policy](./refund-policy.md), not restated here.
+
+### If the trial ends or a payment fails
+
+Neither one deletes anything. If the trial ends without a subscription, or a renewal payment
+fails, your account becomes **read-only**: you can still view and export every record you have,
+but you cannot add or edit anything until you subscribe or the payment succeeds. A failed payment
+gets a **7-day grace period** first, during which the account stays fully writable while payment
+is retried - only after that does it turn read-only. Subscribing or paying restores full access
+immediately, with nothing lost or reset in between.
+
+### Device limits
+
+Pro has no limit on the number of devices you sync across.
+
+### If a lapsed account is never reactivated
+
+An account that is **read-only because it lapsed** (the trial ended and you never subscribed, or a
+subscription was cancelled or never recovered from a failed payment - never merely because a
+payment is still being retried) is deleted **180 days from the point you lapsed**, if you never
+reactivate it first. You will always hear from us before it happens: a notice when the window
+opens, a reminder 30 days before deletion, and a final warning at least 7 days before it happens.
+Deletion never happens without that final warning having actually been sent and that 7-day window
+having passed. Subscribing again at any point before deletion restores everything exactly as it
+was - no re-onboarding, nothing to redo.
 
 ## Ending your account
 
 **You** can delete your account at any time from Settings. Deletion immediately removes your
 account, your records and your uploaded receipts from the live service, and it cannot be undone -
 there is no grace period. Backup copies may still contain your data for up to 30 days, as
-described above, after which they are deleted. Export first if you want a copy.
+described above, after which they are deleted. Export first if you want a copy. If you are on a
+paid plan, deletion also cancels your subscription immediately - see the
+[Refund Policy](./refund-policy.md) for what that does and does not refund.
 
 **We** may suspend or close an account that breaches these terms. Except in cases of serious abuse
 or where the law requires otherwise, we will give you reasonable notice and a chance to export

@@ -307,6 +307,7 @@ export default defineConfig({
           { text: 'Terms of Service', link: '/legal/terms' },
           { text: 'Cookie Policy', link: '/legal/cookies' },
           { text: 'Financial Disclaimer', link: '/legal/financial-disclaimer' },
+          { text: 'Refund Policy', link: '/legal/refund-policy' },
           { text: 'Contact', link: '/legal/contact' },
         ],
       },

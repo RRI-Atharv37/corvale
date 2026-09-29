@@ -1,12 +1,16 @@
-**Effective date:** 2026-09-01 · **Version:** 2026-09-01
+**Effective date:** 2026-09-29 · **Version:** 2026-09-29
 
 ## The short version
 
 Corvale sets **one cookie**. It is the one that keeps you signed in, and the app cannot work
 without it.
 
-There are no analytics cookies, no advertising cookies, and no third-party trackers. That is why
-you have never seen a cookie consent banner here - there is nothing to consent to.
+There are no analytics cookies, no advertising cookies, and no third-party trackers in the app
+itself. That is why you have never seen a cookie consent banner in Corvale - there is nothing to
+consent to.
+
+The one place a third party's script runs is the separate **checkout page** you open only when you
+start paying for a plan. It is described under [Third-party services](#third-party-services).
 
 This page covers the hosted Corvale service at corvale.app. Self-hosted installations are
 run by whoever operates them.
@@ -89,9 +93,13 @@ Corvale offers to sync them first so they are not lost.
 
 ## Third-party services
 
-The only third party involved on this front is **hCaptcha** (operated by Intuition Machines,
-Inc.), and only if the signup captcha is switched on for the instance you use. It runs on the
-signup page to check that a new account is not being created by a bot.
+Two third parties can be involved, and neither runs inside the Corvale app itself.
+
+### hCaptcha - signup only
+
+**hCaptcha** (operated by Intuition Machines, Inc.) is involved only if the signup captcha is
+switched on for the instance you use. It runs on the signup page to check that a new account is
+not being created by a bot.
 
 When it is enabled, hCaptcha loads its own script, makes network requests to its own servers, and
 may set its own cookies and browser storage under its own terms. That processing is described in
@@ -99,7 +107,30 @@ may set its own cookies and browser storage under its own terms. That processing
 [Terms of Service](https://www.hcaptcha.com/terms). hCaptcha is also listed as a sub-processor in
 our [Privacy Policy](./privacy.md).
 
-If the captcha is switched off, no third-party cookies or browser storage are set by Corvale.
+### Paddle - checkout only
+
+This applies to the hosted service, and only if you choose a paid plan. When you start a checkout,
+Corvale opens a separate checkout page at **pay.corvale.app** in your browser, outside the app.
+That page loads the script of **Paddle** (Paddle.com Market Limited, our payment processor and
+merchant of record), which shows the payment window. You enter your card details into Paddle's
+window and they go to Paddle - Corvale never sees them.
+
+Paddle's script makes network requests to Paddle's servers and may set its own cookies and browser
+storage - for example to run the checkout and to help prevent fraud - under Paddle's own terms. We
+do not control or read them. Paddle describes that processing in
+[its Privacy Notice](https://www.paddle.com/legal/privacy). Paddle is also listed as a
+sub-processor in our [Privacy Policy](./privacy.md).
+
+The checkout page is built to load only Corvale's own files and Paddle's, and runs no analytics.
+It is a different address from the app, so its script cannot read the app's local storage,
+your access token or your local database, all of which belong to corvale.app.
+
+If you manage your billing from the billing page (payment method, invoices, cancelling), Corvale
+opens Paddle's own customer portal in your browser. That is Paddle's site, run under Paddle's
+policies, and is not part of Corvale.
+
+Apart from the signup captcha and the checkout page, Corvale sets no third-party cookies or
+browser storage.
 
 ## What we will never do
 

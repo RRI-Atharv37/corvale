@@ -5,7 +5,7 @@ import BrandLogo from '@ui/BrandLogo'
 import { LEGAL_DOCUMENTS, LegalDocument } from '@/legal'
 
 /**
- * Shell for the five public legal pages (M0c).
+ * Shell for the public legal pages (M0c).
  *
  * These are deliberately reachable without an account: a Merchant-of-Record reviewer, a
  * prospective user, or someone exercising a data right all need to read them before signing in,

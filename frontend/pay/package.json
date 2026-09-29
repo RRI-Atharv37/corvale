@@ -1,0 +1,9 @@
+{
+  "name": "corvale-pay",
+  "private": true,
+  "type": "module",
+  "description": "Static Paddle.js payment-link page. No build step, no runtime dependencies.",
+  "scripts": {
+    "test": "node --test tests/pay-logic.test.mjs"
+  }
+}

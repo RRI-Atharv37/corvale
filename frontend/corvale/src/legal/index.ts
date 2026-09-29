@@ -2,6 +2,7 @@ import contactMd from './contact.md?raw'
 import cookiesMd from './cookies.md?raw'
 import financialDisclaimerMd from './financial-disclaimer.md?raw'
 import privacyMd from './privacy.md?raw'
+import refundPolicyMd from './refund-policy.md?raw'
 import termsMd from './terms.md?raw'
 
 /**
@@ -15,10 +16,17 @@ import termsMd from './terms.md?raw'
  * no network round trip. The bodies deliberately carry no H1: each surface supplies its own title
  * (frontmatter on the docs site, `LegalPage` here).
  *
- * All fact placeholders were resolved on 2026-08-29, and `[[EFFECTIVE_DATE]]` was filled on the
- * same day (launch): every document now carries `2026-08-29`, matching `TERMS_VERSION` /
- * `PRIVACY_VERSION` in `backend/utils/legalVersions.ts`. No `[[TOKEN]]`s remain. See `PAPERWORK.md`
- * for the pre-publish checklist.
+ * `dpa-template.md` lives in this folder too but is deliberately **not** listed below or routed
+ * anywhere - a DPA is sent to a workspace customer on request, not published as a unilateral
+ * policy (see `.project/TODO.md` / `PAPERWORK.md` §9). Fill in its `[[TOKEN]]`s per customer
+ * before sending.
+ *
+ * All fact placeholders were resolved on 2026-08-29 (launch); no `[[TOKEN]]`s remain. Documents no
+ * longer share one date - each carries the date it was last materially changed. `terms.md`,
+ * `privacy.md`, `cookies.md` and `refund-policy.md` track `TERMS_VERSION` / `PRIVACY_VERSION` in
+ * `backend/src/modules/users/legalVersions.ts` (bumping either forces re-acceptance through
+ * `LegalGate`); `financial-disclaimer.md` and `contact.md` are dated independently and are not
+ * gated by either version. See `PAPERWORK.md` for the pre-publish checklist.
  */
 
 export interface LegalDocument {
@@ -58,6 +66,13 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         title: 'Financial Disclaimer',
         summary: 'Why Corvale is a record-keeping tool, not financial advice.',
         body: financialDisclaimerMd,
+    },
+    {
+        slug: 'refund-policy',
+        path: '/refund-policy',
+        title: 'Refund Policy',
+        summary: 'Cancellations, refunds, disputes, and what each one does to your access.',
+        body: refundPolicyMd,
     },
     {
         slug: 'contact',

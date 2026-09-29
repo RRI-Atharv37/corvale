@@ -5,10 +5,10 @@ import ExternalLink from '@ui/ExternalLink'
 /**
  * A deliberately small Markdown renderer for the legal documents in `src/legal/` (M0c).
  *
- * It supports exactly the constructs those five documents use - headings, paragraphs, bold,
+ * It supports exactly the constructs those documents use - headings, paragraphs, bold,
  * italics, inline code, links, blockquotes, bulleted lists, and pipe tables - and nothing else.
  * That is a constraint, not an oversight: pulling a full Markdown pipeline into a finance app to
- * render five files we author ourselves would add a dependency tree for no reader-visible gain,
+ * render files we author ourselves would add a dependency tree for no reader-visible gain,
  * in a codebase that already goes out of its way to avoid third-party surface (strict CSP, no
  * CDN fonts).
  *

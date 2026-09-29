@@ -13,7 +13,7 @@ Follow these steps to create an account in Corvale.
 3. Fill in the creation form:
    - **Name** (required) - e.g., "Main checking", "Cash wallet"
    - **Type** (required) - choose from Checking, Cash, Credit, or Savings
-   - **Currency** (required) - defaults to USD; options include USD, EUR, GBP, INR, CAD, AUD
+   - **Currency** (required) - defaults to USD; options include USD, EUR, WON, INR
    - **Current balance** (required) - what's in the account right now, defaults to `0.00`
    - **Balance as of** - the date that balance is accurate for, defaults to today
 4. Click **Create account**.

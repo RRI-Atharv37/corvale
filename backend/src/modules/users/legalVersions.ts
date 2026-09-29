@@ -18,12 +18,21 @@
  * the app's own routes.
  */
 
-export const TERMS_VERSION = '2026-08-29'
+// 2026-09-28 (M0c, billing go-live): Subscription Terms replaced the "hosted service is free"
+// stub in terms.md (price, trial, auto-renewal, cancellation, retention window) and introduced
+// the new Refund Policy it points to; privacy.md gained the billing/Merchant-of-Record
+// disclosures (Paddle as sub-processor, the billing ledger, operator/admin access). Both are
+// material, so both versions bump together, and the Cookie Policy rides PRIVACY_VERSION again -
+// same reasoning as the S31 note below, not a change of its own this time.
+export const TERMS_VERSION = '2026-09-28'
+// 2026-09-29: cookies.md and privacy.md now disclose Paddle's checkout script on the separate
+// payment page (pay.corvale.app), which made "hCaptcha is the only third party" untrue. The
+// 2026-09-28 versions had not been released, so this rides the same first-release re-consent.
 // 2026-09-01 (S31 / SEC-46): the Cookie Policy's browser-encryption wording was corrected to
 // reflect that promoted columns (amounts, dates, names) stay plaintext on the device by design.
 // The Cookie Policy is part of the privacy disclosures, so the bump rides PRIVACY_VERSION and
 // fires LegalGate re-consent.
-export const PRIVACY_VERSION = '2026-09-01'
+export const PRIVACY_VERSION = '2026-09-29'
 
 /** Shipped on every user payload so the client can compare without a second round trip. */
 export const CURRENT_LEGAL_VERSIONS = {

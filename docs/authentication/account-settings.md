@@ -36,7 +36,7 @@ Your **Default currency** preference pre-fills currency fields when you create b
 
 1. Open **Settings**.
 2. Under **Preferences**, use the **Default currency** dropdown.
-3. Select a supported currency (for example, USD, EUR, GBP).
+3. Select a supported currency (USD, EUR, WON, or INR).
 
 Corvale saves the choice immediately via `PATCH /auth/user`. A success toast confirms the update. Existing records keep their original currency - only new forms default to the updated value.
 
