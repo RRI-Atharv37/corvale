@@ -295,6 +295,20 @@ export const deleteTransactionForOp = async (
     return transaction._id.toString()
 }
 
+const parseSyncMinorAmount = (value: unknown): number => {
+    if (typeof value !== 'number' && typeof value !== 'string') {
+        throw new CustomError('Invalid amount format', 400)
+    }
+    const amountMinor = Number(value)
+    if (typeof value === 'string' && value.trim() === '') {
+        throw new CustomError('Invalid amount format', 400)
+    }
+    if (!Number.isSafeInteger(amountMinor) || amountMinor < 0) {
+        throw new CustomError('Invalid amount format', 400)
+    }
+    return amountMinor
+}
+
 /**
  * Update-transaction logic for POST /sync/push (Sprint 13.3).
  *
@@ -318,7 +332,9 @@ export const updateTransactionForOp = async (
         'editor'
     )
 
-    if (isSplitChild(transaction)) {
+    assertEditableTransaction(transaction)
+
+    if ((await fetchSplitChildren(transaction)).length > 0) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
     }
 
@@ -341,11 +357,7 @@ export const updateTransactionForOp = async (
     }
     if (title !== undefined) transaction.title = String(title).trim()
     if (amount !== undefined) {
-        const amountMinor = Number(amount)
-        if (isNaN(amountMinor)) {
-            throw new CustomError('Invalid amount format', 400)
-        }
-        transaction.amount = amountMinor
+        transaction.amount = parseSyncMinorAmount(amount)
     }
     if (description !== undefined) transaction.description = String(description).trim() || undefined
     if (date !== undefined) {
