@@ -230,6 +230,55 @@ describe('bulk routes take one scope and verify every id against it', () => {
         expect(await Transaction.countDocuments({ workspaceId })).toBe(2)
     })
 
+    describe('SEC-81 - unknown and not-yours ids are answered identically', () => {
+        let stranger: RegisteredUser
+        let foreignPersonalId: string
+
+        beforeEach(async () => {
+            stranger = await seedUserDirectly({ email: 'bulk-stranger@example.com' })
+            await setSubscription(stranger.userId, BILLING_STATES.active)
+            const ownerAccount = await createAccountViaApi(app, owner.token)
+            foreignPersonalId = (
+                await createExpenseViaApi(app, owner.token, ownerAccount, categoryId, { title: 'Owner personal' })
+            ).body.data._id
+        })
+
+        const outcomes = async (ids: string[]) => {
+            const del = await bulkDelete(stranger.token, ids)
+            const cat = await request(app)
+                .patch('/api/v1/transactions/bulk/category')
+                .set(authHeader(stranger.token))
+                .send({ transactionIds: ids, categoryId })
+            return [
+                { status: del.status, message: del.body.message },
+                { status: cat.status, message: cat.body.message },
+            ]
+        }
+
+        it('an id in a workspace the caller is not in reads exactly like an id that does not exist', async () => {
+            const unknown = await outcomes([new Types.ObjectId().toString()])
+            const foreignWorkspace = await outcomes([sharedIds[0]])
+            const foreignPersonal = await outcomes([foreignPersonalId])
+
+            expect(unknown[0].status).toBe(404)
+            expect(foreignWorkspace).toEqual(unknown)
+            expect(foreignPersonal).toEqual(unknown)
+        })
+
+        it('a foreign id mixed with an id the caller can see is not-found, not a mixed-scope answer', async () => {
+            const ownPersonalAccount = await createAccountViaApi(app, stranger.token)
+            const ownId = (
+                await createExpenseViaApi(app, stranger.token, ownPersonalAccount, categoryId, { title: 'Stranger own' })
+            ).body.data._id
+            const unknown = await outcomes([ownId, new Types.ObjectId().toString()])
+
+            expect(await outcomes([ownId, sharedIds[0]])).toEqual(unknown)
+            expect(await outcomes([ownId, foreignPersonalId])).toEqual(unknown)
+            expect(await Transaction.countDocuments({ workspaceId })).toBe(2)
+            expect(await Transaction.countDocuments({ _id: { $in: [ownId, foreignPersonalId] } })).toBe(2)
+        })
+    })
+
     it('a personal-only list from the lapsed member is READ_ONLY', async () => {
         const res = await bulkDelete(editor.token, [personalId])
 

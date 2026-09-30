@@ -1,8 +1,10 @@
 import { Types, type Model } from 'mongoose'
 
 import { parseOptionalWorkspaceId } from '@core/access/workspace'
+import { getUserId } from '@core/auth/requestUser'
 import { CustomError } from '@core/errors/customError'
 import type { AuthRequest } from '@http/middleware/authTypes'
+import { assertWorkspaceMembership } from '@modules/workspaces/access'
 
 /** Resolves the workspace a request writes into, or null for the caller's personal data. */
 export type BillingScope = (req: AuthRequest) => Promise<string | null> | string | null
@@ -66,11 +68,14 @@ export const DEFAULT_MAX_BULK_IDS = 500
  * For bulk routes: one scope for the whole list, with every referenced record verified against it
  * before anything is judged on a plan. A list naming an unknown or malformed id is refused as not
  * found, and a list spanning more than one scope (personal and workspace, or two workspaces) is
- * refused outright, so a record can never ride along under another record's plan. A missing,
- * empty or oversized list is left to the controller to reject; it costs no lookup here.
+ * refused outright, so a record can never ride along under another record's plan. A record the
+ * caller cannot see (someone else's personal record, or one in a workspace they are not in) is
+ * refused as not found too, and before the mixed-scope check, so the response never tells "exists
+ * elsewhere" from "does not exist" (SEC-14, SEC-81). A missing, empty or oversized list is left to
+ * the controller to reject; it costs no lookup here.
  */
 export const scopeFromBodyResources =
-    <T extends { workspaceId?: Types.ObjectId | null }>(
+    <T extends { userId?: Types.ObjectId; workspaceId?: Types.ObjectId | null }>(
         model: Model<T>,
         field: string,
         options: { notFoundMessage: string; mixedScopeMessage: string; max?: number }
@@ -79,18 +84,40 @@ export const scopeFromBodyResources =
         const value = (req.body as Record<string, unknown> | undefined)?.[field]
         if (!Array.isArray(value) || value.length === 0 || value.length > (options.max ?? DEFAULT_MAX_BULK_IDS)) return null
 
+        const callerId = getUserId(req)
+        const notFound = () => new CustomError(options.notFoundMessage, 404)
+
         const ids: string[] = []
         for (const entry of value) {
             const id = typeof entry === 'string' ? entry.trim() : ''
-            if (!Types.ObjectId.isValid(id)) throw new CustomError(options.notFoundMessage, 404)
+            if (!Types.ObjectId.isValid(id)) throw notFound()
             ids.push(id)
         }
         const unique = [...new Set(ids)]
 
         const found = (await model.find({ _id: { $in: unique.map((id) => new Types.ObjectId(id)) } } as never)
-            .select('workspaceId')
-            .lean()) as Array<{ workspaceId?: Types.ObjectId | null }>
-        if (found.length !== unique.length) throw new CustomError(options.notFoundMessage, 404)
+            .select('userId workspaceId')
+            .lean()) as Array<{ userId?: Types.ObjectId; workspaceId?: Types.ObjectId | null }>
+        if (found.length !== unique.length) throw notFound()
+
+        const memberOf = new Map<string, boolean>()
+        for (const record of found) {
+            const workspace = record.workspaceId?.toString() ?? null
+            if (!workspace) {
+                if (record.userId?.toString() !== callerId) throw notFound()
+                continue
+            }
+            if (!memberOf.has(workspace)) {
+                memberOf.set(
+                    workspace,
+                    await assertWorkspaceMembership(workspace, callerId).then(
+                        () => true,
+                        () => false
+                    )
+                )
+            }
+            if (!memberOf.get(workspace)) throw notFound()
+        }
 
         const scopes = new Set(found.map((record) => record.workspaceId?.toString() ?? null))
         if (scopes.size > 1) throw new CustomError(options.mixedScopeMessage, 400)

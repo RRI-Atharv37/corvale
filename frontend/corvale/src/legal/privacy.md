@@ -98,6 +98,12 @@ you whether that address is registered here. Invite only people who are expectin
 the workspace, or an owner removes you, the records you added stay there and stay visible to the
 remaining members, and you lose access to them.
 
+Corvale keeps a copy of your workspaces on your own devices so it can work offline. That copy is not
+deleted at the moment you leave or are removed: each of your devices deletes it the next time it is
+online and signed in, and until then it stays on that device. The same is true of the other members -
+when someone leaves or is removed, the shared ledger on their devices is cleared when those devices
+next go online.
+
 If you **delete your account**, those records are kept but the link to you is severed: they remain
 in the workspace so the other members' balances and history stay correct, and they stop being
 connected to your account or attributed to you. We do this because a shared ledger is not only

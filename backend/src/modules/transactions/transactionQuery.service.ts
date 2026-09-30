@@ -30,6 +30,7 @@ import { buildScopedListFilter } from '@core/access/workspace'
 import { RLS_ALLOW_LOOKUP } from '@core/access/rowLevelSecurity'
 import { buildTagFilter, parseTagsQuery } from '@modules/tags/tagUtils'
 import { assertWorkspaceMembership } from '@modules/workspaces/access'
+import { Category } from '@modules/categories'
 
 export { CSV_HEADERS }
 
@@ -276,10 +277,21 @@ export const searchTransactions = async (input: QueryInput) => {
     )
 }
 
-const categoryNameOf = (categoryId: unknown): string =>
-    typeof categoryId === 'object' && categoryId !== null && 'name' in categoryId
-        ? String((categoryId as { name: string }).name)
-        : ''
+const HIDDEN_CATEGORY_LABEL = 'Other'
+
+const loadVisibleCategoryNames = async (userId: string): Promise<Map<string, string>> => {
+    const categories = await Category.find({
+        userId: { $in: [new Types.ObjectId(userId), null] },
+    })
+        .select('name')
+        .lean()
+    return new Map(categories.map((category) => [category._id.toString(), category.name]))
+}
+
+const categoryNameResolver =
+    (names: Map<string, string>) =>
+    (categoryId: unknown): string =>
+        categoryId ? (names.get(String(categoryId)) ?? HIDDEN_CATEGORY_LABEL) : ''
 
 export type DownloadResult =
     | { kind: 'csv'; rows: AsyncGenerator<string[]> }
@@ -321,12 +333,10 @@ export const buildTransactionDownload = async (input: QueryInput): Promise<Downl
     }
 
     const format = parseExportFormat(typeof formatParam === 'string' ? formatParam : 'csv')
+    const categoryNameOf = categoryNameResolver(await loadVisibleCategoryNames(userId))
 
     if (format === 'csv') {
-        const cursor = Transaction.find(filter)
-            .populate('categoryId', 'name')
-            .sort({ date: -1 })
-            .cursor()
+        const cursor = Transaction.find(filter).sort({ date: -1 }).cursor()
 
         async function* rows(): AsyncGenerator<string[]> {
             for await (const transaction of cursor) {
@@ -340,9 +350,7 @@ export const buildTransactionDownload = async (input: QueryInput): Promise<Downl
         return { kind: 'csv', rows: rows() }
     }
 
-    const transactions = await Transaction.find(filter)
-        .populate('categoryId', 'name')
-        .sort({ date: -1 })
+    const transactions = await Transaction.find(filter).sort({ date: -1 })
 
     const records = transactions.map((transaction) =>
         buildTransactionExportRecord(

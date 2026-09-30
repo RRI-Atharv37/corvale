@@ -3,7 +3,7 @@ import type { Workspace, WorkspaceRole } from '@features/workspaces/types'
 import { fetchWorkspaces } from '@features/workspaces/workspaceApi'
 import { getApiErrorMessage } from '@lib/apiError'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
-import { syncNow } from '@platform/sync/syncEngine'
+import { purgeRemovedWorkspaces, syncNow } from '@platform/sync/syncEngine'
 import {
     getStoredActiveWorkspaceId,
     setStoredActiveWorkspaceId,
@@ -63,6 +63,9 @@ const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }
             // a membership fact (Sprint 13.7 fix).
             const isAuthoritative = typeof navigator === 'undefined' || navigator.onLine
             if (isAuthoritative) {
+                if (isLocalFirstEnabled()) {
+                    purgeRemovedWorkspaces(list.map((workspace) => workspace._id)).catch(() => {})
+                }
                 setActiveWorkspaceIdState((current) => {
                     if (!current || list.some((workspace) => workspace._id === current)) {
                         return current

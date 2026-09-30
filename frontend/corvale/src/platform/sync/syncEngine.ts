@@ -6,6 +6,7 @@ import { pushOutboxOps } from './syncApi'
 import { createOutbox, type Outbox, type OutboxOp, type OutboxOperation, type PushResult } from './outbox'
 import { createSqliteOutboxStore } from './sqliteOutboxStore'
 import { runPullLoop } from './pullLoop'
+import { purgeWorkspacesNotIn } from './workspaceOffboarding'
 import { recordConflict, listUnresolvedConflicts } from './conflicts'
 import { parseOutboxEntity, type SyncEntityName } from './entityMap'
 import { getSyncRepository } from './syncRepositories'
@@ -247,6 +248,21 @@ export const resetLocalData = async (): Promise<void> => {
     for (const table of SYNCABLE_TABLES) {
         tableInvalidationBus.publish(table)
     }
+    tableInvalidationBus.publish('_conflicts')
+    tableInvalidationBus.publish('_receipt_uploads')
+}
+
+/** SEC-82: drops the local copy of every workspace the user is no longer a member of. `memberWorkspaceIds` must come from an authoritative online fetch. */
+export const purgeRemovedWorkspaces = async (memberWorkspaceIds: string[]): Promise<void> => {
+    const db = await getLocalDb()
+    const touched = await purgeWorkspacesNotIn(db, memberWorkspaceIds)
+    if (touched.length === 0) return
+
+    outboxInstance = null
+    for (const table of touched) {
+        tableInvalidationBus.publish(table)
+    }
+    tableInvalidationBus.publish('_outbox')
     tableInvalidationBus.publish('_conflicts')
     tableInvalidationBus.publish('_receipt_uploads')
 }

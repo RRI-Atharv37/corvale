@@ -90,7 +90,8 @@ let workspaceId: string
 
 const dropWorkspacesFeature = () => Plan.updateOne({ code: 'pro' }, { $set: { 'features.workspaces': false } })
 
-const asReq = (extras: Record<string, unknown>) => ({ params: {}, body: {}, query: {}, ...extras }) as unknown as AuthRequest
+const asReq = (extras: Record<string, unknown>, callerId: string = editor) =>
+    ({ params: {}, body: {}, query: {}, user: { _id: new Types.ObjectId(callerId) }, ...extras }) as unknown as AuthRequest
 
 beforeEach(async () => {
     process.env.BILLING_ENABLED = 'true'
@@ -239,6 +240,53 @@ describe('scopeFromBodyResources - one scope for a whole list, every id verified
         await expect(scope(asReq({ body: { probeIds: [good._id.toString(), bad()] } }))).rejects.toMatchObject({
             statusCode: 404,
             message: NOT_FOUND,
+        })
+    })
+
+    describe('SEC-81 - a record the caller cannot see is not found, whatever else the list holds', () => {
+        let stranger: string
+
+        beforeEach(() => {
+            stranger = new Types.ObjectId().toString()
+        })
+
+        it('answers a workspace the caller is not in exactly like an unknown id', async () => {
+            const hidden = await Probe.create({ userId: owner, workspaceId })
+
+            const asStranger = scope(asReq({ body: { probeIds: idsOf(hidden) } }, stranger))
+            const unknown = scope(asReq({ body: { probeIds: [new Types.ObjectId().toString()] } }, stranger))
+
+            await expect(asStranger).rejects.toMatchObject({ statusCode: 404, message: NOT_FOUND })
+            await expect(unknown).rejects.toMatchObject({ statusCode: 404, message: NOT_FOUND })
+        })
+
+        it("answers another user's personal record as not found", async () => {
+            const foreign = await Probe.create({ userId: owner })
+
+            await expect(scope(asReq({ body: { probeIds: idsOf(foreign) } }, stranger))).rejects.toMatchObject({
+                statusCode: 404,
+                message: NOT_FOUND,
+            })
+        })
+
+        it('does not report a mixed scope when part of the list is not visible to the caller', async () => {
+            const own = await Probe.create({ userId: stranger })
+            const hidden = await Probe.create({ userId: owner, workspaceId })
+
+            for (const ids of [idsOf(own, hidden), idsOf(hidden, own)]) {
+                await expect(scope(asReq({ body: { probeIds: ids } }, stranger))).rejects.toMatchObject({
+                    statusCode: 404,
+                    message: NOT_FOUND,
+                })
+            }
+        })
+
+        it('a viewer counts as able to see the workspace (role is judged by the controller)', async () => {
+            const viewer = new Types.ObjectId().toString()
+            await Workspace.updateOne({ _id: workspaceId }, { $push: { members: { userId: viewer, role: 'viewer' } } })
+            const record = await Probe.create({ userId: owner, workspaceId })
+
+            expect(await scope(asReq({ body: { probeIds: idsOf(record) } }, viewer))).toBe(workspaceId)
         })
     })
 
