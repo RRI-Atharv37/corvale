@@ -5,7 +5,7 @@ import BrandLogo from '@ui/BrandLogo'
 import { detectPlatform, type DesktopPlatformId } from '@lib/platformDetect'
 import {
     fetchLiveReleaseManifest,
-    getReleaseManifest,
+    getFallbackReleaseManifest,
     type PlatformRelease,
     type ReleaseAsset,
 } from '@platform/desktop/releaseManifest'
@@ -59,9 +59,10 @@ const AlternateAssetRow: React.FC<{ asset: ReleaseAsset }> = ({ asset }) => {
     )
 }
 
-const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean }> = ({
+const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean; pending: boolean }> = ({
     platform,
     recommended,
+    pending,
 }) => {
     const [showAllFormats, setShowAllFormats] = useState(false)
     const primarySize = formatSize(platform.primary.sizeBytes)
@@ -110,7 +111,7 @@ const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean }
                 ) : (
                     <div className="flex items-center justify-center gap-2 rounded-lg border border-border-subtle px-4 py-2.5 text-sm font-medium text-text-muted">
                         <FiClock size={16} />
-                        Coming soon
+                        {pending ? 'Checking the latest release...' : 'Coming soon'}
                     </div>
                 )}
                 {platform.primary.sha256 && (
@@ -148,20 +149,22 @@ const PlatformCard: React.FC<{ platform: PlatformRelease; recommended: boolean }
 }
 
 const Download: React.FC = () => {
-    // Render the build-time fallback immediately, then upgrade to the live manifest published with
-    // the newest release (V16). A failed fetch - offline, GitHub down, no release yet - silently
-    // keeps the fallback.
-    const [manifest, setManifest] = useState(() => getReleaseManifest())
+    // The fallback carries no installer links: until the live manifest resolves (and if it never
+    // does) the page offers nothing to install rather than a pinned, possibly outdated build.
+    const [manifest, setManifest] = useState(() => getFallbackReleaseManifest())
+    const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
     const detected = useMemo(() => detectPlatform(), [])
 
     useEffect(() => {
         let cancelled = false
         fetchLiveReleaseManifest()
             .then((live) => {
-                if (!cancelled) setManifest(live)
+                if (cancelled) return
+                setManifest(live)
+                setStatus('ready')
             })
             .catch(() => {
-                /* keep the built-in fallback manifest */
+                if (!cancelled) setStatus('failed')
             })
         return () => {
             cancelled = true
@@ -200,11 +203,25 @@ const Download: React.FC = () => {
                                 key={platform.id}
                                 platform={platform}
                                 recommended={platform.id === detected}
+                                pending={status === 'loading'}
                             />
                         ))}
                     </div>
 
-                    {!manifest.available && (
+                    {status === 'failed' && (
+                        <p className="mt-6 text-center text-sm text-text-muted">
+                            We couldn&apos;t load the latest installers just now.{' '}
+                            <ExternalLink
+                                href={manifest.releaseNotesUrl}
+                                className="text-accent hover:underline"
+                            >
+                                Get them from the latest release on GitHub
+                            </ExternalLink>
+                            .
+                        </p>
+                    )}
+
+                    {status === 'ready' && !manifest.available && (
                         <p className="mt-6 text-center text-sm text-text-muted">
                             Signed installers are in progress - checksums for each build will be published
                             here once they ship.{' '}
@@ -221,7 +238,7 @@ const Download: React.FC = () => {
                     <section className="mt-16">
                         <p className="section-label">What&apos;s included</p>
                         <h2 className="font-display mt-3 text-2xl font-bold tracking-tight">
-                            Version {manifest.version} highlights
+                            {manifest.version ? `Version ${manifest.version} highlights` : 'Highlights'}
                         </h2>
                         <ul className="mt-6 grid gap-3 sm:grid-cols-3">
                             {manifest.highlights.map((highlight) => (

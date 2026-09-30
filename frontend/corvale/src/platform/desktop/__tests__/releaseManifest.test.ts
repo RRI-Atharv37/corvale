@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
     fetchLiveReleaseManifest,
-    getReleaseManifest,
+    getFallbackReleaseManifest,
     mergeDownloadManifest,
     parseDownloadManifestWire,
     type DownloadManifestWire,
@@ -159,10 +159,23 @@ describe('fetchLiveReleaseManifest', () => {
     })
 })
 
-describe('getReleaseManifest (built-in fallback)', () => {
-    it('still returns a complete, renderable manifest for the offline / pre-fetch render', () => {
-        const manifest = getReleaseManifest()
+describe('getFallbackReleaseManifest (pre-fetch / fetch-failed render)', () => {
+    it('is a complete, renderable manifest that offers no installer', () => {
+        const manifest = getFallbackReleaseManifest()
         expect(manifest.platforms).toHaveLength(3)
         expect(manifest.platforms.every((p) => p.systemRequirements.length > 0)).toBe(true)
+        expect(manifest.available).toBe(false)
+        for (const platform of manifest.platforms) {
+            expect(platform.primary.url).toBeNull()
+            expect(platform.primary.sha256).toBeNull()
+            expect(platform.alternates).toEqual([])
+        }
+    })
+
+    it('is not pinned to any release and links to the latest-release page', () => {
+        const manifest = getFallbackReleaseManifest()
+        expect(manifest.version).toBeNull()
+        expect(manifest.releaseNotesUrl).toMatch(/\/releases\/latest$/)
+        expect(JSON.stringify(manifest)).not.toMatch(/0\.17\.0|spndr/i)
     })
 })

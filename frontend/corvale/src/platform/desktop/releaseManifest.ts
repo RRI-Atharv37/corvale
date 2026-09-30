@@ -20,7 +20,8 @@ export interface PlatformRelease {
 }
 
 export interface ReleaseManifest {
-    version: string
+    /** null for the installer-free fallback, which is not tied to any release. */
+    version: string | null
     publishedAt: string | null
     /** false until D1 (signing/notarization) and D8 (release process) ship a real installer */
     available: boolean
@@ -30,114 +31,22 @@ export interface ReleaseManifest {
 }
 
 const REPO_URL = 'https://github.com/RRI-Atharv37/corvale'
-const RELEASE_TAG = 'v0.17.0'
-const ASSETS_URL = `${REPO_URL}/releases/download/${RELEASE_TAG}`
 
 /**
  * Fetched at runtime by `/download` (V16). `GET /api/v1/desktop/release-manifest` proxies the
  * GitHub Releases API server-side and caches it, so the page always reflects the newest published
  * desktop build with no frontend redeploy - and without the browser needing a CORS exception or a
- * widened CSP (GitHub's own asset URLs send no CORS headers). `getReleaseManifest()` below stays
- * as the build-time fallback the page renders first and keeps showing if this fetch fails.
+ * widened CSP (GitHub's own asset URLs send no CORS headers).
  */
 export const LIVE_RELEASE_MANIFEST_URL = `${BASE_URL}${API_PATHS.DESKTOP.RELEASE_MANIFEST}`
+
+export const LATEST_RELEASE_URL = `${REPO_URL}/releases/latest`
 
 const RELEASE_HIGHLIGHTS = [
     'Native SQLite storage, encrypted at rest with SQLCipher',
     'Sign in once, then use Corvale fully offline',
     'Automatic updates, verified against a signed release before install',
 ]
-
-// D6b: real data from the published v0.17.0 GitHub Release (each OS's Tauri build produces more
-// than one installer format - Windows: .msi + .exe; macOS: aarch64 + x64 .dmg; Linux: .deb + .rpm
-// + .AppImage - see .github/workflows/release.yml). One canonical format per OS is the primary
-// download; the rest are listed under "see all formats" on /download rather than only linking out
-// to the GitHub release. SHA-256 values are the GitHub asset digests for the exact uploaded files.
-export const getReleaseManifest = (): ReleaseManifest => ({
-    version: '0.17.0',
-    publishedAt: '2026-08-25T20:31:20Z',
-    available: true,
-    releaseNotesUrl: `${REPO_URL}/releases/tag/${RELEASE_TAG}`,
-    highlights: [
-        'Native SQLite storage, encrypted at rest with SQLCipher',
-        'Sign in once, then use Corvale fully offline',
-        'Automatic updates, verified against a signed release before install',
-    ],
-    platforms: [
-        {
-            id: 'windows',
-            label: 'Windows',
-            fileLabel: '.msi installer',
-            systemRequirements: [
-                'Windows 10 or later (64-bit)',
-                'WebView2 runtime (preinstalled on current Windows 10/11)',
-            ],
-            primary: {
-                label: '.msi installer',
-                url: `${ASSETS_URL}/spndr_0.17.0_x64_en-US.msi`,
-                sha256: '676ecbfaaa041b6d577ea9b2a5c1857b78881ad1b0b38ce0798b9e7540444c19',
-                sizeBytes: 7827456,
-            },
-            alternates: [
-                {
-                    label: '.exe installer',
-                    url: `${ASSETS_URL}/spndr_0.17.0_x64-setup.exe`,
-                    sha256: '765b578758ab9b59688f18e95485f6cef9e75f026092e68f21d77c5a99f4bab8',
-                    sizeBytes: 5811999,
-                },
-            ],
-        },
-        {
-            id: 'macos',
-            label: 'macOS',
-            fileLabel: '.dmg disk image (Apple Silicon)',
-            systemRequirements: ['macOS 12 Monterey or later', 'Apple Silicon or Intel'],
-            primary: {
-                label: 'Apple Silicon (.dmg)',
-                url: `${ASSETS_URL}/spndr_0.17.0_aarch64.dmg`,
-                sha256: '62f7942284492aa568b286c3f5f932904436961f104b00682d17cadcaaec8adc',
-                sizeBytes: 8088151,
-            },
-            alternates: [
-                {
-                    label: 'Intel (.dmg)',
-                    url: `${ASSETS_URL}/spndr_0.17.0_x64.dmg`,
-                    sha256: 'd3171b743864f6fa3e66084deb11c996bbec7a89f2891b0013ae0db33c7d3fdd',
-                    sizeBytes: 8190126,
-                },
-            ],
-        },
-        {
-            id: 'linux',
-            label: 'Linux',
-            fileLabel: '.deb package',
-            systemRequirements: [
-                'webkit2gtk 4.1 and libayatana-appindicator3',
-                'A glibc-based distro (Debian/Ubuntu, Fedora, and derivatives)',
-            ],
-            primary: {
-                label: '.deb package',
-                url: `${ASSETS_URL}/spndr_0.17.0_amd64.deb`,
-                sha256: 'f13718e71fec33b5ffb1ad5f2faddc5f209503e56a5c3a57f2d5b485fc37d0d5',
-                sizeBytes: 8467760,
-            },
-            alternates: [
-                {
-                    label: '.rpm package',
-                    url: `${ASSETS_URL}/spndr-0.17.0-1.x86_64.rpm`,
-                    sha256: '368f0c21d9b282328be151ed843f754a7ddf8b76a65a73049b27b70f4b74aa78',
-                    sizeBytes: 8467532,
-                },
-                {
-                    label: '.AppImage',
-                    url: `${ASSETS_URL}/spndr_0.17.0_amd64.AppImage`,
-                    sha256: '52cef0b821ea46311c3b800364997a38e0bd72cb729b7b708bc083c4303be731',
-                    sizeBytes: 85588472,
-                },
-            ],
-        },
-    ],
-})
 
 // ---------------------------------------------------------------------------
 // V16 - live `/download` manifest (fetched at runtime from the published release)
@@ -255,6 +164,27 @@ export const mergeDownloadManifest = (wire: DownloadManifestWire): ReleaseManife
         platforms,
     }
 }
+
+/**
+ * What `/download` renders before the live manifest resolves, and keeps if it never does: every
+ * platform card with no installer link, pointing at the latest-release page. Nothing here is pinned
+ * to a version, so a stale build can never be offered.
+ */
+export const getFallbackReleaseManifest = (): ReleaseManifest => ({
+    version: null,
+    publishedAt: null,
+    available: false,
+    releaseNotesUrl: LATEST_RELEASE_URL,
+    highlights: RELEASE_HIGHLIGHTS,
+    platforms: PLATFORM_TEMPLATES.map((template) => ({
+        id: template.id,
+        label: template.label,
+        fileLabel: template.fileLabel,
+        systemRequirements: template.systemRequirements,
+        primary: resolveSlot(template.primary, []),
+        alternates: [],
+    })),
+})
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)

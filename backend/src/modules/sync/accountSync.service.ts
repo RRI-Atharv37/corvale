@@ -21,7 +21,12 @@ import { roundMoney } from "@shared/money";
  */
 
 const unsetPreviousDefault = async (userId: string, excludeAccountId?: string): Promise<void> => {
-    const filter: Record<string, unknown> = { userId, isDefault: true, isArchived: false }
+    const filter: Record<string, unknown> = {
+        userId,
+        workspaceId: null,
+        isDefault: true,
+        isArchived: false,
+    }
     if (excludeAccountId) {
         filter._id = { $ne: excludeAccountId }
     }
@@ -207,6 +212,9 @@ export const updateAccountForOp = async (
     }
 
     if (isDefault === true) {
+        if (account.workspaceId) {
+            throw new CustomError(ERROR_MESSAGES.ACCOUNT.WORKSPACE_DEFAULT_UNSUPPORTED, 400)
+        }
         await unsetPreviousDefault(userId, accountId)
         account.isDefault = true
     } else if (isDefault === false && account.isDefault) {

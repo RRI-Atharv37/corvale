@@ -288,6 +288,46 @@ describe('Debt payoff planner - scoping', () => {
     })
 })
 
+describe('POST /api/v1/debts/plan - accountIds bounds (SEC-84)', () => {
+    it('refuses more than 100 distinct account ids', async () => {
+        const { token } = await seedUserDirectly({ email: 'debt-plan-oversized@example.com' })
+        const ids = Array.from({ length: 101 }, (_, i) => i.toString(16).padStart(24, '0'))
+
+        const res = await planPayoff(token, { strategy: 'snowball', extraPayment: 0, accountIds: ids })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toMatch(/too many account ids/i)
+    })
+
+    it('de-duplicates the list before applying the cap', async () => {
+        const { token } = await seedUserDirectly({ email: 'debt-plan-dupes@example.com' })
+        const account = await createCreditAccount(token)
+        const ids = Array.from({ length: 500 }, () => account._id)
+
+        const res = await planPayoff(token, { strategy: 'snowball', extraPayment: 0, accountIds: ids })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.order).toEqual([account._id])
+    })
+
+    it('rejects non-string ids', async () => {
+        const { token } = await seedUserDirectly({ email: 'debt-plan-nonstring@example.com' })
+
+        const res = await planPayoff(token, { strategy: 'snowball', extraPayment: 0, accountIds: [{ $ne: null }] })
+
+        expect(res.status).toBe(400)
+    })
+
+    it('accepts exactly 100 ids (all checked, all unknown -> 404 for the first bad one)', async () => {
+        const { token } = await seedUserDirectly({ email: 'debt-plan-at-cap@example.com' })
+        const ids = Array.from({ length: 100 }, (_, i) => i.toString(16).padStart(24, '0'))
+
+        const res = await planPayoff(token, { strategy: 'snowball', extraPayment: 0, accountIds: ids })
+
+        expect(res.status).toBe(404)
+    })
+})
+
 describe('debtPayoffUtils', () => {
     it('orders debts by ascending balance for snowball', async () => {
         const { orderDebtsBySnowball } = await import('@modules/debts/debtPayoffUtils')

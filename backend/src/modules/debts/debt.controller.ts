@@ -9,8 +9,12 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { toMinorUnits } from '@core/money/moneyUtils'
 import { buildScopedListFilter, parseOptionalWorkspaceId } from '@core/access/workspace'
 import { getUserId } from '@core/auth/requestUser'
+import { mapWithConcurrency } from '@core/db/concurrency'
 import { handleResponses } from '@core/http/response'
 import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
+
+const MAX_PLAN_ACCOUNT_IDS = 100
+const PLAN_VALIDATION_CONCURRENCY = 10
 
 const parseStrategy = (value: unknown): PayoffStrategy => {
     if (value !== 'snowball' && value !== 'avalanche') {
@@ -25,6 +29,20 @@ const parseExtraPayment = (value: unknown): number => {
         throw new CustomError('Invalid extraPayment; must be a non-negative number', 400)
     }
     return parsed
+}
+
+const parseAccountIds = (value: unknown): string[] => {
+    if (!Array.isArray(value)) {
+        return []
+    }
+    const unique = Array.from(new Set<unknown>(value))
+    if (unique.length > MAX_PLAN_ACCOUNT_IDS) {
+        throw new CustomError(ERROR_MESSAGES.ACCOUNT.PLAN_TOO_MANY_IDS, 400)
+    }
+    if (unique.some((id) => typeof id !== 'string')) {
+        throw new CustomError(ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND, 400)
+    }
+    return unique as string[]
 }
 
 const isEligibleDebtAccount = (account: IAccount): boolean => {
@@ -66,16 +84,16 @@ export const planDebtPayoff = asyncHandler(async (req: AuthRequest, res: Respons
 
     let accounts: IAccount[]
 
-    if (Array.isArray(req.body.accountIds) && req.body.accountIds.length > 0) {
-        accounts = await Promise.all(
-            req.body.accountIds.map((id: string) =>
-                validateResourceAccess(
-                    Account,
-                    id,
-                    userId,
-                    ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
-                    'viewer'
-                )
+    const accountIds = parseAccountIds(req.body.accountIds)
+
+    if (accountIds.length > 0) {
+        accounts = await mapWithConcurrency(accountIds, PLAN_VALIDATION_CONCURRENCY, (id) =>
+            validateResourceAccess(
+                Account,
+                id,
+                userId,
+                ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
+                'viewer'
             )
         )
         accounts = accounts.filter(isEligibleDebtAccount)
