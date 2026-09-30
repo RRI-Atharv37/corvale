@@ -62,6 +62,15 @@ export const dateStringInTimezone = (date: Date, timezone: string): string => {
     }).format(date)
 }
 
+export const dayOfMonthInTimezone = (date: Date, timezone: string): number =>
+    Number(dateStringInTimezone(date, timezone).slice(8, 10))
+
+/** Calendar arithmetic on a YYYY-MM-DD string; no timezone or DST involved. */
+export const addDaysToDateString = (dateStr: string, days: number): string => {
+    const { year, month, day } = parseDateOnly(dateStr)
+    return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10)
+}
+
 export const resolveDateRange = (
     startDate: string,
     endDate: string,

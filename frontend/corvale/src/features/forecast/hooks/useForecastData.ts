@@ -9,6 +9,8 @@ import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import { useWorkspace } from '@/app/providers/useWorkspace'
+import { useUser } from '@/app/providers/useUser'
+import { DEFAULT_TIMEZONE } from '@shared/timezone'
 import type { ApiResponse } from '@lib/types/api'
 import type { Account } from '@features/accounts/types'
 import type { ForecastResponse } from '@features/forecast/types'
@@ -49,6 +51,8 @@ export interface UseForecastDataResult {
  */
 export const useForecastData = (days: number, accountId: string): UseForecastDataResult => {
     const { activeWorkspaceId } = useWorkspace()
+    const { user } = useUser()
+    const timezone = user?.timezone?.trim() || DEFAULT_TIMEZONE
     const localFirst = isLocalFirstEnabled()
 
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
@@ -98,8 +102,9 @@ export const useForecastData = (days: number, accountId: string): UseForecastDat
                 days,
                 accountId: accountId || undefined,
                 workspaceId: activeWorkspaceId ?? null,
+                timezone,
             }),
-        [days, accountId, activeWorkspaceId]
+        [days, accountId, activeWorkspaceId, timezone]
     )
 
     const localForecastQuery = useLocalQuery<ForecastResponse>(
@@ -115,7 +120,7 @@ export const useForecastData = (days: number, accountId: string): UseForecastDat
             void localForecastQuery.refetch()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [days, accountId, activeWorkspaceId, localFirst])
+    }, [days, accountId, activeWorkspaceId, localFirst, timezone])
 
     if (!localFirst) {
         return {

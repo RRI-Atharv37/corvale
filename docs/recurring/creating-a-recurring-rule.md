@@ -38,10 +38,12 @@ Choose the account the generated transactions post against and the category they
 | **Daily** | Every day |
 | **Weekly** | Every 7 days |
 | **Biweekly** | Every 14 days |
-| **Monthly** | Same day each calendar month |
+| **Monthly** | Same day each calendar month (see below for the 29th to 31st) |
 | **Quarterly** | Every 3 months |
 | **Yearly** | Same date each year |
 | **Custom** | Every N days, where you set N |
+
+Monthly, quarterly and yearly rules set for the 29th, 30th or 31st move to the last day of any shorter month, then return to their original day the next month. A rule on 31 January falls on 28 February and then on 31 March.
 
 When you choose **Custom**, an additional **Custom interval (days)** field appears - enter the number of days between occurrences.
 

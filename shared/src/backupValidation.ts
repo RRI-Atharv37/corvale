@@ -263,6 +263,13 @@ const requireAccountCurrency = (record: BackupRecord, accountCurrency: string): 
     }
 }
 
+const optionalAnchorDay = (value: unknown): number | undefined => {
+    if (value === undefined || value === null) {
+        return undefined
+    }
+    return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 31 ? value : fail()
+}
+
 const parseRecurringRule = (record: BackupRecord, accountCurrency: string) => {
     const interval = oneOf(record.interval, BACKUP_RECURRING_INTERVALS)
 
@@ -284,6 +291,7 @@ const parseRecurringRule = (record: BackupRecord, accountCurrency: string) => {
         interval,
         customIntervalDays,
         nextDueDate: dateValue(record.nextDueDate),
+        anchorDay: optionalAnchorDay(record.anchorDay),
         description: optionalString(record.description),
         paymentMethod: optionalString(record.paymentMethod),
         tags: stringArray(record.tags),

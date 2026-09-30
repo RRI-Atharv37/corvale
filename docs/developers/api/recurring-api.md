@@ -38,6 +38,8 @@ Create a recurring rule.
 
 Amount must be greater than 0. `nextDueDate` is parsed as `YYYY-MM-DD` in the user's timezone.
 
+Monthly, quarterly and yearly rules on the 29th to 31st move to the last day of shorter months and return to the original day afterwards. The server stores that day as a read-only `anchorDay` and resets it when you change `nextDueDate` or `interval`.
+
 ## GET /recurring-rules
 
 List rules. Query params: `includeArchived`, `isActive`, `workspaceId`.

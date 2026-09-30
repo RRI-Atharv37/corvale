@@ -11,6 +11,7 @@ import { parseSupportedCurrency } from '@core/money/currencyUtils'
 import {
     confirmRecurringDraft,
     dismissRecurringDraft,
+    endOfTodayInTimezone,
     generateDraftsForRule,
     generateDraftsForUser,
     parseCustomIntervalDays,
@@ -18,11 +19,11 @@ import {
     parseNextDueDate,
     parseRecurringAmount,
     parseTransactionType,
+    resolveAnchorDay,
     serializeRecurringRule,
     serializeRecurringRules,
     validateRuleReferences,
 } from './recurringRuleUtils'
-import { endOfDayInTimezone } from '@core/time/timezoneUtils'
 import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 import { buildScopedListFilter, parseOptionalWorkspaceId } from '@core/access/workspace'
 import { getUserId } from '@core/auth/requestUser'
@@ -33,11 +34,6 @@ import { assertWorkspaceMembership, validateResourceAccess } from "@modules/work
 
 const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
-}
-
-const getEndOfToday = (timezone: string): Date => {
-    const today = new Date().toISOString().slice(0, 10)
-    return endOfDayInTimezone(today, timezone)
 }
 
 const resolveListWorkspaceId = async (req: AuthRequest): Promise<string | null> => {
@@ -100,6 +96,7 @@ export const createRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
         interval,
         customIntervalDays,
         nextDueDate,
+        anchorDay: resolveAnchorDay(nextDueDate, timezone),
         description: typeof req.body.description === 'string' ? req.body.description.trim() : undefined,
         paymentMethod:
             typeof req.body.paymentMethod === 'string' ? req.body.paymentMethod.trim() : undefined,
@@ -199,8 +196,12 @@ export const updateRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
         }
     }
 
+    let reanchor = false
+
     if (req.body.interval !== undefined) {
-        rule.interval = parseInterval(req.body.interval)
+        const interval = parseInterval(req.body.interval)
+        reanchor = interval !== rule.interval
+        rule.interval = interval
     }
 
     if (req.body.customIntervalDays !== undefined || req.body.interval !== undefined) {
@@ -211,7 +212,13 @@ export const updateRecurringRule = asyncHandler(async (req: AuthRequest, res: Re
     }
 
     if (req.body.nextDueDate !== undefined) {
-        rule.nextDueDate = parseNextDueDate(req.body.nextDueDate, timezone)
+        const nextDueDate = parseNextDueDate(req.body.nextDueDate, timezone)
+        reanchor = reanchor || nextDueDate.getTime() !== rule.nextDueDate.getTime()
+        rule.nextDueDate = nextDueDate
+    }
+
+    if (reanchor) {
+        rule.anchorDay = resolveAnchorDay(rule.nextDueDate, timezone)
     }
 
     if (req.body.description !== undefined) {
@@ -268,7 +275,7 @@ export const archiveRecurringRule = asyncHandler(async (req: AuthRequest, res: R
 export const generateRecurringDrafts = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
-    const endOfToday = getEndOfToday(timezone)
+    const endOfToday = endOfTodayInTimezone(timezone)
     const workspaceId = await resolveListWorkspaceId(req)
 
     const drafts = await generateDraftsForUser(userId, endOfToday, workspaceId, timezone)
@@ -279,7 +286,7 @@ export const generateRecurringDraftsForRule = asyncHandler(async (req: AuthReque
     const userId = getUserId(req)
     const timezone = getUserTimezone(req)
     const { ruleId } = req.params
-    const endOfToday = getEndOfToday(timezone)
+    const endOfToday = endOfTodayInTimezone(timezone)
 
     validateRequiredFields({ ruleId }, ['ruleId'])
 

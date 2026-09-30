@@ -8,6 +8,12 @@ import {
   type ProjectedChange,
 } from '@shared/forecast'
 import { fromMinorUnits, roundMoney } from '@shared/money'
+import {
+  DEFAULT_TIMEZONE,
+  addDaysToDateString,
+  dateStringInTimezone,
+  startOfDayInTimezone,
+} from '@shared/timezone'
 import type { LocalAccount, LocalRecurringRule, LocalSavingsGoal, LocalTransaction } from './types'
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
@@ -62,9 +68,8 @@ export interface ForecastLocalOptions {
   days: number
   accountId?: string
   workspaceId?: string | null
+  timezone?: string
 }
-
-const formatDateOnly = (date: Date): string => date.toISOString().slice(0, 10)
 
 /** Local counterpart to `forecastController.ts`'s `projectAccountForecast`, given the already-scoped rule/goal/transaction rows for one account. */
 const projectAccountForecast = (
@@ -74,7 +79,8 @@ const projectAccountForecast = (
   transactions: LocalTransactionRecord[],
   rangeStart: Date,
   rangeEnd: Date,
-  days: number
+  days: number,
+  timezone: string
 ): LocalForecastAccount => {
   const changes: ProjectedChange[] = []
 
@@ -84,13 +90,15 @@ const projectAccountForecast = (
         nextDueDate: new Date(rule.nextDueDate),
         interval: rule.interval,
         customIntervalDays: rule.customIntervalDays,
+        anchorDay: rule.anchorDay,
       },
       rangeStart,
-      rangeEnd
+      rangeEnd,
+      timezone
     )
     for (const date of occurrences) {
       changes.push({
-        date: formatDateOnly(date),
+        date: dateStringInTimezone(date, timezone),
         type: 'recurring',
         amount: rule.type === 'income' ? fromMinorUnits(rule.amount) : -fromMinorUnits(rule.amount),
         label: rule.title,
@@ -110,11 +118,12 @@ const projectAccountForecast = (
           : undefined,
       },
       rangeStart,
-      rangeEnd
+      rangeEnd,
+      timezone
     )
     for (const date of occurrences) {
       changes.push({
-        date: formatDateOnly(date),
+        date: dateStringInTimezone(date, timezone),
         type: 'goal',
         amount: -fromMinorUnits(goal.autoContribution.amount),
         label: goal.name,
@@ -123,8 +132,10 @@ const projectAccountForecast = (
     }
   }
 
-  const lookbackStart = new Date(rangeStart)
-  lookbackStart.setUTCDate(lookbackStart.getUTCDate() - DISCRETIONARY_LOOKBACK_DAYS)
+  const lookbackStart = startOfDayInTimezone(
+    addDaysToDateString(dateStringInTimezone(rangeStart, timezone), -DISCRETIONARY_LOOKBACK_DAYS),
+    timezone
+  )
 
   // Mirrors the server's Transaction.aggregate match: expense + posted + non-recurring-linked +
   // in the trailing lookback window, scoped to this account. No `splitTransactionId` filter here,
@@ -144,7 +155,7 @@ const projectAccountForecast = (
 
   if (dailyAverageMinor > 0) {
     changes.push({
-      date: formatDateOnly(rangeEnd),
+      date: dateStringInTimezone(rangeEnd, timezone),
       type: 'discretionary',
       amount: -fromMinorUnits(dailyAverageMinor * days),
       label: 'Projected discretionary spending',
@@ -206,23 +217,23 @@ export const computeLocalForecast = async (
     )
   }
 
-  const now = new Date()
-  const rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  const rangeEnd = new Date(rangeStart)
-  rangeEnd.setUTCDate(rangeEnd.getUTCDate() + days)
+  const timezone = options.timezone ?? DEFAULT_TIMEZONE
+  const todayStr = dateStringInTimezone(new Date(), timezone)
+  const rangeStart = startOfDayInTimezone(todayStr, timezone)
+  const rangeEnd = startOfDayInTimezone(addDaysToDateString(todayStr, days), timezone)
 
   const accountResults = accounts.map((account) => {
     const rules = allRules.filter((r) => r.accountId === account._id && r.isActive && !r.isArchived)
     const goals = allGoals.filter(
       (g) => g.accountId === account._id && g.status === 'active' && g.autoContribution.enabled
     )
-    return projectAccountForecast(account, rules, goals, allTransactions, rangeStart, rangeEnd, days)
+    return projectAccountForecast(account, rules, goals, allTransactions, rangeStart, rangeEnd, days, timezone)
   })
 
   return {
     days,
-    startDate: formatDateOnly(rangeStart),
-    endDate: formatDateOnly(rangeEnd),
+    startDate: todayStr,
+    endDate: dateStringInTimezone(rangeEnd, timezone),
     accounts: accountResults,
   }
 }

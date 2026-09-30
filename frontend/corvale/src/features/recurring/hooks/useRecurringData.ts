@@ -10,6 +10,7 @@ import { Repository } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
 import { unwrapApiData } from '@lib/apiHelpers'
+import { toDateInputValue } from '@lib/format'
 import { getApiErrorMessage } from '@lib/apiError'
 import { useUser } from '@/app/providers/useUser'
 import { useWorkspace } from '@/app/providers/useWorkspace'
@@ -80,7 +81,9 @@ const toRuleView = (rule: LocalRecurringRule): RecurringRule => ({
     updatedAt: rule.updatedAt,
 })
 
-const buildRestPayload = (input: RecurringRuleInput): Record<string, unknown> => {
+const anchorDayOf = (dateStr: string): number => Number(dateStr.slice(8, 10))
+
+const buildRestPayload =(input: RecurringRuleInput): Record<string, unknown> => {
     const payload: Record<string, unknown> = {
         title: input.title,
         type: input.type,
@@ -185,6 +188,7 @@ export const useRecurringData = (): UseRecurringDataResult => {
                 interval: input.interval,
                 customIntervalDays: input.interval === 'custom' ? input.customIntervalDays : undefined,
                 nextDueDate: input.nextDueDate,
+                anchorDay: anchorDayOf(input.nextDueDate),
                 description: input.description,
                 paymentMethod: input.paymentMethod,
                 tags: input.tags,
@@ -202,6 +206,9 @@ export const useRecurringData = (): UseRecurringDataResult => {
             await db.transaction(async (tx) => {
                 const existing = await recurringRepo.findById(tx, rule._id)
                 if (!existing) throw new Error('Recurring rule not found locally')
+                const reanchor =
+                    input.interval !== existing.interval ||
+                    input.nextDueDate !== toDateInputValue(existing.nextDueDate)
                 const updated: LocalRecurringRule = {
                     ...existing,
                     title: input.title,
@@ -213,6 +220,7 @@ export const useRecurringData = (): UseRecurringDataResult => {
                     interval: input.interval,
                     customIntervalDays: input.interval === 'custom' ? input.customIntervalDays : undefined,
                     nextDueDate: input.nextDueDate,
+                    anchorDay: reanchor ? anchorDayOf(input.nextDueDate) : existing.anchorDay,
                     description: input.description,
                     paymentMethod: input.paymentMethod,
                     tags: input.tags,

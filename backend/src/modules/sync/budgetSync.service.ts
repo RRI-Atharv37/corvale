@@ -7,6 +7,7 @@ import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '@core/mo
 import { parseOptionalWorkspaceId } from '@core/access/workspace'
 import { archiveEntityForOp, DeleteOpOutcome, getUserTimezoneForOp } from './syncEntityHelpers'
 import { fromMinorUnits } from '@shared/money'
+import { dateStringInTimezone } from '@core/time/timezoneUtils'
 import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
 import { validateRequiredFields } from '@core/http/validation'
 import { parseBudgetAmount, parsePeriodType, resolveCustomPeriod, resolveMonthlyPeriod, validateAccountIdsForBudget, validateCategoryForBudget } from "@modules/budgets/budgetUtils";
@@ -183,8 +184,8 @@ export const updateBudgetForOp = async (
         if (budget.periodType !== 'custom') {
             throw new CustomError('periodStart and periodEnd can only be updated on custom budgets', 400)
         }
-        const startStr = String(payload.periodStart ?? budget.periodStart.toISOString().slice(0, 10))
-        const endStr = String(payload.periodEnd ?? budget.periodEnd.toISOString().slice(0, 10))
+        const startStr = String(payload.periodStart ?? dateStringInTimezone(budget.periodStart, timezone))
+        const endStr = String(payload.periodEnd ?? dateStringInTimezone(budget.periodEnd, timezone))
         const { periodStart, periodEnd } = resolveCustomPeriod(startStr, endStr, timezone)
         budget.periodStart = periodStart
         budget.periodEnd = periodEnd

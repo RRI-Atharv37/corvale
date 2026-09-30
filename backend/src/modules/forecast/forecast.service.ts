@@ -11,12 +11,16 @@ import {
     projectRecurringOccurrences,
 } from './forecastUtils'
 import { fromMinorUnits, roundMoney } from '@core/money/moneyUtils'
+import {
+    DEFAULT_TIMEZONE,
+    addDaysToDateString,
+    dateStringInTimezone,
+    startOfDayInTimezone,
+} from '@core/time/timezoneUtils'
 import { buildScopedListFilter } from '@core/access/workspace'
 import { assertWorkspaceMembership, validateResourceAccess } from '@modules/workspaces/access'
 
 const DISCRETIONARY_LOOKBACK_DAYS = 90
-
-const formatDateOnly = (date: Date): string => date.toISOString().slice(0, 10)
 
 const buildAccountScopeFilter = (account: IAccount): Record<string, unknown> =>
     account.workspaceId
@@ -27,7 +31,8 @@ const projectAccountForecast = async (
     account: IAccount,
     rangeStart: Date,
     rangeEnd: Date,
-    days: number
+    days: number,
+    timezone: string
 ) => {
     const scopeFilter = buildAccountScopeFilter(account)
     const changes: ProjectedChange[] = []
@@ -40,9 +45,9 @@ const projectAccountForecast = async (
     })
 
     for (const rule of rules) {
-        for (const date of projectRecurringOccurrences(rule, rangeStart, rangeEnd)) {
+        for (const date of projectRecurringOccurrences(rule, rangeStart, rangeEnd, timezone)) {
             changes.push({
-                date: formatDateOnly(date),
+                date: dateStringInTimezone(date, timezone),
                 type: 'recurring',
                 amount:
                     rule.type === 'income'
@@ -65,10 +70,11 @@ const projectAccountForecast = async (
         for (const date of projectGoalContributionDates(
             goal.autoContribution,
             rangeStart,
-            rangeEnd
+            rangeEnd,
+            timezone
         )) {
             changes.push({
-                date: formatDateOnly(date),
+                date: dateStringInTimezone(date, timezone),
                 type: 'goal',
                 amount: -fromMinorUnits(goal.autoContribution.amount),
                 label: goal.name,
@@ -77,8 +83,10 @@ const projectAccountForecast = async (
         }
     }
 
-    const lookbackStart = new Date(rangeStart)
-    lookbackStart.setUTCDate(lookbackStart.getUTCDate() - DISCRETIONARY_LOOKBACK_DAYS)
+    const lookbackStart = startOfDayInTimezone(
+        addDaysToDateString(dateStringInTimezone(rangeStart, timezone), -DISCRETIONARY_LOOKBACK_DAYS),
+        timezone
+    )
 
     const discretionaryResult = await Transaction.aggregate([
         {
@@ -101,7 +109,7 @@ const projectAccountForecast = async (
 
     if (dailyAverageMinor > 0) {
         changes.push({
-            date: formatDateOnly(rangeEnd),
+            date: dateStringInTimezone(rangeEnd, timezone),
             type: 'discretionary',
             amount: -fromMinorUnits(dailyAverageMinor * days),
             label: 'Projected discretionary spending',
@@ -140,6 +148,7 @@ export interface ForecastInput {
     days: number
     workspaceId: string | null
     accountId?: string
+    timezone?: string
 }
 
 export const buildForecast = async (input: ForecastInput) => {
@@ -164,21 +173,21 @@ export const buildForecast = async (input: ForecastInput) => {
         })
     }
 
-    const now = new Date()
-    const rangeStart = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    )
-    const rangeEnd = new Date(rangeStart)
-    rangeEnd.setUTCDate(rangeEnd.getUTCDate() + input.days)
+    const timezone = input.timezone ?? DEFAULT_TIMEZONE
+    const todayStr = dateStringInTimezone(new Date(), timezone)
+    const rangeStart = startOfDayInTimezone(todayStr, timezone)
+    const rangeEnd = startOfDayInTimezone(addDaysToDateString(todayStr, input.days), timezone)
 
     const accountResults = await Promise.all(
-        accounts.map((account) => projectAccountForecast(account, rangeStart, rangeEnd, input.days))
+        accounts.map((account) =>
+            projectAccountForecast(account, rangeStart, rangeEnd, input.days, timezone)
+        )
     )
 
     return {
         days: input.days,
-        startDate: formatDateOnly(rangeStart),
-        endDate: formatDateOnly(rangeEnd),
+        startDate: todayStr,
+        endDate: dateStringInTimezone(rangeEnd, timezone),
         accounts: accountResults,
     }
 }

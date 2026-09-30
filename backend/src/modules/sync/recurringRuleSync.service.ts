@@ -9,7 +9,7 @@ import { archiveEntityForOp, DeleteOpOutcome, getUserTimezoneForOp } from './syn
 import { fromMinorUnits } from '@shared/money'
 import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
 import { validateRequiredFields } from '@core/http/validation'
-import { parseCustomIntervalDays, parseInterval, parseNextDueDate, parseRecurringAmount, parseTransactionType, validateRuleReferences } from "@modules/recurring/recurringRuleUtils";
+import { parseCustomIntervalDays, parseInterval, parseNextDueDate, parseRecurringAmount, parseTransactionType, resolveAnchorDay, validateRuleReferences } from "@modules/recurring/recurringRuleUtils";
 import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
 
 /**
@@ -88,6 +88,7 @@ export const createRecurringRuleForOp = async (
             interval,
             customIntervalDays,
             nextDueDate,
+            anchorDay: resolveAnchorDay(nextDueDate, timezone),
             description: typeof payload.description === 'string' ? payload.description.trim() : undefined,
             paymentMethod:
                 typeof payload.paymentMethod === 'string' ? payload.paymentMethod.trim() : undefined,
@@ -158,8 +159,12 @@ export const updateRecurringRuleForOp = async (
         }
     }
 
+    let reanchor = false
+
     if (payload.interval !== undefined) {
-        rule.interval = parseInterval(payload.interval)
+        const interval = parseInterval(payload.interval)
+        reanchor = interval !== rule.interval
+        rule.interval = interval
     }
 
     if (payload.customIntervalDays !== undefined || payload.interval !== undefined) {
@@ -170,7 +175,13 @@ export const updateRecurringRuleForOp = async (
     }
 
     if (payload.nextDueDate !== undefined) {
-        rule.nextDueDate = parseNextDueDate(payload.nextDueDate, timezone)
+        const nextDueDate = parseNextDueDate(payload.nextDueDate, timezone)
+        reanchor = reanchor || nextDueDate.getTime() !== rule.nextDueDate.getTime()
+        rule.nextDueDate = nextDueDate
+    }
+
+    if (reanchor) {
+        rule.anchorDay = resolveAnchorDay(rule.nextDueDate, timezone)
     }
 
     if (payload.description !== undefined) {

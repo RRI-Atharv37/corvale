@@ -13,6 +13,7 @@ import {
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { buildScopedListFilter } from '@core/access/workspace'
+import { dateStringInTimezone } from '@core/time/timezoneUtils'
 import { isDuplicateKeyError } from '@core/db/objectId'
 import { assertWorkspaceMembership, validateResourceAccess } from '@modules/workspaces/access'
 
@@ -176,9 +177,9 @@ export const updateBudget = async (input: UpdateBudgetInput): Promise<Serialized
             )
         }
         const startStr =
-            input.customPeriodPatch.periodStart ?? budget.periodStart.toISOString().slice(0, 10)
+            input.customPeriodPatch.periodStart ?? dateStringInTimezone(budget.periodStart, input.timezone)
         const endStr =
-            input.customPeriodPatch.periodEnd ?? budget.periodEnd.toISOString().slice(0, 10)
+            input.customPeriodPatch.periodEnd ?? dateStringInTimezone(budget.periodEnd, input.timezone)
         const { periodStart, periodEnd } = resolveCustomPeriod(startStr, endStr, input.timezone)
         budget.periodStart = periodStart
         budget.periodEnd = periodEnd

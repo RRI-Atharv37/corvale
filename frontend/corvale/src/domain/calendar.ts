@@ -60,9 +60,11 @@ export const computeLocalCalendar = async (
           nextDueDate: new Date(rule.nextDueDate),
           interval: rule.interval,
           customIntervalDays: rule.customIntervalDays,
+          anchorDay: rule.anchorDay,
         },
         range.start,
-        range.end
+        range.end,
+        options.timezone
       )
     )
 
@@ -73,13 +75,16 @@ export const computeLocalCalendar = async (
       return periodEnd >= range.start && periodEnd <= range.end
     })
     .map((budget) =>
-      buildBudgetEvent({
-        id: budget._id,
-        name: budget.name,
-        amount: budget.amount,
-        periodEnd: new Date(budget.periodEnd),
-        categoryId: budget.categoryId ?? undefined,
-      })
+      buildBudgetEvent(
+        {
+          id: budget._id,
+          name: budget.name,
+          amount: budget.amount,
+          periodEnd: new Date(budget.periodEnd),
+          categoryId: budget.categoryId ?? undefined,
+        },
+        options.timezone
+      )
     )
 
   const goalEvents = scopedTo(goals, workspaceId)
@@ -90,13 +95,16 @@ export const computeLocalCalendar = async (
       return targetDate >= range.start && targetDate <= range.end
     })
     .map((goal) =>
-      buildGoalEvent({
-        id: goal._id,
-        name: goal.name,
-        targetAmount: goal.targetAmount,
-        targetDate: new Date(goal.targetDate as string),
-        accountId: goal.accountId ?? undefined,
-      })
+      buildGoalEvent(
+        {
+          id: goal._id,
+          name: goal.name,
+          targetAmount: goal.targetAmount,
+          targetDate: new Date(goal.targetDate as string),
+          accountId: goal.accountId ?? undefined,
+        },
+        options.timezone
+      )
     )
 
   const events: CalendarEvent[] = [...recurringEvents, ...budgetEvents, ...goalEvents]

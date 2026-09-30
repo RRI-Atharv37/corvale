@@ -5,4 +5,6 @@ export {
     endOfDayInTimezone,
     resolveDateRange,
     dateStringInTimezone,
+    dayOfMonthInTimezone,
+    addDaysToDateString,
 } from '@shared/timezone'

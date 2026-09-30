@@ -7,6 +7,7 @@ import { buildForecast } from './forecast.service'
 import { parseOptionalWorkspaceId } from '@core/access/workspace'
 import { getUserId } from '@core/auth/requestUser'
 import { handleResponses } from '@core/http/response'
+import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 
 const SUPPORTED_DAYS = [30, 60, 90]
 
@@ -27,6 +28,7 @@ export const getForecast = asyncHandler(async (req: AuthRequest, res: Response) 
         days: parseDays(req.query.days),
         workspaceId: parseOptionalWorkspaceId(req.query.workspaceId) ?? null,
         accountId: req.query.accountId ? String(req.query.accountId) : undefined,
+        timezone: req.user?.timezone?.trim() || DEFAULT_TIMEZONE,
     })
 
     handleResponses(res, 200, forecast)

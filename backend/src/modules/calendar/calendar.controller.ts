@@ -25,7 +25,12 @@ const getUserTimezone = (req: AuthRequest): string => {
     return req.user?.timezone?.trim() || DEFAULT_TIMEZONE
 }
 
-const buildRecurringEvents = (rule: IRecurringRule, rangeStart: Date, rangeEnd: Date): CalendarEvent[] => {
+const buildRecurringEvents = (
+    rule: IRecurringRule,
+    rangeStart: Date,
+    rangeEnd: Date,
+    timezone: string
+): CalendarEvent[] => {
     return sharedBuildRecurringEvents(
         {
             id: rule._id.toString(),
@@ -36,30 +41,38 @@ const buildRecurringEvents = (rule: IRecurringRule, rangeStart: Date, rangeEnd: 
             nextDueDate: rule.nextDueDate,
             interval: rule.interval,
             customIntervalDays: rule.customIntervalDays,
+            anchorDay: rule.anchorDay,
         },
         rangeStart,
-        rangeEnd
+        rangeEnd,
+        timezone
     )
 }
 
-const buildBudgetEvent = (budget: IBudget): CalendarEvent => {
-    return sharedBuildBudgetEvent({
-        id: budget._id.toString(),
-        name: budget.name,
-        amount: budget.amount,
-        periodEnd: budget.periodEnd,
-        categoryId: budget.categoryId ? budget.categoryId.toString() : undefined,
-    })
+const buildBudgetEvent = (budget: IBudget, timezone: string): CalendarEvent => {
+    return sharedBuildBudgetEvent(
+        {
+            id: budget._id.toString(),
+            name: budget.name,
+            amount: budget.amount,
+            periodEnd: budget.periodEnd,
+            categoryId: budget.categoryId ? budget.categoryId.toString() : undefined,
+        },
+        timezone
+    )
 }
 
-const buildGoalEvent = (goal: ISavingsGoal): CalendarEvent => {
-    return sharedBuildGoalEvent({
-        id: goal._id.toString(),
-        name: goal.name,
-        targetAmount: goal.targetAmount,
-        targetDate: goal.targetDate as Date,
-        accountId: goal.accountId ? goal.accountId.toString() : undefined,
-    })
+const buildGoalEvent = (goal: ISavingsGoal, timezone: string): CalendarEvent => {
+    return sharedBuildGoalEvent(
+        {
+            id: goal._id.toString(),
+            name: goal.name,
+            targetAmount: goal.targetAmount,
+            targetDate: goal.targetDate as Date,
+            accountId: goal.accountId ? goal.accountId.toString() : undefined,
+        },
+        timezone
+    )
 }
 
 export const getCalendar = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -99,9 +112,9 @@ export const getCalendar = asyncHandler(async (req: AuthRequest, res: Response) 
     ])
 
     const events: CalendarEvent[] = [
-        ...rules.flatMap((rule) => buildRecurringEvents(rule, range.start, range.end)),
-        ...budgets.map(buildBudgetEvent),
-        ...goals.map(buildGoalEvent),
+        ...rules.flatMap((rule) => buildRecurringEvents(rule, range.start, range.end, timezone)),
+        ...budgets.map((budget) => buildBudgetEvent(budget, timezone)),
+        ...goals.map((goal) => buildGoalEvent(goal, timezone)),
     ]
 
     events.sort((a, b) => a.date.localeCompare(b.date))

@@ -28,6 +28,8 @@ export interface IRecurringRule extends Document {
     interval: RecurringInterval
     customIntervalDays?: number
     nextDueDate: Date
+    /** Day of month the rule was set up on; lets month-based rules return to it after a short month. */
+    anchorDay?: number
     description?: string
     paymentMethod?: string
     tags?: string[]
@@ -60,6 +62,7 @@ const RecurringRuleSchema = new Schema<IRecurringRule>(
         interval: { type: String, enum: RECURRING_INTERVALS, required: true },
         customIntervalDays: { type: Number, min: 1 },
         nextDueDate: { type: Date, required: true },
+        anchorDay: { type: Number, min: 1, max: 31 },
         description: { type: String, trim: true },
         paymentMethod: { type: String, trim: true },
         tags: [{ type: String, trim: true }],

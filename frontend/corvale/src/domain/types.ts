@@ -137,6 +137,7 @@ export interface LocalRecurringRule extends SyncableRecord {
   interval: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom'
   customIntervalDays?: number
   nextDueDate: string
+  anchorDay?: number
   description?: string
   paymentMethod?: string
   tags?: string[]

@@ -601,6 +601,7 @@ export const restoreLocalBackup = async (
         interval: fields.interval,
         customIntervalDays: fields.customIntervalDays,
         nextDueDate: fields.nextDueDate.toISOString(),
+        anchorDay: fields.anchorDay,
         description: fields.description,
         paymentMethod: fields.paymentMethod,
         tags: fields.tags,

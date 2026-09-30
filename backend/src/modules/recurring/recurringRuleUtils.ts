@@ -9,7 +9,12 @@ import { ITransaction, TransactionType, Transaction } from '@modules/transaction
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { fromMinorUnits, parseAmountToMinorUnits } from '@core/money/moneyUtils'
-import { dateStringInTimezone, endOfDayInTimezone, startOfDayInTimezone } from '@core/time/timezoneUtils'
+import {
+    dateStringInTimezone,
+    dayOfMonthInTimezone,
+    endOfDayInTimezone,
+    startOfDayInTimezone,
+} from '@core/time/timezoneUtils'
 import { advanceNextDueDate as sharedAdvanceNextDueDate } from '@shared/categorization'
 import { assertAccountMatchesWorkspace, buildScopedListFilter } from '@core/access/workspace'
 import { buildRecordScopeFilter, serializeTransaction, SerializedTransaction, validateAccountForTransaction, validateCategoryForTransaction } from "@modules/transactions/transactionUtils";
@@ -28,6 +33,7 @@ export interface SerializedRecurringRule {
     interval: RecurringInterval
     customIntervalDays?: number
     nextDueDate: Date
+    anchorDay?: number
     description?: string
     paymentMethod?: string
     tags?: string[]
@@ -96,17 +102,24 @@ export const parseCustomIntervalDays = (
     return days
 }
 
+export const resolveAnchorDay = (nextDueDate: Date, timezone: string): number =>
+    dayOfMonthInTimezone(nextDueDate, timezone)
+
+export const endOfTodayInTimezone = (timezone: string, now: Date = new Date()): Date =>
+    endOfDayInTimezone(dateStringInTimezone(now, timezone), timezone)
+
 export const advanceNextDueDate = (
     current: Date,
     interval: RecurringInterval,
     customIntervalDays?: number,
-    timezone: string = 'UTC'
+    timezone: string = 'UTC',
+    anchorDay?: number
 ): Date => {
     if (interval === 'custom' && (!customIntervalDays || customIntervalDays < 1)) {
         throw new CustomError('customIntervalDays is required for custom intervals', 400)
     }
 
-    return sharedAdvanceNextDueDate(current, interval, customIntervalDays, timezone)
+    return sharedAdvanceNextDueDate(current, interval, customIntervalDays, timezone, anchorDay)
 }
 
 export const serializeRecurringRule = (rule: IRecurringRule): SerializedRecurringRule => {
@@ -162,6 +175,7 @@ export const generateDraftsForRule = async (
     let iterations = 0
 
     const ruleScope = buildScopedListFilter(userId, rule.workspaceId?.toString() ?? null)
+    const anchorDay = rule.anchorDay ?? resolveAnchorDay(rule.nextDueDate, timezone)
 
     while (rule.nextDueDate <= endOfToday && iterations < MAX_CATCHUP_DRAFTS) {
         const dueDate = new Date(rule.nextDueDate)
@@ -169,7 +183,8 @@ export const generateDraftsForRule = async (
             rule.nextDueDate,
             rule.interval,
             rule.customIntervalDays,
-            timezone
+            timezone,
+            anchorDay
         )
 
         const claim = await RecurringRule.updateOne(

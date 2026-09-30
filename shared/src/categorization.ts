@@ -65,6 +65,20 @@ export const matchCategorizationRule = (rule: RuleLike, input: TransactionMatchI
     }
 }
 
+const MONTHS_PER_INTERVAL: Partial<Record<RecurringInterval, number>> = {
+    monthly: 1,
+    quarterly: 3,
+    yearly: 12,
+}
+
+const addMonthsClamped = (year: number, month: number, months: number, dayOfMonth: number): Date => {
+    const totalMonths = year * 12 + (month - 1) + months
+    const targetYear = Math.floor(totalMonths / 12)
+    const targetMonth = totalMonths % 12
+    const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate()
+    return new Date(Date.UTC(targetYear, targetMonth, Math.min(dayOfMonth, lastDay)))
+}
+
 /**
  * Advances a recurring rule's next due date by one interval, staying on
  * local midnight in `timezone` for the new date.
@@ -76,15 +90,21 @@ export const matchCategorizationRule = (rule: RuleLike, input: TransactionMatchI
  * arithmetic in plain UTC (rather than adding milliseconds to the instant
  * directly) is what keeps a DST transition inside the interval from
  * shifting the result by the DST delta.
+ *
+ * Month-based intervals clamp to the last day of the target month. `anchorDay`
+ * is the day of month the rule was set up on (defaults to the day of
+ * `current`); passing it lets a rule that was clamped to 28 February return to
+ * the 31st in March instead of drifting to the 28th for good.
  */
 export const advanceNextDueDate = (
     current: Date,
     interval: RecurringInterval,
     customIntervalDays: number | undefined,
-    timezone: string
+    timezone: string,
+    anchorDay?: number
 ): Date => {
     const [year, month, day] = dateStringInTimezone(current, timezone).split('-').map(Number)
-    const anchor = new Date(Date.UTC(year, month - 1, day))
+    let anchor = new Date(Date.UTC(year, month - 1, day))
 
     switch (interval) {
         case 'daily':
@@ -97,14 +117,15 @@ export const advanceNextDueDate = (
             anchor.setUTCDate(anchor.getUTCDate() + 14)
             break
         case 'monthly':
-            anchor.setUTCMonth(anchor.getUTCMonth() + 1)
-            break
         case 'quarterly':
-            anchor.setUTCMonth(anchor.getUTCMonth() + 3)
+        case 'yearly': {
+            const targetDay =
+                anchorDay !== undefined && Number.isInteger(anchorDay) && anchorDay >= 1 && anchorDay <= 31
+                    ? anchorDay
+                    : day
+            anchor = addMonthsClamped(year, month, MONTHS_PER_INTERVAL[interval] as number, targetDay)
             break
-        case 'yearly':
-            anchor.setUTCFullYear(anchor.getUTCFullYear() + 1)
-            break
+        }
         case 'custom': {
             const days = customIntervalDays
             if (!days || days < 1) {
