@@ -20,8 +20,10 @@ import {
     setSubscription,
 } from '@tests/billingHelpers'
 import { ADMIN_BASE, bearer, buildAdminApp, disableAdmin, loginAsAdmin, seedAdmin, type SeededAdmin } from '@tests/adminHelpers'
+import { setMailTransport, type MailMessage } from '@infra/mail/mailService'
 import { AdminAuditLog, AdminSession } from '@modules/admin'
-import { Subscription, getUserEntitlements } from '@modules/billing'
+import { Subscription, getUserEntitlements, runRetentionSweep } from '@modules/billing'
+import { User } from '@modules/users'
 
 /**
  * M7.3 - staff levers: comp, plan override, trial extension, erasure hold. Each writes only the overlay (or
@@ -412,6 +414,119 @@ describe('erasure hold', () => {
 
     it.each([0, -1, 1.5, 'x'])('rejects days = %j', async (days) => {
         expect((await post('/erasure-hold', { days, reason: REASON })).status).toBe(400)
+    })
+})
+
+describe('ending a pause early restarts the retention clock (BUG-48)', () => {
+    const lapseLongAgo = () =>
+        Subscription.updateOne(
+            { userId: user.userId },
+            { $set: { lapsedAt: daysFromNow(-200), retentionStage: 'reminder', retentionStageAt: daysFromNow(-40) } }
+        )
+
+    const clockMovedToNow = async () => {
+        const row = await stored()
+        expect(Math.abs(row!.lapsedAt!.getTime() - Date.now())).toBeLessThan(60_000)
+        expect(row?.retentionStage ?? null).toBeNull()
+        expect(row?.retentionStageAt ?? null).toBeNull()
+    }
+
+    it('revoking an active comp on a lapsed account starts a full notice cycle from now', async () => {
+        await lapseLongAgo()
+        await post('/grant', compBody())
+
+        expect((await post('/grant/revoke', { reason: REASON })).status).toBe(200)
+
+        await clockMovedToNow()
+    })
+
+    it('clearing an active erasure hold on a lapsed account starts a full notice cycle from now', async () => {
+        await lapseLongAgo()
+        await post('/erasure-hold', { days: 20, reason: REASON })
+
+        expect((await post('/erasure-hold/clear', { reason: REASON })).status).toBe(200)
+
+        await clockMovedToNow()
+    })
+
+    it('a comp that had already run out restarts the clock at the moment it ran out', async () => {
+        await lapseLongAgo()
+        const until = daysFromNow(-5)
+        await Subscription.updateOne({ userId: user.userId }, { $set: { adminGrant: { kind: 'comp', planCode: 'pro', until, limits: null, grantedBy: support.id, grantedAt: daysFromNow(-35) } } })
+
+        await post('/grant/revoke', { reason: REASON })
+
+        const row = await stored()
+        expect(row?.lapsedAt?.getTime()).toBe(until.getTime())
+        expect(row?.retentionStage ?? null).toBeNull()
+    })
+
+    it('leaves another pause that is still running in place, so the sweep restarts from its end', async () => {
+        await lapseLongAgo()
+        await post('/erasure-hold', { days: 20, reason: REASON })
+        await post('/grant', compBody())
+
+        await post('/grant/revoke', { reason: REASON })
+
+        const row = await stored()
+        expect(row?.retentionHoldUntil).toBeTruthy()
+        expect(Math.abs(row!.lapsedAt!.getTime() - Date.now())).toBeLessThan(60_000)
+    })
+
+    it('does not move the clock for a plan override, which pauses nothing', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.trial_expired, planCode: 'plus', lapsedAt: daysFromNow(-200) })
+        await post('/grant', { kind: 'plan_override', planCode: 'pro', days: 10, reason: REASON })
+
+        await post('/grant/revoke', { reason: REASON })
+
+        expect((await stored())?.lapsedAt?.getTime()).toBeLessThan(Date.now() - 100 * DAY_MS)
+    })
+
+    it('does nothing to an account that is not lapsed', async () => {
+        await setSubscription(user.userId, BILLING_STATES.active)
+        await post('/grant', compBody())
+
+        await post('/grant/revoke', { reason: REASON })
+
+        expect((await stored())?.lapsedAt ?? null).toBeNull()
+    })
+
+    describe('with the retention sweep', () => {
+        let sent: MailMessage[]
+
+        beforeEach(() => {
+            sent = []
+            process.env.SMTP_HOST = 'smtp.test.local'
+            process.env.BILLING_RETENTION_ENABLED = 'true'
+            setMailTransport({
+                sendMail: async (message: MailMessage) => {
+                    sent.push(message)
+                    return { messageId: 'm' }
+                },
+            })
+        })
+
+        afterEach(() => {
+            delete process.env.SMTP_HOST
+            delete process.env.BILLING_RETENTION_ENABLED
+            setMailTransport(null)
+        })
+
+        it('a revoked comp gets the opening notice, not a same-day final warning, and is not erased a week later', async () => {
+            await lapseLongAgo()
+            await post('/grant', compBody())
+            await post('/grant/revoke', { reason: REASON })
+
+            const first = await runRetentionSweep()
+
+            expect(first).toMatchObject({ notified: 1, deleted: 0 })
+            expect((await stored())?.retentionStage).toBe('notice')
+            expect(sent).toHaveLength(1)
+
+            const aWeekOn = await runRetentionSweep(new Date(Date.now() + 8 * DAY_MS))
+            expect(aWeekOn.deleted).toBe(0)
+            expect(await User.countDocuments({ _id: user.userId })).toBe(1)
+        })
     })
 })
 

@@ -26,7 +26,7 @@ export const retentionStageIndex = (stage: RetentionStage | null): number =>
 export const retentionEndsAt = (lapsedAt: Date, retentionDays: number): Date =>
     new Date(lapsedAt.getTime() + retentionDays * DAY_MS)
 
-/** The latest stage whose moment has passed; a run after downtime skips the ones it missed. */
+/** The latest stage whose moment has passed. Not what gets sent after downtime: that is `nextRetentionStage`. */
 export const resolveRetentionStage = (lapsedAt: Date, now: Date, retentionDays: number): RetentionStage | null => {
     const elapsedMs = now.getTime() - lapsedAt.getTime()
     if (elapsedMs < 0) return null
@@ -37,6 +37,54 @@ export const resolveRetentionStage = (lapsedAt: Date, now: Date, retentionDays: 
         if (elapsedMs >= offsets[stage] * DAY_MS) due = stage
     }
     return due
+}
+
+/** The final warning waits until the reminder is this old, so the reminder still lands `REMINDER_LEAD_DAYS` before deletion. */
+export const REMINDER_TO_FINAL_WARNING_DAYS = REMINDER_LEAD_DAYS - FINAL_WARNING_LEAD_DAYS
+
+interface NextStageInput {
+    lapsedAt: Date
+    now: Date
+    retentionDays: number
+    stage: RetentionStage | null
+    stageAt: Date | null
+}
+
+/**
+ * The next notice to send: the stage after the last recorded one, once its moment has come. A run after
+ * downtime, or the first run after retention is switched on, walks the stages one at a time instead of
+ * jumping to the latest, so the notice, the reminder and the final warning are always all delivered.
+ */
+export const nextRetentionStage = ({ lapsedAt, now, retentionDays, stage, stageAt }: NextStageInput): RetentionStage | null => {
+    const due = resolveRetentionStage(lapsedAt, now, retentionDays)
+    const next = RETENTION_STAGES[retentionStageIndex(stage) + 1]
+    if (due === null || next === undefined || retentionStageIndex(next) > retentionStageIndex(due)) return null
+
+    if (next === 'final_warning') {
+        if (stageAt === null || now.getTime() - stageAt.getTime() < REMINDER_TO_FINAL_WARNING_DAYS * DAY_MS) return null
+    }
+    return next
+}
+
+interface ProjectedDeletionInput {
+    lapsedAt: Date
+    now: Date
+    retentionDays: number
+    sending: RetentionStage
+}
+
+/** The earliest erasure date that keeps every promised lead time, given the stage going out now and the stages still to follow. */
+export const projectedDeletionDate = ({ lapsedAt, now, retentionDays, sending }: ProjectedDeletionInput): Date => {
+    const offsets = retentionStageOffsetsDays(retentionDays)
+    const atOffset = (stage: RetentionStage): number => lapsedAt.getTime() + offsets[stage] * DAY_MS
+
+    const reminderAt = sending === 'notice' ? Math.max(now.getTime(), atOffset('reminder')) : now.getTime()
+    const finalWarningAt =
+        sending === 'final_warning'
+            ? now.getTime()
+            : Math.max(now.getTime(), atOffset('final_warning'), reminderAt + REMINDER_TO_FINAL_WARNING_DAYS * DAY_MS)
+
+    return new Date(Math.max(retentionEndsAt(lapsedAt, retentionDays).getTime(), finalWarningAt + FINAL_WARNING_LEAD_DAYS * DAY_MS))
 }
 
 interface DeletionDueInput {
@@ -87,6 +135,9 @@ export const retentionClockStart = (
     }
     return start
 }
+
+/** When a comp or hold stopped pausing the clock: its own end if that has passed, otherwise now (an admin cut it short). */
+export const endedPauseAt = (pauseUntil: Date, now: Date): Date => (pauseUntil.getTime() < now.getTime() ? pauseUntil : now)
 
 export const isRetentionPaused = (
     retentionHoldUntil: Date | null | undefined,

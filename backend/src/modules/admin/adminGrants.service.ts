@@ -1,4 +1,5 @@
 import { isPlanUpgrade } from '@core/billing/adminGrant'
+import { LAPSED_STATUSES, endedPauseAt } from '@core/billing/retention'
 import { ADMIN_GRANT_KINDS, LIMIT_KEYS, PLAN_CODES, type AdminGrantKind, type LimitKey, type PlanCode } from '@core/billing/entitlements'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
@@ -11,6 +12,7 @@ import {
     reopenTrial,
     replaceAdminGrant,
     replaceRetentionHold,
+    restartRetentionClock,
     type SubscriptionRow,
 } from './adminData.service'
 import type { AdminPrincipal, AdminRequestContext } from './adminTypes'
@@ -133,6 +135,26 @@ export const applyGrant = async (
     return { adminGrant: toAdminGrantView(grant) }
 }
 
+/**
+ * A comp or hold that staff end by hand must restart the retention window the same way one that runs out does
+ * (`restartClockAfterPause`): the sweep can no longer see the pause once it is cleared, so the restart is done here,
+ * first, while the pause still keeps the row out of every notice and erasure.
+ */
+const restartClockAfterEarlyEnd = async (
+    userId: string,
+    subscription: SubscriptionRow,
+    pauseUntil: Date | null | undefined,
+    now: Date
+): Promise<void> => {
+    if (!pauseUntil || !subscription.lapsedAt) return
+    if (!(LAPSED_STATUSES as readonly string[]).includes(subscription.status)) return
+
+    const restartedAt = endedPauseAt(pauseUntil, now)
+    if (restartedAt.getTime() <= subscription.lapsedAt.getTime()) return
+
+    await restartRetentionClock(userId, subscription.lapsedAt, restartedAt)
+}
+
 export const revokeGrant = async (
     actor: AdminPrincipal,
     userIdParam: unknown,
@@ -145,6 +167,8 @@ export const revokeGrant = async (
     const subscription = await requireSubscription(userId)
     if (!subscription.adminGrant) throw new CustomError(ERROR_MESSAGES.ADMIN.NO_GRANT, 404)
 
+    const comp = subscription.adminGrant.kind === 'comp' ? subscription.adminGrant : null
+    await restartClockAfterEarlyEnd(userId, subscription, comp?.until, now)
     await replaceAdminGrant(userId, null)
     await recordAudit({
         ...auditBase(actor, ctx, userId, subscription, now),
@@ -238,6 +262,7 @@ export const clearErasureHold = async (
     const subscription = await requireSubscription(userId)
     if (!subscription.retentionHoldUntil) throw new CustomError(ERROR_MESSAGES.ADMIN.NO_HOLD, 404)
 
+    await restartClockAfterEarlyEnd(userId, subscription, subscription.retentionHoldUntil, now)
     await replaceRetentionHold(userId, null)
     await recordAudit({
         ...auditBase(actor, ctx, userId, subscription, now),

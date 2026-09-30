@@ -1,17 +1,15 @@
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
 import {
     DEFAULT_RETENTION_DAYS,
-    FINAL_WARNING_LEAD_DAYS,
     LAPSED_STATUSES,
     MAX_RETENTION_DAYS,
     MIN_RETENTION_DAYS,
     deriveLapsedAt,
     isDeletionDue,
     isRetentionPaused,
-    resolveRetentionStage,
+    nextRetentionStage,
+    projectedDeletionDate,
     retentionClockStart,
-    retentionEndsAt,
-    retentionStageIndex,
 } from '@core/billing/retention'
 import { CustomError } from '@core/errors/customError'
 import { isSmtpConfigured, sendRetentionEmail } from '@infra/mail/mailService'
@@ -26,8 +24,6 @@ import Subscription from './subscription.model'
 const BYPASS = { [RLS_BYPASS]: true }
 const NO_TIMESTAMPS = { timestamps: false }
 const LAPSED = [...LAPSED_STATUSES]
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 export interface RetentionSweepResult {
     skipped: boolean
@@ -150,7 +146,9 @@ const eraseIfStillLapsed = async (rowId: unknown, userId: string, lapsedAt: Date
  * The retention window for lapsed accounts (`cancelled` / `trial_expired`): notices at the start, 30
  * days out and 7 days out, then erasure exactly as a user-initiated deletion would erase it. Inside the
  * window nothing is touched, and a reactivation restores everything because nothing was ever removed.
- * Erasure needs the window to have ended AND a delivered final warning at least 7 days old.
+ * Notices go out one stage per run, in order, however late the run is; a late stage pushes the erasure
+ * date back so the reminder still lands 30 days and the final warning 7 days ahead of it. Erasure needs
+ * the window to have ended AND a delivered final warning at least 7 days old.
  */
 export const runRetentionSweep = async (now: Date = new Date()): Promise<RetentionSweepResult> => {
     if (!isBillingEnabled()) return { ...EMPTY_RESULT, skipped: true }
@@ -189,12 +187,10 @@ export const runRetentionSweep = async (now: Date = new Date()): Promise<Retenti
             continue
         }
 
-        const stage = resolveRetentionStage(row.lapsedAt, now, retentionDays)
-        if (stage === null || retentionStageIndex(stage) <= retentionStageIndex(row.retentionStage ?? null)) continue
+        const stage = nextRetentionStage({ lapsedAt: row.lapsedAt, now, retentionDays, stage: row.retentionStage ?? null, stageAt })
+        if (stage === null) continue
 
-        const windowEnds = retentionEndsAt(row.lapsedAt, retentionDays)
-        const earliestWarnedDeletion = new Date(now.getTime() + FINAL_WARNING_LEAD_DAYS * DAY_MS)
-        const deletionDate = stage === 'final_warning' && earliestWarnedDeletion > windowEnds ? earliestWarnedDeletion : windowEnds
+        const deletionDate = projectedDeletionDate({ lapsedAt: row.lapsedAt, now, retentionDays, sending: stage })
 
         try {
             await sendRetentionEmail(user.email, { stage, deletionDate, billingUrl: billingUrl() })

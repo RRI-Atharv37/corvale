@@ -212,13 +212,79 @@ describe('runRetentionSweep - the notices', () => {
         expect(sent).toHaveLength(3)
     })
 
-    it('after downtime sends only the latest due stage', async () => {
+    it('after downtime still sends the notice first, one stage per run', async () => {
         await lapse(175)
 
         await runRetentionSweep(NOW)
 
         expect(sent).toHaveLength(1)
+        expect((await stored())?.retentionStage).toBe('notice')
+
+        await runRetentionSweep(NOW)
+
+        expect(sent).toHaveLength(2)
+        expect((await stored())?.retentionStage).toBe('reminder')
+    })
+
+    it('holds the final warning back until the reminder is 23 days old', async () => {
+        await lapse(175, { retentionStage: 'reminder', retentionStageAt: NOW })
+
+        await runRetentionSweep(daysAfter(22))
+        expect((await stored())?.retentionStage).toBe('reminder')
+        expect(sent).toHaveLength(0)
+
+        await runRetentionSweep(daysAfter(23))
         expect((await stored())?.retentionStage).toBe('final_warning')
+        expect(sent).toHaveLength(1)
+    })
+
+    it('names a deletion date that leaves 30 days after a late reminder and 7 after a late final warning', async () => {
+        await lapse(175, { retentionStage: 'notice', retentionStageAt: daysAgo(175) })
+        const formatted = (date: Date) =>
+            date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+        await runRetentionSweep(NOW)
+        expect(sent[0].html).toContain(formatted(daysAfter(30)))
+
+        await runRetentionSweep(daysAfter(23))
+        expect(sent[1].html).toContain(formatted(daysAfter(30)))
+    })
+
+    it('walks a long-lapsed row through all three notices, then erases it no sooner than 30 days after the reminder', async () => {
+        await lapse(400)
+
+        expect((await runRetentionSweep(NOW)).notified).toBe(1)
+        expect((await stored())?.retentionStage).toBe('notice')
+        expect((await runRetentionSweep(daysAfter(1))).notified).toBe(1)
+        expect((await stored())?.retentionStage).toBe('reminder')
+
+        for (const day of [2, 10, 23]) {
+            const result = await runRetentionSweep(daysAfter(day))
+            expect(result).toMatchObject({ deleted: 0 })
+            expect(await User.countDocuments({ _id: user.userId })).toBe(1)
+        }
+        expect((await stored())?.retentionStage).toBe('reminder')
+
+        expect((await runRetentionSweep(daysAfter(24))).notified).toBe(1)
+        expect((await stored())?.retentionStage).toBe('final_warning')
+        expect(sent).toHaveLength(3)
+
+        expect((await runRetentionSweep(daysAfter(30))).deleted).toBe(0)
+        expect(await User.countDocuments({ _id: user.userId })).toBe(1)
+        expect((await runRetentionSweep(daysAfter(31))).deleted).toBe(1)
+        expect(await User.countDocuments({ _id: user.userId })).toBe(0)
+    })
+
+    it('first enablement with several long-lapsed rows gives each of them every notice before any erasure', async () => {
+        const others = [await seedUserDirectly({ email: 'ret-long-1@example.com' }), await seedUserDirectly({ email: 'ret-long-2@example.com' })]
+        await lapse(300)
+        for (const other of others) await lapse(500, {}, other.userId)
+
+        for (const day of [0, 1, 24, 40]) {
+            const result = await runRetentionSweep(daysAfter(day))
+            expect(result.deleted, `day ${day}`).toBe(day === 40 ? 3 : 0)
+        }
+        expect(sent).toHaveLength(9)
     })
 
     it('records a stage only after its email was delivered, and retries the next run', async () => {
@@ -342,9 +408,10 @@ describe('runRetentionSweep - deletion at the end of the window', () => {
     })
 
     it('waits a full week after a late final warning before deleting', async () => {
-        await lapse(1000)
+        await lapse(1000, { retentionStage: 'reminder', retentionStageAt: daysAgo(900) })
 
         await runRetentionSweep(NOW)
+        expect((await stored())?.retentionStage).toBe('final_warning')
         expect((await runRetentionSweep(daysAfter(6.9))).deleted).toBe(0)
         expect(await User.countDocuments({ _id: user.userId })).toBe(1)
 

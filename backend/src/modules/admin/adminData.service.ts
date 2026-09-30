@@ -3,6 +3,7 @@ import { Types } from 'mongoose'
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
 import type { BillingInterval, GrandfatherKind, PlanCode, SubscriptionStatus } from '@core/billing/constants'
 import type { PlanPrices } from '@core/billing/metrics'
+import { LAPSED_STATUSES } from '@core/billing/retention'
 import {
     BillingEvent,
     DeferredRevenueEntry,
@@ -158,6 +159,14 @@ export const replaceAdminGrant = (userId: string, grant: Record<string, unknown>
 
 export const replaceRetentionHold = (userId: string, until: Date | null): Promise<SubscriptionRow | null> =>
     previousRow({ userId: asObjectId(userId) }, { $set: { retentionHoldUntil: until } })
+
+/** Compare-and-set on `lapsedAt`: a sweep or a second staff action that moved the clock first wins. */
+export const restartRetentionClock = (userId: string, lapsedAt: Date, restartedAt: Date) =>
+    Subscription.updateOne(
+        { userId: asObjectId(userId), status: { $in: [...LAPSED_STATUSES] }, lapsedAt },
+        { $set: { lapsedAt: restartedAt, retentionStage: null, retentionStageAt: null } },
+        { timestamps: false }
+    ).setOptions(BYPASS)
 
 /** Refuses (returns null) unless the row is still an unlinked trial, so a concurrent webhook or upgrade wins. */
 export const reopenTrial = (userId: string, currentStatus: string, trialEndsAt: Date): Promise<SubscriptionRow | null> =>

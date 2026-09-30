@@ -190,6 +190,10 @@ describe('retention - erasure', () => {
 
         const later = await runRetentionSweep(daysAfter(300))
         expect(later.deleted).toBe(0)
+        expect((await stored())?.retentionStage).toBe('reminder')
+
+        const finalWarned = await runRetentionSweep(daysAfter(323))
+        expect(finalWarned.deleted).toBe(0)
         expect((await stored())?.retentionStage).toBe('final_warning')
     })
 

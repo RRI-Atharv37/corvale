@@ -7,7 +7,10 @@ import {
     MIN_RETENTION_DAYS,
     RETENTION_STAGES,
     deriveLapsedAt,
+    endedPauseAt,
     isDeletionDue,
+    nextRetentionStage,
+    projectedDeletionDate,
     resolveRetentionStage,
     retentionEndsAt,
     retentionStageIndex,
@@ -96,6 +99,98 @@ describe('isDeletionDue - never without a recorded final warning', () => {
 
         expect(isDeletionDue({ ...late, now: after(306.9) })).toBe(false)
         expect(isDeletionDue({ ...late, now: after(307) })).toBe(true)
+    })
+})
+
+describe('nextRetentionStage - one stage at a time, never skipping a notice', () => {
+    const next = (elapsedDays: number, stage: (typeof RETENTION_STAGES)[number] | null, stageAgeDays: number | null = null) =>
+        nextRetentionStage({
+            lapsedAt: LAPSED,
+            now: after(elapsedDays),
+            retentionDays: 180,
+            stage,
+            stageAt: stageAgeDays === null ? null : after(elapsedDays - stageAgeDays),
+        })
+
+    it('starts with the notice, even for an account that lapsed long ago', () => {
+        expect(next(0, null)).toBe('notice')
+        expect(next(175, null)).toBe('notice')
+        expect(next(900, null)).toBe('notice')
+    })
+
+    it('sends the reminder after the notice, and the final warning only after the reminder', () => {
+        expect(next(175, 'notice', 1)).toBe('reminder')
+        expect(next(400, 'notice', 1)).toBe('reminder')
+    })
+
+    it('waits for each stage to be due', () => {
+        expect(next(100, 'notice', 100)).toBeNull()
+        expect(next(149.9, null)).toBe('notice')
+        expect(next(149.9, 'notice', 149.9)).toBeNull()
+        expect(next(150, 'notice', 150)).toBe('reminder')
+    })
+
+    it('holds the final warning back until the reminder is at least 23 days old, so it lands 30 days before deletion', () => {
+        expect(next(175, 'reminder', 0)).toBeNull()
+        expect(next(190, 'reminder', 22.9)).toBeNull()
+        expect(next(190, 'reminder', 23)).toBe('final_warning')
+        expect(next(173, 'reminder', 23)).toBe('final_warning')
+    })
+
+    it('does not send the final warning before its own moment even if the reminder is old', () => {
+        expect(next(160, 'reminder', 100)).toBeNull()
+    })
+
+    it('never sends the final warning after a reminder with no timestamp', () => {
+        expect(next(400, 'reminder', null)).toBeNull()
+    })
+
+    it('has nothing more to send after the final warning', () => {
+        expect(next(400, 'final_warning', 100)).toBeNull()
+    })
+
+    it('is null before the lapse moment', () => {
+        expect(nextRetentionStage({ lapsedAt: LAPSED, now: after(-1), retentionDays: 180, stage: null, stageAt: null })).toBeNull()
+    })
+})
+
+describe('projectedDeletionDate', () => {
+    const projected = (elapsedDays: number, sending: (typeof RETENTION_STAGES)[number]) =>
+        projectedDeletionDate({ lapsedAt: LAPSED, now: after(elapsedDays), retentionDays: 180, sending })
+
+    it('is the end of the window when every notice goes out on time', () => {
+        expect(projected(0, 'notice')).toEqual(after(180))
+        expect(projected(150, 'reminder')).toEqual(after(180))
+        expect(projected(173, 'final_warning')).toEqual(after(180))
+    })
+
+    it('pushes the date back so a late final warning still lands a week before', () => {
+        expect(projected(175, 'final_warning')).toEqual(after(182))
+    })
+
+    it('pushes the date back so a late reminder still lands 30 days before', () => {
+        expect(projected(175, 'reminder')).toEqual(after(205))
+    })
+
+    it('accounts for the whole catch-up sequence when the first notice is late', () => {
+        expect(projected(175, 'notice')).toEqual(after(205))
+        expect(projected(900, 'notice')).toEqual(after(930))
+    })
+
+    it('never promises less than the Terms: 30 days after the reminder and 7 after the final warning', () => {
+        for (const elapsed of [0, 100, 150, 173, 175, 400]) {
+            const reminderAt = Math.max(elapsed, 150)
+            const finalAt = Math.max(reminderAt + 23, 173)
+            expect(projected(elapsed, 'notice').getTime()).toBeGreaterThanOrEqual(after(reminderAt + 30).getTime())
+            expect(projected(elapsed, 'notice').getTime()).toBeGreaterThanOrEqual(after(finalAt + 7).getTime())
+        }
+    })
+})
+
+describe('endedPauseAt', () => {
+    it('is now for a pause cut short, and the original end for one that already ran out', () => {
+        expect(endedPauseAt(after(50), after(20))).toEqual(after(20))
+        expect(endedPauseAt(after(10), after(20))).toEqual(after(10))
     })
 })
 
