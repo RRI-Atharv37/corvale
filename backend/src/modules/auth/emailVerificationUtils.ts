@@ -25,7 +25,11 @@ export const createEmailVerificationForUser = async (user: IUser): Promise<strin
     return rawToken
 }
 
-export const verifyEmailWithToken = async (rawToken: string): Promise<void> => {
+export const verifyEmailWithToken = async (rawToken: unknown): Promise<void> => {
+    if (typeof rawToken !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_INVALID, 400)
+    }
+
     const tokenHash = hashToken(rawToken)
     const user = await User.findOne({
         emailVerificationTokenHash: tokenHash,

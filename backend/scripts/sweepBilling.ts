@@ -38,6 +38,8 @@ const main = async (): Promise<void> => {
                 retentionDeleted: sweep.retention.deleted,
                 retentionFailed: sweep.retention.failed,
                 ledgerRedacted: sweep.ledgerRedacted,
+                orphanSubscriptionsRemoved: sweep.orphans.subscriptions,
+                orphanInvitesRemoved: sweep.orphans.invites,
                 auditIpsScrubbed: admin.auditIpsScrubbed,
             },
             exitCode: sweep.dunning.failed > 0 || sweep.retention.failed > 0 ? EXIT_DELIVERY_FAILURES : 0,

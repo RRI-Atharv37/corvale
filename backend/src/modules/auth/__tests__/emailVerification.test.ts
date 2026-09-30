@@ -204,6 +204,17 @@ describe('Email verification', () => {
         expect(res.body.message).toBe(ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_INVALID)
     })
 
+    it('BUG-53: answers a non-string verification token with a 400, not a 500', async () => {
+        const app = createApp()
+
+        for (const token of [123, ['abc'], { a: 1 }, true]) {
+            const res = await request(app).post('/api/v1/auth/email-verification/confirm').send({ token })
+
+            expect(res.status).toBe(400)
+            expect(res.body.message).toBe(ERROR_MESSAGES.AUTH.EMAIL_VERIFICATION_INVALID)
+        }
+    })
+
     it('rejects an expired verification token', async () => {
         const app = createApp()
         const email = 'verify-expired@example.com'

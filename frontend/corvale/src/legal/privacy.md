@@ -395,9 +395,11 @@ and you can export everything and delete your account at any time.
 - **Our own access to billing and account data is narrow, logged, and never reaches your financial
   records.** We look at billing and account metadata - plan, status, payment-processor identifiers
   - only through an internal tool that requires two-factor authentication to sign in, and every
-  action taken through it is written to an append-only audit log that cannot be edited or deleted,
-  even by us. That tool cannot show your transactions, receipts, budgets, or any other financial
-  content you record in Corvale - only billing and account state.
+  action taken through it is written to an append-only audit log, and nobody using the tool can edit
+  or delete an entry. Entries are removed automatically after 400 days, billing and permission
+  changes after a longer period, and if you delete your account your identity is removed from the
+  entries that concern you. That tool cannot show your transactions, receipts, budgets, or any other
+  financial content you record in Corvale - only billing and account state.
 
 No system is perfectly secure, and we do not claim otherwise. What we can tell you is exactly
 which controls are in place, which is what this section is for. Our security policy and how to

@@ -171,6 +171,37 @@ describe('POST /admin/auth/login', () => {
         expect((await AdminUser.findById(admin.id))?.failedLoginCount).toBe(0)
     })
 
+    it('SEC-76: password-only failures neither lock the account nor end its live sessions', async () => {
+        const admin = await seedAdmin()
+        await loginAsAdmin(app, admin)
+
+        for (let i = 0; i < 6; i += 1) {
+            expect((await postLogin(app, admin, { password: 'not the password at all' })).status).toBe(401)
+        }
+
+        expect(await AdminSession.countDocuments({ adminId: admin.id, revokedAt: null })).toBe(1)
+        const row = await AdminUser.findById(admin.id)
+        expect(row?.failedLoginCount).toBe(0)
+        expect(row?.lockedUntil ?? null).toBeNull()
+        expect(await AdminAuditLog.countDocuments({ action: 'admin.lockout', adminId: admin.id })).toBe(0)
+        expect(await AdminAuditLog.countDocuments({ action: 'admin.login_failed' })).toBe(6)
+
+        await clearTotpReplay(admin.id)
+        expect((await postLogin(app, admin)).status).toBe(200)
+    })
+
+    it('SEC-76: a wrong second factor after the right password still locks and ends the sessions', async () => {
+        const admin = await seedAdmin()
+        await loginAsAdmin(app, admin)
+
+        for (let i = 0; i < 5; i += 1) {
+            expect((await postLogin(app, admin, { totpCode: '000000' })).status).toBe(401)
+        }
+
+        expect(await AdminSession.countDocuments({ adminId: admin.id, revokedAt: null })).toBe(0)
+        expect(await AdminAuditLog.countDocuments({ action: 'admin.lockout', adminId: admin.id })).toBe(1)
+    })
+
     it('audits a successful login with the admin and ip, and never the email', async () => {
         const admin = await seedAdmin()
 

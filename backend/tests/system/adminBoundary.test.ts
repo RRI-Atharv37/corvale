@@ -176,4 +176,16 @@ describe('CORS', () => {
 
         expect(res.headers['access-control-allow-origin']).toBeUndefined()
     })
+
+    it('SEC-77: a differently-cased admin path gets the admin CORS policy, not the user one', async () => {
+        const app = buildAdminApp()
+
+        for (const path of ['/api/v1/Admin/auth/login', '/api/v1/ADMIN/auth/login']) {
+            const user = await request(app).options(path).set('Origin', process.env.CLIENT_URL as string).set('Access-Control-Request-Method', 'POST')
+            const admin = await request(app).options(path).set('Origin', ADMIN_ORIGIN).set('Access-Control-Request-Method', 'POST')
+
+            expect(user.headers['access-control-allow-origin']).toBeUndefined()
+            expect(admin.headers['access-control-allow-origin']).toBe(ADMIN_ORIGIN)
+        }
+    })
 })

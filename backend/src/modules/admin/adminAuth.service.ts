@@ -88,7 +88,9 @@ const spendRecoveryCode = async (admin: IAdminUser, code: unknown): Promise<bool
 
 /**
  * Counts a failed second factor (at login or step-up) and locks the account on the fifth. Locking also ends
- * every live session, so a stolen access token cannot keep guessing codes.
+ * every live session, so a stolen access token cannot keep guessing codes. Only a caller who already passed
+ * the password reaches this at login: password failures are metered by the rate limiter alone, so knowing an
+ * admin's email is not enough to lock them out.
  */
 const registerFailure = async (
     admin: IAdminUser,
@@ -138,8 +140,10 @@ export const loginAdmin = async (input: LoginInput, ctx: AdminRequestContext, no
     }
 
     if (!usable || !passwordOk || !secondFactorOk) {
-        if (usable) {
+        if (usable && passwordOk) {
             await registerFailure(admin, 'admin.login_failed', ctx, now)
+        } else if (usable) {
+            await recordAudit({ adminId: admin._id, adminRole: admin.role, action: 'admin.login_failed', ip: ctx.ip, requestId: ctx.requestId, at: now })
         } else {
             await recordAudit({ action: 'admin.login_failed', ip: ctx.ip, requestId: ctx.requestId, at: now })
         }

@@ -21,6 +21,7 @@ import {
     Subscription,
     SyncDevice,
     UsageCounter,
+    recomputeWorkspaceSeats,
     redactLedgerProviderIds,
     stopProviderBillingForErasure,
 } from '@modules/billing'
@@ -296,6 +297,15 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
     const { retainedWorkspaceIds, emptiedWorkspaceIds, retainedWorkspaces } =
         await computeWorkspaceDepartureImpact(userId)
 
+    // Seats are counted per workspace (members plus pending invites), so every workspace whose member
+    // list or invites this cascade changes needs its counter rebuilt afterwards.
+    const invitedWorkspaceIds = await WorkspaceInvite.distinct('workspaceId', {
+        $or: [{ inviteeUserId: userId }, { inviterUserId: userId }],
+    })
+    const seatWorkspaceIds = [...new Set([...retainedWorkspaceIds, ...invitedWorkspaceIds].map((id) => id.toString()))].filter(
+        (id) => !emptiedWorkspaceIds.some((emptied) => emptied.toString() === id)
+    )
+
     const deletedReceiptIds = await deleteUserReceipts(userId)
 
     // Receipts have no `workspaceId` of their own (always personal to the uploader), but a
@@ -365,6 +375,8 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
     // Drop the now-deleted user from the member list of every workspace they're still in (the
     // retained ones - the emptied ones are already gone above).
     await Workspace.updateMany({ 'members.userId': userId }, { $pull: { members: { userId } } })
+
+    for (const workspaceId of seatWorkspaceIds) await recomputeWorkspaceSeats(workspaceId)
 
     // SEC-49: hard-delete, not just revoke - no userId-linked rows outlive the account.
     await deleteAllRefreshTokensForUser(userId)
