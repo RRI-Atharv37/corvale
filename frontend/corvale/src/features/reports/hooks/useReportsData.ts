@@ -7,7 +7,9 @@ import { useLocalQuery } from '@platform/db/useLocalQuery'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
 import { Repository } from '@platform/db/repositories/Repository'
 import { useUser } from '@/app/providers/useUser'
+import { useWorkspace } from '@/app/providers/useWorkspace'
 import { unwrapApiData } from '@lib/apiHelpers'
+import { buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import { getApiErrorMessage } from '@lib/apiError'
 import {
     computeLocalBudgetOverview,
@@ -28,6 +30,7 @@ import {
     resolveLocalReportPeriod,
     type ReportPeriodQuery,
 } from '@domain/reports'
+import { isInScope, type LocalScope } from '@domain/scope'
 import type { LocalDb } from '@platform/db/LocalDb'
 import type { LocalRecurringRule, LocalTransaction } from '@domain/types'
 import type { ApiResponse } from '@lib/types/api'
@@ -146,9 +149,10 @@ const toDraftView = (tx: LocalTransactionExt): Transaction => ({
  * but the draft `Transaction` rows themselves ARE a syncable local table, so listing them for the
  * calendar card is a trivial local read - mirrors the server's `getRecurringDrafts` filter
  * (`recurringPaymentId != null`, non-split, sorted by date then createdAt). */
-const listLocalRecurringDrafts = async (db: LocalDb): Promise<Transaction[]> => {
+const listLocalRecurringDrafts = async (db: LocalDb, scope: LocalScope): Promise<Transaction[]> => {
     const transactions = (await transactionsRepo.list(db)) as LocalTransactionExt[]
     return transactions
+        .filter((tx) => isInScope(tx, scope.workspaceId))
         .filter((tx) => tx.status === 'draft' && tx.splitTransactionId === null && Boolean(tx.recurringPaymentId))
         .sort((a, b) => {
             if (a.date !== b.date) return a.date < b.date ? -1 : 1
@@ -157,9 +161,9 @@ const listLocalRecurringDrafts = async (db: LocalDb): Promise<Transaction[]> => 
         .map(toDraftView)
 }
 
-const listLocalRecurringRules = async (db: LocalDb): Promise<RecurringRule[]> => {
+const listLocalRecurringRules = async (db: LocalDb, scope: LocalScope): Promise<RecurringRule[]> => {
     const rules = await recurringRulesRepo.list(db)
-    return rules.filter((rule) => !rule.isArchived).map(toRuleView)
+    return rules.filter((rule) => isInScope(rule, scope.workspaceId) && !rule.isArchived).map(toRuleView)
 }
 
 /** Saved report configs (`SavedReport`) have no local equivalent - they stay REST-only regardless
@@ -195,13 +199,17 @@ const buildSectionRequests = (
     periodParams: ReportPeriodQuery,
     periodDates: PeriodDates,
     chartQuery: ChartQuery,
-    thisMonthQuery: ChartQuery
-): ReportSectionRequest[] => [
+    thisMonthQuery: ChartQuery,
+    workspaceId: string | null
+): ReportSectionRequest[] => {
+    const scope = buildWorkspaceQueryParams(workspaceId)
+    const period = { ...periodParams, ...scope }
+    return [
     {
         key: 'averages',
         run: () =>
             axiosInstance
-                .get<ApiResponse<PeriodAverages>>(API_PATHS.REPORTS.AVERAGES, { params: periodParams })
+                .get<ApiResponse<PeriodAverages>>(API_PATHS.REPORTS.AVERAGES, { params: period })
                 .then(unwrapApiData),
     },
     {
@@ -209,7 +217,7 @@ const buildSectionRequests = (
         run: () =>
             axiosInstance
                 .get<ApiResponse<LargestExpensesResponse>>(API_PATHS.REPORTS.LARGEST_EXPENSES, {
-                    params: { ...periodParams, limit: 10 },
+                    params: { ...period, limit: 10 },
                 })
                 .then(unwrapApiData),
     },
@@ -217,7 +225,7 @@ const buildSectionRequests = (
         key: 'spendingTrends',
         run: () =>
             axiosInstance
-                .get<ApiResponse<SpendingTrendsResponse>>(API_PATHS.REPORTS.SPENDING_TRENDS, { params: periodParams })
+                .get<ApiResponse<SpendingTrendsResponse>>(API_PATHS.REPORTS.SPENDING_TRENDS, { params: period })
                 .then(unwrapApiData),
     },
     {
@@ -225,7 +233,7 @@ const buildSectionRequests = (
         run: () =>
             axiosInstance
                 .get<ApiResponse<IncomeVsExpenseResponse>>(API_PATHS.REPORTS.INCOME_VS_EXPENSE, {
-                    params: periodParams,
+                    params: period,
                 })
                 .then(unwrapApiData),
     },
@@ -233,14 +241,14 @@ const buildSectionRequests = (
         key: 'savingsRate',
         run: () =>
             axiosInstance
-                .get<ApiResponse<SavingsRateReport>>(API_PATHS.REPORTS.SAVINGS_RATE, { params: periodParams })
+                .get<ApiResponse<SavingsRateReport>>(API_PATHS.REPORTS.SAVINGS_RATE, { params: period })
                 .then(unwrapApiData),
     },
     {
         key: 'recurringTotals',
         run: () =>
             axiosInstance
-                .get<ApiResponse<RecurringTotalsReport>>(API_PATHS.REPORTS.RECURRING_TOTALS, { params: periodParams })
+                .get<ApiResponse<RecurringTotalsReport>>(API_PATHS.REPORTS.RECURRING_TOTALS, { params: period })
                 .then(unwrapApiData),
     },
     {
@@ -248,7 +256,12 @@ const buildSectionRequests = (
         run: () =>
             axiosInstance
                 .get<ApiResponse<{ breakdown: CategoryBreakdownItem[] }>>(API_PATHS.DASHBOARD.CATEGORY_BREAKDOWN, {
-                    params: { startDate: periodDates.startDate, endDate: periodDates.endDate, type: 'expense' },
+                    params: {
+                        startDate: periodDates.startDate,
+                        endDate: periodDates.endDate,
+                        type: 'expense',
+                        ...scope,
+                    },
                 })
                 .then((res) => unwrapApiData(res).breakdown),
     },
@@ -256,21 +269,21 @@ const buildSectionRequests = (
         key: 'budgetAnalysis',
         run: () =>
             axiosInstance
-                .get<ApiResponse<BudgetAnalysisReport>>(API_PATHS.REPORTS.BUDGET_ANALYSIS, { params: periodParams })
+                .get<ApiResponse<BudgetAnalysisReport>>(API_PATHS.REPORTS.BUDGET_ANALYSIS, { params: period })
                 .then(unwrapApiData),
     },
     {
         key: 'spendingAnalysis',
         run: () =>
             axiosInstance
-                .get<ApiResponse<SpendingAnalysisReport>>(API_PATHS.REPORTS.SPENDING_ANALYSIS, { params: periodParams })
+                .get<ApiResponse<SpendingAnalysisReport>>(API_PATHS.REPORTS.SPENDING_ANALYSIS, { params: period })
                 .then(unwrapApiData),
     },
     {
         key: 'crossoverPoint',
         run: () =>
             axiosInstance
-                .get<ApiResponse<CrossoverPointReport>>(API_PATHS.REPORTS.CROSSOVER_POINT, { params: periodParams })
+                .get<ApiResponse<CrossoverPointReport>>(API_PATHS.REPORTS.CROSSOVER_POINT, { params: period })
                 .then(unwrapApiData),
     },
     {
@@ -281,28 +294,28 @@ const buildSectionRequests = (
         key: 'cashFlow',
         run: () =>
             axiosInstance
-                .get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, { params: chartQuery })
+                .get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, { params: { ...chartQuery, ...scope } })
                 .then(unwrapApiData),
     },
     {
         key: 'netWorthTrend',
         run: () =>
             axiosInstance
-                .get<ApiResponse<NetWorthTrendResponse>>(API_PATHS.DASHBOARD.NET_WORTH_TREND, { params: chartQuery })
+                .get<ApiResponse<NetWorthTrendResponse>>(API_PATHS.DASHBOARD.NET_WORTH_TREND, { params: { ...chartQuery, ...scope } })
                 .then(unwrapApiData),
     },
     {
         key: 'budgetOverview',
         run: () =>
             axiosInstance
-                .get<ApiResponse<BudgetOverviewResponse>>(API_PATHS.DASHBOARD.BUDGET_OVERVIEW)
+                .get<ApiResponse<BudgetOverviewResponse>>(API_PATHS.DASHBOARD.BUDGET_OVERVIEW, { params: scope })
                 .then(unwrapApiData),
     },
     {
         key: 'thisMonthCashFlow',
         run: () =>
             axiosInstance
-                .get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, { params: thisMonthQuery })
+                .get<ApiResponse<DashboardCashFlowResponse>>(API_PATHS.DASHBOARD.CASH_FLOW, { params: { ...thisMonthQuery, ...scope } })
                 .then(unwrapApiData),
     },
     {
@@ -310,23 +323,28 @@ const buildSectionRequests = (
         run: () =>
             axiosInstance
                 .get<ApiResponse<RecurringRule[]>>(API_PATHS.RECURRING_RULES.GET_ALL, {
-                    params: { includeArchived: false },
+                    params: { includeArchived: false, ...scope },
                 })
                 .then(unwrapApiData),
     },
     {
         key: 'recurringDrafts',
-        run: () => axiosInstance.get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS).then(unwrapApiData),
+        run: () =>
+            axiosInstance
+                .get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS, { params: scope })
+                .then(unwrapApiData),
     },
-]
+    ]
+}
 
 const fetchServerReports = async (
     periodParams: ReportPeriodQuery,
     periodDates: PeriodDates,
     chartQuery: ChartQuery,
-    thisMonthQuery: ChartQuery
+    thisMonthQuery: ChartQuery,
+    workspaceId: string | null
 ): Promise<ServerReportsResult> => {
-    const requests = buildSectionRequests(periodParams, periodDates, chartQuery, thisMonthQuery)
+    const requests = buildSectionRequests(periodParams, periodDates, chartQuery, thisMonthQuery, workspaceId)
     const settled = await Promise.allSettled(requests.map((request) => request.run()))
 
     const data: PartialReportsData = {}
@@ -352,7 +370,8 @@ const fetchLocalReports = async (
     thisMonthQuery: ChartQuery,
     timezone: string,
     preferredCurrency: string,
-    exchangeRates: Record<string, number>
+    exchangeRates: Record<string, number>,
+    scope: LocalScope
 ): Promise<ReportsData> => {
     const conversion = { preferredCurrency, exchangeRates }
     const period = resolveLocalReportPeriod(periodParams, timezone)
@@ -376,22 +395,29 @@ const fetchLocalReports = async (
         recurringDrafts,
         savedReports,
     ] = await Promise.all([
-        computeLocalPeriodAverages(db, period, timezone),
-        computeLocalLargestExpenses(db, period, 10),
-        computeLocalSpendingTrends(db, period, timezone),
-        computeLocalIncomeVsExpense(db, period),
-        computeLocalSavingsRate(db, period),
-        computeLocalRecurringTotals(db, period),
-        computeLocalCategoryBreakdown(db, periodDates.startDate, periodDates.endDate, 'expense', timezone),
-        computeLocalBudgetAnalysis(db, period),
-        computeLocalSpendingAnalysis(db, period, timezone, 10),
-        computeLocalCrossoverPoint(db, period, timezone),
-        computeLocalCashFlowSeries(db, chartQuery.startDate, chartQuery.endDate, chartQuery.groupBy, timezone),
-        computeLocalNetWorthOverview(db, chartQuery.startDate, chartQuery.endDate, timezone, conversion),
-        computeLocalBudgetOverview(db, timezone),
-        computeLocalCashFlowSeries(db, thisMonthQuery.startDate, thisMonthQuery.endDate, thisMonthQuery.groupBy, timezone),
-        listLocalRecurringRules(db),
-        listLocalRecurringDrafts(db),
+        computeLocalPeriodAverages(db, period, timezone, scope),
+        computeLocalLargestExpenses(db, period, 10, scope),
+        computeLocalSpendingTrends(db, period, timezone, scope),
+        computeLocalIncomeVsExpense(db, period, scope),
+        computeLocalSavingsRate(db, period, scope),
+        computeLocalRecurringTotals(db, period, scope),
+        computeLocalCategoryBreakdown(db, periodDates.startDate, periodDates.endDate, 'expense', timezone, scope),
+        computeLocalBudgetAnalysis(db, period, scope),
+        computeLocalSpendingAnalysis(db, period, timezone, 10, scope),
+        computeLocalCrossoverPoint(db, period, timezone, scope),
+        computeLocalCashFlowSeries(db, chartQuery.startDate, chartQuery.endDate, chartQuery.groupBy, timezone, scope),
+        computeLocalNetWorthOverview(db, chartQuery.startDate, chartQuery.endDate, timezone, conversion, scope),
+        computeLocalBudgetOverview(db, timezone, scope),
+        computeLocalCashFlowSeries(
+            db,
+            thisMonthQuery.startDate,
+            thisMonthQuery.endDate,
+            thisMonthQuery.groupBy,
+            timezone,
+            scope
+        ),
+        listLocalRecurringRules(db, scope),
+        listLocalRecurringDrafts(db, scope),
         fetchSavedReportsResilient(),
     ])
 
@@ -441,6 +467,7 @@ export const useReportsData = (
     savedReportsKey: number
 ): UseReportsDataResult => {
     const { user } = useUser()
+    const { activeWorkspaceId } = useWorkspace()
     const localFirst = isLocalFirstEnabled()
 
     const timezone = user?.timezone || 'UTC'
@@ -455,10 +482,10 @@ export const useReportsData = (
             () =>
                 localFirst
                     ? Promise.resolve({ data: {}, sectionErrors: {} })
-                    : fetchServerReports(periodParams, periodDates, chartQuery, thisMonthQuery),
-            [localFirst, periodParams, periodDates, chartQuery, thisMonthQuery]
+                    : fetchServerReports(periodParams, periodDates, chartQuery, thisMonthQuery, activeWorkspaceId),
+            [localFirst, periodParams, periodDates, chartQuery, thisMonthQuery, activeWorkspaceId]
         ),
-        [periodParams, periodDates, chartQuery, thisMonthQuery, savedReportsKey, localFirst]
+        [periodParams, periodDates, chartQuery, thisMonthQuery, savedReportsKey, localFirst, activeWorkspaceId]
     )
 
     const localResult = useLocalQuery(
@@ -473,11 +500,13 @@ export const useReportsData = (
                     thisMonthQuery,
                     timezone,
                     preferredCurrency,
-                    exchangeRates
+                    exchangeRates,
+                    { workspaceId: activeWorkspaceId ?? null }
                 ),
             // eslint-disable-next-line react-hooks/exhaustive-deps
-            [periodParams, periodDates, chartQuery, thisMonthQuery, savedReportsKey, timezone, preferredCurrency, exchangeRates]
-        )
+            [periodParams, periodDates, chartQuery, thisMonthQuery, savedReportsKey, timezone, preferredCurrency, exchangeRates, activeWorkspaceId]
+        ),
+        [activeWorkspaceId]
     )
 
     if (localFirst) {

@@ -16,6 +16,7 @@ import { useUser } from '@/app/providers/useUser'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import type { ApiResponse } from '@lib/types/api'
 import type { RecurringInterval, RecurringRule, RecurringRuleType } from '@features/recurring/types'
+import { scopedTo } from '@domain/scope'
 import type { LocalRecurringRule } from '@domain/types'
 import type { LocalDb } from '@platform/db/LocalDb'
 
@@ -134,12 +135,15 @@ export const useRecurringData = (): UseRecurringDataResult => {
 
     const serverQuery = useAsyncData(fetchRules, [fetchRules])
 
-    const localFetcher = useCallback(async (db: LocalDb): Promise<RecurringRule[]> => {
-        const rows = await recurringRepo.list(db)
-        return rows.map(toRuleView)
-    }, [])
+    const localFetcher = useCallback(
+        async (db: LocalDb): Promise<RecurringRule[]> => {
+            const rows = await recurringRepo.list(db)
+            return scopedTo(rows, { workspaceId: activeWorkspaceId }).map(toRuleView)
+        },
+        [activeWorkspaceId]
+    )
 
-    const localQuery = useLocalQuery<RecurringRule[]>('recurringRules', localFetcher)
+    const localQuery = useLocalQuery<RecurringRule[]>('recurringRules', localFetcher, [activeWorkspaceId])
 
     if (!localFirst) {
         return {

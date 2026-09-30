@@ -237,6 +237,31 @@ export class Repository<T extends SyncableRecord> {
   }
 
   /**
+   * Merges `patch` into a row's document for a value the client derives itself (an account's
+   * `currentBalance`): no outbox op, and `updatedAt` and the sync columns stay as they are. Goes
+   * through `serializeData` so the blob stays encrypted whenever a key is configured (SEC-88).
+   */
+  async patchLocal(db: LocalDb, id: string, patch: Partial<T>): Promise<T | null> {
+    const rows = await db.select<SyncableRow>(`SELECT data FROM ${this.table} WHERE _id = ?`, [id])
+    if (rows.length === 0) {
+      return null
+    }
+    const merged = { ...(await deserializeData<T>(db, rows[0].data)), ...patch } as T
+    const record = merged as unknown as Record<string, unknown>
+    const promoted = (PROMOTED_COLUMNS[this.table] ?? []).filter((column) => column in patch)
+    await db.exec(
+      `UPDATE ${this.table} SET ${['data = ?', '_localUpdatedAt = ?', ...promoted.map((column) => `${column} = ?`)].join(', ')} WHERE _id = ?`,
+      [
+        await serializeData(db, merged),
+        new Date().toISOString(),
+        ...promoted.map((column) => toSqlValue(column, record[column])),
+        id,
+      ]
+    )
+    return merged
+  }
+
+  /**
    * Applies a pull tombstone (see `backend/services/syncService.ts` `SyncTombstone`) to the local row.
    * A no-op if the row was never seeded locally - nothing to tombstone, and the promoted `NOT NULL`
    * columns (e.g. `accounts.userId`) leave no safe way to insert a placeholder row from a bare `_id`.

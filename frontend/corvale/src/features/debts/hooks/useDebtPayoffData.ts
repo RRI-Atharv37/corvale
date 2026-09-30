@@ -87,7 +87,7 @@ export const useDebtPayoffData = (): UseDebtPayoffDataResult => {
         [activeWorkspaceId]
     )
 
-    const localQuery = useLocalQuery<Account[]>('accounts', localFetcher)
+    const localQuery = useLocalQuery<Account[]>('accounts', localFetcher, [activeWorkspaceId])
 
     const generatePlan = useCallback(
         async (strategy: DebtPayoffStrategy, extraPayment: number, accountIds: string[]): Promise<DebtPayoffPlan> => {

@@ -19,7 +19,7 @@ import {
     type TransactionSortOrder,
 } from '@domain/transactionSearch'
 import { applyLocalCategorizationRules } from '@domain/categorizationRules'
-import { buildTransferPairStamps, getTransferDirection, recomputeLocalAccountBalance } from '@domain/accountBalances'
+import { buildTransferPairStamps, getTransferDirection, persistLocalAccountBalance } from '@domain/accountBalances'
 import { createLocalTransfer } from '@domain/transfers'
 import { createLocalSplitExpense } from '@domain/splits'
 import { unwrapApiData } from '@lib/apiHelpers'
@@ -124,20 +124,6 @@ const mergeTags = (existing: string[] | undefined, ruleTags: string[] | undefine
     if (!ruleTags || ruleTags.length === 0) return existing
     const merged = [...new Set([...(existing ?? []), ...ruleTags])]
     return merged.length > 0 ? merged : undefined
-}
-
-/** See `domain/transfers.ts`'s identical helper for why this writes `accounts` directly. */
-const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<void> => {
-    const account = await accountsRepo.findById(db, accountId)
-    if (!account) throw new Error(`Account ${accountId} not found locally`)
-    const balance = await recomputeLocalAccountBalance(db, accountId)
-    const updated: LocalAccount = { ...account, currentBalance: balance }
-    await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
-        JSON.stringify(updated),
-        balance,
-        new Date().toISOString(),
-        accountId,
-    ])
 }
 
 /**
@@ -388,7 +374,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
 
             await db.transaction(async (tx) => {
                 await transactionsRepo.create(tx, doc)
-                await persistAccountBalance(tx, accountId)
+                await persistLocalAccountBalance(tx, accountId)
             })
             tableInvalidationBus.publish('transactions')
             tableInvalidationBus.publish('accounts')
@@ -442,9 +428,9 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
                 }
 
                 await transactionsRepo.update(tx, updated, existing.updatedAt)
-                await persistAccountBalance(tx, oldAccountId)
+                await persistLocalAccountBalance(tx, oldAccountId)
                 if (newAccountId !== oldAccountId) {
-                    await persistAccountBalance(tx, newAccountId)
+                    await persistLocalAccountBalance(tx, newAccountId)
                 }
             })
 
@@ -481,7 +467,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
             }
 
             for (const accountId of accountIdsToRecompute) {
-                await persistAccountBalance(tx, accountId)
+                await persistLocalAccountBalance(tx, accountId)
             }
         })
 
@@ -515,7 +501,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
             }
 
             await transactionsRepo.create(tx, duplicate)
-            await persistAccountBalance(tx, duplicate.accountId)
+            await persistLocalAccountBalance(tx, duplicate.accountId)
             return duplicate
         })
 
@@ -585,7 +571,7 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
             }
 
             for (const accountId of accountIdsToRecompute) {
-                await persistAccountBalance(tx, accountId)
+                await persistLocalAccountBalance(tx, accountId)
             }
         })
 

@@ -13,7 +13,7 @@ import { getLocalDb } from '@platform/db/localDbInstance'
 import { tableInvalidationBus } from '@lib/tableInvalidationBus'
 import { Repository } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
-import { recomputeLocalAccountBalance } from '@domain/accountBalances'
+import { persistLocalAccountBalance } from '@domain/accountBalances'
 import type { ApiResponse } from '@lib/types/api'
 import type { Transaction, TransactionTemplate } from '@features/transactions/types'
 import type { LocalAccount, LocalTransaction } from '@domain/types'
@@ -73,7 +73,7 @@ const QuickAddDropdown: React.FC<QuickAddDropdownProps> = ({ onApplied, classNam
      * Mirrors `applyTransactionTemplate` in `backend/controllers/transactionTemplateController.ts`:
      * a straight `Transaction` create from the template's fields, posted immediately, no
      * categorization-rule pass (the server doesn't run one for template-apply either). Balance
-     * update goes through `recomputeLocalAccountBalance` (Sprint 13.5) rather than an incremental
+     * update goes through `persistLocalAccountBalance` (Sprint 13.5) rather than an incremental
      * delta, matching how every other local write settles account balances.
      */
     const applyTemplateLocally = async (template: TransactionTemplate): Promise<Transaction> => {
@@ -111,14 +111,7 @@ const QuickAddDropdown: React.FC<QuickAddDropdownProps> = ({ onApplied, classNam
         })
         tableInvalidationBus.publish('transactions')
 
-        const balance = await recomputeLocalAccountBalance(db, template.accountId)
-        const updatedAccount: LocalAccount = { ...account, currentBalance: balance }
-        await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
-            JSON.stringify(updatedAccount),
-            balance,
-            new Date().toISOString(),
-            template.accountId,
-        ])
+        await persistLocalAccountBalance(db, template.accountId)
         tableInvalidationBus.publish('accounts')
 
         return {

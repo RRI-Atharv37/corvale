@@ -23,14 +23,19 @@ interface UseLocalQueryResult<T> extends LocalQueryState<T> {
  * `'_prefs'` pseudo-table (see `utils/format.ts`) alongside its own entity
  * table, when its computed values depend on preferred currency, date format
  * or exchange rates.
+ *
+ * `refetchKeys` are plain values (ids, strings) the fetcher depends on besides the tables, such as
+ * the active workspace: a change re-runs the fetcher.
  */
 export const useLocalQuery = <T>(
   table: string | string[],
-  fetcher: (db: LocalDb) => Promise<T>
+  fetcher: (db: LocalDb) => Promise<T>,
+  refetchKeys: readonly unknown[] = []
 ): UseLocalQueryResult<T> => {
   const [state, setState] = useState<LocalQueryState<T>>({ data: null, loading: true, error: null })
   const tables = Array.isArray(table) ? table : [table]
   const tablesKey = tables.join(',')
+  const refetchKey = JSON.stringify(refetchKeys)
 
   const fetcherRef = useRef(fetcher)
   useEffect(() => {
@@ -54,7 +59,7 @@ export const useLocalQuery = <T>(
 
   useEffect(() => {
     void refetch()
-  }, [tablesKey, refetch])
+  }, [tablesKey, refetch, refetchKey])
 
   useEffect(() => {
     const unsubscribers = tables.map((t) => tableInvalidationBus.subscribe(t, () => void refetch()))

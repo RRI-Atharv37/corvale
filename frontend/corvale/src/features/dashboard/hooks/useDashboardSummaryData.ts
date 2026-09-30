@@ -6,8 +6,10 @@ import { useLocalQuery } from '@platform/db/useLocalQuery'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
 import { computeLocalDashboardSummary, type DashboardSummary as LocalDashboardSummary } from '@domain/dashboard'
 import { useUser } from '@/app/providers/useUser'
+import { useWorkspace } from '@/app/providers/useWorkspace'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
+import { buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import type { ApiResponse } from '@lib/types/api'
 import type { DashboardSummary as ServerDashboardSummary } from '@features/dashboard/types'
 
@@ -24,10 +26,13 @@ interface UseDashboardSummaryDataResult {
     refetch: () => Promise<void>
 }
 
-const fetchServerSummary = async (periodQuery: PeriodQuery): Promise<ServerDashboardSummary> => {
+const fetchServerSummary = async (
+    periodQuery: PeriodQuery,
+    workspaceId: string | null
+): Promise<ServerDashboardSummary> => {
     try {
         const summaryRes = await axiosInstance.get<ApiResponse<ServerDashboardSummary>>(API_PATHS.DASHBOARD.SUMMARY, {
-            params: periodQuery,
+            params: { ...periodQuery, ...buildWorkspaceQueryParams(workspaceId) },
         })
         return unwrapApiData(summaryRes)
     } catch (error) {
@@ -43,18 +48,34 @@ const fetchServerSummary = async (periodQuery: PeriodQuery): Promise<ServerDashb
  */
 export const useDashboardSummaryData = (periodQuery: PeriodQuery): UseDashboardSummaryDataResult => {
     const { user } = useUser()
+    const { activeWorkspaceId } = useWorkspace()
     const localFirst = isLocalFirstEnabled()
 
     const localResult = useLocalQuery(
         ['accounts', 'transactions', 'categories', 'budgets', '_prefs'],
         useCallback(
             (db) =>
-                computeLocalDashboardSummary(db, periodQuery.startDate, periodQuery.endDate, user?.timezone || 'UTC', {
-                    preferredCurrency: user?.preferredCurrency ?? 'USD',
-                    exchangeRates: user?.exchangeRates ?? {},
-                }),
-            [periodQuery.startDate, periodQuery.endDate, user?.timezone, user?.preferredCurrency, user?.exchangeRates]
-        )
+                computeLocalDashboardSummary(
+                    db,
+                    periodQuery.startDate,
+                    periodQuery.endDate,
+                    user?.timezone || 'UTC',
+                    {
+                        preferredCurrency: user?.preferredCurrency ?? 'USD',
+                        exchangeRates: user?.exchangeRates ?? {},
+                    },
+                    { workspaceId: activeWorkspaceId ?? null }
+                ),
+            [
+                periodQuery.startDate,
+                periodQuery.endDate,
+                user?.timezone,
+                user?.preferredCurrency,
+                user?.exchangeRates,
+                activeWorkspaceId,
+            ]
+        ),
+        [activeWorkspaceId]
     )
 
     // `useAsyncData` must still be called unconditionally (rules of hooks) even
@@ -62,10 +83,13 @@ export const useDashboardSummaryData = (periodQuery: PeriodQuery): UseDashboardS
     // fetcher itself so no real network request goes out in that case.
     const serverResult = useAsyncData(
         useCallback(
-            () => (localFirst ? Promise.resolve(null as unknown as ServerDashboardSummary) : fetchServerSummary(periodQuery)),
-            [localFirst, periodQuery]
+            () =>
+                localFirst
+                    ? Promise.resolve(null as unknown as ServerDashboardSummary)
+                    : fetchServerSummary(periodQuery, activeWorkspaceId),
+            [localFirst, periodQuery, activeWorkspaceId]
         ),
-        [periodQuery, localFirst]
+        [periodQuery, localFirst, activeWorkspaceId]
     )
 
     return localFirst ? localResult : serverResult

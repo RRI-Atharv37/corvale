@@ -157,12 +157,15 @@ export const useBudgetsData = (view: BudgetView): UseBudgetsDataResult => {
 
     const serverQuery = useAsyncData(fetchBudgets, [fetchBudgets])
 
-    const localFetcher = useCallback(async (db: LocalDb): Promise<Budget[]> => {
-        const withProgress = await listLocalBudgetsWithProgress(db)
-        return (withProgress as Array<LocalBudgetRecord & { progress: Budget['progress'] }>).map(toBudgetView)
-    }, [])
+    const localFetcher = useCallback(
+        async (db: LocalDb): Promise<Budget[]> => {
+            const withProgress = await listLocalBudgetsWithProgress(db, { workspaceId: activeWorkspaceId ?? null })
+            return (withProgress as Array<LocalBudgetRecord & { progress: Budget['progress'] }>).map(toBudgetView)
+        },
+        [activeWorkspaceId]
+    )
 
-    const localQuery = useLocalQuery<Budget[]>(['budgets', 'transactions', '_prefs'], localFetcher)
+    const localQuery = useLocalQuery<Budget[]>(['budgets', 'transactions', '_prefs'], localFetcher, [activeWorkspaceId])
 
     const fetchAccounts = useCallback(async (): Promise<Account[]> => {
         const response = await axiosInstance.get<ApiResponse<Account[]>>(API_PATHS.ACCOUNTS.GET_ALL, {

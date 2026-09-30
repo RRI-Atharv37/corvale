@@ -2,7 +2,7 @@ import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { parseAmountToMinorUnits, validateSplitInputs, type SplitInput } from '@shared/money'
-import { recomputeLocalAccountBalance } from './accountBalances'
+import { persistLocalAccountBalance } from './accountBalances'
 import type { LocalAccount, LocalTransaction } from './types'
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
@@ -24,22 +24,6 @@ export interface CreateLocalSplitInput {
 export interface CreateLocalSplitResult {
   parentId: string
   childIds: string[]
-}
-
-/** See `domain/transfers.ts`'s identical helper for why this writes `accounts` directly rather than through `Repository.update`. */
-const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<void> => {
-  const account = await accountsRepo.findById(db, accountId)
-  if (!account) {
-    throw new Error(`Account ${accountId} not found locally`)
-  }
-  const balance = await recomputeLocalAccountBalance(db, accountId)
-  const updated: LocalAccount = { ...account, currentBalance: balance }
-  await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
-    JSON.stringify(updated),
-    balance,
-    new Date().toISOString(),
-    accountId,
-  ])
 }
 
 /**
@@ -141,7 +125,7 @@ export const createLocalSplitExpense = async (
     for (const child of children) {
       await transactionsRepo.createLocalOnly(tx, child)
     }
-    await persistAccountBalance(tx, input.accountId)
+    await persistLocalAccountBalance(tx, input.accountId)
     await enqueueGroupedTransactionCreate(tx, parentId, {
       _id: parentId,
       type: 'expense',

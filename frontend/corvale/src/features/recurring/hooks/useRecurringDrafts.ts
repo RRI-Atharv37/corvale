@@ -4,7 +4,9 @@ import { API_PATHS } from '@lib/apiPaths'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { getApiErrorMessage } from '@lib/apiError'
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
+import { buildWorkspaceQueryParams } from '@lib/workspaceScope'
 import { syncNow } from '@platform/sync/syncEngine'
+import { useWorkspace } from '@/app/providers/useWorkspace'
 import type { ApiResponse } from '@lib/types/api'
 import type { Transaction } from '@features/transactions/types'
 
@@ -34,6 +36,7 @@ export interface UseRecurringDraftsResult {
  * have no offline-queueable local fallback.
  */
 export const useRecurringDrafts = (onRulesChanged?: () => Promise<void>): UseRecurringDraftsResult => {
+    const { activeWorkspaceId } = useWorkspace()
     const [drafts, setDrafts] = useState<Transaction[]>([])
     const [draftsLoading, setDraftsLoading] = useState(false)
     const [draftsError, setDraftsError] = useState<string | null>(null)
@@ -45,19 +48,23 @@ export const useRecurringDrafts = (onRulesChanged?: () => Promise<void>): UseRec
         setDraftsLoading(true)
         setDraftsError(null)
         try {
-            const response = await axiosInstance.get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS)
+            const response = await axiosInstance.get<ApiResponse<Transaction[]>>(API_PATHS.RECURRING_RULES.GET_DRAFTS, {
+                params: buildWorkspaceQueryParams(activeWorkspaceId),
+            })
             setDrafts(unwrapApiData(response))
         } catch (err) {
             setDraftsError(getApiErrorMessage(err, 'Failed to load drafts'))
         } finally {
             setDraftsLoading(false)
         }
-    }, [])
+    }, [activeWorkspaceId])
 
     const generateAndRefreshDrafts = useCallback(async () => {
         setGeneratingDrafts(true)
         try {
-            await axiosInstance.post(API_PATHS.RECURRING_RULES.GENERATE_DRAFTS)
+            await axiosInstance.post(API_PATHS.RECURRING_RULES.GENERATE_DRAFTS, undefined, {
+                params: buildWorkspaceQueryParams(activeWorkspaceId),
+            })
             if (isLocalFirstEnabled()) {
                 await syncNow()
             }
@@ -66,7 +73,7 @@ export const useRecurringDrafts = (onRulesChanged?: () => Promise<void>): UseRec
         } finally {
             setGeneratingDrafts(false)
         }
-    }, [fetchDrafts, onRulesChanged])
+    }, [activeWorkspaceId, fetchDrafts, onRulesChanged])
 
     const generateDraftsForRule = useCallback(
         async (ruleId: string) => {

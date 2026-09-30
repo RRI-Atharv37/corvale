@@ -10,6 +10,7 @@ import { resolveMonthlyPeriod } from '@shared/budget'
 import { fromMinorUnits, roundMoney } from '@shared/money'
 import { resolveDateRange } from '@shared/timezone'
 import { listLocalBudgetsWithProgress } from './budgetProgress'
+import { scopedTo, type LocalScope } from './scope'
 import type { LocalAccount, LocalCategory, LocalTransaction } from './types'
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
@@ -166,10 +167,11 @@ export const computeLocalCashFlowSeries = async (
   startDate: string,
   endDate: string,
   groupBy: DashboardGroupBy,
-  timezone: string
+  timezone: string,
+  scope: LocalScope = {}
 ): Promise<CashFlowPoint[]> => {
   const { start, end } = resolveDateRange(startDate, endDate, timezone)
-  const transactions = await transactionsRepo.list(db)
+  const transactions = scopedTo(await transactionsRepo.list(db), scope)
 
   const incomeByPeriod = new Map<string, number>()
   const expenseByPeriod = new Map<string, number>()
@@ -197,10 +199,12 @@ export const computeLocalCategoryBreakdown = async (
   startDate: string,
   endDate: string,
   type: 'expense' | 'income',
-  timezone: string
+  timezone: string,
+  scope: LocalScope = {}
 ): Promise<CategoryBreakdownItem[]> => {
   const { start, end } = resolveDateRange(startDate, endDate, timezone)
-  const [transactions, categories] = await Promise.all([transactionsRepo.list(db), categoriesRepo.list(db)])
+  const [allTransactions, categories] = await Promise.all([transactionsRepo.list(db), categoriesRepo.list(db)])
+  const transactions = scopedTo(allTransactions, scope)
   const categoryById = new Map(categories.map((category) => [category._id, category]))
 
   const splitParentIds = new Set(
@@ -238,10 +242,13 @@ export const computeLocalDashboardSummary = async (
   startDate: string,
   endDate: string,
   timezone: string,
-  conversion?: CurrencyConversionOptions
+  conversion?: CurrencyConversionOptions,
+  scope: LocalScope = {}
 ): Promise<DashboardSummary> => {
   const { start, end } = resolveDateRange(startDate, endDate, timezone)
-  const [accounts, transactions] = await Promise.all([accountsRepo.list(db), transactionsRepo.list(db)])
+  const [allAccounts, allTransactions] = await Promise.all([accountsRepo.list(db), transactionsRepo.list(db)])
+  const accounts = scopedTo(allAccounts, scope)
+  const transactions = scopedTo(allTransactions, scope)
 
   let totalIncomeMinor = 0
   let totalExpensesMinor = 0
@@ -284,12 +291,14 @@ export const computeLocalNetWorthTrend = async (
   startDate: string,
   endDate: string,
   timezone: string,
-  conversion?: CurrencyConversionOptions
+  conversion?: CurrencyConversionOptions,
+  scope: LocalScope = {}
 ): Promise<NetWorthTrendResponse> => {
-  const [accounts, cashFlow] = await Promise.all([
+  const [allAccounts, cashFlow] = await Promise.all([
     accountsRepo.list(db),
-    computeLocalCashFlowSeries(db, startDate, endDate, 'month', timezone),
+    computeLocalCashFlowSeries(db, startDate, endDate, 'month', timezone, scope),
   ])
+  const accounts = scopedTo(allAccounts, scope)
 
   const accountTotals = computeAccountTotalsPure(toAccountLike(accounts), conversion)
   const balanceSource: 'accounts' | 'legacy' = accountTotals.accountCount > 0 ? 'accounts' : 'legacy'
@@ -336,7 +345,11 @@ export const computeLocalNetWorthTrend = async (
   return { series, balanceSource, periodStart: startDate, periodEnd: endDate }
 }
 
-export const computeLocalBudgetOverview = async (db: LocalDb, timezone: string): Promise<BudgetOverviewResponse> => {
+export const computeLocalBudgetOverview = async (
+  db: LocalDb,
+  timezone: string,
+  scope: LocalScope = {}
+): Promise<BudgetOverviewResponse> => {
   const now = new Date()
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
@@ -352,7 +365,7 @@ export const computeLocalBudgetOverview = async (db: LocalDb, timezone: string):
   const endDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
   const endDate = `${year}-${padMonth(month)}-${padDay(endDay)}`
 
-  const [budgetsWithProgress, categories] = await Promise.all([listLocalBudgetsWithProgress(db), categoriesRepo.list(db)])
+  const [budgetsWithProgress, categories] = await Promise.all([listLocalBudgetsWithProgress(db, scope), categoriesRepo.list(db)])
   const categoryNameById = new Map(categories.map((category) => [category._id, category.name]))
 
   const inPeriod = budgetsWithProgress.filter((budget) => {

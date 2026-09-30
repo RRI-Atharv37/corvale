@@ -5,6 +5,7 @@ import { resolveMonthlyPeriod } from '@shared/budget'
 import { fromMinorUnits, roundMoney } from '@shared/money'
 import { resolveDateRange } from '@shared/timezone'
 import { listLocalBudgetsWithProgress } from './budgetProgress'
+import { scopedTo, type LocalScope } from './scope'
 import {
   computeLocalCashFlowSeries,
   computeLocalCategoryBreakdown,
@@ -303,14 +304,15 @@ export const resolveLocalReportPeriod = (query: ReportPeriodQuery, timezone: str
 export const computeLocalPeriodAverages = async (
   db: LocalDb,
   period: ReportPeriod,
-  timezone: string
+  timezone: string,
+  scope: LocalScope = {}
 ): Promise<PeriodAverages> => {
-  const transactions = await transactionsRepo.list(db)
+  const transactions = scopedTo(await transactionsRepo.list(db), scope)
   const { totalIncome, totalExpenses } = sumIncomeExpenseInPeriod(transactions, period.periodStart, period.periodEnd)
   const netSavings = roundMoney(totalIncome - totalExpenses)
 
   if (period.periodType === 'yearly') {
-    const monthlyBreakdown = await computeLocalCashFlowSeries(db, period.startDate, period.endDate, 'month', timezone)
+    const monthlyBreakdown = await computeLocalCashFlowSeries(db, period.startDate, period.endDate, 'month', timezone, scope)
     const monthCount = Math.max(monthlyBreakdown.length, 1)
     return {
       periodType: period.periodType,
@@ -352,10 +354,12 @@ export const computeLocalPeriodAverages = async (
 export const computeLocalLargestExpenses = async (
   db: LocalDb,
   period: ReportPeriod,
-  limit = 10
+  limit = 10,
+  scope: LocalScope = {}
 ): Promise<LargestExpensesResponse> => {
   const cappedLimit = Math.min(Math.max(Math.floor(limit), 1), 50)
-  const [transactions, categories] = await Promise.all([transactionsRepo.list(db), categoriesRepo.list(db)])
+  const [allTransactions, categories] = await Promise.all([transactionsRepo.list(db), categoriesRepo.list(db)])
+  const transactions = scopedTo(allTransactions, scope)
   const categoryById = new Map(categories.map((category) => [category._id, category]))
   const splitParentIds = buildSplitParentIdSet(transactions)
 
@@ -383,9 +387,10 @@ export const computeLocalLargestExpenses = async (
 export const computeLocalSpendingTrends = async (
   db: LocalDb,
   period: ReportPeriod,
-  timezone: string
+  timezone: string,
+  scope: LocalScope = {}
 ): Promise<SpendingTrendsResponse> => {
-  const series = await computeLocalCashFlowSeries(db, period.startDate, period.endDate, 'month', timezone)
+  const series = await computeLocalCashFlowSeries(db, period.startDate, period.endDate, 'month', timezone, scope)
 
   const trends: SpendingTrendPoint[] = series.map((point, index) => {
     const previous = index > 0 ? series[index - 1].expense : null
@@ -397,8 +402,12 @@ export const computeLocalSpendingTrends = async (
   return { periodStart: period.startDate, periodEnd: period.endDate, trends }
 }
 
-export const computeLocalIncomeVsExpense = async (db: LocalDb, period: ReportPeriod): Promise<IncomeVsExpenseResponse> => {
-  const transactions = await transactionsRepo.list(db)
+export const computeLocalIncomeVsExpense = async (
+  db: LocalDb,
+  period: ReportPeriod,
+  scope: LocalScope = {}
+): Promise<IncomeVsExpenseResponse> => {
+  const transactions = scopedTo(await transactionsRepo.list(db), scope)
   const { totalIncome, totalExpenses } = sumIncomeExpenseInPeriod(transactions, period.periodStart, period.periodEnd)
   const netSavings = roundMoney(totalIncome - totalExpenses)
   const combined = totalIncome + totalExpenses
@@ -415,8 +424,12 @@ export const computeLocalIncomeVsExpense = async (db: LocalDb, period: ReportPer
   }
 }
 
-export const computeLocalSavingsRate = async (db: LocalDb, period: ReportPeriod): Promise<SavingsRateReport> => {
-  const transactions = await transactionsRepo.list(db)
+export const computeLocalSavingsRate = async (
+  db: LocalDb,
+  period: ReportPeriod,
+  scope: LocalScope = {}
+): Promise<SavingsRateReport> => {
+  const transactions = scopedTo(await transactionsRepo.list(db), scope)
   const { totalIncome, totalExpenses } = sumIncomeExpenseInPeriod(transactions, period.periodStart, period.periodEnd)
   const netSavings = roundMoney(totalIncome - totalExpenses)
   const savingsRate = totalIncome > 0 ? roundMoney((netSavings / totalIncome) * 100) : 0
@@ -455,8 +468,14 @@ const monthlyEquivalentForRule = (rule: LocalRecurringRule): number => {
   }
 }
 
-export const computeLocalRecurringTotals = async (db: LocalDb, period: ReportPeriod): Promise<RecurringTotalsReport> => {
-  const [rules, transactions] = await Promise.all([recurringRulesRepo.list(db), transactionsRepo.list(db)])
+export const computeLocalRecurringTotals = async (
+  db: LocalDb,
+  period: ReportPeriod,
+  scope: LocalScope = {}
+): Promise<RecurringTotalsReport> => {
+  const [allRules, allTransactions] = await Promise.all([recurringRulesRepo.list(db), transactionsRepo.list(db)])
+  const rules = scopedTo(allRules, scope)
+  const transactions = scopedTo(allTransactions, scope)
 
   const activeExpenseRules: RecurringExpenseRuleTotal[] = rules
     .filter((rule) => rule.type === 'expense' && rule.isActive && !rule.isArchived)
@@ -489,8 +508,15 @@ export const computeLocalRecurringTotals = async (db: LocalDb, period: ReportPer
   }
 }
 
-export const computeLocalBudgetAnalysis = async (db: LocalDb, period: ReportPeriod): Promise<BudgetAnalysisReport> => {
-  const [budgetsWithProgress, categories] = await Promise.all([listLocalBudgetsWithProgress(db), categoriesRepo.list(db)])
+export const computeLocalBudgetAnalysis = async (
+  db: LocalDb,
+  period: ReportPeriod,
+  scope: LocalScope = {}
+): Promise<BudgetAnalysisReport> => {
+  const [budgetsWithProgress, categories] = await Promise.all([
+    listLocalBudgetsWithProgress(db, scope),
+    categoriesRepo.list(db),
+  ])
   const categoryNameById = new Map(categories.map((category) => [category._id, category.name]))
 
   const inPeriod = budgetsWithProgress
@@ -547,14 +573,16 @@ export const computeLocalSpendingAnalysis = async (
   db: LocalDb,
   period: ReportPeriod,
   timezone: string,
-  largestLimit = 10
+  largestLimit = 10,
+  scope: LocalScope = {}
 ): Promise<SpendingAnalysisReport> => {
-  const [transactions, topCategories, largestExpensesResp, trendsResp] = await Promise.all([
+  const [allTransactions, topCategories, largestExpensesResp, trendsResp] = await Promise.all([
     transactionsRepo.list(db),
-    computeLocalCategoryBreakdown(db, period.startDate, period.endDate, 'expense', timezone),
-    computeLocalLargestExpenses(db, period, largestLimit),
-    computeLocalSpendingTrends(db, period, timezone),
+    computeLocalCategoryBreakdown(db, period.startDate, period.endDate, 'expense', timezone, scope),
+    computeLocalLargestExpenses(db, period, largestLimit, scope),
+    computeLocalSpendingTrends(db, period, timezone, scope),
   ])
+  const transactions = scopedTo(allTransactions, scope)
 
   const splitParentIds = buildSplitParentIdSet(transactions)
   const transactionCount = transactions.filter((tx) =>
@@ -580,9 +608,10 @@ export const computeLocalSpendingAnalysis = async (
 export const computeLocalCrossoverPoint = async (
   db: LocalDb,
   period: ReportPeriod,
-  timezone: string
+  timezone: string,
+  scope: LocalScope = {}
 ): Promise<CrossoverPointReport> => {
-  const cashFlow = await computeLocalCashFlowSeries(db, period.startDate, period.endDate, 'month', timezone)
+  const cashFlow = await computeLocalCashFlowSeries(db, period.startDate, period.endDate, 'month', timezone, scope)
 
   let cumulativeIncome = 0
   let cumulativeExpense = 0
@@ -637,15 +666,16 @@ export const computeLocalNetWorthOverview = async (
   startDate: string,
   endDate: string,
   timezone: string,
-  conversion?: CurrencyConversionOptions
+  conversion?: CurrencyConversionOptions,
+  scope: LocalScope = {}
 ): Promise<NetWorthOverview> => {
   const [trend, summary, accounts] = await Promise.all([
-    computeLocalNetWorthTrend(db, startDate, endDate, timezone, conversion),
-    computeLocalDashboardSummary(db, startDate, endDate, timezone, conversion),
+    computeLocalNetWorthTrend(db, startDate, endDate, timezone, conversion, scope),
+    computeLocalDashboardSummary(db, startDate, endDate, timezone, conversion, scope),
     accountsRepo.list(db),
   ])
 
-  const activeAccounts = accounts.filter((account) => !account.isArchived)
+  const activeAccounts = scopedTo(accounts, scope).filter((account) => !account.isArchived)
   const accountTotals = computeAccountTotalsPure(
     activeAccounts.map((account) => ({
       type: account.type,

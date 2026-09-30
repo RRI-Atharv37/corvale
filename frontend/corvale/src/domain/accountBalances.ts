@@ -100,13 +100,7 @@ export const persistLocalAccountBalance = async (db: LocalDb, accountId: string)
     throw new Error(`Account ${accountId} not found locally`)
   }
   const balance = await recomputeLocalAccountBalance(db, accountId)
-  const updated: LocalAccount = { ...account, currentBalance: balance }
-  await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
-    JSON.stringify(updated),
-    balance,
-    new Date().toISOString(),
-    accountId,
-  ])
+  await accountsRepo.patchLocal(db, accountId, { currentBalance: balance })
   return balance
 }
 
@@ -136,13 +130,7 @@ export const recomputeAllLocalAccountBalances = async (db: LocalDb): Promise<Map
       )
       results.set(account._id, balance)
 
-      const updated: LocalAccount = { ...account, currentBalance: balance }
-      await tx.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
-        JSON.stringify(updated),
-        balance,
-        new Date().toISOString(),
-        account._id,
-      ])
+      await accountsRepo.patchLocal(tx, account._id, { currentBalance: balance })
     }
   })
 

@@ -1,7 +1,7 @@
 import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
-import { recomputeLocalAccountBalance } from './accountBalances'
+import { persistLocalAccountBalance } from './accountBalances'
 import { applyLocalCategorizationRules } from './categorizationRules'
 import type { LocalAccount, LocalCategory, LocalTransaction } from './types'
 import {
@@ -425,21 +425,6 @@ const parseRowDecisions = (value?: Record<number, ImportDuplicateAction>): Map<n
   return decisions
 }
 
-const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<void> => {
-  const account = await accountsRepo.findById(db, accountId)
-  if (!account) {
-    throw new Error(`Account ${accountId} not found locally`)
-  }
-  const balance = await recomputeLocalAccountBalance(db, accountId)
-  const updated: LocalAccount = { ...account, currentBalance: balance }
-  await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
-    JSON.stringify(updated),
-    balance,
-    new Date().toISOString(),
-    accountId,
-  ])
-}
-
 /**
  * Local counterpart to `POST /imports/commit`. Accepted rows are written through
  * `Repository.create` (mirroring every other migrated page) so they queue to the outbox
@@ -533,7 +518,7 @@ export const commitLocalImport = async (db: LocalDb, input: CommitLocalImportInp
     }
 
     if (createdIds.length > 0) {
-      await persistAccountBalance(tx, input.accountId)
+      await persistLocalAccountBalance(tx, input.accountId)
     }
   })
 

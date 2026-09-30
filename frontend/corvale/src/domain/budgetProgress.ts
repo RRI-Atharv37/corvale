@@ -1,6 +1,7 @@
 import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository } from '@platform/db/repositories/Repository'
 import { computeBudgetProgress, computeBudgetSpentMinorPure, type BudgetProgress } from '@shared/budget'
+import { scopedTo, type LocalScope } from './scope'
 import type { LocalBudget, LocalTransaction } from './types'
 
 const budgetsRepo = new Repository<LocalBudget>('budgets')
@@ -33,14 +34,17 @@ export const computeLocalBudgetProgress = async (db: LocalDb, budgetId: string):
   if (!budget) {
     throw new Error(`Budget ${budgetId} not found locally`)
   }
-  const transactions = await transactionsRepo.list(db)
+  const transactions = scopedTo(await transactionsRepo.list(db), { workspaceId: budget.workspaceId })
   return computeBudgetProgress(budget.amount, budgetSpentMinor(budget, transactions))
 }
 
 export const listLocalBudgetsWithProgress = async (
-  db: LocalDb
+  db: LocalDb,
+  scope: LocalScope = {}
 ): Promise<Array<LocalBudget & { progress: BudgetProgress }>> => {
-  const [budgets, transactions] = await Promise.all([budgetsRepo.list(db), transactionsRepo.list(db)])
+  const [allBudgets, allTransactions] = await Promise.all([budgetsRepo.list(db), transactionsRepo.list(db)])
+  const budgets = scopedTo(allBudgets, scope)
+  const transactions = scopedTo(allTransactions, scope)
 
   return budgets.map((budget) => ({
     ...budget,

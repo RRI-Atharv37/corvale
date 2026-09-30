@@ -2,7 +2,7 @@ import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { parseAmountToMinorUnits } from '@shared/money'
-import { recomputeLocalAccountBalance } from './accountBalances'
+import { persistLocalAccountBalance } from './accountBalances'
 import type { LocalAccount, LocalCategory, LocalTransaction } from './types'
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
@@ -41,27 +41,6 @@ const findOtherMasterCategoryId = async (db: LocalDb): Promise<string> => {
     throw new Error('The "Other" category has not synced locally yet - connect and sync before creating a transfer')
   }
   return other._id
-}
-
-/**
- * Recomputes one account's balance from scratch and persists it directly (never through
- * `Repository.update`/the outbox - balance is derived, not a syncable field, per the "Account
- * balance" architecture decision). Mirrors the single-account persistence half of
- * `domain/accountBalances.ts`'s `recomputeAllLocalAccountBalances`.
- */
-const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<void> => {
-  const account = await accountsRepo.findById(db, accountId)
-  if (!account) {
-    throw new Error(`Account ${accountId} not found locally`)
-  }
-  const balance = await recomputeLocalAccountBalance(db, accountId)
-  const updated: LocalAccount = { ...account, currentBalance: balance }
-  await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
-    JSON.stringify(updated),
-    balance,
-    new Date().toISOString(),
-    accountId,
-  ])
 }
 
 /**
@@ -158,8 +137,8 @@ export const createLocalTransfer = async (
   await db.transaction(async (tx) => {
     await transactionsRepo.createLocalOnly(tx, outbound)
     await transactionsRepo.createLocalOnly(tx, inbound)
-    await persistAccountBalance(tx, input.fromAccountId)
-    await persistAccountBalance(tx, input.toAccountId)
+    await persistLocalAccountBalance(tx, input.fromAccountId)
+    await persistLocalAccountBalance(tx, input.toAccountId)
     await enqueueGroupedTransactionCreate(tx, outboundId, {
       intent: 'transaction.transfer',
       _id: outboundId,

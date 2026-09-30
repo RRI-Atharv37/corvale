@@ -1,6 +1,7 @@
 import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository } from '@platform/db/repositories/Repository'
 import { matchCategorizationRule, type TransactionMatchInput } from '@shared/categorization'
+import { scopedTo } from './scope'
 import type { LocalCategorizationRule, LocalTransaction } from './types'
 
 export type { TransactionMatchInput }
@@ -61,11 +62,10 @@ const mergeTags = (existing: string[] | undefined, ruleTags: string[] | undefine
 }
 
 /**
- * Mirrors the server's bulkApplyCategorizationRules: re-evaluates every
- * non-transfer, non-split-child transaction against the active rule set and
- * updates the ones that changed. Marks touched rows `_dirty` so Sprint
- * 13.6's outbox flush can pick them up once it exists; it does not itself
- * enqueue an outbox op.
+ * Mirrors the server's bulkApplyCategorizationRules: re-evaluates every personal, non-transfer,
+ * non-split-child transaction against the active rule set and updates the ones that changed. Each
+ * change goes through `Repository.update`, so it queues an outbox op and survives the next pull.
+ * Shared-workspace rows are left alone, as on the server.
  */
 export const bulkApplyLocalCategorizationRules = async (
   db: LocalDb
@@ -75,7 +75,7 @@ export const bulkApplyLocalCategorizationRules = async (
     return { updated: 0, skipped: 0 }
   }
 
-  const transactions = (await transactionsRepo.list(db)).filter(
+  const transactions = scopedTo(await transactionsRepo.list(db)).filter(
     (tx) => tx.type !== 'transfer' && tx.splitTransactionId === null
   )
 
@@ -107,10 +107,10 @@ export const bulkApplyLocalCategorizationRules = async (
         continue
       }
 
-      const updatedTransaction: LocalTransaction = { ...transaction, categoryId: matchedRule.categoryId, tags: nextTags }
-      await tx.exec(
-        `UPDATE transactions SET data = ?, categoryId = ?, _localUpdatedAt = ?, _dirty = 1 WHERE _id = ?`,
-        [JSON.stringify(updatedTransaction), matchedRule.categoryId, new Date().toISOString(), transaction._id]
+      await transactionsRepo.update(
+        tx,
+        { ...transaction, categoryId: matchedRule.categoryId, tags: nextTags, updatedAt: new Date().toISOString() },
+        transaction.updatedAt
       )
       updated += 1
     }

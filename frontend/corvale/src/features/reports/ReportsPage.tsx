@@ -32,6 +32,8 @@ import {
 import { useReportsData } from './hooks/useReportsData'
 import type { BudgetAnalysisReport, CrossoverPointReport, IncomeVsExpenseResponse, ReportMetricKey, ReportPeriodType, SpendingAnalysisReport, SpendingTrendsResponse } from '@features/reports/types'
 import { getApiErrorMessage } from '@lib/apiError'
+import { buildWorkspaceBodyFields } from '@lib/workspaceScope'
+import { useWorkspace } from '@/app/providers/useWorkspace'
 import {
     formatContributionDate,
     formatCurrency,
@@ -121,6 +123,7 @@ const Reports = () => {
     const sixMonthsAgo = toDateInputValue(new Date(new Date().setMonth(new Date().getMonth() - 5, 1)))
 
     const [periodType, setPeriodType] = useState<ReportPeriodType>('custom')
+    const { activeWorkspaceId } = useWorkspace()
     const [reportYear, setReportYear] = useState(String(year))
     const [reportMonth, setReportMonth] = useState(String(month))
     const [startDate, setStartDate] = useState(sixMonthsAgo)
@@ -197,6 +200,7 @@ const Reports = () => {
                     metrics: selectedMetrics,
                     format: exportFormat,
                     ...periodParams,
+                    ...buildWorkspaceBodyFields(activeWorkspaceId),
                 },
                 { responseType: 'blob' }
             )

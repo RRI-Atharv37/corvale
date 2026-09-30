@@ -23,6 +23,8 @@ import type { ApiResponse } from '@lib/types/api'
 import type { DashboardGroupBy } from '@features/dashboard/types'
 import type { CustomReportChartType, CustomReportDataType, CustomReportQueryResult, CustomReportSplitBy, ReportPeriodType, SavedReport, SavedReportRunResult } from '@features/reports/types'
 import { unwrapApiData } from '@lib/apiHelpers'
+import { buildWorkspaceBodyFields } from '@lib/workspaceScope'
+import { useWorkspace } from '@/app/providers/useWorkspace'
 import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency } from '@lib/format'
 import {
@@ -71,6 +73,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
     savedReports,
     onSavedReportsChange,
 }) => {
+    const { activeWorkspaceId } = useWorkspace()
     const [splitBy, setSplitBy] = useState<CustomReportSplitBy>('category')
     const [chartType, setChartType] = useState<CustomReportChartType>('bar')
     const [dataType, setDataType] = useState<CustomReportDataType>('expense')
@@ -97,7 +100,7 @@ const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
         try {
             const response = await axiosInstance.post<ApiResponse<CustomReportQueryResult>>(
                 API_PATHS.REPORTS.QUERY,
-                { splitBy, chartType, dataType, groupBy, ...periodParams }
+                { splitBy, chartType, dataType, groupBy, ...periodParams, ...buildWorkspaceBodyFields(activeWorkspaceId) }
             )
             setResult(unwrapApiData(response))
         } catch (error) {
