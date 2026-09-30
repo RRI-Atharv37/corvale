@@ -6,7 +6,6 @@ export interface IDeferredRevenueEntry extends Document {
     _id: Types.ObjectId
     /** The `BillingEvent.providerEventId` of the annual payment this bucket was split from. */
     sourceEventId: string
-    providerSubscriptionId: string
     planCode: PlanCode
     /** 1-12: which month of the paid year this bucket recognizes. */
     bucketIndex: number
@@ -25,7 +24,6 @@ const APPEND_ONLY_DELETE = 'DeferredRevenueEntry is append-only: deletes are ref
 const DeferredRevenueEntrySchema = new Schema<IDeferredRevenueEntry>(
     {
         sourceEventId: { type: String, required: true, immutable: true },
-        providerSubscriptionId: { type: String, required: true, immutable: true },
         planCode: { type: String, enum: PLAN_CODES, required: true, immutable: true },
         bucketIndex: { type: Number, required: true, min: 1, max: 12, immutable: true },
         recognitionMonth: { type: String, required: true, match: /^\d{4}-\d{2}$/, immutable: true },
@@ -55,6 +53,8 @@ for (const operation of ['deleteOne', 'deleteMany', 'findOneAndDelete'] as const
 }
 DeferredRevenueEntrySchema.pre('deleteOne', { document: true, query: false }, (next) => refuseDelete(next))
 
+// Deliberately stores no provider customer/subscription id (SEC-74): the ledger is append-only, so an id
+// written here could never be erased with the account.
 // System collection, zero PII by construction (M8e / the CA-ready export): no userId, so the
 // row-level-security plugin is deliberately not applied - same footing as BillingEvent/MetricDaily.
 const DeferredRevenueEntry: Model<IDeferredRevenueEntry> = mongoose.model<IDeferredRevenueEntry>('DeferredRevenueEntry', DeferredRevenueEntrySchema)

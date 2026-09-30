@@ -19,7 +19,8 @@ const REDACTION_UPDATE = () => ({
 })
 
 // `timestamps: false` keeps `updatedAt`, which anchors the claim lease of an un-applied event.
-const REDACTION_OPTIONS = { timestamps: false, [BILLING_EVENT_REDACTION]: true }
+// `payload` is `immutable`, and Mongoose silently drops updates to an immutable path unless told otherwise.
+const REDACTION_OPTIONS = { timestamps: false, overwriteImmutable: true, [BILLING_EVENT_REDACTION]: true }
 
 /** Removes the provider ids from every ledger row of this customer or subscription; the rest of each row stays. */
 export const redactLedgerProviderIds = async ({

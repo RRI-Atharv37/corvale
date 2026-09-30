@@ -53,7 +53,6 @@ describe('computeLocalRevenueByCurrency', () => {
     it('sums DeferredRevenueEntry buckets for the month, by currency', async () => {
         await DeferredRevenueEntry.create({
             sourceEventId: 'evt_bucket_1',
-            providerSubscriptionId: 'sub_annual',
             planCode: 'pro',
             bucketIndex: 1,
             recognitionMonth: '2026-09',
@@ -63,7 +62,6 @@ describe('computeLocalRevenueByCurrency', () => {
         })
         await DeferredRevenueEntry.create({
             sourceEventId: 'evt_bucket_1',
-            providerSubscriptionId: 'sub_annual',
             planCode: 'pro',
             bucketIndex: 2,
             recognitionMonth: '2026-10',
@@ -117,7 +115,6 @@ describe('computeLocalRevenueByCurrency', () => {
         await seedPaymentEvent('sub_monthly_eur', new Date('2026-09-16T12:00:00.000Z'), { total: 400, currency: 'eur' })
         await DeferredRevenueEntry.create({
             sourceEventId: 'evt_bucket_eur',
-            providerSubscriptionId: 'sub_annual_eur',
             planCode: 'pro',
             bucketIndex: 1,
             recognitionMonth: '2026-09',

@@ -65,8 +65,9 @@ const touchesImmutablePath = (update: unknown): boolean => {
  * The one sanctioned exception to append-only: provider ids identify a person at the Merchant of
  * Record, so erasure must be able to remove exactly those two fields. Only `redactLedgerProviderIds`
  * passes this option, and the update shape is checked so nothing else can ride along with it.
+ * A string key, not a Symbol: Mongoose copies query options with `Object.keys`, which drops Symbols.
  */
-export const BILLING_EVENT_REDACTION = Symbol('billingEventRedaction')
+export const BILLING_EVENT_REDACTION = 'billingEventRedaction'
 
 const REDACTABLE_PATHS = ['payload.providerCustomerId', 'payload.providerSubscriptionId']
 
@@ -83,7 +84,7 @@ const isRedactionUpdate = (update: unknown): boolean => {
 const refuseRewrite = function (this: Query<unknown, unknown>, next: (err?: Error) => void) {
     const update = this.getUpdate()
     if (!touchesImmutablePath(update)) return next()
-    const sanctioned = (this.getOptions() as Record<symbol, unknown>)[BILLING_EVENT_REDACTION] === true
+    const sanctioned = (this.getOptions() as Record<string, unknown>)[BILLING_EVENT_REDACTION] === true
     return sanctioned && isRedactionUpdate(update) ? next() : next(new Error(APPEND_ONLY_UPDATE))
 }
 

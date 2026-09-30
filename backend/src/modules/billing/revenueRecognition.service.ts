@@ -80,7 +80,6 @@ export const runRevenueRecognitionSweep = async (): Promise<RevenueRecognitionSw
             await DeferredRevenueEntry.insertMany(
                 buckets.map((bucket) => ({
                     sourceEventId: row.providerEventId,
-                    providerSubscriptionId: payload.providerSubscriptionId,
                     planCode: subscription.planCode,
                     bucketIndex: bucket.bucketIndex,
                     recognitionMonth: bucket.recognitionMonth,

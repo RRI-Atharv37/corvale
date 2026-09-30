@@ -8,6 +8,7 @@ import {
     redactOrphanedLedgerProviderIds,
     runBillingSweeps,
 } from '@modules/billing'
+import { BILLING_EVENT_REDACTION } from '@modules/billing/billingEvent.model'
 import { DAY_MS, disableBilling, enableBilling } from '@tests/billingHelpers'
 
 /**
@@ -95,6 +96,10 @@ describe('redactLedgerProviderIds', () => {
 
         expect(await redactLedgerProviderIds({ providerSubscriptionId: 'sub_a' })).toBe(1)
         expect(await redactLedgerProviderIds({ providerSubscriptionId: 'sub_a' })).toBe(0)
+    })
+
+    it('the sanctioned marker is a string key, because Mongoose drops Symbol-keyed options (BUG-41)', () => {
+        expect(typeof BILLING_EVENT_REDACTION).toBe('string')
     })
 
     it('does not loosen the append-only guarantee for anything else', async () => {

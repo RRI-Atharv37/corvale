@@ -33,6 +33,7 @@ import User from './user.model'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from '@infra/storage/receiptStorage'
+import { logger } from '@infra/observability/logger'
 import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
 import { deleteAllRefreshTokensForUser } from "@modules/auth/refreshToken.service";
@@ -287,6 +288,11 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
     // Before anything is deleted: a subscription that cannot be stopped at the provider refuses the erasure.
     const providerIdentifiers = await stopProviderBillingForErasure(userId)
 
+    // Idempotent, and run before any destructive step: if one fails the account is still whole, so a
+    // retry (or the retention sweep, which finds accounts through their Subscription row) can finish.
+    await redactLedgerProviderIds(providerIdentifiers)
+    await redactAdminAuditSubject(userId)
+
     const { retainedWorkspaceIds, emptiedWorkspaceIds, retainedWorkspaces } =
         await computeWorkspaceDepartureImpact(userId)
 
@@ -360,14 +366,16 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
     // retained ones - the emptied ones are already gone above).
     await Workspace.updateMany({ 'members.userId': userId }, { $pull: { members: { userId } } })
 
-    // The Subscription row is gone; the ledger is not user-scoped, so its provider ids are removed explicitly.
-    await redactLedgerProviderIds(providerIdentifiers)
-    // Admin audit rows keep the accountability record but lose every link to this person.
-    await redactAdminAuditSubject(userId)
-
-    await notifyRemainingMembersOfDeparture(retainedWorkspaces, userId)
-
     // SEC-49: hard-delete, not just revoke - no userId-linked rows outlive the account.
     await deleteAllRefreshTokensForUser(userId)
     await User.deleteOne({ _id: userId })
+
+    // The erasure is complete; a failed courtesy notice must not turn it into an error response.
+    try {
+        await notifyRemainingMembersOfDeparture(retainedWorkspaces, userId)
+    } catch (error) {
+        logger.warn('Could not notify remaining workspace members of a departure', {
+            message: error instanceof Error ? error.message : 'unknown',
+        })
+    }
 }

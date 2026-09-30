@@ -49,7 +49,6 @@ describe('computeFinancialYearRevenue', () => {
     it('sums DeferredRevenueEntry buckets across months, by currency', async () => {
         await DeferredRevenueEntry.create({
             sourceEventId: 'evt_bucket_1',
-            providerSubscriptionId: 'sub_annual',
             planCode: 'pro',
             bucketIndex: 1,
             recognitionMonth: '2026-04',
@@ -59,7 +58,6 @@ describe('computeFinancialYearRevenue', () => {
         })
         await DeferredRevenueEntry.create({
             sourceEventId: 'evt_bucket_1',
-            providerSubscriptionId: 'sub_annual',
             planCode: 'pro',
             bucketIndex: 2,
             recognitionMonth: '2026-05',

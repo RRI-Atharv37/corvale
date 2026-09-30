@@ -69,7 +69,7 @@ describe('runRevenueRecognitionSweep', () => {
     it('splits an annual payment into 12 monthly entries summing to the total', async () => {
         enableFinanceOps()
         await seedAnnualSubscription('sub_annual')
-        await seedPaymentEvent('sub_annual')
+        const event = await seedPaymentEvent('sub_annual')
 
         const result = await runRevenueRecognitionSweep()
 
@@ -77,7 +77,7 @@ describe('runRevenueRecognitionSweep', () => {
         expect(result.claimed).toBe(1)
         expect(result.entriesCreated).toBe(12)
 
-        const entries = await DeferredRevenueEntry.find({ providerSubscriptionId: 'sub_annual' }).sort({ bucketIndex: 1 }).lean()
+        const entries = await DeferredRevenueEntry.find({ sourceEventId: event.providerEventId }).sort({ bucketIndex: 1 }).lean()
         expect(entries).toHaveLength(12)
         expect(entries.map((entry) => entry.bucketIndex)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
         expect(entries.reduce((sum, entry) => sum + entry.recognizedAmountMinor, 0)).toBe(12000)
@@ -85,6 +85,19 @@ describe('runRevenueRecognitionSweep', () => {
         expect(entries.every((entry) => entry.planCode === 'pro')).toBe(true)
         expect(entries[0].recognitionMonth).toBe('2026-11')
         expect(entries[11].recognitionMonth).toBe('2027-10')
+    })
+
+    it('stores no provider identifier on any entry (SEC-74)', async () => {
+        enableFinanceOps()
+        await seedAnnualSubscription('sub_no_ids')
+        await seedPaymentEvent('sub_no_ids')
+
+        await runRevenueRecognitionSweep()
+
+        const raw = await DeferredRevenueEntry.collection.find({}).toArray()
+        expect(raw).toHaveLength(12)
+        expect(JSON.stringify(raw)).not.toContain('sub_no_ids')
+        expect(raw.every((entry) => !('providerSubscriptionId' in entry))).toBe(true)
     })
 
     it('claims a monthly-interval payment but recognizes nothing', async () => {
@@ -96,7 +109,7 @@ describe('runRevenueRecognitionSweep', () => {
 
         expect(result.claimed).toBe(1)
         expect(result.entriesCreated).toBe(0)
-        expect(await DeferredRevenueEntry.countDocuments({ providerSubscriptionId: 'sub_monthly' })).toBe(0)
+        expect(await DeferredRevenueEntry.countDocuments({})).toBe(0)
         const event = await BillingEvent.findOne({ 'payload.providerSubscriptionId': 'sub_monthly' }).lean()
         expect(event?.revenueRecognizedAt).not.toBeNull()
     })
@@ -148,7 +161,7 @@ describe('runRevenueRecognitionSweep', () => {
 
         expect(first.entriesCreated).toBe(12)
         expect(second).toEqual({ skipped: false, claimed: 0, entriesCreated: 0 })
-        expect(await DeferredRevenueEntry.countDocuments({ providerSubscriptionId: 'sub_idempotent' })).toBe(12)
+        expect(await DeferredRevenueEntry.countDocuments({})).toBe(12)
     })
 
     it('processes multiple pending payments independently in one sweep', async () => {

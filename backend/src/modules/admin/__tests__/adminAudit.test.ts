@@ -190,6 +190,28 @@ describe('append-only', () => {
         expect(await AdminAuditLog.countDocuments()).toBe(1)
     })
 
+    it('the sanctioned markers survive Mongoose option copying (BUG-41: Symbol keys are dropped)', () => {
+        expect(typeof AUDIT_ERASURE_REDACTION).toBe('string')
+        expect(typeof AUDIT_IP_SCRUB).toBe('string')
+        expect(Object.keys(ERASURE_OPTIONS)).toContain(AUDIT_ERASURE_REDACTION)
+        expect(Object.keys(IP_SCRUB_OPTIONS)).toContain(AUDIT_IP_SCRUB)
+    })
+
+    it('the sanctioned erasure update goes through Mongoose when it has the right shape', async () => {
+        const row = await seed()
+
+        await expect(
+            AdminAuditLog.updateOne(
+                { _id: row._id },
+                { $set: { subjectUserId: null, subjectSubscriptionId: null, reason: '[redacted on erasure]' } },
+                ERASURE_OPTIONS
+            )
+        ).resolves.toBeTruthy()
+
+        const after = await AdminAuditLog.findById(row._id).lean()
+        expect(after?.subjectUserId ?? null).toBeNull()
+    })
+
     it('the sanctioned erasure update only accepts the subject links and the reason', async () => {
         const row = await seed()
 

@@ -99,9 +99,10 @@ AdminAuditLogSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 })
  * The two sanctioned exceptions to append-only, each passed only by its own function in
  * `adminAudit.service.ts` and each shape-checked here so nothing else can ride along:
  * erasure severs the row from its subject (D5); the retention sweep removes a stale `ip`.
+ * String keys, not Symbols: Mongoose copies query options with `Object.keys`, which drops Symbols.
  */
-export const AUDIT_ERASURE_REDACTION = Symbol('adminAuditErasureRedaction')
-export const AUDIT_IP_SCRUB = Symbol('adminAuditIpScrub')
+export const AUDIT_ERASURE_REDACTION = 'adminAuditErasureRedaction'
+export const AUDIT_IP_SCRUB = 'adminAuditIpScrub'
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -129,7 +130,7 @@ const isIpScrubUpdate = (update: unknown): boolean => {
 }
 
 const refuseRewrite = function (this: Query<unknown, unknown>, next: (err?: Error) => void) {
-    const options = this.getOptions() as Record<symbol, unknown>
+    const options = this.getOptions() as Record<string, unknown>
     const update = this.getUpdate()
 
     if (options[AUDIT_ERASURE_REDACTION] === true && isErasureUpdate(update)) return next()
