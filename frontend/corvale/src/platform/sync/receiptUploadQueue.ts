@@ -3,6 +3,7 @@ import { tableInvalidationBus } from '@lib/tableInvalidationBus'
 import { getReceiptBlob } from '../db/receiptBlobCache'
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS } from '@lib/apiPaths'
+import { AxiosError } from 'axios'
 import { getApiErrorMessage } from '@lib/apiError'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { isNetworkError } from '../offline/reachability'
@@ -25,11 +26,12 @@ import type { ApiResponse, Receipt } from '@lib/types/api'
  * State machine: `pending -> uploading -> uploaded | rejected`, or
  * `uploading -> pending` again on a transient failure (backoff via
  * `nextAttemptAt`, same 1s-doubling curve as the outbox). `rejected` is
- * terminal: a server verdict (virus-scan rejection, or a fail-closed
- * "scan service unavailable" response - see `uploadReceiptEntryToServer`)
- * is never retried, and `rejectionReason` carries the user-visible reason.
- * Only a genuine network error (request never reached the server) is
- * `retry`.
+ * terminal: a definitive server verdict (virus-scan rejection, an
+ * unsupported file) is never retried, and `rejectionReason` carries the
+ * user-visible reason. A network error, a 5xx/429 (including the
+ * fail-closed "scan service unavailable" 503) and a 404 from the attach
+ * step are `retry` - see `uploadReceiptEntryToServer`. Retries that came
+ * from a server response are capped (`MAX_SERVER_RETRY_ATTEMPTS`).
  */
 
 export type ReceiptUploadStatus = 'pending' | 'uploading' | 'uploaded' | 'rejected'
@@ -58,7 +60,7 @@ export interface EnqueueUploadInput {
 export type UploadOutcome =
     | { status: 'uploaded'; receiptId: string }
     | { status: 'rejected'; reason: string }
-    | { status: 'retry'; error: string; receiptId?: string }
+    | { status: 'retry'; error: string; receiptId?: string; limited?: boolean }
 
 export interface ReceiptUploadQueue {
     enqueue(input: EnqueueUploadInput): Promise<ReceiptUploadEntry>
@@ -79,6 +81,7 @@ export interface ReceiptUploadStore {
     remove(id: string): Promise<void>
 }
 
+export const MAX_SERVER_RETRY_ATTEMPTS = 10
 const BASE_BACKOFF_MS = 1000
 const computeBackoffDelay = (attempts: number): number => BASE_BACKOFF_MS * 2 ** Math.max(0, attempts - 1)
 const isOnline = (): boolean => typeof navigator === 'undefined' || navigator.onLine
@@ -264,6 +267,16 @@ export const createReceiptUploadQueue = (
             }
 
             const attempts = entry.attempts + 1
+            if (outcome.limited && attempts >= MAX_SERVER_RETRY_ATTEMPTS) {
+                await store.update(entry.id, {
+                    status: 'rejected',
+                    attempts,
+                    rejectionReason: outcome.error,
+                    ...(outcome.receiptId ? { serverReceiptId: outcome.receiptId } : {}),
+                })
+                continue
+            }
+
             await store.update(entry.id, {
                 status: 'pending',
                 attempts,
@@ -283,22 +296,26 @@ export const createReceiptUploadQueue = (
     return { enqueue, listPending, listForTransaction, flush, remove }
 }
 
+const isTransientServerError = (error: unknown): boolean => {
+    const status = error instanceof AxiosError ? error.response?.status : undefined
+    return status !== undefined && (status === 429 || status >= 500)
+}
+
 /**
- * The real `uploadFn`: multipart POST to `POST /receipts`, then attach to
- * the transaction. Any HTTP response at all - including the virus-scan
- * rejection (400, `ERROR_MESSAGES.RECEIPT.VIRUS_DETECTED`) and the
- * fail-closed "scan service unavailable" response (503,
- * `VIRUS_SCAN_FAILED`) from `receiptController.uploadReceipt` - is a server
- * verdict and maps to `rejected` (terminal, surfaced to the user via
- * `rejectionReason`). Only a genuine network error (no response reached the
- * client at all - see `offline/reachability.ts`'s `isNetworkError`) is
- * `retry`.
+ * The real `uploadFn`: multipart POST to `POST /receipts`, then attach to the transaction.
  *
- * If `entry.serverReceiptId` is already set, a prior attempt already created
- * the receipt but failed (with a network error) before the attach call
- * completed - skip re-uploading and resume at the attach step, otherwise a
- * retry after that specific failure mode would create a second, orphaned
- * receipt on the server every time.
+ * A definitive 4xx from the upload itself - the virus-scan rejection (400,
+ * `ERROR_MESSAGES.RECEIPT.VIRUS_DETECTED`), an unsupported or oversized file - is a server
+ * verdict and maps to `rejected` (terminal, surfaced via `rejectionReason`). A network error, a
+ * 5xx (including the fail-closed `VIRUS_SCAN_FAILED` 503 from `receiptController.uploadReceipt`)
+ * or a 429 is `retry`: the file was not refused, the server just could not take it yet.
+ *
+ * The attach step additionally treats a 404 as `retry`: the transaction was created offline and
+ * its create op may not have reached the server yet. Every retry from the attach step carries the
+ * receipt id, so the next attempt resumes there instead of uploading a second receipt.
+ *
+ * If `entry.serverReceiptId` is already set, a prior attempt already created the receipt but did
+ * not finish attaching it - skip re-uploading and resume at the attach step.
  */
 export const uploadReceiptEntryToServer = async (entry: ReceiptUploadEntry, blob: Blob): Promise<UploadOutcome> => {
     let receiptId = entry.serverReceiptId ?? undefined
@@ -314,6 +331,9 @@ export const uploadReceiptEntryToServer = async (entry: ReceiptUploadEntry, blob
         if (isNetworkError(error)) {
             return { status: 'retry', error: getApiErrorMessage(error, 'Network error') }
         }
+        if (isTransientServerError(error)) {
+            return { status: 'retry', error: getApiErrorMessage(error, 'Receipt upload is temporarily unavailable'), limited: true }
+        }
         return { status: 'rejected', reason: getApiErrorMessage(error, 'Receipt upload was rejected by the server') }
     }
 
@@ -323,6 +343,15 @@ export const uploadReceiptEntryToServer = async (entry: ReceiptUploadEntry, blob
     } catch (error) {
         if (isNetworkError(error)) {
             return { status: 'retry', error: getApiErrorMessage(error, 'Network error'), receiptId }
+        }
+        const notYetOnServer = error instanceof AxiosError && error.response?.status === 404
+        if (notYetOnServer || isTransientServerError(error)) {
+            return {
+                status: 'retry',
+                error: getApiErrorMessage(error, 'Receipt could not be attached to the transaction yet'),
+                receiptId,
+                limited: true,
+            }
         }
         return { status: 'rejected', reason: getApiErrorMessage(error, 'Receipt could not be attached to the transaction') }
     }

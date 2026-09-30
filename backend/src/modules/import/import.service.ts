@@ -1,7 +1,6 @@
 import { Types } from 'mongoose'
 
 import { Transaction } from '@modules/transactions'
-import { Category } from '@modules/categories'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { fromMinorUnits } from '@core/money/moneyUtils'
@@ -18,8 +17,18 @@ import {
     sanitizeParsedImportRows,
     toImportIsoDate,
 } from './csvImportUtils'
-import { assertAccountMatchesWorkspace, parseOptionalWorkspaceId } from '@core/access/workspace'
-import { applyCategorizationRules, mergeTags } from '@modules/categorization-rules/categorizationRuleUtils'
+import { mapWithConcurrency } from '@core/db/concurrency'
+import {
+    assertAccountMatchesWorkspace,
+    buildScopedListFilter,
+    parseOptionalWorkspaceId,
+} from '@core/access/workspace'
+import {
+    loadActiveRules,
+    matchRule,
+    mergeTags,
+    toRuleApplyResult,
+} from '@modules/categorization-rules/categorizationRuleUtils'
 import { evaluateBudgetOverLimitNotifications } from '@modules/notifications/notificationUtils'
 import { withDeferredBalanceRefresh, refreshAccountBalances } from '@modules/accounts/accountBalance'
 import {
@@ -47,71 +56,70 @@ export interface ImportPreviewItem {
     duplicateAction?: ImportDuplicateAction
 }
 
+const IMPORT_ROW_CONCURRENCY = 8
+
 const buildPreviewItems = async (
     userId: string,
     accountId: string,
     defaultCategoryId: string,
     rows: ParsedImportRow[]
 ): Promise<ImportPreviewItem[]> => {
-    const categoryCache = new Map<string, string>()
+    const rules = await loadActiveRules(userId)
+    const categoryNames = new Map<string, Promise<string | undefined>>()
 
-    const resolveCategoryName = async (categoryId: string): Promise<string | undefined> => {
-        if (categoryCache.has(categoryId)) {
-            return categoryCache.get(categoryId)
+    const validateCategory = (categoryId: string): Promise<string | undefined> => {
+        let pending = categoryNames.get(categoryId)
+        if (!pending) {
+            pending = validateCategoryForTransaction(categoryId, userId).then((category) => category.name)
+            categoryNames.set(categoryId, pending)
         }
-        const category = await Category.findById(categoryId).select('name')
-        const name = category?.name
-        if (name) {
-            categoryCache.set(categoryId, name)
-        }
-        return name
+        return pending
     }
 
-    return Promise.all(
-        rows.map(async (row) => {
-            try {
-                const amountMinor = parseClientAmount(row.amount)
-                const ruleResult = await applyCategorizationRules(userId, {
+    return mapWithConcurrency(rows, IMPORT_ROW_CONCURRENCY, async (row) => {
+        try {
+            const amountMinor = parseClientAmount(row.amount)
+            const ruleResult = toRuleApplyResult(
+                matchRule(rules, {
                     title: row.title,
                     description: row.description,
                     amount: amountMinor,
                     accountId,
                     type: row.type,
                 })
+            )
 
-                const categoryId = ruleResult?.categoryId.toString() ?? defaultCategoryId
-                await validateCategoryForTransaction(categoryId, userId)
-                const categoryName = await resolveCategoryName(categoryId)
+            const categoryId = ruleResult?.categoryId.toString() ?? defaultCategoryId
+            const categoryName = await validateCategory(categoryId)
 
-                return {
-                    rowIndex: row.rowIndex,
-                    date: row.date,
-                    title: row.title,
-                    description: row.description,
-                    amount: row.amount,
-                    type: row.type,
-                    externalId: row.externalId,
-                    categoryId,
-                    categoryName,
-                    tags: ruleResult ? mergeTags(undefined, ruleResult.tags) : undefined,
-                    appliedRuleId: ruleResult?.ruleId.toString(),
-                    appliedRuleName: ruleResult?.ruleName,
-                }
-            } catch (error) {
-                return {
-                    rowIndex: row.rowIndex,
-                    date: row.date,
-                    title: row.title,
-                    description: row.description,
-                    amount: row.amount,
-                    type: row.type,
-                    externalId: row.externalId,
-                    categoryId: defaultCategoryId,
-                    error: error instanceof Error ? error.message : 'Failed to map row',
-                }
+            return {
+                rowIndex: row.rowIndex,
+                date: row.date,
+                title: row.title,
+                description: row.description,
+                amount: row.amount,
+                type: row.type,
+                externalId: row.externalId,
+                categoryId,
+                categoryName,
+                tags: ruleResult ? mergeTags(undefined, ruleResult.tags) : undefined,
+                appliedRuleId: ruleResult?.ruleId.toString(),
+                appliedRuleName: ruleResult?.ruleName,
             }
-        })
-    )
+        } catch (error) {
+            return {
+                rowIndex: row.rowIndex,
+                date: row.date,
+                title: row.title,
+                description: row.description,
+                amount: row.amount,
+                type: row.type,
+                externalId: row.externalId,
+                categoryId: defaultCategoryId,
+                error: error instanceof Error ? error.message : 'Failed to map row',
+            }
+        }
+    })
 }
 
 interface ExistingDuplicateMaps {
@@ -121,6 +129,7 @@ interface ExistingDuplicateMaps {
 
 const loadExistingDuplicateMap = async (
     userId: string,
+    workspaceId: string | null,
     accountId: string,
     rows: ParsedImportRow[]
 ): Promise<ExistingDuplicateMaps> => {
@@ -141,7 +150,7 @@ const loadExistingDuplicateMap = async (
     ]
 
     const existingTransactions = await Transaction.find({
-        userId,
+        ...buildScopedListFilter(userId, workspaceId),
         accountId,
         status: 'posted',
         splitTransactionId: null,
@@ -192,15 +201,19 @@ const loadExistingDuplicateMap = async (
 
 const attachDuplicateInfo = async (
     userId: string,
+    workspaceId: string | null,
     accountId: string,
     items: ImportPreviewItem[],
     importRows: ParsedImportRow[]
 ): Promise<ImportPreviewItem[]> => {
-    const validRows = importRows.filter((row) =>
-        items.some((item) => item.rowIndex === row.rowIndex && !item.error)
-    )
+    const rowsByIndex = new Map(importRows.map((row) => [row.rowIndex, row]))
+    const validRows = items
+        .filter((item) => !item.error)
+        .map((item) => rowsByIndex.get(item.rowIndex))
+        .filter((row): row is ParsedImportRow => !!row)
     const { fingerprintMap, externalIdMap } = await loadExistingDuplicateMap(
         userId,
+        workspaceId,
         accountId,
         validRows
     )
@@ -210,7 +223,7 @@ const attachDuplicateInfo = async (
             return item
         }
 
-        const row = importRows.find((candidate) => candidate.rowIndex === item.rowIndex)
+        const row = rowsByIndex.get(item.rowIndex)
         if (!row) {
             return item
         }
@@ -266,12 +279,15 @@ const resolveDuplicateAction = (
 
 const mergeImportIntoTransaction = async (
     userId: string,
+    workspaceId: string | null,
+    accountId: string,
     transactionId: string,
     item: ImportPreviewItem
 ): Promise<void> => {
     const transaction = await Transaction.findOne({
         _id: transactionId,
-        userId,
+        ...buildScopedListFilter(userId, workspaceId),
+        accountId,
         status: 'posted',
     })
 
@@ -353,6 +369,7 @@ const prepareImport = async (input: ImportRequestInput) => {
     )
     const itemsWithDuplicates = await attachDuplicateInfo(
         input.userId,
+        resolvedWorkspaceId,
         input.accountId,
         previewItems,
         importRows
@@ -416,7 +433,13 @@ export const commitImport = async (input: ImportRequestInput) => {
                 if (!item.duplicateOf) {
                     throw new CustomError(ERROR_MESSAGES.IMPORT.INVALID_MERGE_TARGET, 400)
                 }
-                await mergeImportIntoTransaction(input.userId, item.duplicateOf.transactionId, item)
+                await mergeImportIntoTransaction(
+                    input.userId,
+                    resolvedWorkspaceId,
+                    input.accountId,
+                    item.duplicateOf.transactionId,
+                    item
+                )
                 mergedIds.push(item.duplicateOf.transactionId)
                 continue
             }

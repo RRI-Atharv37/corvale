@@ -15,6 +15,10 @@ vi.mock('../syncApi', () => ({
 vi.mock('../pullLoop', () => ({
     runPullLoop: (...args: unknown[]) => runPullLoop(...args),
 }))
+const axiosPost = vi.fn<(...args: unknown[]) => Promise<unknown>>()
+vi.mock('@lib/axiosInstance', () => ({
+    default: { post: (...args: unknown[]) => axiosPost(...args) },
+}))
 
 import { createOutbox } from '../outbox'
 import { createSqliteOutboxStore } from '../sqliteOutboxStore'
@@ -24,6 +28,7 @@ import {
     retrySyncOp,
     discardSyncOp,
     flushOutbox,
+    flushReceiptUploadsAfterOutbox,
     resetLocalData,
     resetSyncEngineForTests,
 } from '../syncEngine'
@@ -216,5 +221,76 @@ describe('resetLocalData (SEC-38 / SEC-39: full local wipe)', () => {
         const after = await db.select<{ version: number }>('SELECT version FROM _schema_version WHERE id = 1')
         expect(after[0]?.version).toBe(before[0]?.version)
         expect(after[0]?.version).toBeGreaterThan(0)
+    })
+})
+
+describe('receipt uploads flush after the outbox (BUG-66)', () => {
+    let db: LocalDb
+    let calls: string[]
+
+    beforeEach(async () => {
+        setOnline(true)
+        db = await MemorySqliteDriver.create()
+        await runMigrations(db, MIGRATIONS)
+        setLocalDb(db)
+        resetSyncEngineForTests()
+        pushOutboxOps.mockReset()
+        axiosPost.mockReset()
+        calls = []
+
+        pushOutboxOps.mockImplementation(async (...args: unknown[]) => {
+            calls.push('push')
+            const ops = args[0] as { opId: string }[]
+            return {
+                results: ops.map((op) => ({ opId: op.opId, status: 'applied', resultId: 'srv1' })),
+                checkpoint: 'c1',
+            }
+        })
+        axiosPost.mockImplementation(async (...args: unknown[]) => {
+            const url = String(args[0])
+            calls.push(url.includes('attach') || url.includes('txn-1') ? 'attach' : 'upload')
+            return { success: true, data: { _id: 'receipt-server-1' } }
+        })
+
+        const cached = await putReceiptBlob(db, {
+            recordId: 'txn-1',
+            mimeType: 'image/png',
+            data: new Uint8Array([1, 2, 3]),
+        })
+        const queue = createReceiptUploadQueue(createSqliteReceiptUploadStore(db))
+        await queue.enqueue({
+            localBlobId: cached.id,
+            transactionId: 'txn-1',
+            filename: 'receipt.png',
+            mimeType: 'image/png',
+        })
+        await enqueueOp(db, 'transaction:txn-1')
+    })
+
+    afterEach(async () => {
+        resetSyncEngineForTests()
+        resetLocalDbForTests()
+        await db.close()
+        setOnline(true)
+    })
+
+    it('pushes the transaction op before the receipt is uploaded and attached', async () => {
+        await flushReceiptUploadsAfterOutbox()
+
+        expect(calls).toEqual(['push', 'upload', 'attach'])
+    })
+
+    it('syncNow also drains queued receipts, after the push', async () => {
+        await syncNow()
+
+        expect(calls[0]).toBe('push')
+        expect(calls.slice(1)).toEqual(['upload', 'attach'])
+    })
+
+    it('shares one in-flight flush between concurrent callers so a receipt is uploaded once', async () => {
+        await Promise.all([flushReceiptUploadsAfterOutbox(), flushReceiptUploadsAfterOutbox(), syncNow()])
+
+        expect(calls.filter((call) => call === 'upload')).toHaveLength(1)
+        expect(calls.filter((call) => call === 'attach')).toHaveLength(1)
     })
 })

@@ -6,6 +6,7 @@ import { pushOutboxOps } from './syncApi'
 import { createOutbox, type Outbox, type OutboxOp, type OutboxOperation, type PushResult } from './outbox'
 import { createSqliteOutboxStore } from './sqliteOutboxStore'
 import { runPullLoop } from './pullLoop'
+import { flushReceiptUploads } from './receiptUploadQueue'
 import { purgeWorkspacesNotIn } from './workspaceOffboarding'
 import { recordConflict, listUnresolvedConflicts } from './conflicts'
 import { parseOutboxEntity, type SyncEntityName } from './entityMap'
@@ -124,6 +125,25 @@ export const flushOutbox = async (): Promise<void> => {
     }
 }
 
+let receiptFlushInFlight: Promise<void> | null = null
+
+/**
+ * BUG-66: a queued receipt attaches to a transaction that may itself still be in the outbox, so
+ * receipts drain only after the outbox flush, and one flush is shared by every concurrent caller
+ * (reconnect handler, `syncNow`, the receipt tile) so a file is never uploaded twice.
+ */
+export const flushReceiptUploadsAfterOutbox = (): Promise<void> => {
+    if (!receiptFlushInFlight) {
+        receiptFlushInFlight = (async () => {
+            await flushOutbox()
+            await flushReceiptUploads(await getLocalDb())
+        })().finally(() => {
+            receiptFlushInFlight = null
+        })
+    }
+    return receiptFlushInFlight
+}
+
 export const pullChanges = async (): Promise<void> => {
     const db = await getLocalDb()
     await runPullLoop(db, getStoredActiveWorkspaceId())
@@ -155,6 +175,7 @@ export const syncNow = async (): Promise<void> => {
     if (!hasFailedOps) {
         await markSynced(db)
     }
+    await flushReceiptUploadsAfterOutbox().catch(() => {})
 }
 
 /** One outbox op the server rejected (BUG-32): still pending, but stuck until the user retries or discards it. */

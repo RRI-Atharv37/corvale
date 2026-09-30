@@ -320,24 +320,133 @@ describe('uploadReceiptEntryToServer - scan rejection classification', () => {
         expect(outcome).toEqual({ status: 'rejected', reason: 'Receipt file failed security scan' })
     })
 
-    it('maps a fail-closed scan-unavailable HTTP response (503) to a terminal "rejected" outcome, not a retry', async () => {
-        const scanUnavailable = new AxiosError('Request failed with status code 503')
-        scanUnavailable.response = {
-            status: 503,
-            data: { success: false, message: 'Receipt upload temporarily unavailable; try again later' },
-        } as never
+    const httpError = (status: number, message = `Request failed with status code ${status}`) => {
+        const error = new AxiosError(message)
+        error.response = { status, data: { success: false, message } } as never
+        return error
+    }
 
+    it.each([500, 502, 503, 429])(
+        'maps a transient upload response (%i, including the fail-closed scan-unavailable 503) to a "retry" outcome (BUG-66)',
+        async (status) => {
+            vi.doMock('@lib/axiosInstance', () => ({
+                default: { post: vi.fn().mockRejectedValue(httpError(status, 'try again later')) },
+            }))
+
+            const { uploadReceiptEntryToServer } = await import('../receiptUploadQueue')
+            const outcome = await uploadReceiptEntryToServer(baseEntry, new Blob(['x']))
+
+            expect(outcome).toEqual({ status: 'retry', error: 'try again later', limited: true })
+        }
+    )
+
+    it.each([413, 415, 422])('keeps a definitive upload verdict (%i) terminal', async (status) => {
         vi.doMock('@lib/axiosInstance', () => ({
-            default: { post: vi.fn().mockRejectedValue(scanUnavailable) },
+            default: { post: vi.fn().mockRejectedValue(httpError(status, 'nope')) },
         }))
 
         const { uploadReceiptEntryToServer } = await import('../receiptUploadQueue')
         const outcome = await uploadReceiptEntryToServer(baseEntry, new Blob(['x']))
 
-        expect(outcome).toEqual({
-            status: 'rejected',
-            reason: 'Receipt upload temporarily unavailable; try again later',
-        })
+        expect(outcome).toEqual({ status: 'rejected', reason: 'nope' })
+    })
+
+    it.each([404, 429, 500, 503])(
+        'when the attach call answers %i, retries and keeps the already-uploaded receipt id (BUG-66)',
+        async (status) => {
+            const post = vi.fn()
+            post.mockResolvedValueOnce({ success: true, data: { _id: 'receipt-server-1' } })
+            post.mockRejectedValueOnce(httpError(status, 'not yet'))
+            vi.doMock('@lib/axiosInstance', () => ({ default: { post } }))
+
+            const { uploadReceiptEntryToServer } = await import('../receiptUploadQueue')
+            const outcome = await uploadReceiptEntryToServer(baseEntry, new Blob(['x']))
+
+            expect(outcome).toEqual({
+                status: 'retry',
+                error: 'not yet',
+                receiptId: 'receipt-server-1',
+                limited: true,
+            })
+        }
+    )
+
+    it('keeps an attach verdict such as 403 terminal', async () => {
+        const post = vi.fn()
+        post.mockResolvedValueOnce({ success: true, data: { _id: 'receipt-server-1' } })
+        post.mockRejectedValueOnce(httpError(403, 'Not authorized'))
+        vi.doMock('@lib/axiosInstance', () => ({ default: { post } }))
+
+        const { uploadReceiptEntryToServer } = await import('../receiptUploadQueue')
+        const outcome = await uploadReceiptEntryToServer(baseEntry, new Blob(['x']))
+
+        expect(outcome).toEqual({ status: 'rejected', reason: 'Not authorized' })
+    })
+
+    it('a retry after an attach 404 resumes at the attach step instead of uploading a second receipt', async () => {
+        const post = vi.fn()
+        post.mockResolvedValueOnce({ success: true, data: { _id: 'receipt-server-1' } })
+        post.mockRejectedValueOnce(httpError(404, 'Transaction not found'))
+        post.mockResolvedValueOnce({ success: true, data: {} })
+        vi.doMock('@lib/axiosInstance', () => ({ default: { post } }))
+
+        const { uploadReceiptEntryToServer, createReceiptUploadQueue, createMemoryReceiptUploadStore } = await import(
+            '../receiptUploadQueue'
+        )
+        vi.useFakeTimers()
+        try {
+            const queue = createReceiptUploadQueue(createMemoryReceiptUploadStore())
+            const entry = await queue.enqueue({
+                localBlobId: 'blob-1',
+                transactionId: 'txn-1',
+                filename: 'receipt.png',
+                mimeType: 'image/png',
+            })
+
+            await queue.flush((candidate) => uploadReceiptEntryToServer(candidate, new Blob(['x'])))
+            let [stored] = await queue.listForTransaction('txn-1')
+            expect(stored.status).toBe('pending')
+            expect(stored.serverReceiptId).toBe('receipt-server-1')
+
+            vi.advanceTimersByTime(5000)
+            await queue.flush((candidate) => uploadReceiptEntryToServer(candidate, new Blob(['x'])))
+            ;[stored] = await queue.listForTransaction('txn-1')
+
+            expect(stored.id).toBe(entry.id)
+            expect(stored.status).toBe('uploaded')
+            expect(post).toHaveBeenCalledTimes(3)
+            expect(post.mock.calls[2][0]).toContain('txn-1')
+        } finally {
+            vi.useRealTimers()
+        }
+    })
+
+    it('gives up on a server-verdict retry after the attempt cap and surfaces a reason, but never caps a network retry', async () => {
+        const { createReceiptUploadQueue, createMemoryReceiptUploadStore, MAX_SERVER_RETRY_ATTEMPTS } = await import(
+            '../receiptUploadQueue'
+        )
+        vi.useFakeTimers()
+        try {
+            const queue = createReceiptUploadQueue(createMemoryReceiptUploadStore())
+            await queue.enqueue({ localBlobId: 'b', transactionId: 't', filename: 'r.png', mimeType: 'image/png' })
+
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+                await queue.flush(async () => ({ status: 'retry', error: 'Network Error' }))
+                vi.advanceTimersByTime(24 * 60 * 60 * 1000)
+            }
+            expect((await queue.listForTransaction('t'))[0].status).toBe('pending')
+
+            for (let attempt = 0; attempt < MAX_SERVER_RETRY_ATTEMPTS; attempt += 1) {
+                await queue.flush(async () => ({ status: 'retry', error: 'Service unavailable', limited: true }))
+                vi.advanceTimersByTime(24 * 60 * 60 * 1000)
+            }
+
+            const [entry] = await queue.listForTransaction('t')
+            expect(entry.status).toBe('rejected')
+            expect(entry.rejectionReason).toContain('Service unavailable')
+        } finally {
+            vi.useRealTimers()
+        }
     })
 
     it('maps a true network error (no response reached the server) to a "retry" outcome', async () => {

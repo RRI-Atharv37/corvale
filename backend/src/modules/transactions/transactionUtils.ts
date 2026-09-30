@@ -13,6 +13,7 @@ import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from '@core/mon
 import { WorkspaceRole } from '@modules/workspaces'
 import { getUserId } from '@core/auth/requestUser'
 import { handleResponses } from '@core/http/response'
+import { buildCsvRow } from '@core/http/csv'
 import { validateOwnership } from '@core/access/ownership'
 import { validateRequiredFields } from '@core/http/validation'
 import { buildSearchRegex } from '@core/query/searchRegex'
@@ -435,21 +436,7 @@ export const CSV_HEADERS = [
     'Status',
 ]
 
-export const escapeCsvValue = (value: string): string => {
-    // Formula-injection neutralization (SEC-17, SEC-29): a leading =/+/-/@/tab/CR is prefixed
-    // with a single quote so spreadsheet software does not evaluate it. Applied at the start of
-    // every embedded line too - a newline inside an RFC-4180-quoted field still renders as a
-    // physical line break, so a description like "legit\n=cmd|calc" would otherwise put a
-    // formula at the start of a visible row.
-    const neutralized = value.replace(/(^|\r\n|\r|\n)([=+\-@\t\r])/g, "$1'$2")
-
-    if (/["\r\n,]/.test(neutralized)) {
-        return `"${neutralized.replace(/"/g, '""')}"`
-    }
-    return neutralized
-}
-
-export const buildCsvRow = (row: string[]): string => row.map(escapeCsvValue).join(',')
+export { escapeCsvValue, buildCsvRow } from '@core/http/csv'
 
 export const buildCsvString = (rows: string[][]): string => {
     return rows.map(buildCsvRow).join('\n')

@@ -9,9 +9,9 @@ import { deleteReceiptBlob, getReceiptBlob, putReceiptBlob } from '@platform/db/
 import {
     createReceiptUploadQueue,
     createSqliteReceiptUploadStore,
-    flushReceiptUploads,
     type ReceiptUploadEntry,
 } from '@platform/sync/receiptUploadQueue'
+import { flushReceiptUploadsAfterOutbox } from '@platform/sync/syncEngine'
 import { tableInvalidationBus } from '@lib/tableInvalidationBus'
 import {
     attachReceiptToTransaction,
@@ -309,11 +309,12 @@ const ReceiptAttachments = ({
 
     // Foreground flush-on-reconnect (Sprint 13.10 v1 - see ReceiptAttachments.tsx header note in
     // the sprint report for the Background Sync scope decision): attempts a flush whenever this
-    // component is mounted online, and again the moment connectivity returns. `flushReceiptUploads`
-    // itself is a no-op while offline.
+    // component is mounted online, and again the moment connectivity returns. It goes through the
+    // sync engine so queued receipts drain only after the outbox has created their transaction
+    // (BUG-66); the flush itself is a no-op while offline.
     useEffect(() => {
         if (!db || !online) return
-        void flushReceiptUploads(db)
+        void flushReceiptUploadsAfterOutbox().catch(() => {})
     }, [db, online])
 
     const queueFilesOffline = async (files: File[]) => {

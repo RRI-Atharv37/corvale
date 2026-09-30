@@ -155,40 +155,36 @@ export const mergeTags = (
     return merged.length > 0 ? merged : undefined
 }
 
-export const findMatchingRule = async (
-    userId: string,
-    input: TransactionMatchInput
-): Promise<ICategorizationRule | null> => {
-    const rules = await CategorizationRule.find({ userId, isActive: true }).sort({
+export const loadActiveRules = async (userId: string): Promise<ICategorizationRule[]> =>
+    CategorizationRule.find({ userId, isActive: true }).sort({
         priority: -1,
         createdAt: 1,
     })
 
-    for (const rule of rules) {
-        if (ruleMatchesTransaction(rule, input)) {
-            return rule
-        }
-    }
+export const matchRule = (
+    rules: readonly ICategorizationRule[],
+    input: TransactionMatchInput
+): ICategorizationRule | null => rules.find((rule) => ruleMatchesTransaction(rule, input)) ?? null
 
-    return null
-}
+export const toRuleApplyResult = (rule: ICategorizationRule | null): RuleApplyResult | null =>
+    rule
+        ? {
+              categoryId: rule.categoryId,
+              tags: rule.tags ?? [],
+              ruleId: rule._id,
+              ruleName: rule.name,
+          }
+        : null
+
+export const findMatchingRule = async (
+    userId: string,
+    input: TransactionMatchInput
+): Promise<ICategorizationRule | null> => matchRule(await loadActiveRules(userId), input)
 
 export const applyCategorizationRules = async (
     userId: string,
     input: TransactionMatchInput
-): Promise<RuleApplyResult | null> => {
-    const rule = await findMatchingRule(userId, input)
-    if (!rule) {
-        return null
-    }
-
-    return {
-        categoryId: rule.categoryId,
-        tags: rule.tags ?? [],
-        ruleId: rule._id,
-        ruleName: rule.name,
-    }
-}
+): Promise<RuleApplyResult | null> => toRuleApplyResult(await findMatchingRule(userId, input))
 
 export const bulkApplyCategorizationRules = async (
     userId: string
