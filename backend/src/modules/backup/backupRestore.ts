@@ -17,6 +17,7 @@ const AdmZip = require('adm-zip') as new (buffer: Buffer) => {
 }
 
 import { Account } from '@modules/accounts'
+import { refreshAccountBalances } from '@modules/accounts/accountBalance'
 import { Budget } from '@modules/budgets'
 import { CategorizationRule } from '@modules/categorization-rules'
 import { Category } from '@modules/categories'
@@ -808,6 +809,11 @@ export const restoreUserBackup = async (
             await step.model.insertMany(step.docs)
             created[step.countKey] = step.docs.length
         }
+
+        const restoredAccountIds = plan.steps
+            .filter((step) => step.countKey === 'accounts')
+            .flatMap((step) => step.docs.map((doc) => doc._id as Types.ObjectId))
+        await refreshAccountBalances(restoredAccountIds)
     } catch (error) {
         await rollbackRestore(userId, userObjectId, written, reserved)
         throw error

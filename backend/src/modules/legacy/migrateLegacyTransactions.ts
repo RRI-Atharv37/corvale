@@ -7,7 +7,7 @@ import Income, { IIncome } from './income.model'
 import { TransactionType, Transaction } from '@modules/transactions'
 import { toMinorUnits } from '@core/money/moneyUtils'
 import { ensureMasterCategoriesSeeded } from "@modules/categories/categorySeed";
-import { applyTransactionToAccount } from "@modules/transactions/transactionUtils";
+import { refreshAccountBalances } from "@modules/accounts/accountBalance";
 
 export interface MigrationOptions {
     dryRun?: boolean
@@ -161,8 +161,6 @@ const migrateRecord = async (params: {
         tags: params.tags,
     })
 
-    await applyTransactionToAccount(params.account, params.type, amountMinor, params.date)
-
     return 'migrated'
 }
 
@@ -270,6 +268,10 @@ export const migrateLegacyLedgerToTransactions = async (
             } else {
                 result.expenseSkipped += 1
             }
+        }
+
+        if (!dryRun) {
+            await refreshAccountBalances([account._id])
         }
     }
 

@@ -42,8 +42,6 @@ const recordContribution = async (
     type: 'manual' | 'automatic',
     note?: string
 ): Promise<ISavingsGoalContribution> => {
-    const previousAmountMinor = goal.currentAmount
-
     const contribution = await SavingsGoalContribution.create({
         userId,
         goalId: goal._id,
@@ -53,14 +51,26 @@ const recordContribution = async (
         contributedAt: new Date(),
     })
 
-    goal.currentAmount += amountMinor
-    if (type === 'automatic') {
-        goal.autoContribution.lastContributedAt = new Date()
+    const updated = await SavingsGoal.findOneAndUpdate(
+        {
+            _id: goal._id,
+            ...buildScopedListFilter(goal.userId.toString(), goal.workspaceId?.toString() ?? null),
+        },
+        { $inc: { currentAmount: amountMinor } },
+        { new: true }
+    )
+    if (!updated) {
+        throw new CustomError(ERROR_MESSAGES.SAVINGS_GOAL.GOAL_NOT_FOUND, 404)
     }
-    markGoalCompletedIfTargetMet(goal)
-    await goal.save()
+    const previousAmountMinor = updated.currentAmount - amountMinor
 
-    await evaluateSavingsMilestoneNotifications(userId, goal, previousAmountMinor)
+    if (type === 'automatic') {
+        updated.autoContribution.lastContributedAt = new Date()
+    }
+    markGoalCompletedIfTargetMet(updated)
+    await updated.save()
+
+    await evaluateSavingsMilestoneNotifications(userId, updated, previousAmountMinor)
 
     return contribution
 }

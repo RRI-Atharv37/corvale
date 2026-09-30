@@ -12,6 +12,7 @@ import {
 } from './transactionUtils'
 import { ITransaction } from './transaction.model'
 import { validateResourceAccess } from '@modules/workspaces/access'
+import { withDeferredBalanceRefresh } from '@modules/accounts/accountBalance'
 
 const BULK_VALIDATION_CONCURRENCY = 20
 
@@ -52,21 +53,23 @@ export const bulkDeleteTransactions = async (userId: string, transactionIds: str
     const processedTransferPairs = new Set<string>()
     let deletedCount = 0
 
-    for (const transaction of transactions) {
-        if (isTransferLeg(transaction) && transaction.transferPairId) {
-            const pairKey = [transaction._id.toString(), transaction.transferPairId.toString()]
-                .sort()
-                .join(':')
-            if (processedTransferPairs.has(pairKey)) {
-                deletedCount += 1
-                continue
+    await withDeferredBalanceRefresh(async () => {
+        for (const transaction of transactions) {
+            if (isTransferLeg(transaction) && transaction.transferPairId) {
+                const pairKey = [transaction._id.toString(), transaction.transferPairId.toString()]
+                    .sort()
+                    .join(':')
+                if (processedTransferPairs.has(pairKey)) {
+                    deletedCount += 1
+                    continue
+                }
+                processedTransferPairs.add(pairKey)
             }
-            processedTransferPairs.add(pairKey)
-        }
 
-        await deleteTransactionForUser(userId, transaction)
-        deletedCount += 1
-    }
+            await deleteTransactionForUser(userId, transaction)
+            deletedCount += 1
+        }
+    })
 
     return {
         message: `${deletedCount} transaction${deletedCount === 1 ? '' : 's'} deleted`,

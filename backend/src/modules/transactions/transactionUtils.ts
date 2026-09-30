@@ -1,6 +1,7 @@
 import { PipelineStage, Types } from 'mongoose'
 
 import { IAccount, Account } from '@modules/accounts'
+import { refreshAccountBalances } from '@modules/accounts/accountBalance'
 import { ICategory, Category } from '@modules/categories'
 import { Receipt } from '@modules/receipts'
 import Transaction, { ITransaction, TransactionType } from './transaction.model'
@@ -9,14 +10,6 @@ import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { buildScopedListFilter } from '@core/access/workspace'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from '@core/money/moneyUtils'
-import {
-    getBalanceDeltaMajor,
-    getBalanceDeltaMinor,
-    getTransferInDeltaMajor,
-    getTransferInDeltaMinor,
-    getTransferOutDeltaMajor,
-    getTransferOutDeltaMinor,
-} from '@shared/money'
 import { WorkspaceRole } from '@modules/workspaces'
 import { getUserId } from '@core/auth/requestUser'
 import { handleResponses } from '@core/http/response'
@@ -27,7 +20,6 @@ import { toObjectId } from '@core/db/objectId'
 import { isMasterCategory, ensureMasterCategoriesSeeded } from "@modules/categories/categorySeed";
 import { serializeReceipt, SerializedReceipt } from "@modules/receipts/receiptUtils";
 import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
-import { roundMoney } from "@shared/money";
 import { isInboundTransferLeg } from '@shared/transferDirection'
 
 export interface SplitInput {
@@ -188,7 +180,7 @@ export const validateCategoryForTransaction = async (
     return category
 }
 
-export { getBalanceDeltaMajor, getTransferInDeltaMajor, getTransferOutDeltaMajor }
+export { getBalanceDeltaMajor, getTransferInDeltaMajor, getTransferOutDeltaMajor } from '@shared/money'
 
 export const LISTABLE_TRANSACTION_FILTER = {
     splitTransactionId: null,
@@ -226,105 +218,6 @@ export const validateSplitInputs = (splits: SplitInput[], parentAmountMinor: num
     }
 
     return normalized
-}
-
-/**
- * Adds a signed delta to an account's currentBalance, branching on
- * balanceUnit (Sprint C5): integer minor-unit math for a migrated account,
- * the pre-existing major-unit float math (with roundMoney) otherwise.
- */
-const addDeltaToBalance = (
-    account: IAccount,
-    amountMinor: number,
-    sign: 1 | -1,
-    deltaMinorFn: (amountMinor: number, accountType: IAccount['type']) => number,
-    deltaMajorFn: (amountMinor: number, accountType: IAccount['type']) => number
-): number => {
-    if (account.balanceUnit === 'minor') {
-        return account.currentBalance + sign * deltaMinorFn(amountMinor, account.type)
-    }
-    return roundMoney(account.currentBalance + sign * deltaMajorFn(amountMinor, account.type))
-}
-
-/**
- * Whether a transaction dated `date` contributes to `account`'s incrementally
- * maintained `currentBalance`. Mirrors the cutoff in
- * `shared/src/balances.ts#recomputeAccountBalance`: once an account carries an
- * `openingBalanceDate`, activity before it is already folded into the opening
- * balance and must not move the running balance too. A missing or unparseable
- * date counts (never silently drop real activity).
- */
-export const accountCountsTransactionDate = (
-    account: Pick<IAccount, 'openingBalanceDate'>,
-    date?: Date | string | number | null
-): boolean => {
-    if (account.openingBalanceDate == null || date == null) {
-        return true
-    }
-    const cutoff = new Date(account.openingBalanceDate).getTime()
-    const txTime = new Date(date).getTime()
-    if (Number.isNaN(cutoff) || Number.isNaN(txTime)) {
-        return true
-    }
-    return txTime >= cutoff
-}
-
-export const applyTransferToAccounts = async (
-    fromAccount: IAccount,
-    toAccount: IAccount,
-    amountMinor: number,
-    transferDate?: Date | string | null
-): Promise<void> => {
-    if (accountCountsTransactionDate(fromAccount, transferDate)) {
-        fromAccount.currentBalance = addDeltaToBalance(
-            fromAccount,
-            amountMinor,
-            1,
-            getTransferOutDeltaMinor,
-            getTransferOutDeltaMajor
-        )
-    }
-    if (accountCountsTransactionDate(toAccount, transferDate)) {
-        toAccount.currentBalance = addDeltaToBalance(
-            toAccount,
-            amountMinor,
-            1,
-            getTransferInDeltaMinor,
-            getTransferInDeltaMajor
-        )
-    }
-
-    await fromAccount.save()
-    await toAccount.save()
-}
-
-export const reverseTransferOnAccounts = async (
-    fromAccount: IAccount,
-    toAccount: IAccount,
-    amountMinor: number,
-    transferDate?: Date | string | null
-): Promise<void> => {
-    if (accountCountsTransactionDate(fromAccount, transferDate)) {
-        fromAccount.currentBalance = addDeltaToBalance(
-            fromAccount,
-            amountMinor,
-            -1,
-            getTransferOutDeltaMinor,
-            getTransferOutDeltaMajor
-        )
-    }
-    if (accountCountsTransactionDate(toAccount, transferDate)) {
-        toAccount.currentBalance = addDeltaToBalance(
-            toAccount,
-            amountMinor,
-            -1,
-            getTransferInDeltaMinor,
-            getTransferInDeltaMajor
-        )
-    }
-
-    await fromAccount.save()
-    await toAccount.save()
 }
 
 /**
@@ -450,76 +343,6 @@ export const attachTransferDirections = async <T extends SerializedTransaction>(
         )
         return { ...tx, transferDirection: isInbound ? 'in' : 'out' }
     })
-}
-
-export const applyTransactionToAccount = async (
-    account: IAccount,
-    type: TransactionType,
-    amountMinor: number,
-    transactionDate?: Date | string | null
-): Promise<void> => {
-    if (accountCountsTransactionDate(account, transactionDate)) {
-        account.currentBalance =
-            account.balanceUnit === 'minor'
-                ? account.currentBalance + getBalanceDeltaMinor(type, amountMinor, account.type)
-                : roundMoney(account.currentBalance + getBalanceDeltaMajor(type, amountMinor, account.type))
-    }
-    await account.save()
-}
-
-export const reverseTransactionOnAccount = async (
-    account: IAccount,
-    type: TransactionType,
-    amountMinor: number,
-    transactionDate?: Date | string | null
-): Promise<void> => {
-    if (accountCountsTransactionDate(account, transactionDate)) {
-        account.currentBalance =
-            account.balanceUnit === 'minor'
-                ? account.currentBalance - getBalanceDeltaMinor(type, amountMinor, account.type)
-                : roundMoney(account.currentBalance - getBalanceDeltaMajor(type, amountMinor, account.type))
-    }
-    await account.save()
-}
-
-export const adjustAccountForTransactionChange = async (
-    oldTransaction: ITransaction,
-    newType: TransactionType,
-    newAmountMinor: number,
-    newAccountId: string,
-    newDate?: Date | string | null
-): Promise<void> => {
-    const oldAccount = await Account.findById(oldTransaction.accountId)
-    if (!oldAccount) {
-        throw new CustomError(ERROR_MESSAGES.TRANSACTION.ACCOUNT_NOT_FOUND, 404)
-    }
-
-    const newAccount =
-        oldTransaction.accountId.toString() === newAccountId
-            ? oldAccount
-            : await Account.findById(newAccountId)
-
-    if (!newAccount) {
-        throw new CustomError(ERROR_MESSAGES.TRANSACTION.ACCOUNT_NOT_FOUND, 404)
-    }
-
-    // Reverse using the transaction's *old* date, re-apply with its *new* date:
-    // an edit that moves a transaction across an account's openingBalanceDate
-    // must correctly drop it from / add it to the running balance.
-    const effectiveNewDate = newDate ?? oldTransaction.date
-
-    await reverseTransactionOnAccount(
-        oldAccount,
-        oldTransaction.type,
-        oldTransaction.amount,
-        oldTransaction.date
-    )
-
-    if (newAccount._id.toString() !== oldAccount._id.toString()) {
-        await applyTransactionToAccount(newAccount, newType, newAmountMinor, effectiveNewDate)
-    } else {
-        await applyTransactionToAccount(oldAccount, newType, newAmountMinor, effectiveNewDate)
-    }
 }
 
 export const buildTransactionSort = (
@@ -685,12 +508,12 @@ export const deleteTransactionForUser = async (
             userId
         )
 
-        await reverseTransferOnAccounts(fromAccount, toAccount, transaction.amount, transaction.date)
         const deletedAt = new Date()
         await Transaction.updateMany(
             { _id: { $in: [outbound._id, inbound._id] }, ...buildRecordScopeFilter(transaction) },
             { deletedAt }
         )
+        await refreshAccountBalances([fromAccount._id, toAccount._id])
         return
     }
 
@@ -699,8 +522,6 @@ export const deleteTransactionForUser = async (
         transaction.accountId.toString(),
         userId
     )
-
-    await reverseTransactionOnAccount(account, transaction.type, transaction.amount, transaction.date)
 
     const deletedAt = new Date()
 
@@ -715,6 +536,7 @@ export const deleteTransactionForUser = async (
     }
 
     await Transaction.updateMany({ _id: transaction._id }, { deletedAt })
+    await refreshAccountBalances([account._id])
 }
 
 export { Transaction, toMinorUnits, fromMinorUnits }

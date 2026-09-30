@@ -1,3 +1,6 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { Types } from 'mongoose'
+
 import { Saver } from '@modules/savers'
 import Account, { IAccount } from './account.model'
 import { Transaction } from '@modules/transactions'
@@ -11,7 +14,7 @@ import {
     recomputeAccountBalance,
     UserBalanceSummary,
 } from '@shared/balances'
-import { fromMinorUnits, roundMoney } from '@shared/money'
+import { fromMinorUnits, roundMoney, toMinorUnits } from '@shared/money'
 import { isInboundTransferLeg } from '@shared/transferDirection'
 import { toObjectId } from '@core/db/objectId'
 
@@ -147,14 +150,18 @@ export const recomputeAccountBalanceMajor = async (
     const transactions = await Transaction.find({
         ...scope,
         accountId: account._id,
-    }).select('type amount status splitTransactionId transferPairId createdAt date')
+    })
+        .select('type amount status splitTransactionId transferPairId createdAt date')
+        .lean()
 
     const pairIds = transactions
         .filter((transaction) => transaction.type === 'transfer' && transaction.transferPairId)
         .map((transaction) => transaction.transferPairId!)
 
     const pairs = pairIds.length
-        ? await Transaction.find({ ...scope, _id: { $in: pairIds } }).select('createdAt')
+        ? await Transaction.find({ ...scope, _id: { $in: pairIds } })
+              .select('createdAt')
+              .lean()
         : []
     const pairCreatedAtById = new Map(pairs.map((pair) => [pair._id.toString(), pair.createdAt]))
 
@@ -192,4 +199,93 @@ export const recomputeAccountBalanceMajor = async (
             }
         })
     )
+}
+
+const MAX_REFRESH_ATTEMPTS = 5
+
+const refreshAccountBalance = async (accountId: string): Promise<void> => {
+    for (let attempt = 1; attempt <= MAX_REFRESH_ATTEMPTS; attempt += 1) {
+        const account = await Account.findById(accountId)
+        if (!account) {
+            return
+        }
+
+        const recomputedMajor = await recomputeAccountBalanceMajor(account, account.userId.toString())
+        const next = account.balanceUnit === 'minor' ? toMinorUnits(recomputedMajor) : recomputedMajor
+        if (next === account.currentBalance) {
+            return
+        }
+
+        const scoped = {
+            _id: account._id,
+            ...buildScopedListFilter(account.userId.toString(), account.workspaceId?.toString() ?? null),
+        }
+        const filter =
+            attempt === MAX_REFRESH_ATTEMPTS
+                ? scoped
+                : {
+                      ...scoped,
+                      currentBalance: account.currentBalance,
+                      ...(account.updatedAt ? { updatedAt: account.updatedAt } : {}),
+                  }
+        const result = await Account.updateOne(filter, { $set: { currentBalance: next } })
+        if (result.matchedCount === 1) {
+            return
+        }
+    }
+}
+
+const deferredRefreshes = new AsyncLocalStorage<Set<string>>()
+
+/**
+ * Brings the stored `currentBalance` of each account back in line with its ledger (opening balance
+ * plus every posted, non-split transaction on or after the balance-as-of date). Every transaction
+ * write ends here instead of adding a delta, so drafts, status flips, out-of-order sync replays and
+ * concurrent writers all converge on the same figure. The write is a compare-and-set on the value
+ * the recompute started from; a writer that loses the race recomputes again.
+ *
+ * Inside `withDeferredBalanceRefresh` the ids are only collected and each account is recomputed
+ * once when the outermost scope ends.
+ */
+export const refreshAccountBalances = async (
+    accountIds: ReadonlyArray<Types.ObjectId | string | null | undefined>
+): Promise<void> => {
+    const unique = new Set<string>()
+    for (const accountId of accountIds) {
+        if (accountId) {
+            unique.add(accountId.toString())
+        }
+    }
+
+    const deferred = deferredRefreshes.getStore()
+    if (deferred) {
+        unique.forEach((accountId) => deferred.add(accountId))
+        return
+    }
+
+    for (const accountId of unique) {
+        await refreshAccountBalance(accountId)
+    }
+}
+
+export const withDeferredBalanceRefresh = async <T>(work: () => Promise<T>): Promise<T> => {
+    if (deferredRefreshes.getStore()) {
+        return work()
+    }
+
+    const pending = new Set<string>()
+    let result: T
+    try {
+        result = await deferredRefreshes.run(pending, work)
+    } catch (error) {
+        try {
+            await refreshAccountBalances([...pending])
+        } catch {
+            // the original failure is the one worth reporting
+        }
+        throw error
+    }
+
+    await refreshAccountBalances([...pending])
+    return result
 }

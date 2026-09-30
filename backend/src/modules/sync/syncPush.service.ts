@@ -58,6 +58,7 @@ import {
     updateTransactionForOp,
 } from '@modules/transactions/transaction.service'
 import { assertWorkspaceMembership } from '@modules/workspaces/access'
+import { withDeferredBalanceRefresh } from '@modules/accounts/accountBalance'
 
 export const MAX_PUSH_OPS = 500
 
@@ -633,45 +634,47 @@ export const applyPushBatch = async (
 
     const results: SyncOpResult[] = []
 
-    for (const rawOp of ops as SyncOpInput[]) {
-        validateRequiredFields(rawOp as unknown as Record<string, unknown>, [
-            'opId',
-            'entity',
-            'operation',
-        ])
+    await withDeferredBalanceRefresh(async () => {
+        for (const rawOp of ops as SyncOpInput[]) {
+            validateRequiredFields(rawOp as unknown as Record<string, unknown>, [
+                'opId',
+                'entity',
+                'operation',
+            ])
 
-        const claim = await claimSyncOperation(userId, rawOp)
-        if (!claim.claimed) {
-            results.push({ opId: rawOp.opId, status: claim.status, resultId: claim.resultId })
-            continue
-        }
-
-        try {
-            const outcome = await applyOp(userId, rawOp)
-
-            if (outcome.status === 'applied' || outcome.status === 'noop') {
-                await SyncOperation.updateOne(
-                    { userId, opId: rawOp.opId },
-                    { $set: { status: outcome.status, resultId: outcome.resultId } }
-                )
-            } else {
-                await SyncOperation.deleteOne({ userId, opId: rawOp.opId })
+            const claim = await claimSyncOperation(userId, rawOp)
+            if (!claim.claimed) {
+                results.push({ opId: rawOp.opId, status: claim.status, resultId: claim.resultId })
+                continue
             }
 
-            results.push({
-                opId: rawOp.opId,
-                status: outcome.status,
-                resultId: outcome.resultId,
-                ...(outcome.status === 'conflict' ? { conflict: outcome.conflict } : {}),
-                ...(outcome.status === 'applied' && outcome.updatedAt ? { updatedAt: outcome.updatedAt } : {}),
-            })
-        } catch (error) {
-            await SyncOperation.deleteOne({ userId, opId: rawOp.opId })
-            const message =
-                error instanceof CustomError ? error.message : 'Failed to apply sync operation'
-            results.push({ opId: rawOp.opId, status: 'rejected', resultId: null, message })
+            try {
+                const outcome = await applyOp(userId, rawOp)
+
+                if (outcome.status === 'applied' || outcome.status === 'noop') {
+                    await SyncOperation.updateOne(
+                        { userId, opId: rawOp.opId },
+                        { $set: { status: outcome.status, resultId: outcome.resultId } }
+                    )
+                } else {
+                    await SyncOperation.deleteOne({ userId, opId: rawOp.opId })
+                }
+
+                results.push({
+                    opId: rawOp.opId,
+                    status: outcome.status,
+                    resultId: outcome.resultId,
+                    ...(outcome.status === 'conflict' ? { conflict: outcome.conflict } : {}),
+                    ...(outcome.status === 'applied' && outcome.updatedAt ? { updatedAt: outcome.updatedAt } : {}),
+                })
+            } catch (error) {
+                await SyncOperation.deleteOne({ userId, opId: rawOp.opId })
+                const message =
+                    error instanceof CustomError ? error.message : 'Failed to apply sync operation'
+                results.push({ opId: rawOp.opId, status: 'rejected', resultId: null, message })
+            }
         }
-    }
+    })
 
     const checkpoint = await computeCurrentCheckpoint(userId, workspaceId)
     return { results, checkpoint }

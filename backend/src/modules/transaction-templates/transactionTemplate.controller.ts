@@ -16,7 +16,8 @@ import {
 import { assertAccountMatchesWorkspace, parseOptionalWorkspaceId } from '@core/access/workspace'
 import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
 import { evaluateBudgetOverLimitNotifications } from "@modules/notifications/notificationUtils";
-import { applyTransactionToAccount, serializeTransactionWithSplits, validateAccountForTransaction } from "@modules/transactions/transactionUtils";
+import { serializeTransactionWithSplits, validateAccountForTransaction } from "@modules/transactions/transactionUtils";
+import { refreshAccountBalances } from "@modules/accounts/accountBalance";
 import { assertWorkspaceMembership } from "@modules/workspaces/access";
 import { getUserId } from "@core/auth/requestUser";
 import { handleResponses } from "@core/http/response";
@@ -205,7 +206,7 @@ export const applyTransactionTemplate = asyncHandler(async (req: AuthRequest, re
         tags: template.tags,
     })
 
-    await applyTransactionToAccount(account, transaction.type, transaction.amount)
+    await refreshAccountBalances([account._id])
 
     const payload = await serializeTransactionWithSplits(transaction, userId)
     await evaluateBudgetOverLimitNotifications(userId, transaction)

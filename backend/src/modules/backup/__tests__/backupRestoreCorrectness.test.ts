@@ -6,6 +6,7 @@ import { Types } from 'mongoose'
 
 import app from '@http/app'
 import { Account } from '@modules/accounts'
+import { recomputeAccountBalanceMajor } from '@modules/accounts/accountBalance'
 import { CategorizationRule } from '@modules/categorization-rules'
 import { Category } from '@modules/categories'
 import { Receipt } from '@modules/receipts'
@@ -729,5 +730,49 @@ describe('Backup restore - transfer direction (BUG-67 interim)', () => {
             .post(`/api/v1/accounts/${restoredChecking?._id.toString()}/recompute-balance`)
             .set(authHeader(target.token))
         expect(recomputeChecking.body.data.recomputedBalance).toBeCloseTo(970, 2)
+    })
+})
+
+describe('Backup restore - stored balances follow the restored ledger (S52)', () => {
+    it('re-derives currentBalance instead of trusting the exported figure', async () => {
+        const target = await seedUserDirectly({ email: 's52-restore-balance@example.com' })
+        const foodId = await getMasterId(target.token, 'Food')
+
+        const payload = buildPayload({
+            categories: [{ id: 'c1', name: 'Takeout', masterCategoryId: foodId }],
+            accounts: [
+                {
+                    id: 'a1',
+                    name: 'Checking',
+                    type: 'checking',
+                    currency: 'USD',
+                    openingBalance: 1000,
+                    currentBalance: 5000,
+                },
+            ],
+            transactions: [
+                {
+                    id: 'x1',
+                    accountId: 'a1',
+                    categoryId: 'c1',
+                    type: 'expense',
+                    amount: 2500,
+                    currency: 'USD',
+                    title: 'Dinner',
+                    date: '2026-01-15T00:00:00.000Z',
+                },
+            ],
+        })
+
+        const res = await request(app)
+            .post('/api/v1/backup/restore')
+            .set(authHeader(target.token))
+            .send({ backup: payload })
+        expect(res.status).toBe(201)
+
+        const account = await Account.findOne({ userId: target.userId })
+        const recomputed = await recomputeAccountBalanceMajor(account!, target.userId)
+        expect(account!.currentBalance).toBeCloseTo(975, 2)
+        expect(account!.currentBalance).toBeCloseTo(recomputed, 2)
     })
 })

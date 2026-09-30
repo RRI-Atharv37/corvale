@@ -12,7 +12,8 @@ import { fromMinorUnits, parseAmountToMinorUnits } from '@core/money/moneyUtils'
 import { dateStringInTimezone, endOfDayInTimezone, startOfDayInTimezone } from '@core/time/timezoneUtils'
 import { advanceNextDueDate as sharedAdvanceNextDueDate } from '@shared/categorization'
 import { assertAccountMatchesWorkspace, buildScopedListFilter } from '@core/access/workspace'
-import { applyTransactionToAccount, serializeTransaction, SerializedTransaction, validateAccountForTransaction, validateCategoryForTransaction } from "@modules/transactions/transactionUtils";
+import { buildRecordScopeFilter, serializeTransaction, SerializedTransaction, validateAccountForTransaction, validateCategoryForTransaction } from "@modules/transactions/transactionUtils";
+import { refreshAccountBalances } from "@modules/accounts/accountBalance";
 
 export interface SerializedRecurringRule {
     _id: Types.ObjectId
@@ -160,42 +161,56 @@ export const generateDraftsForRule = async (
     const generated: SerializedTransaction[] = []
     let iterations = 0
 
+    const ruleScope = buildScopedListFilter(userId, rule.workspaceId?.toString() ?? null)
+
     while (rule.nextDueDate <= endOfToday && iterations < MAX_CATCHUP_DRAFTS) {
         const dueDate = new Date(rule.nextDueDate)
-
-        const duplicate = await hasDraftForDueDate(userId, rule, dueDate, timezone)
-        if (!duplicate) {
-            const draft = await Transaction.create({
-                userId,
-                workspaceId: rule.workspaceId ?? null,
-                accountId: rule.accountId,
-                categoryId: rule.categoryId,
-                type: rule.type,
-                status: 'draft',
-                amount: rule.amount,
-                currency: rule.currency,
-                title: rule.title,
-                description: rule.description,
-                date: dueDate,
-                paymentMethod: rule.paymentMethod,
-                tags: rule.tags,
-                recurringPaymentId: rule._id,
-            })
-
-            generated.push(serializeTransaction(draft))
-        }
-
-        rule.nextDueDate = advanceNextDueDate(
+        const followingDueDate = advanceNextDueDate(
             rule.nextDueDate,
             rule.interval,
             rule.customIntervalDays,
             timezone
         )
-        iterations += 1
-    }
 
-    if (iterations > 0) {
-        await rule.save()
+        const claim = await RecurringRule.updateOne(
+            { _id: rule._id, ...ruleScope, nextDueDate: dueDate },
+            { $set: { nextDueDate: followingDueDate } }
+        )
+        if (claim.matchedCount === 0) {
+            break
+        }
+        rule.nextDueDate = followingDueDate
+        iterations += 1
+
+        try {
+            const duplicate = await hasDraftForDueDate(userId, rule, dueDate, timezone)
+            if (!duplicate) {
+                const draft = await Transaction.create({
+                    userId,
+                    workspaceId: rule.workspaceId ?? null,
+                    accountId: rule.accountId,
+                    categoryId: rule.categoryId,
+                    type: rule.type,
+                    status: 'draft',
+                    amount: rule.amount,
+                    currency: rule.currency,
+                    title: rule.title,
+                    description: rule.description,
+                    date: dueDate,
+                    paymentMethod: rule.paymentMethod,
+                    tags: rule.tags,
+                    recurringPaymentId: rule._id,
+                })
+
+                generated.push(serializeTransaction(draft))
+            }
+        } catch (error) {
+            await RecurringRule.updateOne(
+                { _id: rule._id, ...ruleScope, nextDueDate: followingDueDate },
+                { $set: { nextDueDate: dueDate } }
+            )
+            throw error
+        }
     }
 
     return generated
@@ -241,11 +256,17 @@ export const confirmRecurringDraft = async (
 
     const account = await validateAccountForTransaction(transaction.accountId.toString(), userId)
 
-    transaction.status = 'posted'
-    await transaction.save()
-    await applyTransactionToAccount(account, transaction.type, transaction.amount, transaction.date)
+    const posted = await Transaction.findOneAndUpdate(
+        { _id: transaction._id, ...buildRecordScopeFilter(transaction), status: 'draft' },
+        { $set: { status: 'posted' } },
+        { new: true }
+    )
+    if (!posted) {
+        throw new CustomError(ERROR_MESSAGES.RECURRING.NOT_A_DRAFT, 400)
+    }
+    await refreshAccountBalances([account._id])
 
-    return serializeTransaction(transaction)
+    return serializeTransaction(posted)
 }
 
 export const dismissRecurringDraft = async (transaction: ITransaction): Promise<void> => {

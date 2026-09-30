@@ -4,10 +4,7 @@ import { ITransaction, TransactionStatus } from './transaction.model'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
-    adjustAccountForTransactionChange,
-    applyTransactionToAccount,
     buildRecordScopeFilter,
-    applyTransferToAccounts,
     assertEditableTransaction,
     deleteTransactionForUser,
     duplicateTransactionFields,
@@ -34,6 +31,7 @@ import { evaluateBudgetOverLimitNotifications } from "@modules/notifications/not
 import { applyCategorizationRules, mergeTags } from "@modules/categorization-rules/categorizationRuleUtils";
 import { validateReceiptOwnership } from '@modules/receipts/receiptUtils'
 import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
+import { refreshAccountBalances } from '@modules/accounts/accountBalance'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 
@@ -207,12 +205,7 @@ export const createTransactionForUser = async (
         throw error
     }
 
-    await applyTransactionToAccount(
-        account,
-        type as (typeof SUPPORTED_CREATE_TYPES)[number],
-        amountMinor,
-        transaction.date
-    )
+    await refreshAccountBalances([account._id])
 
     if (hasSplits) {
         await createSplitChildren(
@@ -242,15 +235,9 @@ export const createTransactionForUser = async (
 /**
  * Delete-transaction logic for POST /sync/push.
  *
- * Unlike the REST DELETE endpoint's deleteTransactionForUser, this does NOT
- * incrementally reverse the account balance. Per the "Account balance" architecture
- * decision ("... never a syncable field ... out-of-order
- * offline replay would drift silently with no way to heal it"), an
- * offline-originated delete can arrive out of order relative to other
- * offline mutations, so incremental reversal here is unsafe - this only
- * tombstones the record (and cascades to its transfer-pair/split-children).
- * Balance correctness after a sync session is restored via
- * POST /accounts/:accountId/recompute-balance, not incremental math.
+ * Tombstones the record (and cascades to its transfer-pair/split-children), then recomputes the
+ * balance of every account it sat on from the ledger (BUG-69). Offline deletes can arrive out of
+ * order, so the stored balance is re-derived rather than adjusted by a delta.
  */
 export const deleteTransactionForOp = async (
     userId: string,
@@ -276,6 +263,10 @@ export const deleteTransactionForOp = async (
     const deletedAt = new Date()
 
     if (isTransferLeg(transaction) && transaction.transferPairId) {
+        const pair = await Transaction.findOne({
+            _id: transaction.transferPairId,
+            ...buildRecordScopeFilter(transaction),
+        }).select('accountId')
         await Transaction.updateMany(
             {
                 _id: { $in: [transaction._id, transaction.transferPairId] },
@@ -283,6 +274,7 @@ export const deleteTransactionForOp = async (
             },
             { deletedAt }
         )
+        await refreshAccountBalances([transaction.accountId, pair?.accountId])
         return transaction._id.toString()
     }
 
@@ -298,17 +290,15 @@ export const deleteTransactionForOp = async (
     }
 
     await Transaction.updateMany({ _id: transaction._id }, { deletedAt })
+    await refreshAccountBalances([transaction.accountId])
     return transaction._id.toString()
 }
 
 /**
  * Update-transaction logic for POST /sync/push (Sprint 13.3).
  *
- * Unlike updateTransaction's REST behavior, this never adjusts the account
- * balance incrementally, matching deleteTransactionForOp's rationale above:
- * an offline-originated update can arrive out of order relative to other
- * offline mutations, so incremental reversal/reapplication here is unsafe.
- * Balance correctness is restored via POST /accounts/:accountId/recompute-balance.
+ * Recomputes the balance of the account(s) the record sits on after the save, for the same reason
+ * as deleteTransactionForOp (BUG-69).
  */
 export const updateTransactionForOp = async (
     userId: string,
@@ -369,6 +359,18 @@ export const updateTransactionForOp = async (
     if (status !== undefined) transaction.status = status
 
     await transaction.save()
+
+    const pairAccountId =
+        isTransferLeg(transaction) && transaction.transferPairId
+            ? (
+                  await Transaction.findOne({
+                      _id: transaction.transferPairId,
+                      ...buildRecordScopeFilter(transaction),
+                  }).select('accountId')
+              )?.accountId
+            : null
+    await refreshAccountBalances([transaction.accountId, pairAccountId])
+
     await evaluateBudgetOverLimitNotifications(userId, transaction)
     return transaction
 }
@@ -473,8 +475,6 @@ export const createTransferForOp = async (
 
         outbound.transferPairId = inbound._id
         await outbound.save()
-
-        await applyTransferToAccounts(fromAccount, toAccount, amountMinor, parsedDate)
     } catch (error) {
         if (inbound) {
             await Transaction.deleteOne({ _id: inbound._id })
@@ -484,6 +484,8 @@ export const createTransferForOp = async (
         }
         throw error
     }
+
+    await refreshAccountBalances([fromAccount._id, toAccount._id])
 
     return outbound._id.toString()
 }
@@ -616,8 +618,6 @@ export const createTransfer = async (userId: string, body: Record<string, unknow
 
         outbound.transferPairId = inbound._id
         await outbound.save()
-
-        await applyTransferToAccounts(fromAccount, toAccount, amountMinor, parsedDate)
     } catch (error) {
         if (inbound) {
             await Transaction.deleteOne({ _id: inbound._id })
@@ -627,6 +627,8 @@ export const createTransfer = async (userId: string, body: Record<string, unknow
         }
         throw error
     }
+
+    await refreshAccountBalances([fromAccount._id, toAccount._id])
 
     return {
         outbound: serializeTransaction(outbound),
@@ -671,9 +673,7 @@ export const updateTransactionForUser = async (
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.UNSUPPORTED_TYPE, 400)
     }
 
-    const nextType = (type ?? transaction.type) as ITransaction['type']
     const nextAmountMinor = amount !== undefined ? parseClientAmount(amount) : transaction.amount
-    const nextAccountId = accountId ?? transaction.accountId.toString()
 
     if (date !== undefined && isNaN(Date.parse(date))) {
         throw new CustomError('Invalid date format', 400)
@@ -689,22 +689,7 @@ export const updateTransactionForUser = async (
         await validateCategoryForTransaction(categoryId, userId)
     }
 
-    const dateChanged = nextDate.getTime() !== transaction.date.getTime()
-    const balanceChanged =
-        nextType !== transaction.type ||
-        nextAmountMinor !== transaction.amount ||
-        nextAccountId !== transaction.accountId.toString() ||
-        dateChanged
-
-    if (balanceChanged) {
-        await adjustAccountForTransactionChange(
-            transaction,
-            nextType,
-            nextAmountMinor,
-            nextAccountId,
-            nextDate
-        )
-    }
+    const previousAccountId = transaction.accountId
 
     if (title !== undefined) transaction.title = title.trim()
     if (amount !== undefined) transaction.amount = nextAmountMinor
@@ -724,6 +709,7 @@ export const updateTransactionForUser = async (
     if (status !== undefined) transaction.status = status as TransactionStatus
 
     await transaction.save()
+    await refreshAccountBalances([previousAccountId, transaction.accountId])
     await evaluateBudgetOverLimitNotifications(userId, transaction)
     return serializeTransaction(transaction)
 }
@@ -752,7 +738,7 @@ export const duplicateTransaction = async (transactionId: string, userId: string
 
     const account = await validateAccountForTransaction(transaction.accountId.toString(), userId)
     const duplicate = await Transaction.create(duplicateTransactionFields(transaction, userId))
-    await applyTransactionToAccount(account, duplicate.type, duplicate.amount)
+    await refreshAccountBalances([account._id])
 
     return serializeTransaction(duplicate)
 }

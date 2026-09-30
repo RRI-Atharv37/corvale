@@ -21,8 +21,8 @@ import {
 import { assertAccountMatchesWorkspace, parseOptionalWorkspaceId } from '@core/access/workspace'
 import { applyCategorizationRules, mergeTags } from '@modules/categorization-rules/categorizationRuleUtils'
 import { evaluateBudgetOverLimitNotifications } from '@modules/notifications/notificationUtils'
+import { withDeferredBalanceRefresh, refreshAccountBalances } from '@modules/accounts/accountBalance'
 import {
-    applyTransactionToAccount,
     parseClientAmount,
     validateAccountForTransaction,
     validateCategoryForTransaction,
@@ -401,46 +401,48 @@ export const commitImport = async (input: ImportRequestInput) => {
     const mergedIds: string[] = []
     let skipped = previewItems.length - validItems.length + rowErrors.length
 
-    for (const item of validItems) {
-        const action = resolveDuplicateAction(item, rowDecisions)
+    await withDeferredBalanceRefresh(async () => {
+        for (const item of validItems) {
+            const action = resolveDuplicateAction(item, rowDecisions)
 
-        if (action === 'skip') {
-            if (item.duplicateOf) {
-                skipped += 1
+            if (action === 'skip') {
+                if (item.duplicateOf) {
+                    skipped += 1
+                }
+                continue
             }
-            continue
-        }
 
-        if (action === 'merge') {
-            if (!item.duplicateOf) {
-                throw new CustomError(ERROR_MESSAGES.IMPORT.INVALID_MERGE_TARGET, 400)
+            if (action === 'merge') {
+                if (!item.duplicateOf) {
+                    throw new CustomError(ERROR_MESSAGES.IMPORT.INVALID_MERGE_TARGET, 400)
+                }
+                await mergeImportIntoTransaction(input.userId, item.duplicateOf.transactionId, item)
+                mergedIds.push(item.duplicateOf.transactionId)
+                continue
             }
-            await mergeImportIntoTransaction(input.userId, item.duplicateOf.transactionId, item)
-            mergedIds.push(item.duplicateOf.transactionId)
-            continue
+
+            const amountMinor = parseClientAmount(item.amount)
+            const transaction = await Transaction.create({
+                userId: input.userId,
+                workspaceId: resolvedWorkspaceId,
+                accountId: input.accountId,
+                categoryId: item.categoryId,
+                type: item.type,
+                status: 'posted',
+                amount: amountMinor,
+                currency: account.currency,
+                title: item.title,
+                description: item.description,
+                date: new Date(`${item.date}T12:00:00.000Z`),
+                tags: item.tags,
+                externalId: item.externalId,
+            })
+
+            await refreshAccountBalances([account._id])
+            await evaluateBudgetOverLimitNotifications(input.userId, transaction)
+            createdIds.push(transaction._id.toString())
         }
-
-        const amountMinor = parseClientAmount(item.amount)
-        const transaction = await Transaction.create({
-            userId: input.userId,
-            workspaceId: resolvedWorkspaceId,
-            accountId: input.accountId,
-            categoryId: item.categoryId,
-            type: item.type,
-            status: 'posted',
-            amount: amountMinor,
-            currency: account.currency,
-            title: item.title,
-            description: item.description,
-            date: new Date(`${item.date}T12:00:00.000Z`),
-            tags: item.tags,
-            externalId: item.externalId,
-        })
-
-        await applyTransactionToAccount(account, item.type, amountMinor, transaction.date)
-        await evaluateBudgetOverLimitNotifications(input.userId, transaction)
-        createdIds.push(transaction._id.toString())
-    }
+    })
 
     return {
         imported: createdIds.length,
