@@ -23,6 +23,7 @@ type DialogKind =
   | 'refund'
   | 'cancelPeriodEnd'
   | 'cancelNow'
+  | 'clearDispute'
   | 'recomputeUsage'
   | 'revokeDevice'
   | 'applyResync'
@@ -303,6 +304,19 @@ const Dialogs = ({ kind, userId, detail, meta, invoice, deviceRef, done, cancel 
     )
   }
 
+  if (kind === 'clearDispute') {
+    return (
+      <ActionDialog
+        title="Clear dispute"
+        submitLabel="Clear dispute"
+        variant="danger"
+        description="Lifts the lock a chargeback put on this subscription. It stays cancelled, but the subscriber can start a new checkout and provider events apply to it again. Do this only once the dispute is resolved or the subscriber has been reinstated by hand."
+        onCancel={cancel}
+        onSubmit={(reason) => runWithStepUp(() => api.clearDispute(userId, { reason }))}
+      />
+    )
+  }
+
   if (kind === 'applyResync') {
     return (
       <ActionDialog
@@ -453,6 +467,12 @@ const SubscriberDetailPage = () => {
           </Button>
         </div>
       ) : null}
+      {canMoney && sub?.disputedAt ? (
+        <div className="flex flex-wrap items-center gap-2" aria-label="Dispute" role="group">
+          <p className="text-sm text-text-muted">Disputed on {formatDateTime(sub.disputedAt)}; access stays revoked until cleared.</p>
+          <Button onClick={() => setDialog('clearDispute')}>Clear dispute</Button>
+        </div>
+      ) : null}
       {canMoney && resyncError ? <ErrorAlert message={resyncError} /> : null}
       {canMoney && resync ? (
         resync.differences.length === 0 ? (
@@ -510,6 +530,7 @@ const SubscriberDetailPage = () => {
                 ['Grandfathered', humanize(sub.grandfatherKind)],
                 ['Admin grant', sub.adminGrant ? `${humanize(sub.adminGrant.kind)}${sub.adminGrant.planCode ? ` (${sub.adminGrant.planCode})` : ''} until ${formatDateTime(sub.adminGrant.until)}` : '-'],
                 ['Erasure hold until', formatDateTime(sub.retentionHoldUntil)],
+                ['Disputed on', formatDateTime(sub.disputedAt)],
                 ['Provider customer', sub.providerCustomerId ?? '-'],
                 ['Provider subscription', sub.providerSubscriptionId ?? '-'],
                 ['Last provider event', formatDateTime(sub.lastEventAt)],

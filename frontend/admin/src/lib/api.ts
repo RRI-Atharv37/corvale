@@ -229,6 +229,9 @@ export const api = {
   async cancelNow(userId: string, body: { reason: string }): Promise<{ requested: true }> {
     return data(await http.post<{ data: { requested: true } }>(`/subscribers/${userId}/cancel/now`, body))
   },
+  async clearDispute(userId: string, body: { reason: string }): Promise<{ disputedAt: null }> {
+    return data(await http.post<{ data: { disputedAt: null } }>(`/subscribers/${userId}/dispute/clear`, body))
+  },
   async previewResync(userId: string): Promise<{ differences: ResyncDiff[] }> {
     return data(await http.get<{ data: { differences: ResyncDiff[] } }>(`/subscribers/${userId}/resync/preview`))
   },

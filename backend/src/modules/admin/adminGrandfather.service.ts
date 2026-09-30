@@ -3,6 +3,7 @@ import { Types } from 'mongoose'
 import { GRANDFATHER_KINDS, type GrandfatherKind } from '@core/billing/constants'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { createMissingTrialRows, findUserIdsWithoutSubscription } from '@modules/billing'
 
 import { recordAudit, validateReason } from './adminAudit.service'
 import {
@@ -124,17 +125,27 @@ interface CohortInput {
 
 const resolveCohort = (registeredBefore: Date) => findUserIdsRegisteredBefore(registeredBefore)
 
+/**
+ * BUG-42: users who registered while billing was off have no subscription row at all. They belong to
+ * the cohort too: applying it creates their row (a 30-day trial, already grandfathered) instead of
+ * leaving them read-only and unreachable at go-live.
+ */
 /** Preview only: never audited, the same way the subscriber list page is never audited - it shows masked emails, not a full detail view. */
 export const previewGrandfatherCohort = async (input: CohortInput, now: Date = new Date()) => {
     const kind = parseKind(input.kind)
     const registeredBefore = parseCutoff(input.registeredBefore, now)
 
     const userIds = await resolveCohort(registeredBefore)
-    const [count, sampleRows] = await Promise.all([countCohortSubscriptions(userIds), findCohortSubscriptions(userIds, COHORT_SAMPLE_SIZE)])
-    const emails = await findUserEmails(sampleRows.map((row) => row.userId))
-    const sample = sampleRows.map((row) => maskEmail(emails.get(row.userId.toString()) ?? ''))
+    const [rowless, existingCount, sampleRows] = await Promise.all([
+        findUserIdsWithoutSubscription(userIds),
+        countCohortSubscriptions(userIds),
+        findCohortSubscriptions(userIds, COHORT_SAMPLE_SIZE),
+    ])
+    const sampleUserIds = [...sampleRows.map((row) => row.userId), ...rowless].slice(0, COHORT_SAMPLE_SIZE)
+    const emails = await findUserEmails(sampleUserIds)
+    const sample = sampleUserIds.map((id) => maskEmail(emails.get(id.toString()) ?? ''))
 
-    return { kind, registeredBefore, count, sample }
+    return { kind, registeredBefore, count: existingCount + rowless.length, sample }
 }
 
 export const applyGrandfatherCohort = async (
@@ -151,12 +162,15 @@ export const applyGrandfatherCohort = async (
     }
 
     const userIds = await resolveCohort(registeredBefore)
-    const rows = await findCohortSubscriptions(userIds)
-    if (rows.length === 0) throw new CustomError(ERROR_MESSAGES.ADMIN.COHORT_EMPTY, 400)
-    if (input.confirmCount !== rows.length) throw new CustomError(ERROR_MESSAGES.ADMIN.COHORT_COUNT_MISMATCH, 409)
+    const [rowless, rows] = await Promise.all([findUserIdsWithoutSubscription(userIds), findCohortSubscriptions(userIds)])
+    const total = rows.length + rowless.length
+    if (total === 0) throw new CustomError(ERROR_MESSAGES.ADMIN.COHORT_EMPTY, 400)
+    if (input.confirmCount !== total) throw new CustomError(ERROR_MESSAGES.ADMIN.COHORT_COUNT_MISMATCH, 409)
 
-    const subscriptionIds = rows.map((row) => row._id)
-    const appliedCount = await applyCohortGrandfather(subscriptionIds, kind)
+    const createdIds = await createMissingTrialRows(rowless, { grandfatherKind: kind, now })
+    const existingIds = rows.map((row) => row._id)
+    const subscriptionIds = [...existingIds, ...createdIds]
+    const appliedCount = (await applyCohortGrandfather(existingIds, kind)) + createdIds.length
 
     const batch = await GrandfatherBatch.create({
         kind,

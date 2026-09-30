@@ -74,6 +74,7 @@ interface SubscriptionLike {
     grandfatherKind: string | null
     adminGrant?: GrantLike | null
     retentionHoldUntil?: Date | null
+    disputedAt?: Date | null
     providerCustomerId: string | null
     providerSubscriptionId: string | null
     lastEventAt: Date | null
@@ -158,6 +159,7 @@ export const toSubscriberDetailSubscription = (sub: SubscriptionLike) => ({
     grandfatherKind: sub.grandfatherKind,
     adminGrant: toAdminGrantView(sub.adminGrant),
     retentionHoldUntil: sub.retentionHoldUntil ?? null,
+    disputedAt: sub.disputedAt ?? null,
     providerCustomerId: sub.providerCustomerId,
     providerSubscriptionId: sub.providerSubscriptionId,
     lastEventAt: sub.lastEventAt,

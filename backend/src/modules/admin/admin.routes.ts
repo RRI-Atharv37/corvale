@@ -16,6 +16,7 @@ import { cohortApply, cohortBatches, cohortDryRun, cohortRevert, grandfather, gr
 import {
     cancelSubscriptionAtPeriodEnd,
     cancelSubscriptionNow,
+    disputeClear,
     invoices,
     recomputeSubscriberUsage,
     refund,
@@ -84,6 +85,7 @@ export const createAdminRoutes = (): express.Router => {
     router.post('/subscribers/:userId/refund', protectAdmin, requireCapability('money.write'), requireStepUp, refund)
     router.post('/subscribers/:userId/cancel', protectAdmin, requireCapability('money.write'), cancelSubscriptionAtPeriodEnd)
     router.post('/subscribers/:userId/cancel/now', protectAdmin, requireCapability('money.write'), requireStepUp, cancelSubscriptionNow)
+    router.post('/subscribers/:userId/dispute/clear', protectAdmin, requireCapability('money.write'), requireStepUp, disputeClear)
     router.get('/subscribers/:userId/resync/preview', protectAdmin, requireCapability('money.write'), resyncPreview)
     router.post('/subscribers/:userId/resync/apply', protectAdmin, requireCapability('money.write'), resyncApply)
     router.post('/subscribers/:userId/recompute-usage', protectAdmin, requireCapability('grants.write'), recomputeSubscriberUsage)

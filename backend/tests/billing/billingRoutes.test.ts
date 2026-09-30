@@ -124,6 +124,14 @@ describe('GET /billing/overview', () => {
         expect(res.body.data).toMatchObject({ hasBillingCustomer: true, hasLiveSubscription: false })
     })
 
+    it('BUG-44: a past-due subscription past the grace window is still live, so the page offers cancel and not a second checkout', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.past_due_grace_elapsed, providerCustomerId: 'cus_mine', providerSubscriptionId: 'sub_mine' })
+
+        const res = await api('get', '/overview')
+
+        expect(res.body.data).toMatchObject({ hasBillingCustomer: true, hasLiveSubscription: true })
+    })
+
     it('states the retention window only while the server is actually enforcing it', async () => {
         process.env.BILLING_RETENTION_ENABLED = 'true'
         process.env.BILLING_RETENTION_DAYS = '120'
@@ -163,10 +171,41 @@ describe('POST /billing/checkout - one live subscription per user', () => {
         expect((await api('post', '/checkout', user.token, { planCode: 'pro', interval: 'annual' })).status).toBe(409)
     })
 
-    it.each(['cancelled', 'trial_expired', 'past_due_grace_elapsed'])('allows a fresh checkout from the lapsed %s state', async (state) => {
+    it.each(['cancelled', 'trial_expired', 'cancelling_period_elapsed'])('allows a fresh checkout from the lapsed %s state', async (state) => {
         await setSubscription(user.userId, { ...BILLING_STATES[state], providerSubscriptionId: 'sub_old' })
 
         expect((await api('post', '/checkout', user.token, { planCode: 'pro', interval: 'monthly' })).status).toBe(200)
+    })
+
+    it('BUG-44: refuses a second checkout while a past-due subscription the provider is still retrying is past the grace window', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.past_due_grace_elapsed, providerSubscriptionId: 'sub_mine' })
+
+        const res = await api('post', '/checkout', user.token, { planCode: 'pro', interval: 'monthly' })
+
+        expect(res.status).toBe(409)
+        expect(res.body.message).toBe(ERROR_MESSAGES.BILLING.ALREADY_SUBSCRIBED)
+        expect(calls.createCheckoutSession).toHaveLength(0)
+    })
+
+    it('BUG-44: a staff comp lifting a lapsed subscription to writable does not make it live for checkout', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerSubscriptionId: 'sub_old' })
+        await Subscription.updateOne(
+            { userId: user.userId },
+            { $set: { adminGrant: { kind: 'comp', planCode: 'pro', until: daysFromNow(10), limits: null, grantedBy: user.userId, grantedAt: new Date() } } }
+        )
+
+        expect((await api('post', '/checkout', user.token, { planCode: 'pro', interval: 'monthly' })).status).toBe(200)
+    })
+
+    it('BUG-43: refuses checkout for an account whose subscription was disputed, until staff clear it', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerSubscriptionId: 'sub_old' })
+        await Subscription.updateOne({ userId: user.userId }, { $set: { disputedAt: new Date() } })
+
+        const res = await api('post', '/checkout', user.token, { planCode: 'pro', interval: 'monthly' })
+
+        expect(res.status).toBe(409)
+        expect(res.body.message).toBe(ERROR_MESSAGES.BILLING.DISPUTED)
+        expect(calls.createCheckoutSession).toHaveLength(0)
     })
 
     it('answers 404 while billing is off', async () => {
@@ -292,6 +331,15 @@ describe('POST /billing/cancel', () => {
         await setSubscription(user.userId, { ...BILLING_STATES.past_due_in_grace, providerSubscriptionId: 'sub_mine' })
 
         expect((await api('post', '/cancel')).status).toBe(202)
+    })
+
+    it('BUG-44: can cancel a past-due subscription after the grace window, while the provider is still retrying it', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.past_due_grace_elapsed, providerSubscriptionId: 'sub_mine' })
+
+        const res = await api('post', '/cancel')
+
+        expect(res.status).toBe(202)
+        expect(calls.cancelSubscription).toEqual([{ providerSubscriptionId: 'sub_mine' }])
     })
 
     it('requires authentication', async () => {

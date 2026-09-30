@@ -41,6 +41,8 @@ export interface ISubscription extends Document {
     grandfatherKind: GrandfatherKind | null
     adminGrant: ISubscriptionAdminGrant | null
     retentionHoldUntil: Date | null
+    /** Set when a chargeback opens; provider events can no longer restore paid access until staff clear it. */
+    disputedAt: Date | null
     providerCustomerId: string | null
     providerSubscriptionId: string | null
     lastEventAt: Date | null
@@ -83,6 +85,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
         grandfatherKind: { type: String, enum: [null, ...GRANDFATHER_KINDS], default: null },
         adminGrant: { type: adminGrantSchema, default: null },
         retentionHoldUntil: { type: Date, default: null },
+        disputedAt: { type: Date, default: null },
         providerCustomerId: { type: String, default: null },
         providerSubscriptionId: { type: String, default: null },
         lastEventAt: { type: Date, default: null },

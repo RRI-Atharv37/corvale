@@ -1,10 +1,10 @@
 import { PLAN_CODES, type PlanCode } from '@core/billing/constants'
-import { TRIAL_LENGTH_DAYS } from '@core/billing/entitlements'
+import { TRIAL_LENGTH_DAYS, deriveProviderState } from '@core/billing/entitlements'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { User } from '@modules/users'
 
-import { getUserEntitlements, isBillingEnabled } from './entitlement.service'
+import { getPastDueGraceDays, getUserEntitlements, isBillingEnabled } from './entitlement.service'
 import { DEFAULT_PLAN_CATALOGUE, type PlanCatalogueEntry } from './planCatalogue'
 import Plan from './plan.model'
 import { BILLING_INTERVALS, type BillingInterval, type ProviderInvoice } from './providers/billingProvider'
@@ -87,14 +87,21 @@ export const getPublicPlans = async (): Promise<PublicPlans> => {
 }
 
 /**
- * "Live" means the provider is still billing it and the account can still write: an ended
- * subscription keeps its provider link but cannot be changed, only replaced by a new checkout.
+ * "Live" means the provider is still billing it, which is not the same as the account being able to
+ * write: a past-due subscription keeps being retried after the grace window closes, so it stays live
+ * (cancellable, and no second checkout) while the account is read-only. An ended subscription keeps
+ * its provider link but cannot be changed, only replaced by a new checkout. Only the provider-owned
+ * state counts here, so a staff comp that lifts a lapsed account never makes it live.
  */
+const isProviderLive = (subscription: ISubscription | null, now: Date): subscription is ISubscription & { providerSubscriptionId: string } => {
+    if (!subscription?.providerSubscriptionId || !LIVE_STATUSES.includes(subscription.status)) return false
+
+    return LIVE_STATUSES.includes(deriveProviderState(subscription, now, getPastDueGraceDays()).status)
+}
+
 const loadLiveSubscription = async (userId: string): Promise<ISubscription | null> => {
     const subscription = await Subscription.findOne({ userId })
-    if (!subscription?.providerSubscriptionId || !LIVE_STATUSES.includes(subscription.status)) return null
-
-    return (await getUserEntitlements(userId)).canWrite ? subscription : null
+    return isProviderLive(subscription, new Date()) ? subscription : null
 }
 
 const requireLiveSubscription = async (userId: string): Promise<ISubscription & { providerSubscriptionId: string }> => {
@@ -122,7 +129,9 @@ export const getBillingOverview = async (userId: string): Promise<BillingOvervie
 export const startCheckout = async (userId: string, selection: PlanSelection): Promise<{ url: string }> => {
     assertBillingEnabled()
 
-    if (await loadLiveSubscription(userId)) throw new CustomError(ERROR_MESSAGES.BILLING.ALREADY_SUBSCRIBED, 409)
+    const subscription = await Subscription.findOne({ userId })
+    if (isProviderLive(subscription, new Date())) throw new CustomError(ERROR_MESSAGES.BILLING.ALREADY_SUBSCRIBED, 409)
+    if (subscription?.disputedAt) throw new CustomError(ERROR_MESSAGES.BILLING.DISPUTED, 409)
 
     const user = await User.findById(userId).select('email').lean()
     if (!user) throw new CustomError(ERROR_MESSAGES.USER.USER_NOT_FOUND, 404)

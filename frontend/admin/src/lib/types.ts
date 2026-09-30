@@ -108,6 +108,7 @@ export interface SubscriptionView {
   grandfatherKind: string | null
   adminGrant: AdminGrantView | null
   retentionHoldUntil: string | null
+  disputedAt: string | null
   providerCustomerId: string | null
   providerSubscriptionId: string | null
   lastEventAt: string | null

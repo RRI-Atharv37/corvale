@@ -132,6 +132,7 @@ describe('recordAudit', () => {
             'trial.extended',
             'erasure.hold_set',
             'erasure.hold_cleared',
+            'dispute.cleared',
         ]) {
             expect(ADMIN_AUDIT_ACTIONS).toContain(action)
         }

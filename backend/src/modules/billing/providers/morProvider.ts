@@ -144,6 +144,26 @@ const adjustmentEventType = (eventType: string, action: string | undefined, stat
     return created && action === 'chargeback' ? 'dispute.opened' : undefined
 }
 
+const CHECKOUT_LINK_CONTEXT = 'corvale.checkout.custom-data.v1'
+
+/**
+ * `custom_data` is client-settable on any Paddle checkout, so the user id the server puts there is
+ * signed; a subscription is only ever linked to an account through a value that verifies. The key is
+ * derived from the webhook secret so no extra setting is needed and the raw secret never signs
+ * anything but webhooks.
+ */
+export const signCheckoutUserId = (webhookSecret: string, userId: string): string => {
+    const key = crypto.createHmac('sha256', webhookSecret).update(CHECKOUT_LINK_CONTEXT).digest()
+    return crypto.createHmac('sha256', key).update(userId).digest('hex')
+}
+
+const isValidCheckoutSignature = (webhookSecret: string, userId: string, signature: unknown): boolean => {
+    if (typeof signature !== 'string') return false
+    const expected = Buffer.from(signCheckoutUserId(webhookSecret, userId), 'hex')
+    const provided = Buffer.from(signature, 'hex')
+    return provided.length === expected.length && crypto.timingSafeEqual(provided, expected)
+}
+
 type Json = Record<string, unknown>
 
 const isObject = (value: unknown): value is Json => !!value && typeof value === 'object' && !Array.isArray(value)
@@ -490,7 +510,7 @@ export const createMorProvider = (
         async createCheckoutSession({ userId, planCode, interval }) {
             const body = {
                 items: [{ price_id: config.prices[planCode][interval], quantity: 1 }],
-                custom_data: { user_id: userId },
+                custom_data: { user_id: userId, user_sig: signCheckoutUserId(config.webhookSecret, userId) },
             }
 
             const url = dataOf(await call('createCheckoutSession', '/transactions', { method: 'POST', body })).checkout
@@ -588,7 +608,12 @@ export const createMorProvider = (
 
             if (isSubscriptionResource) {
                 const customData = data.custom_data
-                event.userId = isObject(customData) && typeof customData.user_id === 'string' ? customData.user_id : undefined
+                event.userId =
+                    isObject(customData) &&
+                    typeof customData.user_id === 'string' &&
+                    isValidCheckoutSignature(config.webhookSecret, customData.user_id, customData.user_sig)
+                        ? customData.user_id
+                        : undefined
                 event.planCode = priceId ? planByPrice.get(priceId) : undefined
                 event.interval = priceId ? (intervalByPrice.get(priceId) ?? null) : undefined
                 event.status = eventType === 'subscription.canceled' ? 'cancelled' : mapSubscriptionStatus(data.status)

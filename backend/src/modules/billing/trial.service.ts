@@ -1,4 +1,7 @@
+import type { Types } from 'mongoose'
+
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
+import type { GrandfatherKind } from '@core/billing/constants'
 import { buildTrialSubscription } from '@core/billing/entitlements'
 import { isDuplicateKeyError } from '@core/db/objectId'
 
@@ -25,6 +28,43 @@ export const startTrialIfEligible = async (userId: string, now: Date = new Date(
     }
     if (started) await recordMetric('trialStarted', 1, now)
     return started
+}
+
+const CREATE_CHUNK_SIZE = 50
+
+export const findUserIdsWithoutSubscription = async (userIds: Types.ObjectId[]): Promise<Types.ObjectId[]> => {
+    if (userIds.length === 0) return []
+
+    const rows = await Subscription.find({ userId: { $in: userIds } }).select('userId').setOptions(BYPASS).lean<{ userId: Types.ObjectId }[]>()
+    const covered = new Set(rows.map((row) => row.userId.toString()))
+    return userIds.filter((userId) => !covered.has(userId.toString()))
+}
+
+/**
+ * BUG-42: a user who registered while billing was off has no row, so they resolve to read-only the
+ * moment billing goes on and no admin tool can reach them. Gives each such user the trial a new
+ * account gets (30 days from `now`), optionally already grandfathered. Never touches an existing row
+ * and works with billing off, since it runs before go-live. Returns the ids of the rows it created.
+ */
+export const createMissingTrialRows = async (
+    userIds: Types.ObjectId[],
+    options: { grandfatherKind?: GrandfatherKind | null; now?: Date } = {}
+): Promise<Types.ObjectId[]> => {
+    const { grandfatherKind = null, now = new Date() } = options
+    const trial = { ...buildTrialSubscription(now), grandfatherKind }
+    const created: Types.ObjectId[] = []
+
+    for (let start = 0; start < userIds.length; start += CREATE_CHUNK_SIZE) {
+        const results = await Promise.all(
+            userIds.slice(start, start + CREATE_CHUNK_SIZE).map((userId) =>
+                Subscription.updateOne({ userId }, { $setOnInsert: trial }, { upsert: true }).setOptions(BYPASS)
+            )
+        )
+        for (const result of results) if (result.upsertedId) created.push(result.upsertedId as Types.ObjectId)
+    }
+
+    if (grandfatherKind === null && created.length > 0) await recordMetric('trialStarted', created.length, now)
+    return created
 }
 
 /**

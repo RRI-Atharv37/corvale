@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import defaultApp from '@http/app'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { registerUser, type RegisteredUser } from '@tests/helpers'
-import { BILLING_STATES, daysFromNow, disableBilling, enableBilling, randomId, resetBillingProvider, seedTestPlans, setSubscription } from '@tests/billingHelpers'
+import { BILLING_STATES, daysFromNow, disableBilling, enableBilling, randomId, removeSubscription, resetBillingProvider, seedTestPlans, setSubscription } from '@tests/billingHelpers'
 import { ADMIN_BASE, bearer, buildAdminApp, disableAdmin, loginAsAdmin, seedAdmin, type SeededAdmin } from '@tests/adminHelpers'
 import { AdminAuditLog, AdminSession, GrandfatherBatch } from '@modules/admin'
 import { Subscription } from '@modules/billing'
@@ -325,6 +325,95 @@ describe('POST /grandfather/cohort/:batchId/revert', () => {
         const res = await postCohort(`/${batchId}/revert`, { reason: REASON })
         expect(res.status).toBe(400)
         expect(res.body.message).toBe(ERROR_MESSAGES.ADMIN.BATCH_NOT_APPLIED)
+    })
+})
+
+describe('users who registered while billing was off, and so have no subscription row (BUG-42)', () => {
+    let rowlessCount = 0
+    const seedRowless = async (daysAgo: number) => {
+        rowlessCount += 1
+        const member = await registerUser(defaultApp, { email: `rowless-${rowlessCount}@example.com` })
+        await setRegisteredAt(member.userId, daysFromNow(-daysAgo))
+        await removeSubscription(member.userId)
+        return member
+    }
+
+    it('the dry-run counts and samples row-less users alongside those with a row', async () => {
+        const rowless = await seedRowless(60)
+        await seedCohortMember({ daysAgo: 60 })
+        await seedRowless(10)
+
+        const res = await postCohort('/dry-run', { kind: 'free_forever', registeredBefore: CUTOFF.toISOString() })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.count).toBe(2)
+        expect(res.body.data.sample).toHaveLength(2)
+        expect(JSON.stringify(res.body)).not.toContain(rowless.email)
+        expect(await Subscription.countDocuments({ userId: rowless.userId })).toBe(0)
+    })
+
+    it('apply creates the missing row, already grandfathered, with the same 30-day trial a new account gets', async () => {
+        const rowless = await seedRowless(60)
+        const tooRecent = await seedRowless(10)
+
+        const res = await postCohort('/apply', { kind: 'free_forever', registeredBefore: CUTOFF.toISOString(), confirmCount: 1, reason: REASON })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.appliedCount).toBe(1)
+        const created = await stored(rowless.userId)
+        expect(created).toMatchObject({ planCode: 'pro', status: 'trialing', grandfatherKind: 'free_forever', providerCustomerId: null, providerSubscriptionId: null })
+        expect(Math.abs((created?.trialEndsAt?.getTime() ?? 0) - daysFromNow(30).getTime())).toBeLessThan(60_000)
+        expect(await stored(tooRecent.userId)).toBeNull()
+    })
+
+    it('the typed count covers both kinds of member, and the batch records the created row', async () => {
+        const rowless = await seedRowless(60)
+        const withRow = await seedCohortMember({ daysAgo: 60 })
+
+        const mismatch = await postCohort('/apply', { kind: 'free_forever', registeredBefore: CUTOFF.toISOString(), confirmCount: 1, reason: REASON })
+        expect(mismatch.status).toBe(409)
+        expect(await stored(rowless.userId)).toBeNull()
+
+        const res = await postCohort('/apply', { kind: 'free_forever', registeredBefore: CUTOFF.toISOString(), confirmCount: 2, reason: REASON })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.appliedCount).toBe(2)
+        expect((await stored(withRow.userId))?.grandfatherKind).toBe('free_forever')
+        const batch = await GrandfatherBatch.findById(res.body.data.batchId).lean()
+        const createdRow = await stored(rowless.userId)
+        expect(batch?.subscriptionIds.map(String)).toContain(String(createdRow?._id))
+    })
+
+    it('a cohort of only row-less users is no longer empty', async () => {
+        await seedRowless(60)
+
+        const res = await postCohort('/apply', { kind: 'free_forever', registeredBefore: CUTOFF.toISOString(), confirmCount: 1, reason: REASON })
+
+        expect(res.status).toBe(200)
+    })
+
+    it('reverting the batch clears the grandfather kind on a created row and leaves it the trial', async () => {
+        const rowless = await seedRowless(60)
+        const applied = await postCohort('/apply', { kind: 'free_forever', registeredBefore: CUTOFF.toISOString(), confirmCount: 1, reason: REASON })
+
+        const res = await postCohort(`/${applied.body.data.batchId}/revert`, { reason: REASON })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.revertedCount).toBe(1)
+        expect(await stored(rowless.userId)).toMatchObject({ status: 'trialing', grandfatherKind: null })
+    })
+
+    it('the single-subscriber tools work once the row exists', async () => {
+        const rowless = await seedRowless(60)
+        await postCohort('/apply', { kind: 'locked_rate', registeredBefore: CUTOFF.toISOString(), confirmCount: 1, reason: REASON })
+
+        const res = await request(app)
+            .post(`${ADMIN_BASE}/subscribers/${rowless.userId}/grandfather`)
+            .set(bearer(ownerToken))
+            .send({ kind: 'free_forever', reason: REASON })
+
+        expect(res.status).toBe(200)
+        expect((await stored(rowless.userId))?.grandfatherKind).toBe('free_forever')
     })
 })
 

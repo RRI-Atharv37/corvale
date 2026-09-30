@@ -166,6 +166,10 @@ export const reopenTrial = (userId: string, currentStatus: string, trialEndsAt: 
         { $set: { status: 'trialing', trialEndsAt, lapsedAt: null, retentionStage: null, retentionStageAt: null } }
     )
 
+/** Refuses (returns null) unless the row is still marked disputed, so a second clear is a 404 rather than a silent no-op. */
+export const clearDisputeMarker = (userId: string): Promise<SubscriptionRow | null> =>
+    previousRow({ userId: asObjectId(userId), disputedAt: { $ne: null } }, { $set: { disputedAt: null } })
+
 export const replaceGrandfatherKind = (userId: string, kind: GrandfatherKind | null): Promise<SubscriptionRow | null> =>
     previousRow({ userId: asObjectId(userId) }, { $set: { grandfatherKind: kind } })
 

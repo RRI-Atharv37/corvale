@@ -155,6 +155,7 @@ describe('detail sections', () => {
                 'cancelAtPeriodEnd',
                 'createdAt',
                 'currentPeriodEnd',
+                'disputedAt',
                 'dunningStage',
                 'grandfatherKind',
                 'id',

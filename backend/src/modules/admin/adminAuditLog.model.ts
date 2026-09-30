@@ -30,6 +30,7 @@ export const ADMIN_AUDIT_ACTIONS = [
     'billing.cancel_at_period_end',
     'billing.resync',
     'billing.usage_recomputed',
+    'dispute.cleared',
     'device.revoked',
     'billing_event.replayed',
     'finance.recognition_run',

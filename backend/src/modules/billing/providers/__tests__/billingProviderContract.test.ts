@@ -8,7 +8,7 @@ import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 
 import { createFakeBillingProvider, FAKE_SIGNATURE_HEADER, signFakePayload } from '../fakeBillingProvider'
-import { createMorProvider, type MorConfig } from '../morProvider'
+import { createMorProvider, signCheckoutUserId, type MorConfig } from '../morProvider'
 
 /**
  * M3 - one behavioural contract every `BillingProvider` must satisfy, run against the fake and the
@@ -98,7 +98,7 @@ const morHarness = (): ProviderHarness => {
                           id: spec.providerSubscriptionId,
                           status: 'active',
                           customer_id: spec.providerCustomerId,
-                          custom_data: spec.userId ? { user_id: spec.userId } : null,
+                          custom_data: spec.userId ? { user_id: spec.userId, user_sig: signCheckoutUserId(MOR_SECRET, spec.userId) } : null,
                           items: [{ status: 'active', quantity: 1, trial_dates: null, price: { id: prices[spec.planCode ?? 'plus'] } }],
                           current_billing_period: { starts_at: at, ends_at: '2099-01-01T00:00:00.000000Z' },
                           scheduled_change: null,

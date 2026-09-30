@@ -8,6 +8,7 @@ import {
     applyResync,
     cancelAtPeriodEnd,
     cancelNow,
+    clearDispute,
     listSubscriberInvoices,
     previewResync,
     recomputeUsage,
@@ -33,6 +34,10 @@ export const cancelSubscriptionAtPeriodEnd = asyncHandler(async (req: AdminReque
 
 export const cancelSubscriptionNow = asyncHandler(async (req: AdminRequest, res: Response) => {
     handleResponses(res, 202, await cancelNow(principalOf(req), req.params.userId, req.body ?? {}, requestContext(req)))
+})
+
+export const disputeClear = asyncHandler(async (req: AdminRequest, res: Response) => {
+    handleResponses(res, 200, await clearDispute(principalOf(req), req.params.userId, req.body ?? {}, requestContext(req)))
 })
 
 export const resyncPreview = asyncHandler(async (req: AdminRequest, res: Response) => {

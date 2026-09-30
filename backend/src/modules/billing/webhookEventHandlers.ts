@@ -9,6 +9,7 @@ import { User } from '@modules/users'
 
 import { recordSubscriptionTransitionMetrics, recordTransitionMetrics } from './metrics.service'
 import { KNOWN_BILLING_EVENT_TYPES, type KnownBillingEventType, type NormalizedBillingEvent } from './providers/billingProvider'
+import { getBillingProvider } from './providers/providerRegistry'
 import Subscription, { type ISubscription } from './subscription.model'
 
 export type BillingEventOutcome = { status: 'applied' } | { status: 'unapplied'; reason: string }
@@ -47,6 +48,21 @@ const findByProviderIds = async (event: NormalizedBillingEvent): Promise<ISubscr
     return null
 }
 
+const DISPUTE_HELD_FIELDS = ['status', 'pastDueSince', 'dunningStage'] as const
+
+/**
+ * A disputed subscription stays cancelled: the provider's later routine events (a renewal, a payment
+ * method change) must not hand paid access back. Only `subscription.deleted` (which also cancels) and
+ * staff clearing `disputedAt` change that.
+ */
+const holdDisputedState = (row: ISubscription, changes: Record<string, unknown>): Record<string, unknown> => {
+    if (!row.disputedAt || changes.status === 'cancelled') return changes
+
+    const held = { ...changes }
+    for (const field of DISPUTE_HELD_FIELDS) delete held[field]
+    return held
+}
+
 /**
  * The newest event time is the ordering key: an event older than the last one applied is stale and
  * changes nothing (it is still settled as applied, since retrying it can never help). The filter
@@ -55,10 +71,11 @@ const findByProviderIds = async (event: NormalizedBillingEvent): Promise<ISubscr
 const applyChanges = async (
     row: ISubscription,
     event: NormalizedBillingEvent,
-    changes: Record<string, unknown>
+    requested: Record<string, unknown>
 ): Promise<BillingEventOutcome> => {
     if (row.lastEventAt && row.lastEventAt.getTime() > event.occurredAt.getTime()) return APPLIED
 
+    const changes = holdDisputedState(row, requested)
     let updated: ISubscription | null
     try {
         updated = await Subscription.findOneAndUpdate(
@@ -121,6 +138,7 @@ const handleSubscriptionCreated: BillingEventHandler = async (event) => {
 
     const byUser = await Subscription.findOne({ userId }).setOptions(BYPASS)
     if (byUser) {
+        if (byUser.disputedAt) return unapplied('Subscription is under dispute')
         if ((byUser.providerSubscriptionId || byUser.providerCustomerId) && byUser.status !== 'cancelled') {
             return unapplied('User is already linked to a different provider subscription')
         }
@@ -227,7 +245,10 @@ const alertBillingDispute = async (event: NormalizedBillingEvent): Promise<void>
 // Corvale to their card issuer - and even a dispute the operator wins still costs a non-refundable
 // provider fee and counts against the chargeback ratio, so access is revoked the moment one opens
 // rather than waiting to see the outcome. A matching subscription is downgraded the same way a
-// provider-side deletion is; an unlinked/unknown id stays record-only, same as before.
+// provider-side deletion is; an unlinked/unknown id stays record-only, same as before. The revocation
+// is sticky (`disputedAt`, see `holdDisputedState`) and the provider subscription is cancelled too, so
+// the customer is not billed for access Corvale has ended. It ignores event ordering: a chargeback is a
+// fact, whatever the provider emitted after it.
 const handleDisputeOpened: BillingEventHandler = async (event) => {
     logger.warn('Billing dispute opened', { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
     await recordTransitionMetrics(event.providerEventId, event.occurredAt, { disputes: 1 })
@@ -235,7 +256,25 @@ const handleDisputeOpened: BillingEventHandler = async (event) => {
 
     const row = await findByProviderIds(event)
     if (!row) return APPLIED
-    return applyChanges(row, event, { status: 'cancelled', pastDueSince: null, dunningStage: null })
+
+    const changes = { status: 'cancelled', pastDueSince: null, dunningStage: null, disputedAt: row.disputedAt ?? event.occurredAt }
+    await Subscription.updateOne({ _id: row._id }, { $set: changes, $max: { lastEventAt: event.occurredAt } }).setOptions(BYPASS)
+    await recordSubscriptionTransitionMetrics(row, changes, event.providerEventId, event.occurredAt)
+    if (row.status !== 'cancelled') await cancelDisputedAtProvider(row)
+    return APPLIED
+}
+
+const cancelDisputedAtProvider = async (row: ISubscription): Promise<void> => {
+    if (!row.providerSubscriptionId) return
+
+    try {
+        await getBillingProvider().cancelSubscription({ providerSubscriptionId: row.providerSubscriptionId, immediate: true })
+    } catch (error) {
+        logger.error('Billing dispute: the subscription could not be cancelled at the provider and may keep billing', {
+            subscriptionId: row._id.toString(),
+            message: error instanceof Error ? error.message : 'unknown',
+        })
+    }
 }
 
 const HANDLERS: Record<KnownBillingEventType, BillingEventHandler> = {

@@ -8,6 +8,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     createMorProvider,
     morConfigFromEnv,
+    signCheckoutUserId,
     type MorConfig,
 } from '../morProvider'
 
@@ -28,6 +29,7 @@ const config = {
 } as unknown as MorConfig
 
 const USER_ID = '64b7f0c2a1b2c3d4e5f60718'
+const SIGNED_CUSTOM_DATA = { user_id: USER_ID, user_sig: signCheckoutUserId(SECRET, USER_ID) }
 
 const json = (body: unknown, status = 200): Response =>
     new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/vnd.api+json' } })
@@ -53,7 +55,7 @@ const envelope = (eventType: string, data: unknown, overrides: Record<string, un
 
 const subscriptionData = (
     overrides: Record<string, unknown> = {},
-    customData: Record<string, unknown> | null = { user_id: USER_ID }
+    customData: Record<string, unknown> | null = SIGNED_CUSTOM_DATA
 ) => ({
     id: 'sub_77',
     status: 'active',
@@ -83,7 +85,7 @@ const subscriptionData = (
 const subscriptionBody = (
     eventType: string,
     overrides: Record<string, unknown> = {},
-    customData: Record<string, unknown> | null = { user_id: USER_ID },
+    customData: Record<string, unknown> | null = SIGNED_CUSTOM_DATA,
     envelopeOverrides: Record<string, unknown> = {}
 ) => envelope(eventType, subscriptionData(overrides, customData), envelopeOverrides)
 
@@ -435,6 +437,49 @@ describe('parseEvent - subscription events', () => {
 
         expect(event.userId).toBeUndefined()
     })
+
+    describe('checkout linkage signature (SEC-72)', () => {
+        const VICTIM_ID = '64b7f0c2a1b2c3d4e5f60999'
+
+        it('ignores a user_id that carries no signature, as a buyer-supplied customData would', () => {
+            const event = provider.parseEvent(subscriptionBody('subscription.created', {}, { user_id: VICTIM_ID }))
+
+            expect(event.userId).toBeUndefined()
+            expect(event.providerSubscriptionId).toBe('sub_77')
+        })
+
+        it('ignores a user_id paired with the signature issued for a different user', () => {
+            const event = provider.parseEvent(
+                subscriptionBody('subscription.created', {}, { user_id: VICTIM_ID, user_sig: signCheckoutUserId(SECRET, USER_ID) })
+            )
+
+            expect(event.userId).toBeUndefined()
+        })
+
+        it('ignores a signature made with another secret', () => {
+            const event = provider.parseEvent(
+                subscriptionBody('subscription.created', {}, { user_id: VICTIM_ID, user_sig: signCheckoutUserId('someone_elses_secret', VICTIM_ID) })
+            )
+
+            expect(event.userId).toBeUndefined()
+        })
+
+        it('ignores a signature that is not hex, the wrong length or not a string', () => {
+            for (const user_sig of ['zz', 'ab', '', 42, null, { $ne: null }]) {
+                expect(provider.parseEvent(subscriptionBody('subscription.created', {}, { user_id: USER_ID, user_sig })).userId).toBeUndefined()
+            }
+        })
+
+        it('does not accept the raw webhook secret as a signing key for the user id', () => {
+            const naive = crypto.createHmac('sha256', SECRET).update(USER_ID).digest('hex')
+
+            expect(provider.parseEvent(subscriptionBody('subscription.created', {}, { user_id: USER_ID, user_sig: naive })).userId).toBeUndefined()
+        })
+
+        it('links the user id the server signed', () => {
+            expect(provider.parseEvent(subscriptionBody('subscription.created')).userId).toBe(USER_ID)
+        })
+    })
 })
 
 describe('parseEvent - payment, refund and unknown events', () => {
@@ -691,7 +736,7 @@ describe('createCheckoutSession', () => {
         expect(headers['Content-Type']).toBe('application/json')
         expect(JSON.parse(String(init.body))).toEqual({
             items: [{ price_id: '202', quantity: 1 }],
-            custom_data: { user_id: USER_ID },
+            custom_data: { user_id: USER_ID, user_sig: signCheckoutUserId(SECRET, USER_ID) },
         })
     })
 

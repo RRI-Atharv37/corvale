@@ -32,6 +32,8 @@
     "migrate:has-split-children:dry-run": "ts-node scripts/backfillHasSplitChildren.ts --dry-run",
     "migrate:deferred-revenue-provider-ids": "ts-node scripts/backfillDeferredRevenueProviderIds.ts",
     "migrate:deferred-revenue-provider-ids:dry-run": "ts-node scripts/backfillDeferredRevenueProviderIds.ts --dry-run",
+    "migrate:subscription-rows": "ts-node scripts/backfillSubscriptionRows.ts",
+    "migrate:subscription-rows:dry-run": "ts-node scripts/backfillSubscriptionRows.ts --dry-run",
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts",
     "purge:tombstones:dry-run": "ts-node scripts/purgeTombstones.ts --dry-run",
     "reconcile:billing": "ts-node scripts/reconcileBilling.ts",

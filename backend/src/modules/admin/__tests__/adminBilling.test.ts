@@ -180,6 +180,97 @@ describe('cancel', () => {
     })
 })
 
+describe('POST /subscribers/:userId/dispute/clear', () => {
+    const markDisputed = () =>
+        Subscription.updateOne({ userId: user.userId }, { $set: { status: 'cancelled', disputedAt: new Date('2026-09-20T00:00:00.000Z') } })
+
+    it('needs a fresh step-up', async () => {
+        await markDisputed()
+        await AdminSession.updateMany({ adminId: owner.id }, { $set: { stepUpAt: null } })
+
+        const res = await post('/dispute/clear', { reason: REASON })
+
+        expect(res.status).toBe(403)
+        expect(res.body.message).toBe(ERROR_MESSAGES.ADMIN.STEP_UP_REQUIRED)
+        expect((await stored())?.disputedAt).toBeTruthy()
+    })
+
+    it('is for finance and owner only; support and anonymous callers are refused', async () => {
+        await markDisputed()
+        const support = await seedAdmin({ role: 'support' })
+        const { token: supportToken } = await loginAsAdmin(app, support)
+
+        expect((await post('/dispute/clear', { reason: REASON }, supportToken)).status).toBe(403)
+        expect((await request(app).post(`${ADMIN_BASE}/subscribers/${user.userId}/dispute/clear`).send({ reason: REASON })).status).toBe(401)
+
+        const finance = await seedAdmin({ role: 'finance' })
+        const { token: financeToken } = await loginAsAdmin(app, finance)
+        await AdminSession.updateMany({ adminId: finance.id }, { $set: { stepUpAt: new Date() } })
+        expect((await post('/dispute/clear', { reason: REASON }, financeToken)).status).toBe(200)
+    })
+
+    it('clears only the marker, leaves the subscription cancelled and audits before and after', async () => {
+        await markDisputed()
+
+        const res = await post('/dispute/clear', { reason: REASON })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data).toEqual({ disputedAt: null })
+        const after = await stored()
+        expect(after?.disputedAt ?? null).toBeNull()
+        expect(after?.status).toBe('cancelled')
+        expect(fake.calls.cancelSubscription).toHaveLength(0)
+
+        const row = await AdminAuditLog.findOne({ action: 'dispute.cleared' }).lean()
+        expect(row?.adminId?.toString()).toBe(owner.id)
+        expect(row?.subjectUserId?.toString()).toBe(user.userId)
+        expect(row?.before).toEqual({ disputedAt: new Date('2026-09-20T00:00:00.000Z') })
+        expect(row?.after).toEqual({ disputedAt: null })
+        expect(row?.reason).toBe(REASON)
+    })
+
+    it('lets the customer check out again once the marker is cleared', async () => {
+        await markDisputed()
+        await post('/dispute/clear', { reason: REASON })
+
+        const checkout = await request(defaultApp)
+            .post('/api/v1/billing/checkout')
+            .set({ Authorization: `Bearer ${user.token}` })
+            .send({ planCode: 'pro', interval: 'monthly' })
+
+        expect(checkout.status).toBe(200)
+    })
+
+    it('404s when there is no marker or no subscriber, and needs a reason', async () => {
+        const none = await post('/dispute/clear', { reason: REASON })
+        expect(none.status).toBe(404)
+        expect(none.body.message).toBe(ERROR_MESSAGES.ADMIN.NO_DISPUTE)
+
+        await markDisputed()
+        expect((await post('/dispute/clear', {})).status).toBe(400)
+        expect((await stored())?.disputedAt).toBeTruthy()
+
+        expect((await request(app).post(`${ADMIN_BASE}/subscribers/${randomId()}/dispute/clear`).set(bearer(ownerToken)).send({ reason: REASON })).status).toBe(404)
+        expect((await request(app).post(`${ADMIN_BASE}/subscribers/not-an-id/dispute/clear`).set(bearer(ownerToken)).send({ reason: REASON })).status).toBe(400)
+    })
+
+    it('a second clear is refused, not silently repeated', async () => {
+        await markDisputed()
+        await post('/dispute/clear', { reason: REASON })
+
+        expect((await post('/dispute/clear', { reason: REASON })).status).toBe(404)
+        expect(await AdminAuditLog.countDocuments({ action: 'dispute.cleared' })).toBe(1)
+    })
+
+    it('shows the marker on the subscriber detail so staff can see why a customer cannot subscribe', async () => {
+        await markDisputed()
+
+        const detail = await get('')
+
+        expect(detail.body.data.subscription.disputedAt).toBeTruthy()
+    })
+})
+
 describe('resync', () => {
     it('previews the drift between the local row and the live provider snapshot, without writing anything', async () => {
         fake.remote.push({ providerSubscriptionId: `sub_${user.userId}`, status: 'past_due', planCode: 'plus', updatedAt: new Date() })

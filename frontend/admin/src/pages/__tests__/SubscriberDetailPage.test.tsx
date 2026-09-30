@@ -37,6 +37,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
       refund: vi.fn(),
       cancelAtPeriodEnd: vi.fn(),
       cancelNow: vi.fn(),
+      clearDispute: vi.fn(),
       previewResync: vi.fn(),
       applyResync: vi.fn(),
       recomputeUsage: vi.fn(),
@@ -65,6 +66,7 @@ const detail = (over: Record<string, unknown> = {}) => ({
     grandfatherKind: null,
     adminGrant: null,
     retentionHoldUntil: null,
+    disputedAt: null,
     providerCustomerId: 'cus_123456789',
     providerSubscriptionId: 'sub_987654321',
     lastEventAt: null,
@@ -138,6 +140,7 @@ beforeEach(() => {
     'refund',
     'cancelAtPeriodEnd',
     'cancelNow',
+    'clearDispute',
     'previewResync',
     'applyResync',
     'recomputeUsage',
@@ -368,6 +371,35 @@ describe('SubscriberDetailPage - actions', () => {
     await user.click(within(dialog).getByRole('button', { name: /^cancel at period end/i }))
 
     await waitFor(() => expect(apiModule.api.cancelAtPeriodEnd).toHaveBeenCalledWith(USER_ID, { reason: 'Subscriber asked to end at renewal' }))
+  })
+
+  it('shows a disputed subscription and clears the marker with a reason', async () => {
+    capabilities = ['subscribers.read', 'ops.read', 'money.write']
+    vi.mocked(apiModule.api.getSubscriber).mockResolvedValue(detail({ subscription: { ...detail().subscription, disputedAt: '2026-09-20T00:00:00.000Z' } }) as never)
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByText(/access stays revoked until cleared/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /clear dispute/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Reason'), 'Dispute resolved in our favour, subscriber reinstated')
+    await user.click(within(dialog).getByRole('button', { name: /^clear dispute/i }))
+
+    await waitFor(() => expect(apiModule.api.clearDispute).toHaveBeenCalledWith(USER_ID, { reason: 'Dispute resolved in our favour, subscriber reinstated' }))
+  })
+
+  it('offers no dispute action without a dispute, or to a role without money.write', async () => {
+    capabilities = ['subscribers.read', 'ops.read', 'money.write']
+    const { unmount } = renderPage()
+    await screen.findByRole('heading', { name: 'Account' })
+    expect(screen.queryByRole('button', { name: /clear dispute/i })).not.toBeInTheDocument()
+    unmount()
+
+    capabilities = ['subscribers.read', 'ops.read', 'grants.write']
+    vi.mocked(apiModule.api.getSubscriber).mockResolvedValue(detail({ subscription: { ...detail().subscription, disputedAt: '2026-09-20T00:00:00.000Z' } }) as never)
+    renderPage()
+    await screen.findByRole('heading', { name: 'Account' })
+    expect(screen.queryByRole('button', { name: /clear dispute/i })).not.toBeInTheDocument()
   })
 
   it('revokes a device from the devices table', async () => {

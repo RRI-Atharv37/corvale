@@ -11,7 +11,7 @@ import {
 } from '@modules/billing'
 
 import { recordAudit, validateReason } from './adminAudit.service'
-import { applyProviderFields, findDeviceByRef, findOwnedWorkspaces, findSubscriptionByUserId, type SubscriptionRow } from './adminData.service'
+import { applyProviderFields, clearDisputeMarker, findDeviceByRef, findOwnedWorkspaces, findSubscriptionByUserId, type SubscriptionRow } from './adminData.service'
 import type { AdminPrincipal, AdminRequestContext } from './adminTypes'
 
 /**
@@ -241,6 +241,33 @@ export const revokeDevice = async (
     await recordAudit({ ...auditBase(actor, ctx, userId, subscription, now), action: 'device.revoked', reason })
 
     return { revoked: true }
+}
+
+// -------- dispute --------
+
+/**
+ * Lifts the sticky lock a chargeback puts on a subscription (Refund Policy, "Disputes"). It changes no
+ * entitlement by itself: the subscription stays cancelled, but the customer may start a new checkout and
+ * provider events apply to the row again, so it is the operator's deliberate "sort it out by hand".
+ */
+export const clearDispute = async (actor: AdminPrincipal, userIdParam: unknown, input: { reason?: unknown }, ctx: AdminRequestContext, now: Date = new Date()) => {
+    const userId = requireUserId(userIdParam)
+    const reason = validateReason(input.reason)
+    const subscription = await requireSubscription(userId)
+    if (!subscription.disputedAt) throw new CustomError(ERROR_MESSAGES.ADMIN.NO_DISPUTE, 404)
+
+    const previous = await clearDisputeMarker(userId)
+    if (!previous) throw new CustomError(ERROR_MESSAGES.ADMIN.NO_DISPUTE, 404)
+
+    await recordAudit({
+        ...auditBase(actor, ctx, userId, subscription, now),
+        action: 'dispute.cleared',
+        before: { disputedAt: previous.disputedAt },
+        after: { disputedAt: null },
+        reason,
+    })
+
+    return { disputedAt: null }
 }
 
 // -------- event replay (stretch) --------

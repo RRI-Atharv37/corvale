@@ -2,7 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 
 import app from '@http/app'
 import { setMailTransport, type MailMessage } from '@infra/mail/mailService'
-import { Subscription, applyBillingEvent, type NormalizedBillingEvent } from '@modules/billing'
+import {
+    Subscription,
+    applyBillingEvent,
+    createFakeBillingProvider,
+    resetBillingProvider,
+    setBillingProvider,
+    type FakeProviderCalls,
+    type NormalizedBillingEvent,
+} from '@modules/billing'
 import { registerUser, type RegisteredUser } from '@tests/helpers'
 import { BILLING_STATES, DAY_MS, daysFromNow, setSubscription } from '@tests/billingHelpers'
 
@@ -320,6 +328,168 @@ describe('dispute revokes access, refund does not (Refund Policy, 2026-09-28)', 
 
         const stored = await sub()
         expect(stored?.status).toBe('active')
+    })
+})
+
+describe('a dispute is sticky and reaches the provider (BUG-43)', () => {
+    let calls: FakeProviderCalls
+
+    beforeEach(() => {
+        const fake = createFakeBillingProvider()
+        calls = fake.calls
+        setBillingProvider(fake.provider)
+    })
+
+    afterEach(() => resetBillingProvider())
+
+    const activeAndDisputed = async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.active, lastEventAt: daysFromNow(-2) })
+        await applyBillingEvent(event({ type: 'dispute.opened', occurredAt: daysFromNow(-1) }))
+    }
+
+    it('marks the row disputed and cancels the provider subscription immediately', async () => {
+        await setSubscription(user.userId, BILLING_STATES.active)
+
+        await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.disputedAt).toBeInstanceOf(Date)
+        expect(calls.cancelSubscription).toEqual([{ providerSubscriptionId: `sub_${user.userId}`, immediate: true }])
+    })
+
+    it('a later subscription.updated saying active does not restore access', async () => {
+        await activeAndDisputed()
+
+        const outcome = await applyBillingEvent(event({ type: 'subscription.updated', status: 'active', occurredAt: new Date(), currentPeriodEnd: daysFromNow(30) }))
+
+        expect(outcome.status).toBe('applied')
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.currentPeriodEnd?.getTime()).toBeGreaterThan(daysFromNow(29).getTime())
+    })
+
+    it.each(['past_due', 'trialing'] as const)('a later subscription.updated saying %s does not move the status either', async (status) => {
+        await activeAndDisputed()
+
+        await applyBillingEvent(event({ type: 'subscription.updated', status, occurredAt: new Date() }))
+
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.pastDueSince).toBeNull()
+    })
+
+    it('a later payment.succeeded does not restore access', async () => {
+        await activeAndDisputed()
+
+        await applyBillingEvent(event({ type: 'payment.succeeded', occurredAt: new Date() }))
+
+        expect((await sub())?.status).toBe('cancelled')
+    })
+
+    it('a new subscription.created for the disputed user is left unapplied and moves no provider id', async () => {
+        await activeAndDisputed()
+
+        const outcome = await applyBillingEvent(
+            event({
+                type: 'subscription.created',
+                userId: user.userId,
+                providerCustomerId: 'cus_new',
+                providerSubscriptionId: 'sub_new',
+                planCode: 'pro',
+                status: 'active',
+                occurredAt: new Date(),
+            })
+        )
+
+        expect(outcome.status).toBe('unapplied')
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.providerSubscriptionId).toBe(`sub_${user.userId}`)
+    })
+
+    it('a dispute older than the last applied event still revokes access', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.active, lastEventAt: new Date() })
+
+        await applyBillingEvent(event({ type: 'dispute.opened', occurredAt: daysFromNow(-1) }))
+
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.disputedAt).toBeInstanceOf(Date)
+    })
+
+    it('a dispute on an already-cancelled subscription still becomes sticky, without another provider call', async () => {
+        await setSubscription(user.userId, BILLING_STATES.cancelled)
+
+        await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        expect((await sub())?.disputedAt).toBeInstanceOf(Date)
+        expect(calls.cancelSubscription).toHaveLength(0)
+    })
+
+    it('a redelivered dispute keeps the first disputedAt', async () => {
+        await setSubscription(user.userId, BILLING_STATES.active)
+        const first = daysFromNow(-3)
+
+        await applyBillingEvent(event({ type: 'dispute.opened', occurredAt: first }))
+        await applyBillingEvent(event({ type: 'dispute.opened', occurredAt: new Date() }))
+
+        expect((await sub())?.disputedAt?.getTime()).toBe(first.getTime())
+    })
+
+    it('a provider-side cancellation of a disputed subscription is still applied', async () => {
+        await activeAndDisputed()
+
+        const outcome = await applyBillingEvent(event({ type: 'subscription.deleted', status: 'cancelled', occurredAt: new Date() }))
+
+        expect(outcome.status).toBe('applied')
+        expect((await sub())?.status).toBe('cancelled')
+    })
+
+    it('still revokes locally and applies the event when the provider cancel fails', async () => {
+        const failing = createFakeBillingProvider()
+        failing.provider.cancelSubscription = async () => {
+            throw new Error('provider down')
+        }
+        setBillingProvider(failing.provider)
+        await setSubscription(user.userId, BILLING_STATES.active)
+
+        const outcome = await applyBillingEvent(event({ type: 'dispute.opened' }))
+
+        expect(outcome.status).toBe('applied')
+        const stored = await sub()
+        expect(stored?.status).toBe('cancelled')
+        expect(stored?.disputedAt).toBeInstanceOf(Date)
+    })
+
+    it('a subscription that is not disputed still follows routine provider events', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.past_due_in_grace })
+
+        await applyBillingEvent(event({ type: 'subscription.updated', status: 'active', occurredAt: new Date() }))
+
+        expect((await sub())?.status).toBe('active')
+    })
+})
+
+describe('a forged checkout link cannot attach a subscription to another account (SEC-72)', () => {
+    it('a creation event with no verified user id and unknown provider ids links nothing', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.trialing, providerCustomerId: null, providerSubscriptionId: null })
+
+        const outcome = await applyBillingEvent(
+            event({
+                type: 'subscription.created',
+                userId: undefined,
+                providerCustomerId: 'cus_attacker',
+                providerSubscriptionId: 'sub_attacker',
+                planCode: 'pro',
+                status: 'active',
+            })
+        )
+
+        expect(outcome.status).toBe('unapplied')
+        const stored = await sub()
+        expect(stored?.status).toBe('trialing')
+        expect(stored?.providerSubscriptionId).toBeNull()
     })
 })
 
