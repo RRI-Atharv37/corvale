@@ -257,9 +257,9 @@ describe('reserveQuota / releaseQuota - against the plan', () => {
 
     beforeEach(async () => {
         enableBilling()
-        await seedTestPlans({ plus: { limits: { receiptStorageBytes: 100 } } })
+        await seedTestPlans({ limits: { receiptStorageBytes: 100 } })
         id = userId()
-        await setSubscription(id, { planCode: 'plus' })
+        await setSubscription(id)
     })
 
     it("reserves against the subject's plan limit", async () => {
@@ -271,11 +271,11 @@ describe('reserveQuota / releaseQuota - against the plan', () => {
         })
     })
 
-    it('follows a plan change on the very next call', async () => {
+    it('follows a plan edit on the very next call', async () => {
         await reserveQuota(id, 'receiptBytes', 100)
         await expect(reserveQuota(id, 'receiptBytes', 1)).rejects.toBeDefined()
 
-        await setSubscription(id, { planCode: 'pro' })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'limits.receiptStorageBytes': 1000 } })
 
         await reserveQuota(id, 'receiptBytes', 1)
     })

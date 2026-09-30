@@ -3,8 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import app from '@http/app'
 import { setMailTransport, type MailMessage } from '@infra/mail/mailService'
 import {
+    BillingEvent,
+    MetricDaily,
     Subscription,
     applyBillingEvent,
+    clearPlanPricesCache,
+    seedPlanCatalogue,
     createFakeBillingProvider,
     resetBillingProvider,
     setBillingProvider,
@@ -54,7 +58,7 @@ describe('linking a subscription to a user', () => {
         await setSubscription(user.userId, { ...BILLING_STATES.trial_expired, providerCustomerId: null, providerSubscriptionId: null })
 
         const outcome = await applyBillingEvent(
-            event({ type: 'checkout.completed', userId: user.userId, planCode: 'plus', status: 'active' })
+            event({ type: 'checkout.completed', userId: user.userId, planCode: 'pro', status: 'active' })
         )
 
         expect(outcome.status).toBe('applied')
@@ -75,16 +79,16 @@ describe('linking a subscription to a user', () => {
     })
 
     it('ignores the user id on an event whose provider ids already belong to someone else', async () => {
-        await setSubscription(other.userId, { status: 'active', planCode: 'plus', ...ids(other) })
-        await setSubscription(user.userId, { status: 'active', planCode: 'plus', providerCustomerId: null, providerSubscriptionId: null })
+        await setSubscription(other.userId, { status: 'active', interval: 'monthly', ...ids(other) })
+        await setSubscription(user.userId, { status: 'active', interval: 'monthly', providerCustomerId: null, providerSubscriptionId: null })
 
         await applyBillingEvent(
-            event({ type: 'subscription.created', userId: user.userId, ...ids(other), planCode: 'pro', status: 'active' })
+            event({ type: 'subscription.created', userId: user.userId, ...ids(other), interval: 'annual', status: 'active' })
         )
 
-        expect((await sub(other))?.planCode).toBe('pro')
+        expect((await sub(other))?.interval).toBe('annual')
         const untouched = await sub()
-        expect(untouched?.planCode).toBe('plus')
+        expect(untouched?.interval).toBe('monthly')
         expect(untouched?.providerSubscriptionId ?? null).toBeNull()
     })
 
@@ -113,11 +117,11 @@ describe('resubscribing after a subscription ended (M6)', () => {
         await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original' })
 
         const outcome = await applyBillingEvent(
-            event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'plus', status: 'active', currentPeriodEnd: daysFromNow(30) })
+            event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'pro', status: 'active', currentPeriodEnd: daysFromNow(30) })
         )
 
         expect(outcome.status).toBe('applied')
-        expect(await sub()).toMatchObject({ status: 'active', planCode: 'plus', providerSubscriptionId: 'sub_second', providerCustomerId: 'cus_original' })
+        expect(await sub()).toMatchObject({ status: 'active', planCode: 'pro', providerSubscriptionId: 'sub_second', providerCustomerId: 'cus_original' })
     })
 
     it('does so even when the provider issues a new customer id for the new subscription', async () => {
@@ -134,14 +138,14 @@ describe('resubscribing after a subscription ended (M6)', () => {
     it('starts a clean billing slate: no stale dunning or lapse markers survive the new subscription', async () => {
         await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original', lapsedAt: daysFromNow(-40) })
 
-        await applyBillingEvent(event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'plus', status: 'active' }))
+        await applyBillingEvent(event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'pro', status: 'active' }))
 
         expect(await sub()).toMatchObject({ pastDueSince: null, dunningStage: null })
     })
 
     it('a stale event for the OLD subscription can no longer revive or alter the row', async () => {
         await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original', lastEventAt: daysFromNow(-3) })
-        await applyBillingEvent(event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'plus', status: 'active', occurredAt: daysFromNow(-1) }))
+        await applyBillingEvent(event({ type: 'subscription.created', userId: user.userId, ...NEW_IDS, planCode: 'pro', status: 'active', occurredAt: daysFromNow(-1) }))
 
         await applyBillingEvent(
             event({ type: 'subscription.deleted', providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original', status: 'cancelled', occurredAt: daysFromNow(-2) })
@@ -164,7 +168,7 @@ describe('resubscribing after a subscription ended (M6)', () => {
     it('an update event never moves the link, only a creation does', async () => {
         await setSubscription(user.userId, { ...BILLING_STATES.cancelled, providerCustomerId: 'cus_original', providerSubscriptionId: 'sub_original' })
 
-        await applyBillingEvent(event({ type: 'subscription.updated', ...NEW_IDS, planCode: 'plus', status: 'active' }))
+        await applyBillingEvent(event({ type: 'subscription.updated', ...NEW_IDS, planCode: 'pro', status: 'active' }))
 
         expect((await sub())?.providerSubscriptionId).toBe('sub_original')
     })
@@ -210,18 +214,18 @@ describe('subscription events', () => {
 
     it('skips an event older than the last applied one but still reports it applied', async () => {
         const newer = new Date()
-        await applyBillingEvent(event({ planCode: 'plus', occurredAt: newer }))
+        await applyBillingEvent(event({ interval: 'annual', occurredAt: newer }))
 
-        const outcome = await applyBillingEvent(event({ planCode: 'pro', occurredAt: new Date(newer.getTime() - 1000) }))
+        const outcome = await applyBillingEvent(event({ interval: 'monthly', occurredAt: new Date(newer.getTime() - 1000) }))
 
         expect(outcome.status).toBe('applied')
-        expect((await sub())?.planCode).toBe('plus')
+        expect((await sub())?.interval).toBe('annual')
         expect((await sub())?.lastEventAt?.toISOString()).toBe(newer.toISOString())
     })
 
     it('applies an event stamped at the same instant as the last one', async () => {
         const at = new Date()
-        await applyBillingEvent(event({ planCode: 'plus', occurredAt: at }))
+        await applyBillingEvent(event({ planCode: 'pro', occurredAt: at }))
 
         await applyBillingEvent(event({ type: 'subscription.deleted', occurredAt: at }))
 
@@ -559,5 +563,56 @@ describe('dispute alert email', () => {
         const outcome = await applyBillingEvent(event({ type: 'dispute.opened' }))
 
         expect(outcome.status).toBe('applied')
+    })
+})
+
+describe('a dispute is counted together with its churn (BUG-49)', () => {
+    beforeEach(async () => {
+        const fake = createFakeBillingProvider()
+        setBillingProvider(fake.provider)
+        await seedPlanCatalogue()
+        clearPlanPricesCache()
+    })
+
+    afterEach(() => resetBillingProvider())
+
+    const flows = async () => (await MetricDaily.find({}).lean())[0]?.flows
+
+    const ledgered = async (overrides: Partial<NormalizedBillingEvent>) => {
+        const disputeEvent = event({ type: 'dispute.opened', ...overrides })
+        await BillingEvent.create({ providerEventId: disputeEvent.providerEventId, type: 'dispute.opened', occurredAt: disputeEvent.occurredAt, payload: {} })
+        return disputeEvent
+    }
+
+    it('counts the dispute and the involuntary churn of the subscriber it cancels', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.active, planCode: 'pro', interval: 'monthly', cancelAtPeriodEnd: false })
+
+        await applyBillingEvent(await ledgered({}))
+
+        expect(await flows()).toMatchObject({ disputes: 1, churnedInvoluntary: 1, churnedMrr: 1200 })
+    })
+
+    it('counts only the dispute when nothing live was cancelled', async () => {
+        await setSubscription(user.userId, BILLING_STATES.cancelled)
+
+        await applyBillingEvent(await ledgered({}))
+
+        expect(await flows()).toMatchObject({ disputes: 1, churnedInvoluntary: 0, churnedMrr: 0 })
+    })
+
+    it('counts a dispute with no matching subscription', async () => {
+        await applyBillingEvent(await ledgered({ providerCustomerId: 'cus_stranger', providerSubscriptionId: 'sub_stranger' }))
+
+        expect(await flows()).toMatchObject({ disputes: 1 })
+    })
+
+    it('a redelivered dispute is not counted twice', async () => {
+        await setSubscription(user.userId, { ...BILLING_STATES.active, planCode: 'pro', interval: 'monthly', cancelAtPeriodEnd: false })
+        const disputeEvent = await ledgered({})
+
+        await applyBillingEvent(disputeEvent)
+        await applyBillingEvent(disputeEvent)
+
+        expect(await flows()).toMatchObject({ disputes: 1, churnedInvoluntary: 1 })
     })
 })

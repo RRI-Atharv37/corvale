@@ -17,7 +17,7 @@ const NOW = new Date().toISOString()
 const snapshot = (overrides: Partial<EntitlementSnapshot> = {}): EntitlementSnapshot => ({
     billingEnabled: true,
     status: 'active',
-    planCode: 'plus',
+    planCode: 'pro',
     canRead: true,
     canWrite: true,
     canExport: true,

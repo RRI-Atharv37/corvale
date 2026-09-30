@@ -72,7 +72,7 @@ const planEntry = (parsed: Record<string, unknown>, plan: PlanCode): Record<stri
 const parsePrices = (raw: string): MorPrices => {
     const invalid = (): Error =>
         new Error(
-            `${SETTINGS.prices} must be JSON like {"plus":{"monthly":"<id>","annual":"<id>"},"pro":{...}} with a distinct price id for every plan and interval`
+            `${SETTINGS.prices} must be JSON like {"pro":{"monthly":"<id>","annual":"<id>"}} with a distinct price id for every plan and interval`
         )
 
     let parsed: unknown
@@ -590,7 +590,9 @@ export const createMorProvider = (
                 adjustmentAction,
                 origin: typeof data.origin === 'string' ? data.origin : undefined,
                 total: asMinorUnits(totals?.total),
-                currency: typeof data.currency_code === 'string' ? data.currency_code : undefined,
+                currency: typeof data.currency_code === 'string' ? data.currency_code.toUpperCase() : undefined,
+                planCode: priceId ? planByPrice.get(priceId) : undefined,
+                interval: priceId ? intervalByPrice.get(priceId) : undefined,
             })
 
             if (!mappedType) {

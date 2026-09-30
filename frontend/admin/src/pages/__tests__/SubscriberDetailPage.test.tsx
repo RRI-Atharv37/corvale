@@ -102,7 +102,7 @@ const detail = (over: Record<string, unknown> = {}) => ({
 })
 
 const META = {
-  plans: ['plus', 'pro'],
+  plans: ['pro'],
   statuses: [],
   grandfatherKinds: ['free_forever', 'locked_rate', 'extended_trial'],
   dunningStages: [],

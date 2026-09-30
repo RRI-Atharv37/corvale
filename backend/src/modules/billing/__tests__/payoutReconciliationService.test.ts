@@ -33,7 +33,7 @@ const seedPaymentEvent = (providerSubscriptionId: string, occurredAt: Date, payl
         providerEventId: nextEventId(),
         type: 'payment.succeeded',
         occurredAt,
-        payload: { providerSubscriptionId, total: 1000, currency: 'usd', ...payload },
+        payload: { providerSubscriptionId, total: 1000, currency: 'USD', interval: 'monthly', planCode: 'pro', ...payload },
     })
 
 describe('isValidPeriodMonth', () => {
@@ -70,19 +70,19 @@ describe('computeLocalRevenueByCurrency', () => {
             paymentOccurredAt: new Date('2026-09-05T00:00:00.000Z'),
         })
 
-        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ usd: 1000 })
+        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ USD: 1000 })
     })
 
     it('includes a monthly-plan payment occurring in the month, recognized immediately', async () => {
         await seedSubscription('sub_monthly', 'monthly')
         await seedPaymentEvent('sub_monthly', new Date('2026-09-15T12:00:00.000Z'), { total: 500 })
 
-        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ usd: 500 })
+        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ USD: 500 })
     })
 
     it('excludes an annual-plan payment - it is recognized through DeferredRevenueEntry, not counted twice here', async () => {
         await seedSubscription('sub_annual', 'annual')
-        await seedPaymentEvent('sub_annual', new Date('2026-09-15T12:00:00.000Z'), { total: 12000 })
+        await seedPaymentEvent('sub_annual', new Date('2026-09-15T12:00:00.000Z'), { total: 12000, interval: 'annual' })
 
         expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({})
     })
@@ -94,10 +94,60 @@ describe('computeLocalRevenueByCurrency', () => {
         expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({})
     })
 
-    it('excludes a payment with no matching subscription', async () => {
+    it('includes a monthly payment whose subscription row no longer exists', async () => {
         await seedPaymentEvent('sub_unknown', new Date('2026-09-15T12:00:00.000Z'))
 
+        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ USD: 1000 })
+    })
+
+    it('excludes a payment whose price could not be classified, and does not fall back to the subscription row', async () => {
+        await seedSubscription('sub_unclassified', 'monthly')
+        await seedPaymentEvent('sub_unclassified', new Date('2026-09-15T12:00:00.000Z'), { interval: undefined, planCode: undefined })
+
         expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({})
+    })
+
+    describe('classifies from the payment itself, not from the subscription as it is now (BUG-45)', () => {
+        it('counts a monthly payment after the subscriber moved to annual', async () => {
+            await seedSubscription('sub_moved_up', 'annual')
+            await seedPaymentEvent('sub_moved_up', new Date('2026-09-15T12:00:00.000Z'), { total: 500, interval: 'monthly' })
+
+            expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ USD: 500 })
+        })
+
+        it('leaves an annual payment to its recognition buckets after the subscriber moved to monthly', async () => {
+            await seedSubscription('sub_moved_down', 'monthly')
+            await seedPaymentEvent('sub_moved_down', new Date('2026-09-15T12:00:00.000Z'), { total: 12000, interval: 'annual' })
+
+            expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({})
+        })
+
+        it('keeps a monthly payment in the month after its payer erased their account and the ledger lost the provider ids', async () => {
+            const event = await seedPaymentEvent('sub_erased', new Date('2026-09-15T12:00:00.000Z'), { total: 500 })
+            await BillingEvent.collection.updateOne(
+                { providerEventId: event.providerEventId },
+                { $unset: { 'payload.providerSubscriptionId': '', 'payload.providerCustomerId': '' }, $set: { redactedAt: new Date() } }
+            )
+
+            expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ USD: 500 })
+        })
+    })
+
+    it('reports currencies uppercase and merges lowercase rows written before currencies were normalised (BUG-46)', async () => {
+        await seedSubscription('sub_upper', 'monthly')
+        await seedPaymentEvent('sub_upper', new Date('2026-09-15T12:00:00.000Z'), { total: 500, currency: 'USD' })
+        await seedPaymentEvent('sub_upper', new Date('2026-09-16T12:00:00.000Z'), { total: 300, currency: 'usd' })
+        await DeferredRevenueEntry.create({
+            sourceEventId: 'evt_bucket_lower',
+            planCode: 'pro',
+            bucketIndex: 1,
+            recognitionMonth: '2026-09',
+            recognizedAmountMinor: 200,
+            currency: 'usd',
+            paymentOccurredAt: new Date('2026-09-05T00:00:00.000Z'),
+        })
+
+        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ USD: 1000 })
     })
 
     it('excludes a payment outside the month, at either boundary', async () => {
@@ -110,9 +160,9 @@ describe('computeLocalRevenueByCurrency', () => {
 
     it('groups by currency across mixed monthly payments and recognition buckets', async () => {
         await seedSubscription('sub_monthly_usd', 'monthly')
-        await seedPaymentEvent('sub_monthly_usd', new Date('2026-09-15T12:00:00.000Z'), { total: 500, currency: 'usd' })
+        await seedPaymentEvent('sub_monthly_usd', new Date('2026-09-15T12:00:00.000Z'), { total: 500, currency: 'USD' })
         await seedSubscription('sub_monthly_eur', 'monthly')
-        await seedPaymentEvent('sub_monthly_eur', new Date('2026-09-16T12:00:00.000Z'), { total: 400, currency: 'eur' })
+        await seedPaymentEvent('sub_monthly_eur', new Date('2026-09-16T12:00:00.000Z'), { total: 400, currency: 'EUR' })
         await DeferredRevenueEntry.create({
             sourceEventId: 'evt_bucket_eur',
             planCode: 'pro',
@@ -123,6 +173,6 @@ describe('computeLocalRevenueByCurrency', () => {
             paymentOccurredAt: new Date('2026-09-05T00:00:00.000Z'),
         })
 
-        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ usd: 500, eur: 700 })
+        expect(await computeLocalRevenueByCurrency('2026-09')).toEqual({ USD: 500, EUR: 700 })
     })
 })

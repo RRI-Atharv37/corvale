@@ -88,24 +88,18 @@ let owner: string
 let editor: string
 let workspaceId: string
 
+const dropWorkspacesFeature = () => Plan.updateOne({ code: 'pro' }, { $set: { 'features.workspaces': false } })
+
 const asReq = (extras: Record<string, unknown>) => ({ params: {}, body: {}, query: {}, ...extras }) as unknown as AuthRequest
 
 beforeEach(async () => {
     process.env.BILLING_ENABLED = 'true'
-    await Plan.create([
-        {
-            code: 'plus',
-            name: 'Plus',
-            features: { workspaces: false, prioritySupport: false, bankSync: false },
-            limits: { receiptStorageBytes: 100, syncDevices: 1, workspaceMembers: null },
-        },
-        {
-            code: 'pro',
-            name: 'Pro',
-            features: { workspaces: true, prioritySupport: true, bankSync: true },
-            limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: null },
-        },
-    ])
+    await Plan.create({
+        code: 'pro',
+        name: 'Pro',
+        features: { workspaces: true, prioritySupport: true, bankSync: true },
+        limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: null },
+    })
     owner = new Types.ObjectId().toString()
     editor = new Types.ObjectId().toString()
     workspaceId = (
@@ -272,22 +266,25 @@ describe('requireScopedWriteAccess(scope)', () => {
         expectAllowed(await run(editor, requireScopedWriteAccess(inWorkspace)))
     })
 
-    it('a Plus owner cannot host workspace writes: ENTITLEMENT_REQUIRED, for the owner and the members', async () => {
-        await subscribe(owner, { planCode: 'plus' })
-        await subscribe(editor, { planCode: 'pro' })
+    it('an owner whose plan lacks the workspaces feature cannot host workspace writes: ENTITLEMENT_REQUIRED, for the owner and the members', async () => {
+        await dropWorkspacesFeature()
+        await subscribe(owner)
+        await subscribe(editor)
 
         expectRefused(await run(editor, requireScopedWriteAccess(inWorkspace)), 402, ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
         expectRefused(await run(owner, requireScopedWriteAccess(inWorkspace)), 402, ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
     })
 
     it('a lapsed owner is READ_ONLY, reported before the missing feature', async () => {
-        await subscribe(owner, { planCode: 'plus', ...LAPSED })
+        await dropWorkspacesFeature()
+        await subscribe(owner, LAPSED)
 
         expectRefused(await run(editor, requireScopedWriteAccess(inWorkspace)), 402, ERROR_MESSAGES.BILLING.READ_ONLY)
     })
 
     it('personal scope needs only write access, not the workspaces feature', async () => {
-        await subscribe(editor, { planCode: 'plus' })
+        await dropWorkspacesFeature()
+        await subscribe(editor)
 
         expectAllowed(await run(editor, requireScopedWriteAccess(personal)))
     })
@@ -300,14 +297,15 @@ describe('requireScopedWriteAccess(scope)', () => {
     })
 
     it('a non-member naming the workspace gets the membership 403 and learns nothing of the owner plan', async () => {
-        await subscribe(owner, { planCode: 'plus' })
+        await dropWorkspacesFeature()
+        await subscribe(owner)
 
         expectRefused(await run(new Types.ObjectId().toString(), requireScopedWriteAccess(inWorkspace)), 403, ERROR_MESSAGES.WORKSPACE.NOT_A_MEMBER)
     })
 
     it('is a no-op while billing is off', async () => {
         delete process.env.BILLING_ENABLED
-        await subscribe(owner, { planCode: 'plus', ...LAPSED })
+        await subscribe(owner, LAPSED)
 
         expectAllowed(await run(editor, requireScopedWriteAccess(inWorkspace)))
     })

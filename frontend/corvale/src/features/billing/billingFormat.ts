@@ -41,7 +41,7 @@ export const yearlySavingsPercent = (prices: PublicPlan['prices']): number => {
 }
 
 export const planName = (code: EntitlementSnapshot['planCode']): string =>
-    code === 'pro' ? 'Pro' : code === 'plus' ? 'Plus' : 'your'
+    code === 'pro' ? 'Pro' : 'your'
 
 export const isUnreadableSnapshot = (entitlements: EntitlementSnapshot): boolean =>
     Date.parse(entitlements.resolvedAt) === Date.parse(READ_ONLY_ENTITLEMENTS.resolvedAt)

@@ -178,9 +178,10 @@ describe('GET /subscribers - masked list with filters', () => {
     })
 
     it('filters by plan and grandfather kind', async () => {
-        await Subscription.updateOne({ status: 'trialing' }, { $set: { planCode: 'plus' } })
+        const all = (await list('')).subscribers.length
+        await Subscription.updateOne({ status: 'trialing' }, { $set: { planCode: null } })
 
-        expect((await list('?plan=plus')).subscribers).toHaveLength(1)
+        expect((await list('?plan=pro')).subscribers).toHaveLength(all - 1)
         expect((await list('?grandfatherKind=free_forever')).subscribers).toHaveLength(1)
     })
 

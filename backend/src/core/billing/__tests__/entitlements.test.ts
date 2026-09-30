@@ -23,12 +23,6 @@ const DAY = 24 * 60 * 60 * 1000
 const NOW = new Date('2026-10-15T12:00:00.000Z')
 const at = (days: number): Date => new Date(NOW.getTime() + days * DAY)
 
-const PLUS: PlanDefinition = {
-    code: 'plus',
-    features: { workspaces: false, prioritySupport: false, bankSync: false },
-    limits: { receiptStorageBytes: 1_000, syncDevices: 1, workspaceMembers: null },
-}
-
 const PRO: PlanDefinition = {
     code: 'pro',
     features: { workspaces: true, prioritySupport: true, bankSync: true },
@@ -106,7 +100,7 @@ describe('resolveEntitlements - status derivation', () => {
     })
 
     it('active is fully writable', () => {
-        const e = resolveEntitlements(sub(), PLUS, NOW)
+        const e = resolveEntitlements(sub(), PRO, NOW)
 
         expect(e.status).toBe('active')
         expect(e.canWrite).toBe(true)
@@ -171,13 +165,7 @@ describe('resolveEntitlements - status derivation', () => {
 })
 
 describe('resolveEntitlements - plans', () => {
-    it('Plus and Pro resolve their own features and limits', () => {
-        const plus = resolveEntitlements(sub({ planCode: 'plus' }), PLUS, NOW)
-        expect(plus.planCode).toBe('plus')
-        expect(plus.features.workspaces).toBe(false)
-        expect(plus.limits.syncDevices).toBe(1)
-        expect(plus.limits.receiptStorageBytes).toBe(1_000)
-
+    it('Pro resolves its own features and limits', () => {
         const pro = resolveEntitlements(sub({ planCode: 'pro' }), PRO, NOW)
         expect(pro.planCode).toBe('pro')
         expect(pro.features.workspaces).toBe(true)

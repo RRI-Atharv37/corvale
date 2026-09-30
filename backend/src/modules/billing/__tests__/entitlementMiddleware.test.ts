@@ -60,26 +60,21 @@ const expectRefused = (outcome: Outcome, message: string): void => {
 }
 
 const seedPlans = async (): Promise<void> => {
-    await Plan.create([
-        {
-            code: 'plus',
-            name: 'Plus',
-            features: { workspaces: false, prioritySupport: false, bankSync: false },
-            limits: { receiptStorageBytes: 100, syncDevices: 1, workspaceMembers: null },
-        },
-        {
-            code: 'pro',
-            name: 'Pro',
-            features: { workspaces: true, prioritySupport: true, bankSync: true },
-            limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: 3 },
-        },
-    ])
+    await Plan.create({
+        code: 'pro',
+        name: 'Pro',
+        features: { workspaces: true, prioritySupport: true, bankSync: true },
+        limits: { receiptStorageBytes: 100, syncDevices: 1, workspaceMembers: null },
+    })
 }
+
+const dropFeatures = () =>
+    Plan.updateOne({ code: 'pro' }, { $set: { features: { workspaces: false, prioritySupport: false, bankSync: false } } })
 
 const subscribe = (userId: string, fields: Record<string, unknown> = {}) =>
     Subscription.create({
         userId,
-        planCode: 'plus',
+        planCode: 'pro',
         status: 'active',
         currentPeriodEnd: new Date(Date.now() + 30 * DAY),
         ...fields,
@@ -153,7 +148,8 @@ describe('requireWriteAccess', () => {
 
 describe('requireEntitlement(feature)', () => {
     it('refuses a plan lacking the feature with 402 ENTITLEMENT_REQUIRED', async () => {
-        await subscribe(userId, { planCode: 'plus' })
+        await dropFeatures()
+        await subscribe(userId)
 
         expectRefused(
             await run(userId, requireEntitlement('workspaces')),
@@ -174,8 +170,10 @@ describe('requireEntitlement(feature)', () => {
     })
 
     it('checks each feature independently', async () => {
-        await subscribe(userId, { planCode: 'plus' })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'features.workspaces': true, 'features.bankSync': false, 'features.prioritySupport': false } })
+        await subscribe(userId)
 
+        expectAllowed(await run(userId, requireEntitlement('workspaces')))
         expectRefused(await run(userId, requireEntitlement('bankSync')), ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
         expectRefused(
             await run(userId, requireEntitlement('prioritySupport')),
@@ -189,17 +187,19 @@ describe('requireEntitlement(feature)', () => {
         expectRefused(await run(userId, requireEntitlement('workspaces')), ERROR_MESSAGES.BILLING.READ_ONLY)
     })
 
-    it('reads fresh state: an upgrade applies on the very next call', async () => {
-        await subscribe(userId, { planCode: 'plus' })
+    it('reads fresh state: a plan change applies on the very next call', async () => {
+        await dropFeatures()
+        await subscribe(userId)
         expectRefused(await run(userId, requireEntitlement('workspaces')), ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
 
-        await Subscription.updateOne({ userId }, { $set: { planCode: 'pro' } })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'features.workspaces': true } })
 
         expectAllowed(await run(userId, requireEntitlement('workspaces')))
     })
 
     it('ignores anything the client puts in the body, query or headers', async () => {
-        await subscribe(userId, { planCode: 'plus' })
+        await dropFeatures()
+        await subscribe(userId)
 
         const outcome = await run(userId, requireEntitlement('workspaces'), {
             body: { planCode: 'pro', entitlements: { features: { workspaces: true } } },
@@ -221,7 +221,7 @@ describe('requireQuota(resource, amount)', () => {
     const setUsage = (resource: string, value: number) => UsageCounter.create({ userId, resource, value })
 
     beforeEach(async () => {
-        await subscribe(userId, { planCode: 'plus' })
+        await subscribe(userId)
     })
 
     it('allows usage that lands exactly on the limit', async () => {
@@ -288,11 +288,11 @@ describe('requireQuota(resource, amount)', () => {
         expectRefused(await run(userId, requireQuota('receiptBytes', 1)), ERROR_MESSAGES.BILLING.READ_ONLY)
     })
 
-    it('upgrading raises the limit on the next call', async () => {
+    it('raising the plan limit applies on the next call', async () => {
         await setUsage('receiptBytes', 100)
         expectRefused(await run(userId, requireQuota('receiptBytes', 1)), ERROR_MESSAGES.BILLING.QUOTA_EXCEEDED)
 
-        await Subscription.updateOne({ userId }, { $set: { planCode: 'pro' } })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'limits.receiptStorageBytes': 1000 } })
 
         expectAllowed(await run(userId, requireQuota('receiptBytes', 1)))
     })

@@ -12,7 +12,6 @@ const config: MorConfig = {
     environment: 'sandbox',
     webhookSecret: 'mor_secret',
     prices: {
-        plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     },
 }
@@ -378,8 +377,6 @@ describe('changePlan', () => {
     })
 
     it.each([
-        ['plus', 'monthly', '101'],
-        ['plus', 'annual', '102'],
         ['pro', 'monthly', '201'],
         ['pro', 'annual', '202'],
     ] as const)('sends price %s %s -> %s', async (planCode, interval, priceId) => {
@@ -395,7 +392,7 @@ describe('changePlan', () => {
         const fetchImpl = stubFetch(() => json({ data: subscriptionResource('sub_77') }))
         const provider = createMorProvider(config, { fetchImpl })
 
-        await provider.changePlan({ providerSubscriptionId: 'sub_77/../../customers', planCode: 'plus', interval: 'monthly' })
+        await provider.changePlan({ providerSubscriptionId: 'sub_77/../../customers', planCode: 'pro', interval: 'monthly' })
 
         expect(callsOf(fetchImpl)[0].path).toBe('/subscriptions/sub_77%2F..%2F..%2Fcustomers')
     })
@@ -404,7 +401,7 @@ describe('changePlan', () => {
         const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({ data: subscriptionResource('sub_77') })) })
 
         await expect(
-            provider.changePlan({ providerSubscriptionId: 'sub_77', planCode: 'plus', interval: 'monthly' })
+            provider.changePlan({ providerSubscriptionId: 'sub_77', planCode: 'pro', interval: 'monthly' })
         ).resolves.toBeUndefined()
     })
 
@@ -412,7 +409,7 @@ describe('changePlan', () => {
         const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({ error: {} }, 422)) })
 
         await expect(
-            provider.changePlan({ providerSubscriptionId: 'sub_77', planCode: 'plus', interval: 'monthly' })
+            provider.changePlan({ providerSubscriptionId: 'sub_77', planCode: 'pro', interval: 'monthly' })
         ).rejects.toBeInstanceOf(CustomError)
     })
 })

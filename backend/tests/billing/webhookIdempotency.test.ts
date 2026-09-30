@@ -90,15 +90,15 @@ describe('webhook replay', () => {
     })
 
     it('the ledger, not the body, decides: a mutated redelivery of the same id changes nothing', async () => {
-        const original = event({ type: 'subscription.updated', planCode: 'plus', status: 'active', occurredAt: at(-1000) })
+        const original = event({ type: 'subscription.updated', interval: 'annual', status: 'active', occurredAt: at(-1000) })
         await postWebhook(app, original)
 
-        const mutated = await postWebhook(app, { ...original, planCode: 'pro' })
+        const mutated = await postWebhook(app, { ...original, interval: 'monthly' })
 
         expect(mutated.body.data.duplicate).toBe(true)
-        expect((await sub())?.planCode).toBe('plus')
+        expect((await sub())?.interval).toBe('annual')
         const ledger = await BillingEvent.findOne({ providerEventId: original.providerEventId }).lean()
-        expect(JSON.stringify(ledger?.payload)).toContain('"plus"')
+        expect(JSON.stringify(ledger?.payload)).toContain('"annual"')
     })
 
     it('distinct event ids with identical content are both applied - no accidental content de-duplication', async () => {
@@ -113,27 +113,27 @@ describe('webhook replay', () => {
     })
 
     it('parallel deliveries of one event apply it exactly once', async () => {
-        const evt = event({ type: 'subscription.updated', planCode: 'plus', status: 'active', occurredAt: at(-1000) })
+        const evt = event({ type: 'subscription.updated', interval: 'annual', status: 'active', occurredAt: at(-1000) })
 
         const results = await Promise.all(Array.from({ length: 6 }, () => postWebhook(app, evt)))
 
         expect(results.every((r) => r.status === 200)).toBe(true)
         expect(results.filter((r) => !r.body.data.duplicate)).toHaveLength(1)
         expect(await BillingEvent.countDocuments({ providerEventId: evt.providerEventId })).toBe(1)
-        expect((await sub())?.planCode).toBe('plus')
+        expect((await sub())?.interval).toBe('annual')
     })
 })
 
 describe('webhook ordering', () => {
     it('an event older than the last applied one is ledgered but does not regress state', async () => {
-        const newer = event({ type: 'subscription.updated', planCode: 'plus', status: 'active', occurredAt: at(-1000) })
-        const older = event({ type: 'subscription.updated', planCode: 'pro', status: 'active', occurredAt: at(-5000) })
+        const newer = event({ type: 'subscription.updated', interval: 'annual', status: 'active', occurredAt: at(-1000) })
+        const older = event({ type: 'subscription.updated', interval: 'monthly', status: 'active', occurredAt: at(-5000) })
 
         await postWebhook(app, newer)
         const res = await postWebhook(app, older)
 
         expect(res.status).toBe(200)
-        expect((await sub())?.planCode).toBe('plus')
+        expect((await sub())?.interval).toBe('annual')
         expect((await BillingEvent.findOne({ providerEventId: older.providerEventId }).lean())?.processedAt).toBeTruthy()
     })
 
@@ -159,7 +159,7 @@ describe('webhook ordering', () => {
 describe('webhook retry of an event that could not be applied yet', () => {
     it('stays un-processed, and the same id is applied when redelivered once the subscription exists', async () => {
         await Subscription.deleteMany({ userId: user.userId })
-        const early = event({ type: 'subscription.updated', planCode: 'plus', status: 'active', occurredAt: at(-1000) })
+        const early = event({ type: 'subscription.updated', interval: 'annual', status: 'active', occurredAt: at(-1000) })
 
         const first = await postWebhook(app, early)
         expect(first.status).toBe(200)
@@ -175,7 +175,7 @@ describe('webhook retry of an event that could not be applied yet', () => {
 
         expect(retry.status).toBe(200)
         expect(retry.body.data.duplicate).toBeFalsy()
-        expect((await sub())?.planCode).toBe('plus')
+        expect((await sub())?.interval).toBe('annual')
         const settled = await BillingEvent.findOne({ providerEventId: early.providerEventId }).lean()
         expect(settled?.processedAt).toBeTruthy()
         expect(await BillingEvent.countDocuments({ providerEventId: early.providerEventId })).toBe(1)

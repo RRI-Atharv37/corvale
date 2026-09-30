@@ -18,8 +18,7 @@ export interface PlanCatalogueEntry {
 
 /**
  * Launch catalogue, ROADMAP § Pricing architecture. Prices are USD minor units; null = unlimited.
- * Single plan only (2026-09-22): the earlier Plus tier ($6/mo) was dropped - it didn't cover
- * hosting/overhead, so there is no cheaper landing spot below Pro.
+ * Single plan only: Pro, $12/mo or $96/yr. There is no other tier and no free tier.
  */
 export const DEFAULT_PLAN_CATALOGUE: readonly PlanCatalogueEntry[] = [
     {

@@ -32,7 +32,6 @@ const PDF = Buffer.from('%PDF-1.4\n1 0 obj\n<< >>\nendobj\n%%EOF')
 const STATES: Array<[string, SubscriptionOverrides | null]> = [
     ['trialing', BILLING_STATES.trialing],
     ['active (Pro)', BILLING_STATES.active],
-    ['active (Plus)', { ...BILLING_STATES.active, planCode: 'plus' }],
     ['past_due, in grace', BILLING_STATES.past_due_in_grace],
     ['past_due, grace elapsed', BILLING_STATES.past_due_grace_elapsed],
     ['trial_expired', BILLING_STATES.trial_expired],

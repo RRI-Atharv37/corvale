@@ -38,7 +38,7 @@ const upgradeEvent = () =>
         type: 'subscription.updated',
         providerCustomerId: `cus_${user.userId}`,
         providerSubscriptionId: `sub_${user.userId}`,
-        planCode: 'plus',
+        planCode: 'pro',
         status: 'active',
     })
 
@@ -87,8 +87,8 @@ describe('webhook - signature verification', () => {
     })
 
     it('rejects a valid signature replayed over a tampered body', async () => {
-        const honest = JSON.stringify({ ...upgradeEvent(), planCode: 'plus' })
-        const forged = JSON.stringify({ ...upgradeEvent(), planCode: 'pro', status: 'active' })
+        const honest = JSON.stringify({ ...upgradeEvent(), status: 'past_due' })
+        const forged = JSON.stringify({ ...upgradeEvent(), status: 'active' })
 
         const res = await postWebhook(app, forged, { signature: signPayload(honest) })
 

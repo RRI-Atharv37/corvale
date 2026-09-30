@@ -70,7 +70,8 @@ describe('checkout.completed / subscription.created', () => {
                 type: 'checkout.completed',
                 userId: user.userId,
                 ...ids(),
-                planCode: 'plus',
+                planCode: 'pro',
+                interval: 'annual',
                 status: 'active',
                 currentPeriodEnd: periodEnd,
             })
@@ -79,7 +80,8 @@ describe('checkout.completed / subscription.created', () => {
         expect(res.status).toBe(200)
         const stored = await sub()
         expect(stored?.status).toBe('active')
-        expect(stored?.planCode).toBe('plus')
+        expect(stored?.planCode).toBe('pro')
+        expect(stored?.interval).toBe('annual')
         expect(stored?.providerCustomerId).toBe(ids().providerCustomerId)
         expect(stored?.providerSubscriptionId).toBe(ids().providerSubscriptionId)
         expect(stored?.currentPeriodEnd?.toISOString()).toBe(periodEnd)
@@ -104,7 +106,7 @@ describe('checkout.completed / subscription.created', () => {
 
         await postWebhook(
             app,
-            buildEvent({ type: 'checkout.completed', userId: user.userId, ...ids(), planCode: 'plus', status: 'active', currentPeriodEnd: daysFromNow(30).toISOString() })
+            buildEvent({ type: 'checkout.completed', userId: user.userId, ...ids(), planCode: 'pro', status: 'active', currentPeriodEnd: daysFromNow(30).toISOString() })
         )
 
         expect((await sub())?.status).toBe('active')
@@ -112,15 +114,15 @@ describe('checkout.completed / subscription.created', () => {
 })
 
 describe('subscription.updated', () => {
-    beforeEach(() => setSubscription(user.userId, { planCode: 'pro', status: 'active', ...ids() }))
+    beforeEach(() => setSubscription(user.userId, { planCode: 'pro', interval: 'annual', status: 'active', ...ids() }))
 
-    it('applies a plan change (downgrade) and the new period end', async () => {
+    it('applies an interval change and the new period end', async () => {
         const periodEnd = daysFromNow(60).toISOString()
 
-        await send({ type: 'subscription.updated', planCode: 'plus', status: 'active', currentPeriodEnd: periodEnd })
+        await send({ type: 'subscription.updated', interval: 'monthly', status: 'active', currentPeriodEnd: periodEnd })
 
         const stored = await sub()
-        expect(stored?.planCode).toBe('plus')
+        expect(stored?.interval).toBe('monthly')
         expect(stored?.currentPeriodEnd?.toISOString()).toBe(periodEnd)
     })
 
@@ -132,9 +134,9 @@ describe('subscription.updated', () => {
     })
 
     it('finds the subscription by customer id alone when the subscription id is absent', async () => {
-        await send({ type: 'subscription.updated', providerSubscriptionId: undefined, planCode: 'plus', status: 'active' })
+        await send({ type: 'subscription.updated', providerSubscriptionId: undefined, interval: 'monthly', status: 'active' })
 
-        expect((await sub())?.planCode).toBe('plus')
+        expect((await sub())?.interval).toBe('monthly')
     })
 })
 

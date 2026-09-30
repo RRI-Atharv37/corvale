@@ -167,9 +167,9 @@ describe('POST /subscribers/:userId/grant - comp', () => {
 
     it('replaces an earlier grant and audits what it replaced', async () => {
         await post('/grant', compBody({ days: 10 }))
-        await post('/grant', compBody({ days: 20, planCode: 'plus' }))
+        await post('/grant', compBody({ days: 20 }))
 
-        expect((await stored())?.adminGrant?.planCode).toBe('plus')
+        expect((await stored())?.adminGrant?.planCode).toBe('pro')
         const rows = await AdminAuditLog.find({ action: 'grant.comp' }).sort({ at: 1 }).lean()
         expect(rows).toHaveLength(2)
         expect(rows[1].before).toMatchObject({ adminGrant: { kind: 'comp', planCode: 'pro' } })
@@ -223,7 +223,7 @@ describe('caps and validation', () => {
 
 describe('POST /subscribers/:userId/grant - plan override', () => {
     beforeEach(async () => {
-        await setSubscription(user.userId, { ...BILLING_STATES.active, planCode: 'plus' })
+        await setSubscription(user.userId, BILLING_STATES.active)
     })
 
     const overrideBody = (over: Record<string, unknown> = {}) => ({ kind: 'plan_override', days: 30, reason: REASON, ...over })
@@ -231,24 +231,24 @@ describe('POST /subscribers/:userId/grant - plan override', () => {
     it('raises a limit the customer pays for, and only that limit', async () => {
         const before = await getUserEntitlements(user.userId)
 
-        const res = await post('/grant', overrideBody({ limits: { receiptStorageBytes: 5 * 1024 * 1024 } }))
+        const res = await post('/grant', overrideBody({ limits: { receiptStorageBytes: 20 * 1024 * 1024 } }))
 
         expect(res.status).toBe(200)
         const after = await getUserEntitlements(user.userId)
-        expect(after.limits.receiptStorageBytes).toBe(5 * 1024 * 1024)
+        expect(after.limits.receiptStorageBytes).toBe(20 * 1024 * 1024)
         expect(after.limits.syncDevices).toBe(before.limits.syncDevices)
         expect(after.features).toEqual(before.features)
-        expect(after.planCode).toBe('plus')
+        expect(after.planCode).toBe('pro')
     })
 
-    it('can raise the plan itself', async () => {
-        await post('/grant', overrideBody({ planCode: 'pro' }))
+    it('can lift a limit to unlimited', async () => {
+        await post('/grant', overrideBody({ limits: { receiptStorageBytes: null } }))
 
-        expect(await getUserEntitlements(user.userId)).toMatchObject({ planCode: 'pro' })
+        expect((await getUserEntitlements(user.userId)).limits.receiptStorageBytes).toBeNull()
     })
 
     it('audits it as a plan override', async () => {
-        await post('/grant', overrideBody({ planCode: 'pro' }))
+        await post('/grant', overrideBody({ limits: { receiptStorageBytes: 20 * 1024 * 1024 } }))
 
         expect(await AdminAuditLog.countDocuments({ action: 'grant.plan_override' })).toBe(1)
     })
@@ -257,7 +257,6 @@ describe('POST /subscribers/:userId/grant - plan override', () => {
         await setSubscription(user.userId, { ...BILLING_STATES.active, planCode: 'pro' })
 
         for (const body of [
-            overrideBody({ planCode: 'plus' }),
             overrideBody({ planCode: 'pro' }),
             overrideBody({ limits: { receiptStorageBytes: 1 } }),
             overrideBody({ limits: { receiptStorageBytes: 10 * 1024 * 1024 } }),
@@ -277,9 +276,9 @@ describe('POST /subscribers/:userId/grant - plan override', () => {
     })
 
     it('does not make a read-only customer writable', async () => {
-        await setSubscription(user.userId, { ...BILLING_STATES.trial_expired, planCode: 'plus' })
+        await setSubscription(user.userId, BILLING_STATES.trial_expired)
 
-        await post('/grant', overrideBody({ planCode: 'pro' }))
+        await post('/grant', overrideBody({ limits: { receiptStorageBytes: 20 * 1024 * 1024 } }))
 
         expect(await canWriteViaApi()).toBe(false)
     })
@@ -474,8 +473,8 @@ describe('ending a pause early restarts the retention clock (BUG-48)', () => {
     })
 
     it('does not move the clock for a plan override, which pauses nothing', async () => {
-        await setSubscription(user.userId, { ...BILLING_STATES.trial_expired, planCode: 'plus', lapsedAt: daysFromNow(-200) })
-        await post('/grant', { kind: 'plan_override', planCode: 'pro', days: 10, reason: REASON })
+        await setSubscription(user.userId, { ...BILLING_STATES.trial_expired, lapsedAt: daysFromNow(-200) })
+        await post('/grant', { kind: 'plan_override', limits: { receiptStorageBytes: 20 * 1024 * 1024 }, days: 10, reason: REASON })
 
         await post('/grant/revoke', { reason: REASON })
 

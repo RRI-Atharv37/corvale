@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { ADMIN_BASE, bearer, buildAdminApp, disableAdmin, loginAsAdmin, seedAdmin } from '@tests/adminHelpers'
 import { AdminAuditLog } from '@modules/admin'
-import { BillingEvent, DeferredRevenueEntry, Subscription } from '@modules/billing'
+import { BillingEvent, DeferredRevenueEntry, ProviderPayout, Subscription } from '@modules/billing'
 
 /**
  * M8e - the admin-facing deferred-revenue surface. Mounted only while `FINANCE_OPS_ENABLED` is
@@ -31,7 +31,7 @@ const seedAnnualPayment = async (total = 12000) => {
         providerEventId: `evt_fin_${eventCounter}`,
         type: 'payment.succeeded',
         occurredAt: new Date('2026-06-10T00:00:00.000Z'),
-        payload: { providerSubscriptionId, total, currency: 'usd' },
+        payload: { providerSubscriptionId, total, currency: 'USD', interval: 'annual', planCode: 'pro' },
     })
     return providerSubscriptionId
 }
@@ -196,8 +196,66 @@ describe('with FINANCE_OPS_ENABLED', () => {
             expect(audit).not.toBeNull()
             expect(audit?.adminId?.toString()).toBe(finance.id)
             expect(audit?.amountMinor).toBe(940)
-            expect(audit?.currency).toBe('usd')
+            expect(audit?.currency).toBe('USD')
             expect(audit?.after).toEqual({ periodMonth: '2026-06' })
+        })
+
+        it.each(['usd', 'USD', 'Usd'])('stores the currency uppercase and reconciles it against the uppercase code in the ledger whatever case was typed (%s, BUG-46)', async (typed) => {
+            const finance = await seedAdmin({ role: 'finance' })
+            const { token } = await loginAsAdmin(app, finance)
+            await seedAnnualPayment(12000)
+            const { runRevenueRecognitionSweep } = await import('@modules/billing')
+            await runRevenueRecognitionSweep()
+
+            const res = await request(app)
+                .post(`${ADMIN_BASE}/finance/payouts`)
+                .set(bearer(token))
+                .send({ periodMonth: '2026-06', currency: typed, reportedPayoutMinor: 1000 })
+
+            expect(res.status).toBe(201)
+            expect(res.body.data.currency).toBe('USD')
+            expect(res.body.data.localRevenueMinor).toBe(1000)
+            expect(res.body.data.varianceMinor).toBe(0)
+            expect(res.body.data.flagged).toBe(false)
+        })
+
+        it('treats the same period and currency in a different case as a duplicate', async () => {
+            const finance = await seedAdmin({ role: 'finance' })
+            const { token } = await loginAsAdmin(app, finance)
+            const record = (currency: string) =>
+                request(app)
+                    .post(`${ADMIN_BASE}/finance/payouts`)
+                    .set(bearer(token))
+                    .send({ periodMonth: '2026-06', currency, reportedPayoutMinor: 100 })
+
+            expect((await record('usd')).status).toBe(201)
+            expect((await record('USD')).status).toBe(409)
+        })
+
+        it('still reconciles a payout stored lowercase before currencies were normalised', async () => {
+            const finance = await seedAdmin({ role: 'finance' })
+            const { token } = await loginAsAdmin(app, finance)
+            await seedAnnualPayment(12000)
+            const { runRevenueRecognitionSweep } = await import('@modules/billing')
+            await runRevenueRecognitionSweep()
+            await ProviderPayout.collection.insertOne({
+                periodMonth: '2026-06',
+                currency: 'usd',
+                reportedPayoutMinor: 1000,
+                note: null,
+                firc: null,
+                bankDepositRef: null,
+                bankDepositDate: null,
+                bankDepositAmountMinor: null,
+                recordedByAdminId: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            })
+
+            const res = await request(app).get(`${ADMIN_BASE}/finance/payouts`).set(bearer(token))
+
+            expect(res.body.data.payouts[0].localRevenueMinor).toBe(1000)
+            expect(res.body.data.payouts[0].flagged).toBe(false)
         })
 
         it('flags a payout that differs from local revenue by more than the tolerance', async () => {
@@ -310,14 +368,14 @@ describe('with FINANCE_OPS_ENABLED', () => {
                 providerEventId: `evt_fy_${Date.now()}`,
                 type: 'payment.succeeded',
                 occurredAt: now,
-                payload: { providerSubscriptionId, total: 700, currency: 'usd' },
+                payload: { providerSubscriptionId, total: 700, currency: 'USD', interval: 'monthly', planCode: 'pro' },
             })
 
             const res = await request(app).get(`${ADMIN_BASE}/finance/fy-revenue`).set(bearer(token))
 
             expect(res.status).toBe(200)
             expect(res.body.data.financialYear).toBe(financialYearOf(now))
-            expect(res.body.data.totalsByCurrency.usd).toBe(700)
+            expect(res.body.data.totalsByCurrency.USD).toBe(700)
             expect(res.body.data.monthsIncluded).toContain(currentMonthKey)
             expect(res.body.data).not.toHaveProperty('gstDetermination')
         })

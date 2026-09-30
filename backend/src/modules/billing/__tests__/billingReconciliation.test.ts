@@ -78,9 +78,9 @@ afterEach(() => {
 describe('when the two sides agree', () => {
     it('reports no drift, counts what it checked, and raises no alert', async () => {
         await localFor(user)
-        await localFor(other, { planCode: 'plus' })
+        await localFor(other)
 
-        const report = await run([remoteFor(user), remoteFor(other, { planCode: 'plus' })])
+        const report = await run([remoteFor(user), remoteFor(other)])
 
         expect(report).toMatchObject({ skipped: false, checked: 2, drift: [], deferred: 0 })
         expect(captured).toHaveLength(0)
@@ -126,11 +126,10 @@ describe('field drift', () => {
     })
 
     it('names every field that differs at once', async () => {
-        await localFor(user, { planCode: 'plus', currentPeriodEnd: PERIOD_END, cancelAtPeriodEnd: false, trialEndsAt: null })
+        await localFor(user, { currentPeriodEnd: PERIOD_END, cancelAtPeriodEnd: false, trialEndsAt: null })
 
         const report = await run([
             remoteFor(user, {
-                planCode: 'pro',
                 currentPeriodEnd: new Date(PERIOD_END.getTime() + DAY_MS),
                 cancelAtPeriodEnd: true,
                 trialEndsAt: new Date('2026-05-01T00:00:00.000Z'),
@@ -140,7 +139,7 @@ describe('field drift', () => {
 
         expect(report.drift).toHaveLength(1)
         expect([...(report.drift[0].fields ?? [])].sort()).toEqual(
-            ['cancelAtPeriodEnd', 'currentPeriodEnd', 'planCode', 'providerCustomerId', 'trialEndsAt'].sort()
+            ['cancelAtPeriodEnd', 'currentPeriodEnd', 'providerCustomerId', 'trialEndsAt'].sort()
         )
     })
 
@@ -153,10 +152,10 @@ describe('field drift', () => {
     })
 
     it('never modifies the local subscription, whatever it finds', async () => {
-        await localFor(user, { status: 'active', planCode: 'plus' })
+        await localFor(user, { status: 'active' })
         const before = await Subscription.findOne({ userId: user.userId }).lean()
 
-        await run([remoteFor(user, { status: 'cancelled', planCode: 'pro' })])
+        await run([remoteFor(user, { status: 'cancelled' })])
 
         expect(await Subscription.findOne({ userId: user.userId }).lean()).toEqual(before)
     })

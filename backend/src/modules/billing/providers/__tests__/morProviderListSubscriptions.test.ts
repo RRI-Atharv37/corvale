@@ -12,7 +12,6 @@ const config: MorConfig = {
     environment: 'sandbox',
     webhookSecret: 'mor_secret',
     prices: {
-        plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     },
 }

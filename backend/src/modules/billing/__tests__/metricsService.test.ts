@@ -148,14 +148,14 @@ describe('recordSubscriptionTransitionMetrics', () => {
         expect(flows?.newPaid).toBe(1)
     })
 
-    it('an upgrade while active is expansion MRR, a downgrade is contraction', async () => {
+    it('moving to a costlier interval while active is expansion MRR, a cheaper one is contraction', async () => {
         const upEvent = await seedEvent()
-        await recordSubscriptionTransitionMetrics(subscription({ planCode: 'plus', interval: 'monthly' }), { planCode: 'pro' }, upEvent, at)
-        expect((await flowsOf('2026-09-22'))?.expansionMrr).toBe(600)
+        await recordSubscriptionTransitionMetrics(subscription({ interval: 'annual' }), { interval: 'monthly' }, upEvent, at)
+        expect((await flowsOf('2026-09-22'))?.expansionMrr).toBe(400)
 
         const downEvent = await seedEvent()
-        await recordSubscriptionTransitionMetrics(subscription({ planCode: 'pro', interval: 'monthly' }), { planCode: 'plus' }, downEvent, at)
-        expect((await flowsOf('2026-09-22'))?.contractionMrr).toBe(600)
+        await recordSubscriptionTransitionMetrics(subscription({ interval: 'monthly' }), { interval: 'annual' }, downEvent, at)
+        expect((await flowsOf('2026-09-22'))?.contractionMrr).toBe(400)
     })
 
     it('cancelling a subscription set to end at period end is voluntary churn', async () => {
@@ -189,6 +189,30 @@ describe('recordSubscriptionTransitionMetrics', () => {
         const recoverEvent = await seedEvent()
         await recordSubscriptionTransitionMetrics(subscription({ status: 'past_due' }), { status: 'active' }, recoverEvent, at)
         expect((await flowsOf('2026-09-22'))?.dunningRecovered).toBe(1)
+    })
+
+    it('records extra counters under the same claim as the transition, so neither is refused (BUG-49)', async () => {
+        const providerEventId = await seedEvent()
+        const before = subscription({ status: 'active', planCode: 'pro', interval: 'monthly', cancelAtPeriodEnd: false })
+
+        await recordSubscriptionTransitionMetrics(before, { status: 'cancelled' }, providerEventId, at, { disputes: 1 })
+
+        const flows = await flowsOf('2026-09-22')
+        expect(flows?.disputes).toBe(1)
+        expect(flows?.churnedInvoluntary).toBe(1)
+        expect(flows?.churnedMrr).toBe(1200)
+    })
+
+    it('records the extra counters alone when the transition adds nothing, and only once on redelivery', async () => {
+        const providerEventId = await seedEvent()
+        const before = subscription({ status: 'cancelled' })
+
+        await recordSubscriptionTransitionMetrics(before, { status: 'cancelled' }, providerEventId, at, { disputes: 1 })
+        await recordSubscriptionTransitionMetrics(before, { status: 'cancelled' }, providerEventId, at, { disputes: 1 })
+
+        const flows = await flowsOf('2026-09-22')
+        expect(flows?.disputes).toBe(1)
+        expect(flows?.churnedInvoluntary).toBe(0)
     })
 
     it('a redelivery of the same event does not double the counters', async () => {

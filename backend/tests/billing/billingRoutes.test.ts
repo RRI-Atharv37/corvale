@@ -52,14 +52,14 @@ afterEach(() => {
 })
 
 describe('GET /billing/plans', () => {
-    it('is public and lists the launch plans with prices, features and limits', async () => {
+    it('is public and lists the one plan with its price, features and limits', async () => {
         const res = await api('get', '/plans', null)
 
         expect(res.status).toBe(200)
         expect(res.body.data.billingEnabled).toBe(true)
         expect(res.body.data.trialDays).toBe(30)
-        const [plus, pro] = res.body.data.plans
-        expect(plus).toMatchObject({ code: 'plus', name: 'Plus', prices: { monthly: 600, annual: 6000 }, features: { workspaces: false } })
+        expect(res.body.data.plans).toHaveLength(1)
+        const [pro] = res.body.data.plans
         expect(pro).toMatchObject({ code: 'pro', name: 'Pro', prices: { monthly: 1200, annual: 9600 }, features: { workspaces: true } })
         expect(pro.limits).toHaveProperty('receiptStorageBytes')
         expect(pro.limits).toHaveProperty('syncDevices')
@@ -86,7 +86,7 @@ describe('GET /billing/plans', () => {
 
         const res = await api('get', '/plans', null)
 
-        expect(res.body.data.plans.map((p: { code: string }) => p.code)).toEqual(['plus', 'pro'])
+        expect(res.body.data.plans.map((p: { code: string }) => p.code)).toEqual(['pro'])
     })
 })
 
@@ -211,7 +211,7 @@ describe('POST /billing/checkout - one live subscription per user', () => {
     it('answers 404 while billing is off', async () => {
         disableBilling()
 
-        const res = await api('post', '/checkout', user.token, { planCode: 'plus', interval: 'monthly' })
+        const res = await api('post', '/checkout', user.token, { planCode: 'pro', interval: 'monthly' })
 
         expect(res.status).toBe(404)
         expect(res.body.message).toBe(ERROR_MESSAGES.BILLING.NOT_ENABLED)
@@ -222,18 +222,18 @@ describe('POST /billing/change-plan', () => {
     it('asks the provider to move the caller\'s own subscription and reports it as requested', async () => {
         await setSubscription(user.userId, LIVE)
 
-        const res = await api('post', '/change-plan', user.token, { planCode: 'plus', interval: 'annual' })
+        const res = await api('post', '/change-plan', user.token, { planCode: 'pro', interval: 'annual' })
 
         expect(res.status).toBe(202)
         expect(res.body.data).toEqual({ requested: true })
-        expect(calls.changePlan).toEqual([{ providerSubscriptionId: 'sub_mine', planCode: 'plus', interval: 'annual' }])
+        expect(calls.changePlan).toEqual([{ providerSubscriptionId: 'sub_mine', planCode: 'pro', interval: 'annual' }])
     })
 
     it('never changes the stored plan: entitlement moves only when the webhook arrives', async () => {
         await setSubscription(user.userId, LIVE)
         const before = await stored()
 
-        await api('post', '/change-plan', user.token, { planCode: 'plus', interval: 'annual' })
+        await api('post', '/change-plan', user.token, { planCode: 'pro', interval: 'annual' })
 
         expect(await stored()).toEqual(before)
     })
@@ -242,7 +242,7 @@ describe('POST /billing/change-plan', () => {
         await setSubscription(user.userId, LIVE)
 
         await api('post', '/change-plan', user.token, {
-            planCode: 'plus',
+            planCode: 'pro',
             interval: 'monthly',
             providerSubscriptionId: 'sub_someone_else',
         })
@@ -252,8 +252,8 @@ describe('POST /billing/change-plan', () => {
 
     it.each([
         [{ planCode: 'gold', interval: 'monthly' }],
-        [{ planCode: 'plus', interval: 'weekly' }],
-        [{ planCode: 'plus' }],
+        [{ planCode: 'pro', interval: 'weekly' }],
+        [{ planCode: 'pro' }],
         [{ planCode: { $ne: 'x' }, interval: 'monthly' }],
         [{}],
     ])('rejects %j with 400 before touching the provider', async (body) => {
@@ -272,7 +272,7 @@ describe('POST /billing/change-plan', () => {
     ])('is refused with 409 for %s', async (_label, state) => {
         await setSubscription(user.userId, { ...state, providerSubscriptionId: state === BILLING_STATES.trialing ? null : 'sub_old' })
 
-        const res = await api('post', '/change-plan', user.token, { planCode: 'plus', interval: 'monthly' })
+        const res = await api('post', '/change-plan', user.token, { planCode: 'pro', interval: 'monthly' })
 
         expect(res.status).toBe(409)
         expect(res.body.message).toBe(ERROR_MESSAGES.BILLING.NO_ACTIVE_SUBSCRIPTION)
@@ -280,13 +280,13 @@ describe('POST /billing/change-plan', () => {
     })
 
     it('requires authentication', async () => {
-        expect((await api('post', '/change-plan', null, { planCode: 'plus', interval: 'monthly' })).status).toBe(401)
+        expect((await api('post', '/change-plan', null, { planCode: 'pro', interval: 'monthly' })).status).toBe(401)
     })
 
     it('answers 404 while billing is off', async () => {
         disableBilling()
 
-        expect((await api('post', '/change-plan', user.token, { planCode: 'plus', interval: 'monthly' })).status).toBe(404)
+        expect((await api('post', '/change-plan', user.token, { planCode: 'pro', interval: 'monthly' })).status).toBe(404)
     })
 })
 

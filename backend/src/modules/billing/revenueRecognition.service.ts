@@ -6,7 +6,7 @@ import { logger } from '@infra/observability/logger'
 import BillingEvent from './billingEvent.model'
 import DeferredRevenueEntry from './deferredRevenueEntry.model'
 import { isFinanceOpsEnabled } from './financeOpsConfig'
-import Subscription from './subscription.model'
+import { readLedgerPayment } from './paymentLedger'
 
 const BYPASS = { [RLS_BYPASS]: true }
 
@@ -26,17 +26,11 @@ const claimRevenueRecognitionOnce = async (providerEventId: string): Promise<boo
     return claimed !== null
 }
 
-interface PaymentSucceededPayload {
-    providerSubscriptionId?: string
-    total?: number
-    currency?: string
-    refunded?: boolean
-}
-
 /**
  * Reads every un-recognized `payment.succeeded` row off the append-only billing ledger, keeps the
- * ones that belong to a currently-annual subscription and were not refunded, and splits each into
- * 12 monthly `DeferredRevenueEntry` rows.
+ * ones that were paid on an annual price and not refunded, and splits each into 12 monthly
+ * `DeferredRevenueEntry` rows. Classification comes from the payment row alone (`readLedgerPayment`),
+ * never from the subscription as it is now.
  *
  * Deliberately decoupled from `webhookEventHandlers.ts` (M8e design decision): this reads
  * `BillingEvent` after the fact rather than hooking the live `handlePaymentSucceeded` path, so a
@@ -58,33 +52,25 @@ export const runRevenueRecognitionSweep = async (): Promise<RevenueRecognitionSw
         if (!(await claimRevenueRecognitionOnce(row.providerEventId))) continue
         claimed += 1
 
-        const payload = row.payload as PaymentSucceededPayload
-        if (
-            payload.refunded ||
-            typeof payload.total !== 'number' ||
-            payload.total <= 0 ||
-            typeof payload.currency !== 'string' ||
-            !payload.providerSubscriptionId
-        ) {
+        const payment = readLedgerPayment(row.payload)
+        if (!payment || payment.interval !== 'annual' || !payment.planCode) {
+            if (payment && !payment.interval) {
+                logger.warn('Payment could not be classified by interval and was not recognised', { providerEventId: row.providerEventId })
+            }
             continue
         }
+        const { planCode } = payment
 
-        const subscription = await Subscription.findOne({ providerSubscriptionId: payload.providerSubscriptionId })
-            .select('interval planCode')
-            .setOptions(BYPASS)
-            .lean()
-        if (!subscription || subscription.interval !== 'annual') continue
-
-        const buckets = splitIntoMonthlyBuckets(payload.total, row.occurredAt)
+        const buckets = splitIntoMonthlyBuckets(payment.total, row.occurredAt)
         try {
             await DeferredRevenueEntry.insertMany(
                 buckets.map((bucket) => ({
                     sourceEventId: row.providerEventId,
-                    planCode: subscription.planCode,
+                    planCode,
                     bucketIndex: bucket.bucketIndex,
                     recognitionMonth: bucket.recognitionMonth,
                     recognizedAmountMinor: bucket.amountMinor,
-                    currency: payload.currency,
+                    currency: payment.currency,
                     paymentOccurredAt: row.occurredAt,
                 })),
                 { ordered: true }

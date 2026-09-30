@@ -350,7 +350,7 @@ describe('sync devices', () => {
 
     it('lists the devices, this one first marked, next to the plan limit', async () => {
         vi.mocked(api.fetchDevices).mockResolvedValue(twoDevices())
-        renderBilling(snapshot({ planCode: 'plus' }))
+        renderBilling(snapshot({ planCode: 'pro' }))
 
         const region = await screen.findByRole('region', { name: /sync devices/i })
 
@@ -362,7 +362,7 @@ describe('sync devices', () => {
     it('removing a device revokes exactly that one and then re-reads the list', async () => {
         vi.mocked(api.fetchDevices).mockResolvedValueOnce(twoDevices()).mockResolvedValue({ devices: [twoDevices().devices[0]], limit: 1 })
         const user = userEvent.setup()
-        renderBilling(snapshot({ planCode: 'plus' }))
+        renderBilling(snapshot({ planCode: 'pro' }))
 
         await user.click(await screen.findByRole('button', { name: /remove installed web app/i }))
         await user.click(screen.getByRole('button', { name: /yes, remove/i }))
@@ -376,7 +376,7 @@ describe('sync devices', () => {
     it('renaming a device sends the name and re-reads the list', async () => {
         vi.mocked(api.fetchDevices).mockResolvedValue(twoDevices())
         const user = userEvent.setup()
-        renderBilling(snapshot({ planCode: 'plus' }))
+        renderBilling(snapshot({ planCode: 'pro' }))
 
         await user.click(await screen.findByRole('button', { name: /rename installed web app/i }))
         await user.type(screen.getByRole('textbox', { name: /device name/i }), 'Phone')
@@ -390,7 +390,7 @@ describe('sync devices', () => {
         vi.mocked(api.fetchDevices).mockResolvedValue(twoDevices())
         vi.mocked(api.revokeDevice).mockRejectedValue(new Error('nope'))
         const user = userEvent.setup()
-        renderBilling(snapshot({ planCode: 'plus' }))
+        renderBilling(snapshot({ planCode: 'pro' }))
 
         await user.click(await screen.findByRole('button', { name: /remove installed web app/i }))
         await user.click(screen.getByRole('button', { name: /yes, remove/i }))

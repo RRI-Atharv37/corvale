@@ -253,7 +253,7 @@ describe('the member limit is per workspace and follows that workspace\'s rows',
 
     beforeEach(async () => {
         enableBilling()
-        await seedTestPlans({ pro: { limits: { workspaceMembers: 2 } } })
+        await seedTestPlans({ limits: { workspaceMembers: 2 } })
         owner = await registerUser(app)
         await setSubscription(owner.userId, BILLING_STATES.active)
     })
@@ -288,7 +288,7 @@ describe('the member limit is per workspace and follows that workspace\'s rows',
     })
 
     it('a limit of one leaves no room to invite anyone', async () => {
-        await seedTestPlans({ pro: { limits: { workspaceMembers: 1 } } })
+        await seedTestPlans({ limits: { workspaceMembers: 1 } })
         const created = await createWorkspace('Home')
         const invitee = await seedUserDirectly({ email: 'seat-invitee@example.com' })
 
@@ -335,7 +335,7 @@ describe('the member limit is per workspace and follows that workspace\'s rows',
         await request(app).post(`/api/v1/workspaces/invites/${accepted.body.data._id}/accept`).set(authHeader(a.token))
         expect(await seats(id)).toBe(2)
 
-        await seedTestPlans({ pro: { limits: { workspaceMembers: 3 } } })
+        await seedTestPlans({ limits: { workspaceMembers: 3 } })
         const declined = await inviteTo(id, b.email)
         expect(await seats(id)).toBe(3)
         await request(app).post(`/api/v1/workspaces/invites/${declined.body.data._id}/decline`).set(authHeader(b.token))

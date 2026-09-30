@@ -87,6 +87,8 @@ const subscribe = (userId: string, fields: Record<string, unknown> = {}) =>
 
 const LAPSED = { status: 'trial_expired', trialEndsAt: new Date(Date.now() - DAY) }
 
+const dropWorkspacesFeature = () => Plan.updateOne({ code: 'pro' }, { $set: { 'features.workspaces': false } })
+
 let owner: string
 let editor: string
 let stranger: string
@@ -94,20 +96,12 @@ let workspaceId: string
 
 beforeEach(async () => {
     process.env.BILLING_ENABLED = 'true'
-    await Plan.create([
-        {
-            code: 'plus',
-            name: 'Plus',
-            features: { workspaces: false, prioritySupport: false, bankSync: false },
-            limits: { receiptStorageBytes: 100, syncDevices: 1, workspaceMembers: null },
-        },
-        {
-            code: 'pro',
-            name: 'Pro',
-            features: { workspaces: true, prioritySupport: true, bankSync: true },
-            limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: 3 },
-        },
-    ])
+    await Plan.create({
+        code: 'pro',
+        name: 'Pro',
+        features: { workspaces: true, prioritySupport: true, bankSync: true },
+        limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: 3 },
+    })
 
     owner = new Types.ObjectId().toString()
     editor = new Types.ObjectId().toString()
@@ -306,9 +300,10 @@ describe('requireWriteAccessIn(scope)', () => {
 describe('requireEntitlement(feature, scope)', () => {
     const inWorkspace: BillingScope = () => workspaceId
 
-    it("checks the feature on the owner's plan", async () => {
-        await subscribe(owner, { planCode: 'plus' })
-        await subscribe(editor, { planCode: 'pro' })
+    it('refuses a workspace write when the plan does not include the feature', async () => {
+        await dropWorkspacesFeature()
+        await subscribe(owner)
+        await subscribe(editor)
 
         expectRefused(
             await run(editor, requireEntitlement('workspaces', inWorkspace)),
@@ -317,15 +312,15 @@ describe('requireEntitlement(feature, scope)', () => {
         )
     })
 
-    it("a member on Plus is fine when the owner's plan has the feature", async () => {
-        await subscribe(owner, { planCode: 'pro' })
-        await subscribe(editor, { planCode: 'plus' })
+    it("a member with no plan of their own is fine when the owner's plan has the feature", async () => {
+        await subscribe(owner)
 
         expectAllowed(await run(editor, requireEntitlement('workspaces', inWorkspace)))
     })
 
     it('without a scope it still resolves the caller', async () => {
-        await subscribe(editor, { planCode: 'plus' })
+        await dropWorkspacesFeature()
+        await subscribe(editor)
 
         expectRefused(await run(editor, requireEntitlement('workspaces')), 402, ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
     })
@@ -353,8 +348,8 @@ describe('requireQuota(resource, amount, scope)', () => {
     })
 
     it('without a scope it still counts the caller', async () => {
-        await subscribe(editor, { planCode: 'plus' })
-        await UsageCounter.create({ userId: editor, resource: 'receiptBytes', value: 100 })
+        await subscribe(editor)
+        await UsageCounter.create({ userId: editor, resource: 'receiptBytes', value: 1000 })
 
         expectRefused(await run(editor, requireQuota('receiptBytes', 1)), 402, ERROR_MESSAGES.BILLING.QUOTA_EXCEEDED)
     })

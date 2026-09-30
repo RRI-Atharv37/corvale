@@ -23,7 +23,6 @@ const config = {
     environment: 'sandbox',
     webhookSecret: SECRET,
     prices: {
-        plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     },
 } as unknown as MorConfig
@@ -125,11 +124,12 @@ const adjustmentBody = (action: string, overrides: Record<string, unknown> = {},
 const provider = createMorProvider(config, { fetchImpl: stubFetch(() => json({})) })
 
 describe('morConfigFromEnv', () => {
+    const proPrices = config.prices
     const full = {
         MOR_API_KEY: 'k',
         MOR_ENVIRONMENT: 'sandbox',
         MOR_WEBHOOK_SECRET: 's',
-        MOR_PRICES: JSON.stringify(config.prices),
+        MOR_PRICES: JSON.stringify(proPrices),
     }
 
     it('reads all four settings', () => {
@@ -137,7 +137,7 @@ describe('morConfigFromEnv', () => {
             apiKey: 'k',
             environment: 'sandbox',
             webhookSecret: 's',
-            prices: config.prices,
+            prices: proPrices,
         })
     })
 
@@ -167,35 +167,32 @@ describe('morConfigFromEnv', () => {
     })
 
     it('rejects a price id used for two plans or intervals, which would make the plan ambiguous', () => {
-        const clash = JSON.stringify({ plus: { monthly: '101', annual: '101' }, pro: { monthly: '201', annual: '202' } })
+        const clash = JSON.stringify({ pro: { monthly: '201', annual: '201' } })
 
         expect(() => morConfigFromEnv({ ...full, MOR_PRICES: clash })).toThrow('MOR_PRICES')
     })
 
     it('rejects a prices map missing a plan or interval', () => {
-        const partial = JSON.stringify({ plus: { monthly: '101' }, pro: { monthly: '201', annual: '202' } })
+        const partial = JSON.stringify({ pro: { monthly: '201' } })
 
         expect(() => morConfigFromEnv({ ...full, MOR_PRICES: partial })).toThrow('MOR_PRICES')
     })
 
     it('accepts a flat plan_interval map', () => {
         const flat = JSON.stringify({
-            plus_monthly: '101',
-            plus_annual: '102',
             pro_monthly: '201',
             pro_annual: '202',
         })
 
-        expect(morConfigFromEnv({ ...full, MOR_PRICES: flat }).prices).toEqual(config.prices)
+        expect(morConfigFromEnv({ ...full, MOR_PRICES: flat }).prices).toEqual(proPrices)
     })
 
     it('accepts numeric price ids', () => {
         const numeric = JSON.stringify({
-            plus: { monthly: 101, annual: 102 },
             pro: { monthly: 201, annual: 202 },
         })
 
-        expect(morConfigFromEnv({ ...full, MOR_PRICES: numeric }).prices).toEqual(config.prices)
+        expect(morConfigFromEnv({ ...full, MOR_PRICES: numeric }).prices).toEqual(proPrices)
     })
 })
 
@@ -333,8 +330,6 @@ describe('parseEvent - subscription events', () => {
     })
 
     it.each([
-        ['101', 'plus', 'monthly'],
-        ['102', 'plus', 'annual'],
         ['201', 'pro', 'monthly'],
         ['202', 'pro', 'annual'],
     ])('resolves price %s to plan %s and interval %s', (priceId, plan, interval) => {
@@ -355,10 +350,10 @@ describe('parseEvent - subscription events', () => {
     it('takes the plan from the first item whose price it knows', () => {
         const items = [
             { status: 'active', quantity: 1, trial_dates: null, price: { id: 'pri_addon' } },
-            { status: 'active', quantity: 1, trial_dates: null, price: { id: '102' } },
+            { status: 'active', quantity: 1, trial_dates: null, price: { id: '202' } },
         ]
 
-        expect(provider.parseEvent(subscriptionBody('subscription.updated', { items })).planCode).toBe('plus')
+        expect(provider.parseEvent(subscriptionBody('subscription.updated', { items })).planCode).toBe('pro')
     })
 
     it('maps trialing to trialing and carries the trial end from the item', () => {
@@ -655,6 +650,25 @@ describe('parseEvent - event id and stored payload', () => {
         })
     })
 
+    it('stamps a payment with the interval and plan of its price and an uppercase currency, so it can be classified from the ledger alone (BUG-45, BUG-46)', () => {
+        const items = (id: string) => [{ status: 'active', quantity: 1, price: { id } }]
+
+        const annual = provider.parseEvent(transactionBody('transaction.completed', { items: items('202'), currency_code: 'usd' }))
+        expect(annual.payload).toMatchObject({ interval: 'annual', planCode: 'pro', priceId: '202', currency: 'USD' })
+
+        const monthly = provider.parseEvent(transactionBody('transaction.completed', { items: items('201') }))
+        expect(monthly.payload).toMatchObject({ interval: 'monthly', planCode: 'pro' })
+    })
+
+    it('leaves interval and plan off a payment whose price it does not know', () => {
+        const unknown = provider.parseEvent(
+            transactionBody('transaction.completed', { items: [{ status: 'active', quantity: 1, price: { id: 'pri_addon' } }] })
+        )
+
+        expect(unknown.payload).not.toHaveProperty('interval')
+        expect(unknown.payload).not.toHaveProperty('planCode')
+    })
+
     it('keeps amount, currency, action and status for an adjustment, as a number of minor units', () => {
         const payload = provider.parseEvent(adjustmentBody('refund')).payload as Record<string, unknown>
 
@@ -717,7 +731,7 @@ describe('createCheckoutSession', () => {
     const PAYMENT_LINK = 'https://app.corvale.test/pay?_ptxn=txn_01'
     const checkoutResponse = () =>
         paddleJson({ data: { id: 'txn_01', status: 'ready', checkout: { url: PAYMENT_LINK } }, meta: { request_id: 'r1' } }, 201)
-    const input = { userId: USER_ID, email: 'a@b.co', planCode: 'plus', interval: 'monthly' } as const
+    const input = { userId: USER_ID, email: 'a@b.co', planCode: 'pro', interval: 'monthly' } as const
 
     it('POSTs a transaction for the plan/interval price, tagged with our user id, and returns its payment link', async () => {
         const fetchImpl = stubFetch(checkoutResponse)
@@ -750,8 +764,6 @@ describe('createCheckoutSession', () => {
     })
 
     it.each([
-        ['plus', 'monthly', '101'],
-        ['plus', 'annual', '102'],
         ['pro', 'monthly', '201'],
         ['pro', 'annual', '202'],
     ] as const)('uses price %s %s -> %s', async (planCode, interval, priceId) => {

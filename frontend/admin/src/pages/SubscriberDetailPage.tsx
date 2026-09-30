@@ -91,7 +91,7 @@ interface DialogsProps {
 const MB = 1024 * 1024
 
 const Dialogs = ({ kind, userId, detail, meta, invoice, deviceRef, done, cancel }: DialogsProps) => {
-  const plans = meta?.plans ?? ['plus', 'pro']
+  const plans = meta?.plans ?? ['pro']
   const grantCap = meta?.caps.grantDays
   const holdCap = meta?.caps.erasureHoldDays
   const { run: stepUpRun } = useStepUp()

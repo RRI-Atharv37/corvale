@@ -48,39 +48,31 @@ export interface TestPlanOverrides {
     }>
 }
 
-/** Small, test-sized limits; the real catalogue values are pinned in `planCatalogue.test.ts`. */
-export const seedTestPlans = async (
-    overrides: { plus?: TestPlanOverrides; pro?: TestPlanOverrides } = {}
-): Promise<void> => {
+/** What a Pro plan with none of its features and a 1 MB / one-device allowance looks like, for tests that need a plan that refuses things. */
+export const RESTRICTED_PLAN: TestPlanOverrides = {
+    features: { workspaces: false, prioritySupport: false, bankSync: false },
+    limits: { receiptStorageBytes: 1024 * 1024, syncDevices: 1, workspaceMembers: null },
+}
+
+/** Seeds the one plan, Pro, with small test-sized limits; the real catalogue values are pinned in `planCatalogue.test.ts`. */
+export const seedTestPlans = async (overrides: TestPlanOverrides = {}): Promise<void> => {
     await Plan.deleteMany({})
-    await Plan.create([
-        {
-            code: 'plus',
-            name: 'Plus',
-            features: { workspaces: false, prioritySupport: false, bankSync: false, ...overrides.plus?.features },
-            limits: {
-                receiptStorageBytes: 1024 * 1024,
-                syncDevices: 1,
-                workspaceMembers: null,
-                ...overrides.plus?.limits,
-            },
+    await Plan.create({
+        code: 'pro',
+        name: 'Pro',
+        features: { workspaces: true, prioritySupport: true, bankSync: true, ...overrides.features },
+        limits: {
+            receiptStorageBytes: 10 * 1024 * 1024,
+            syncDevices: null,
+            workspaceMembers: null,
+            ...overrides.limits,
         },
-        {
-            code: 'pro',
-            name: 'Pro',
-            features: { workspaces: true, prioritySupport: true, bankSync: true, ...overrides.pro?.features },
-            limits: {
-                receiptStorageBytes: 10 * 1024 * 1024,
-                syncDevices: null,
-                workspaceMembers: null,
-                ...overrides.pro?.limits,
-            },
-        },
-    ])
+    })
 }
 
 export interface SubscriptionOverrides {
-    planCode?: 'plus' | 'pro'
+    planCode?: 'pro'
+    interval?: 'monthly' | 'annual' | null
     status?: SubscriptionStatus
     trialEndsAt?: Date | null
     currentPeriodEnd?: Date | null

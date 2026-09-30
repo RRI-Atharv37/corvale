@@ -251,15 +251,17 @@ const alertBillingDispute = async (event: NormalizedBillingEvent): Promise<void>
 // fact, whatever the provider emitted after it.
 const handleDisputeOpened: BillingEventHandler = async (event) => {
     logger.warn('Billing dispute opened', { providerEventId: event.providerEventId, providerSubscriptionId: event.providerSubscriptionId })
-    await recordTransitionMetrics(event.providerEventId, event.occurredAt, { disputes: 1 })
     await alertBillingDispute(event)
 
     const row = await findByProviderIds(event)
-    if (!row) return APPLIED
+    if (!row) {
+        await recordTransitionMetrics(event.providerEventId, event.occurredAt, { disputes: 1 })
+        return APPLIED
+    }
 
     const changes = { status: 'cancelled', pastDueSince: null, dunningStage: null, disputedAt: row.disputedAt ?? event.occurredAt }
     await Subscription.updateOne({ _id: row._id }, { $set: changes, $max: { lastEventAt: event.occurredAt } }).setOptions(BYPASS)
-    await recordSubscriptionTransitionMetrics(row, changes, event.providerEventId, event.occurredAt)
+    await recordSubscriptionTransitionMetrics(row, changes, event.providerEventId, event.occurredAt, { disputes: 1 })
     if (row.status !== 'cancelled') await cancelDisputedAtProvider(row)
     return APPLIED
 }

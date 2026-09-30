@@ -2,7 +2,7 @@ import type { BillingFeature } from '@lib/types/api'
 import type { DeviceKind } from '@platform/sync/deviceIdentity'
 
 export type BillingInterval = 'monthly' | 'annual'
-export type PlanCode = 'plus' | 'pro'
+export type PlanCode = 'pro'
 
 export interface PublicPlan {
     code: PlanCode

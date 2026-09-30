@@ -49,7 +49,7 @@ describe('recordAudit', () => {
             action: 'grant.comp',
             subjectUserId,
             subjectSubscriptionId: oid(),
-            before: { planCode: 'plus', status: 'trial_expired' },
+            before: { planCode: null, status: 'trial_expired' },
             after: { planCode: 'pro', status: 'active' },
             reason: 'Support goodwill for a billing incident',
             requestId: 'req-1',
@@ -60,7 +60,7 @@ describe('recordAudit', () => {
         expect(row?.adminId?.toString()).toBe(adminId.toString())
         expect(row?.actorType).toBe('admin')
         expect(row?.action).toBe('grant.comp')
-        expect(row?.before).toEqual({ planCode: 'plus', status: 'trial_expired' })
+        expect(row?.before).toEqual({ planCode: null, status: 'trial_expired' })
         expect(row?.after).toEqual({ planCode: 'pro', status: 'active' })
         expect(row?.at).toBeInstanceOf(Date)
     })
@@ -169,7 +169,7 @@ describe('append-only', () => {
     it.each([
         ['action', { $set: { action: 'admin.login' } }],
         ['adminId', { $set: { adminId: oid() } }],
-        ['before', { $set: { before: { planCode: 'plus' } } }],
+        ['before', { $set: { before: { planCode: null } } }],
         ['at', { $set: { at: new Date(0) } }],
         ['subjectUserId to another user', { $set: { subjectUserId: oid() } }],
     ])('refuses to rewrite %s', async (_name, update) => {
@@ -251,7 +251,7 @@ describe('erasure (D5)', () => {
             action: 'grant.comp',
             subjectUserId,
             subjectSubscriptionId,
-            before: { planCode: 'plus' },
+            before: { planCode: null },
             after: { planCode: 'pro' },
             reason: 'Goodwill after the outage last week',
             amountMinor: 900,

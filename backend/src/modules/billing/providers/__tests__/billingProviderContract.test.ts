@@ -44,7 +44,6 @@ const morConfig = (): MorConfig => ({
     environment: 'sandbox',
     webhookSecret: MOR_SECRET,
     prices: {
-        plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     },
 })
@@ -74,7 +73,7 @@ const morHarness = (): ProviderHarness => {
         'payment.failed': 'transaction.payment_failed',
         unknown: 'customer.updated',
     }
-    const prices: Record<PlanCode, string> = { plus: '101', pro: '201' }
+    const prices: Record<PlanCode, string> = { pro: '201' }
 
     return {
         name: 'mor',
@@ -99,7 +98,7 @@ const morHarness = (): ProviderHarness => {
                           status: 'active',
                           customer_id: spec.providerCustomerId,
                           custom_data: spec.userId ? { user_id: spec.userId, user_sig: signCheckoutUserId(MOR_SECRET, spec.userId) } : null,
-                          items: [{ status: 'active', quantity: 1, trial_dates: null, price: { id: prices[spec.planCode ?? 'plus'] } }],
+                          items: [{ status: 'active', quantity: 1, trial_dates: null, price: { id: prices[spec.planCode ?? 'pro'] } }],
                           current_billing_period: { starts_at: at, ends_at: '2099-01-01T00:00:00.000000Z' },
                           scheduled_change: null,
                       },
@@ -173,7 +172,7 @@ describe.each([
 
         it('rejects a body altered after signing', () => {
             const { rawBody, headers } = harness.deliver(base)
-            const tampered = Buffer.from(rawBody.toString('utf8').replace('"pro"', '"plus"').replace('55', '56'))
+            const tampered = Buffer.from(rawBody.toString('utf8').replace('"active"', '"canceled"').replace('55', '56'))
 
             expect(provider.verifyWebhook(tampered, headers)).toBe(false)
         })
@@ -270,7 +269,7 @@ describe.each([
             const session = await provider.createCheckoutSession({
                 userId: base.userId as string,
                 email: 'someone@example.com',
-                planCode: 'plus',
+                planCode: 'pro',
                 interval: 'monthly',
             })
 

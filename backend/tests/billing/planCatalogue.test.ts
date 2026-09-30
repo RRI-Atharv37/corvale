@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
+import { PLAN_CODES } from '@core/billing/constants'
 import { DEFAULT_PLAN_CATALOGUE, Plan, seedPlanCatalogue } from '@modules/billing'
 
 /**
@@ -16,8 +17,12 @@ const byCode = (code: string) => {
 }
 
 describe('DEFAULT_PLAN_CATALOGUE', () => {
-    it('contains exactly one plan, Pro - there is no free tier (decision #4) and no Plus tier (2026-09-22: $6/mo does not cover hosting/overhead)', () => {
+    it('contains exactly one plan, Pro - there is no free tier (decision #4) and no other tier', () => {
         expect(DEFAULT_PLAN_CATALOGUE.map((p) => p.code).sort()).toEqual(['pro'])
+    })
+
+    it('the plan codes the system knows are exactly the catalogue', () => {
+        expect([...PLAN_CODES]).toEqual(DEFAULT_PLAN_CATALOGUE.map((p) => p.code))
     })
 
     it('Pro: $12/mo, $96/yr launch price, 10 GB receipts, unlimited devices, workspaces + priority support + bank sync', () => {
@@ -47,9 +52,9 @@ describe('DEFAULT_PLAN_CATALOGUE', () => {
     })
 
     it('seedPlanCatalogue removes a plan row whose code is no longer in the catalogue', async () => {
-        await Plan.create({
-            code: 'plus',
-            name: 'Plus',
+        await Plan.collection.insertOne({
+            code: 'retired',
+            name: 'Retired',
             prices: { monthly: 600, annual: 6000 },
             limits: { receiptStorageBytes: 1 * GB, syncDevices: 1, workspaceMembers: null },
             features: { workspaces: false, prioritySupport: false, bankSync: false },

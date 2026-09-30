@@ -6,7 +6,7 @@ import app from '@http/app'
 import { Receipt } from '@modules/receipts'
 import { RECEIPT_UPLOAD_ROOT } from '@modules/receipts/receiptUtils'
 import { Workspace } from '@modules/workspaces'
-import { SyncDevice, UsageCounter, recomputeUsageCounters } from '@modules/billing'
+import { Plan, SyncDevice, UsageCounter, recomputeUsageCounters } from '@modules/billing'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { authHeader, createSecondUser, registerUser, seedUserDirectly, type RegisteredUser } from '@tests/helpers'
 import {
@@ -46,9 +46,9 @@ describe('receipt storage quota (plan.limits.receiptStorageBytes)', () => {
 
     beforeEach(async () => {
         enableBilling()
-        await seedTestPlans({ plus: { limits: { receiptStorageBytes: SIZE * 2 } } })
+        await seedTestPlans({ limits: { receiptStorageBytes: SIZE * 2 } })
         user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setSubscription(user.userId)
     })
 
     it('accepts uploads up to exactly the limit and refuses the next with 402 QUOTA_EXCEEDED', async () => {
@@ -87,31 +87,31 @@ describe('receipt storage quota (plan.limits.receiptStorageBytes)', () => {
         await uploadReceipt(user.token)
         await uploadReceipt(user.token)
         const other = await createSecondUser(app)
-        await setSubscription(other.userId, { planCode: 'plus' })
+        await setSubscription(other.userId)
 
         expect((await uploadReceipt(other.token)).status).toBe(201)
     })
 
     it('a plan with a null limit is unlimited', async () => {
-        await seedTestPlans({ plus: { limits: { receiptStorageBytes: null } } })
+        await seedTestPlans({ limits: { receiptStorageBytes: null } })
 
         for (let i = 0; i < 4; i += 1) {
             expect((await uploadReceipt(user.token)).status).toBe(201)
         }
     })
 
-    it('upgrading raises the limit on the next request', async () => {
+    it('raising the plan limit applies on the next request', async () => {
         await uploadReceipt(user.token)
         await uploadReceipt(user.token)
         expect((await uploadReceipt(user.token)).status).toBe(402)
 
-        await setSubscription(user.userId, { planCode: 'pro' })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'limits.receiptStorageBytes': SIZE * 10 } })
 
         expect((await uploadReceipt(user.token)).status).toBe(201)
     })
 
     it('parallel uploads cannot race past the limit', async () => {
-        await seedTestPlans({ plus: { limits: { receiptStorageBytes: SIZE } } })
+        await seedTestPlans({ limits: { receiptStorageBytes: SIZE } })
 
         const results = await Promise.all([1, 2, 3, 4].map(() => uploadReceipt(user.token)))
 
@@ -134,7 +134,7 @@ describe('UsageCounter is a cache, not the source of truth', () => {
         enableBilling()
         await seedTestPlans()
         const user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setSubscription(user.userId)
         await uploadReceipt(user.token)
         await uploadReceipt(user.token)
 
@@ -152,9 +152,9 @@ describe('workspace member quota (plan.limits.workspaceMembers)', () => {
 
     beforeEach(async () => {
         enableBilling()
-        await seedTestPlans({ pro: { limits: { workspaceMembers: 2 } } })
+        await seedTestPlans({ limits: { workspaceMembers: 2 } })
         owner = await registerUser(app)
-        await setSubscription(owner.userId, { planCode: 'pro' })
+        await setSubscription(owner.userId)
         workspaceId = await seedWorkspace(owner.userId)
     })
 
@@ -212,7 +212,7 @@ describe('workspace member quota (plan.limits.workspaceMembers)', () => {
     })
 
     it('an unlimited plan (null) never refuses an invite', async () => {
-        await seedTestPlans({ pro: { limits: { workspaceMembers: null } } })
+        await seedTestPlans({ limits: { workspaceMembers: null } })
         for (let i = 0; i < 4; i += 1) {
             const u = await seedUserDirectly({ email: `bulk-${i}@example.com` })
             expect((await invite(u.email)).status).toBe(201)
@@ -257,9 +257,9 @@ describe('sync device limit (plan.limits.syncDevices)', () => {
 
     beforeEach(async () => {
         enableBilling()
-        await seedTestPlans()
+        await seedTestPlans({ limits: { syncDevices: 1 } })
         user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setSubscription(user.userId)
     })
 
     it('the first device pushes; a second is refused 402 SYNC_DEVICE_LIMIT but may still pull', async () => {
@@ -302,12 +302,12 @@ describe('sync device limit (plan.limits.syncDevices)', () => {
         expect((await push(user.token, 'device-a')).status).toBe(200)
     })
 
-    it('upgrading to Pro lets every registered device push', async () => {
+    it('lifting the plan limit lets every registered device push', async () => {
         await push(user.token, 'device-a')
         await pull(user.token, 'device-b')
         expect((await push(user.token, 'device-b')).status).toBe(402)
 
-        await setSubscription(user.userId, { planCode: 'pro' })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'limits.syncDevices': null } })
 
         expect((await push(user.token, 'device-b')).status).toBe(200)
     })
@@ -330,7 +330,7 @@ describe('sync device limit (plan.limits.syncDevices)', () => {
     it('device limits are per user', async () => {
         await push(user.token, 'device-a')
         const other = await createSecondUser(app)
-        await setSubscription(other.userId, { planCode: 'plus' })
+        await setSubscription(other.userId)
 
         expect((await push(other.token, 'device-a')).status).toBe(200)
         expect((await push(other.token, 'device-b')).status).toBe(402)

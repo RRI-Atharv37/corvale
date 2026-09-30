@@ -2,7 +2,7 @@ import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
 
 import BillingEvent from './billingEvent.model'
 import DeferredRevenueEntry from './deferredRevenueEntry.model'
-import Subscription from './subscription.model'
+import { normalizeCurrency, readLedgerPayment } from './paymentLedger'
 
 const BYPASS = { [RLS_BYPASS]: true }
 
@@ -15,25 +15,20 @@ const monthBoundsUtc = (periodMonth: string): { start: Date; end: Date } => {
     return { start: new Date(Date.UTC(year, month - 1, 1)), end: new Date(Date.UTC(year, month, 1)) }
 }
 
-interface PaymentSucceededPayload {
-    providerSubscriptionId?: string
-    total?: number
-    currency?: string
-    refunded?: boolean
-}
-
 /**
  * What Corvale separately recognized as revenue for one UTC calendar month, grouped by currency -
  * the M8e annual-plan buckets already written to `DeferredRevenueEntry`, plus monthly-plan payments
  * recognized immediately in the month they were paid (the M8e sweep deliberately skips monthly
- * subscriptions, so they get no `DeferredRevenueEntry` row of their own). Computed at read time
+ * payments, so they get no `DeferredRevenueEntry` row of their own). Currencies are keyed uppercase;
+ * rows written before that was enforced are merged in. Computed at read time
  * rather than stored, so a late-arriving `payment.succeeded` for a past month is picked up the next
  * time this runs instead of requiring a recompute step.
  */
 export const computeLocalRevenueByCurrency = async (periodMonth: string): Promise<Record<string, number>> => {
     const totals: Record<string, number> = {}
     const add = (currency: string, amountMinor: number): void => {
-        totals[currency] = (totals[currency] ?? 0) + amountMinor
+        const key = normalizeCurrency(currency)
+        totals[key] = (totals[key] ?? 0) + amountMinor
     }
 
     const buckets = await DeferredRevenueEntry.find({ recognitionMonth: periodMonth })
@@ -46,32 +41,9 @@ export const computeLocalRevenueByCurrency = async (periodMonth: string): Promis
         .setOptions(BYPASS)
         .lean()
 
-    const candidates: { providerSubscriptionId: string; total: number; currency: string }[] = []
     for (const row of payments) {
-        const payload = row.payload as PaymentSucceededPayload
-        if (
-            payload.refunded ||
-            typeof payload.total !== 'number' ||
-            payload.total <= 0 ||
-            typeof payload.currency !== 'string' ||
-            !payload.providerSubscriptionId
-        ) {
-            continue
-        }
-        candidates.push({ providerSubscriptionId: payload.providerSubscriptionId, total: payload.total, currency: payload.currency })
-    }
-
-    if (candidates.length > 0) {
-        const subscriptions = await Subscription.find({ providerSubscriptionId: { $in: candidates.map((c) => c.providerSubscriptionId) } })
-            .select('providerSubscriptionId interval')
-            .setOptions(BYPASS)
-            .lean()
-        const intervalBySubscription = new Map(subscriptions.map((s) => [s.providerSubscriptionId, s.interval]))
-
-        for (const candidate of candidates) {
-            if (intervalBySubscription.get(candidate.providerSubscriptionId) !== 'monthly') continue
-            add(candidate.currency, candidate.total)
-        }
+        const payment = readLedgerPayment(row.payload)
+        if (payment?.interval === 'monthly') add(payment.currency, payment.total)
     }
 
     return totals

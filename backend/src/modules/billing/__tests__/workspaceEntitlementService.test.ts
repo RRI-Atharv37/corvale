@@ -31,20 +31,12 @@ const subscribe = (userId: string, fields: Record<string, unknown> = {}) =>
 
 beforeEach(async () => {
     process.env.BILLING_ENABLED = 'true'
-    await Plan.create([
-        {
-            code: 'plus',
-            name: 'Plus',
-            features: { workspaces: false, prioritySupport: false, bankSync: false },
-            limits: { receiptStorageBytes: 100, syncDevices: 1, workspaceMembers: null },
-        },
-        {
-            code: 'pro',
-            name: 'Pro',
-            features: { workspaces: true, prioritySupport: true, bankSync: true },
-            limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: 3 },
-        },
-    ])
+    await Plan.create({
+        code: 'pro',
+        name: 'Pro',
+        features: { workspaces: true, prioritySupport: true, bankSync: true },
+        limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: 3 },
+    })
 
     ownerId = new Types.ObjectId().toString()
     memberId = new Types.ObjectId().toString()
@@ -76,13 +68,12 @@ describe('getWorkspaceEntitlements', () => {
     })
 
     it("ignores a member's own subscription entirely", async () => {
-        await subscribe(ownerId, { planCode: 'plus' })
-        await subscribe(memberId, { planCode: 'pro' })
+        await subscribe(ownerId, { status: 'cancelled', currentPeriodEnd: new Date(Date.now() - DAY) })
+        await subscribe(memberId)
 
         const e = await getWorkspaceEntitlements(workspaceId)
 
-        expect(e.planCode).toBe('plus')
-        expect(e.features.workspaces).toBe(false)
+        expect(e.canWrite).toBe(false)
     })
 
     it('is unaffected by a member having no subscription at all', async () => {

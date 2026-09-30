@@ -19,19 +19,19 @@ const NOW = new Date('2026-09-21T12:00:00.000Z')
 const DAY = 24 * 60 * 60 * 1000
 const days = (n: number): Date => new Date(NOW.getTime() + n * DAY)
 
-const PLUS: PlanDefinition = {
-    code: 'plus',
+const BASE: PlanDefinition = {
+    code: 'pro',
     features: { workspaces: false, prioritySupport: false, bankSync: false },
     limits: { receiptStorageBytes: 1000, syncDevices: 1, workspaceMembers: 2 },
 }
-const PRO: PlanDefinition = {
+const RICH: PlanDefinition = {
     code: 'pro',
     features: { workspaces: true, prioritySupport: true, bankSync: false },
     limits: { receiptStorageBytes: 10_000, syncDevices: null, workspaceMembers: 10 },
 }
 
 const base = (overrides: Partial<SubscriptionSnapshot> = {}): SubscriptionSnapshot => ({
-    planCode: 'plus',
+    planCode: 'pro',
     status: 'active',
     trialEndsAt: null,
     currentPeriodEnd: days(20),
@@ -41,10 +41,10 @@ const base = (overrides: Partial<SubscriptionSnapshot> = {}): SubscriptionSnapsh
     ...overrides,
 })
 
-const comp = (until: Date, planCode: 'plus' | 'pro' = 'pro'): AdminGrantSnapshot => ({ kind: 'comp', planCode, until })
+const comp = (until: Date, planCode: 'pro' = 'pro'): AdminGrantSnapshot => ({ kind: 'comp', planCode, until })
 const override = (until: Date, extra: Partial<AdminGrantSnapshot> = {}): AdminGrantSnapshot => ({ kind: 'plan_override', planCode: null, until, ...extra })
 
-const resolve = (subscription: SubscriptionSnapshot, grantPlan: PlanDefinition | null = PRO, plan: PlanDefinition = PLUS, now: Date = NOW) =>
+const resolve = (subscription: SubscriptionSnapshot, grantPlan: PlanDefinition | null = RICH, plan: PlanDefinition = BASE, now: Date = NOW) =>
     resolveEntitlements(subscription, plan, now, { grantPlan })
 
 describe('isAdminGrantActive', () => {
@@ -65,7 +65,7 @@ describe('comp - lifts a read-only state', () => {
         ['cancelling, period over', { cancelAtPeriodEnd: true, currentPeriodEnd: days(-1) }],
         ['a trial that ran out unswept', { status: 'trialing' as const, trialEndsAt: days(-1), currentPeriodEnd: null }],
     ])('%s becomes writable', (_name, overrides) => {
-        const without = resolveEntitlements(base(overrides), PLUS, NOW)
+        const without = resolveEntitlements(base(overrides), BASE, NOW)
         const withComp = resolve(base({ ...overrides, adminGrant: comp(days(30)) }))
 
         expect(without.canWrite).toBe(false)
@@ -75,19 +75,19 @@ describe('comp - lifts a read-only state', () => {
     it('takes its features and limits from the granted plan', () => {
         const result = resolve(base({ status: 'trial_expired', trialEndsAt: days(-3), adminGrant: comp(days(30)) }))
 
-        expect(result.features).toEqual(PRO.features)
-        expect(result.limits).toEqual(PRO.limits)
+        expect(result.features).toEqual(RICH.features)
+        expect(result.limits).toEqual(RICH.limits)
     })
 
-    it('never lowers what the customer already pays for: the better plan and the larger limits win', () => {
-        const result = resolve(base({ planCode: 'pro', adminGrant: comp(days(30), 'plus') }), PLUS, PRO)
+    it('never lowers what the customer already pays for: the larger limits and the extra features win', () => {
+        const result = resolve(base({ adminGrant: comp(days(30)) }), BASE, RICH)
 
         expect(result.planCode).toBe('pro')
-        expect(result.features).toEqual(PRO.features)
-        expect(result.limits).toEqual(PRO.limits)
+        expect(result.features).toEqual(RICH.features)
+        expect(result.limits).toEqual(RICH.limits)
     })
 
-    it('raises a paying customer to the granted plan', () => {
+    it('raises a paying customer to the richer granted definition', () => {
         const result = resolve(base({ adminGrant: comp(days(30)) }))
 
         expect(result).toMatchObject({ planCode: 'pro', canWrite: true })
@@ -99,8 +99,8 @@ describe('comp - lifts a read-only state', () => {
         const subscription = base({ status: 'cancelled', adminGrant: comp(days(2)) })
 
         expect(resolve(subscription).canWrite).toBe(true)
-        expect(resolve(subscription, PRO, PLUS, days(2)).canWrite).toBe(false)
-        expect(resolve(subscription, PRO, PLUS, days(3)).canWrite).toBe(false)
+        expect(resolve(subscription, RICH, BASE, days(2)).canWrite).toBe(false)
+        expect(resolve(subscription, RICH, BASE, days(3)).canWrite).toBe(false)
     })
 
     it('leaves the provider-owned facts alone', () => {
@@ -132,8 +132,8 @@ describe('plan override - only ever raises', () => {
     it('raises a single limit and leaves the rest', () => {
         const result = resolve(base({ adminGrant: override(days(30), { limits: { receiptStorageBytes: 5000 } }) }), null)
 
-        expect(result.limits).toEqual({ ...PLUS.limits, receiptStorageBytes: 5000 })
-        expect(result.planCode).toBe('plus')
+        expect(result.limits).toEqual({ ...BASE.limits, receiptStorageBytes: 5000 })
+        expect(result.planCode).toBe('pro')
     })
 
     it('null means unlimited and beats any number', () => {
@@ -143,11 +143,11 @@ describe('plan override - only ever raises', () => {
     })
 
     it('can never lower a limit or drop a feature, even if the grant asks to', () => {
-        const result = resolve(base({ planCode: 'pro', adminGrant: override(days(30), { planCode: 'plus', limits: { receiptStorageBytes: 1, workspaceMembers: 0 } }) }), PLUS, PRO)
+        const result = resolve(base({ adminGrant: override(days(30), { planCode: 'pro', limits: { receiptStorageBytes: 1, workspaceMembers: 0 } }) }), BASE, RICH)
 
         expect(result.planCode).toBe('pro')
-        expect(result.limits).toEqual(PRO.limits)
-        expect(result.features).toEqual(PRO.features)
+        expect(result.limits).toEqual(RICH.limits)
+        expect(result.features).toEqual(RICH.features)
     })
 
     it('does not make a read-only customer writable - that is what a comp is for', () => {
@@ -161,36 +161,33 @@ describe('plan override - only ever raises', () => {
         const subscription = base({ adminGrant: override(days(1), { limits: { receiptStorageBytes: 5000 } }) })
 
         expect(resolve(subscription, null).limits.receiptStorageBytes).toBe(5000)
-        expect(resolve(subscription, null, PLUS, days(1)).limits.receiptStorageBytes).toBe(1000)
+        expect(resolve(subscription, null, BASE, days(1)).limits.receiptStorageBytes).toBe(1000)
     })
 })
 
 describe('no grant is no change', () => {
     it('resolves exactly as before when there is no grant, or it has expired', () => {
-        const plain = resolveEntitlements(base(), PLUS, NOW)
+        const plain = resolveEntitlements(base(), BASE, NOW)
 
         expect(resolve(base({ adminGrant: null }), null)).toEqual(plain)
-        expect(resolve(base({ adminGrant: comp(days(-1)) }), PRO)).toEqual(plain)
+        expect(resolve(base({ adminGrant: comp(days(-1)) }), RICH)).toEqual(plain)
     })
 })
 
 describe('isPlanUpgrade', () => {
-    it('is true for a higher plan or any raised limit, false for anything that only matches or lowers', () => {
-        expect(isPlanUpgrade({ planCode: 'pro' }, PLUS)).toBe(true)
-        expect(isPlanUpgrade({ planCode: 'plus' }, PLUS)).toBe(false)
-        expect(isPlanUpgrade({ planCode: 'plus' }, PRO)).toBe(false)
-        expect(isPlanUpgrade({ limits: { receiptStorageBytes: 2000 } }, PLUS)).toBe(true)
-        expect(isPlanUpgrade({ limits: { receiptStorageBytes: 1000 } }, PLUS)).toBe(false)
-        expect(isPlanUpgrade({ limits: { receiptStorageBytes: 10 } }, PLUS)).toBe(false)
-        expect(isPlanUpgrade({ limits: { syncDevices: null } }, PLUS)).toBe(true)
-        expect(isPlanUpgrade({ limits: { syncDevices: null } }, PRO)).toBe(false)
-        expect(isPlanUpgrade({}, PLUS)).toBe(false)
+    it('is true for any raised limit, false for the same plan and for anything that only matches or lowers', () => {
+        expect(isPlanUpgrade({ limits: { receiptStorageBytes: 2000 } }, BASE)).toBe(true)
+        expect(isPlanUpgrade({ limits: { receiptStorageBytes: 1000 } }, BASE)).toBe(false)
+        expect(isPlanUpgrade({ limits: { receiptStorageBytes: 10 } }, BASE)).toBe(false)
+        expect(isPlanUpgrade({ limits: { syncDevices: null } }, BASE)).toBe(true)
+        expect(isPlanUpgrade({ limits: { syncDevices: null } }, RICH)).toBe(false)
+        expect(isPlanUpgrade({}, BASE)).toBe(false)
     })
 })
 
 describe('writableUntil with a grant', () => {
     const snapshot = (subscription: SubscriptionSnapshot, now: Date = NOW) =>
-        buildEntitlementSnapshot(resolve(subscription, PRO, PLUS, now), subscription, now)
+        buildEntitlementSnapshot(resolve(subscription, RICH, BASE, now), subscription, now)
 
     it('a comp over a read-only state is writable until the comp ends', () => {
         const result = snapshot(base({ status: 'cancelled', adminGrant: comp(days(10)) }))

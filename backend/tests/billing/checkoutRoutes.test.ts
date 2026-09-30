@@ -46,12 +46,12 @@ afterEach(() => {
 
 describe('POST /billing/checkout', () => {
     it('returns the provider checkout URL for a valid plan and interval', async () => {
-        const res = await checkout(user.token, { planCode: 'plus', interval: 'monthly' })
+        const res = await checkout(user.token, { planCode: 'pro', interval: 'monthly' })
 
         expect(res.status).toBe(200)
-        expect(res.body.data.url).toBe('https://fake.test/checkout/plus/monthly')
+        expect(res.body.data.url).toBe('https://fake.test/checkout/pro/monthly')
         expect(calls.createCheckoutSession).toHaveLength(1)
-        expect(calls.createCheckoutSession[0]).toMatchObject({ planCode: 'plus', interval: 'monthly', userId: user.userId, email: user.email })
+        expect(calls.createCheckoutSession[0]).toMatchObject({ planCode: 'pro', interval: 'monthly', userId: user.userId, email: user.email })
     })
 
     it('never changes entitlement: the subscription is byte-for-byte the same afterwards', async () => {
@@ -65,7 +65,7 @@ describe('POST /billing/checkout', () => {
 
     it('binds the session to the token holder: a client-supplied userId or customer id is ignored', async () => {
         await checkout(user.token, {
-            planCode: 'plus',
+            planCode: 'pro',
             interval: 'monthly',
             userId: '000000000000000000000000',
             providerCustomerId: 'cus_someone_else',
@@ -77,8 +77,8 @@ describe('POST /billing/checkout', () => {
 
     it.each([
         [{ planCode: 'gold', interval: 'monthly' }],
-        [{ planCode: 'plus', interval: 'weekly' }],
-        [{ planCode: 'plus' }],
+        [{ planCode: 'pro', interval: 'weekly' }],
+        [{ planCode: 'pro' }],
         [{ interval: 'monthly' }],
         [{ planCode: { $ne: 'x' }, interval: 'monthly' }],
         [{}],
@@ -90,7 +90,7 @@ describe('POST /billing/checkout', () => {
     })
 
     it('requires authentication', async () => {
-        const res = await request(app).post('/api/v1/billing/checkout').send({ planCode: 'plus', interval: 'monthly' })
+        const res = await request(app).post('/api/v1/billing/checkout').send({ planCode: 'pro', interval: 'monthly' })
 
         expect(res.status).toBe(401)
     })
@@ -98,7 +98,7 @@ describe('POST /billing/checkout', () => {
     it.each(['trial_expired', 'cancelled', 'past_due_grace_elapsed'])('is available to a user in the read-only %s state', async (state) => {
         await setSubscription(user.userId, BILLING_STATES[state])
 
-        const res = await checkout(user.token, { planCode: 'plus', interval: 'annual' })
+        const res = await checkout(user.token, { planCode: 'pro', interval: 'annual' })
 
         expect(res.status).toBe(200)
     })

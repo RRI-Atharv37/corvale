@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
 import app from '@http/app'
-import { SyncDevice } from '@modules/billing'
+import { Plan, SyncDevice } from '@modules/billing'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { authHeader, registerUser, type RegisteredUser } from '@tests/helpers'
 import { BILLING_STATES, disableBilling, enableBilling, seedTestPlans, setSubscription } from '@tests/billingHelpers'
@@ -47,9 +47,9 @@ const stored = (deviceId: string, userId = user.userId) => SyncDevice.findOne({ 
 
 beforeEach(async () => {
     enableBilling()
-    await seedTestPlans()
+    await seedTestPlans({ limits: { syncDevices: 1 } })
     user = await registerUser(app)
-    await setSubscription(user.userId, { planCode: 'plus' })
+    await setSubscription(user.userId)
 })
 
 afterEach(() => disableBilling())
@@ -150,7 +150,7 @@ describe('GET /billing/devices', () => {
 
     it('never lists another user\'s devices', async () => {
         const other = await registerUser(app)
-        await setSubscription(other.userId, { planCode: 'plus' })
+        await setSubscription(other.userId)
         await pull('mine')
         await pull('theirs', undefined, other.token)
 
@@ -160,7 +160,7 @@ describe('GET /billing/devices', () => {
     })
 
     it('has no limit and lets every device push on a plan without one', async () => {
-        await setSubscription(user.userId, { planCode: 'pro' })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'limits.syncDevices': null } })
         await pull('device-a')
         await pull('device-b')
 
@@ -217,7 +217,7 @@ describe('DELETE /billing/devices/:deviceId', () => {
 
     it('cannot reach another user\'s device, even with the same id', async () => {
         const other = await registerUser(app)
-        await setSubscription(other.userId, { planCode: 'plus' })
+        await setSubscription(other.userId)
         await pull('shared-name', undefined, other.token)
 
         const res = await devices('delete', '/shared-name')
@@ -294,7 +294,7 @@ describe('PATCH /billing/devices/:deviceId', () => {
 
     it('is a 404 for an unknown device and never renames another user\'s', async () => {
         const other = await registerUser(app)
-        await setSubscription(other.userId, { planCode: 'plus' })
+        await setSubscription(other.userId)
         await pull('shared-name', undefined, other.token)
 
         const res = await devices('patch', '/shared-name').send({ name: 'Mine now' })

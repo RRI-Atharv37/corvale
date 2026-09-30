@@ -22,26 +22,18 @@ const DAY = 24 * 60 * 60 * 1000
 const userId = (): string => new Types.ObjectId().toString()
 
 const seedPlans = async (): Promise<void> => {
-    await Plan.create([
-        {
-            code: 'plus',
-            name: 'Plus',
-            features: { workspaces: false, prioritySupport: false, bankSync: false },
-            limits: { receiptStorageBytes: 100, syncDevices: 1, workspaceMembers: null },
-        },
-        {
-            code: 'pro',
-            name: 'Pro',
-            features: { workspaces: true, prioritySupport: true, bankSync: true },
-            limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: 5 },
-        },
-    ])
+    await Plan.create({
+        code: 'pro',
+        name: 'Pro',
+        features: { workspaces: true, prioritySupport: true, bankSync: true },
+        limits: { receiptStorageBytes: 1000, syncDevices: null, workspaceMembers: 5 },
+    })
 }
 
 const subscribe = (uid: string, fields: Record<string, unknown> = {}) =>
     Subscription.create({
         userId: uid,
-        planCode: 'plus',
+        planCode: 'pro',
         status: 'active',
         currentPeriodEnd: new Date(Date.now() + 30 * DAY),
         ...fields,
@@ -123,23 +115,23 @@ describe('getUserEntitlements - billing enabled', () => {
         expect((await getUserEntitlements(uid, new Date(trialEndsAt.getTime() + 1))).status).toBe('trial_expired')
     })
 
-    it('reads fresh state on every call: an upgrade applies immediately', async () => {
+    it('reads fresh state on every call: a subscription change applies immediately', async () => {
         const uid = userId()
         await seedPlans()
-        await subscribe(uid, { planCode: 'plus' })
-        expect((await getUserEntitlements(uid)).features.workspaces).toBe(false)
+        await subscribe(uid)
+        expect((await getUserEntitlements(uid)).canWrite).toBe(true)
 
-        await Subscription.updateOne({ userId: uid }, { $set: { planCode: 'pro' } })
+        await Subscription.updateOne({ userId: uid }, { $set: { status: 'cancelled', currentPeriodEnd: new Date(Date.now() - DAY) } })
 
-        expect((await getUserEntitlements(uid)).features.workspaces).toBe(true)
+        expect((await getUserEntitlements(uid)).canWrite).toBe(false)
     })
 
     it('a plan edited in the database applies immediately', async () => {
         const uid = userId()
         await seedPlans()
-        await subscribe(uid, { planCode: 'plus' })
+        await subscribe(uid)
 
-        await Plan.updateOne({ code: 'plus' }, { $set: { 'limits.syncDevices': 3 } })
+        await Plan.updateOne({ code: 'pro' }, { $set: { 'limits.syncDevices': 3 } })
 
         expect((await getUserEntitlements(uid)).limits.syncDevices).toBe(3)
     })
@@ -160,10 +152,10 @@ describe('getUserEntitlements - billing enabled', () => {
         const [a, b] = [userId(), userId()]
         await seedPlans()
         await subscribe(a, { planCode: 'pro' })
-        await subscribe(b, { planCode: 'plus' })
+        await subscribe(b, { status: 'cancelled', currentPeriodEnd: new Date(Date.now() - DAY) })
 
-        expect((await getUserEntitlements(a)).planCode).toBe('pro')
-        expect((await getUserEntitlements(b)).planCode).toBe('plus')
+        expect((await getUserEntitlements(a)).canWrite).toBe(true)
+        expect((await getUserEntitlements(b)).canWrite).toBe(false)
     })
 })
 

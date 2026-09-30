@@ -46,7 +46,7 @@ afterEach(() => disableBilling())
 
 describe('redactLedgerProviderIds', () => {
     it('removes both provider ids from every row of that customer or subscription, and nothing else', async () => {
-        const bySub = await seedEvent({ providerSubscriptionId: 'sub_a', providerCustomerId: 'cus_a', total: 600, currency: 'USD', variantId: 'v1', planCode: 'plus' })
+        const bySub = await seedEvent({ providerSubscriptionId: 'sub_a', providerCustomerId: 'cus_a', total: 600, currency: 'USD', variantId: 'v1', planCode: 'pro' })
         const byCustomerOnly = await seedEvent({ providerCustomerId: 'cus_a', total: 600, currency: 'USD' })
         const bySubOnly = await seedEvent({ providerSubscriptionId: 'sub_a', total: 600 })
 
@@ -54,7 +54,7 @@ describe('redactLedgerProviderIds', () => {
 
         expect(count).toBe(3)
         const row = await load(bySub)
-        expect(row?.payload).toEqual({ total: 600, currency: 'USD', variantId: 'v1', planCode: 'plus' })
+        expect(row?.payload).toEqual({ total: 600, currency: 'USD', variantId: 'v1', planCode: 'pro' })
         expect(row?.type).toBe('payment.succeeded')
         expect(row?.occurredAt.toISOString()).toBe('2026-10-01T00:00:00.000Z')
         expect(row?.redactedAt).toBeInstanceOf(Date)

@@ -2,11 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import request from 'supertest'
 
 import app from '@http/app'
+import { Plan } from '@modules/billing'
 import { Workspace } from '@modules/workspaces'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { authHeader, registerUser, type RegisteredUser } from '@tests/helpers'
 import {
     BILLING_STATES,
+    RESTRICTED_PLAN,
     createAccountViaApi,
     disableBilling,
     enableBilling,
@@ -27,10 +29,12 @@ import {
  * is created. With BILLING_ENABLED unset (self-hosted / today's deployment) nothing is gated.
  */
 
+const setWorkspacesFeature = (enabled: boolean) => Plan.updateOne({ code: 'pro' }, { $set: { 'features.workspaces': enabled } })
+
 const createWorkspace = (token: string, extra: Record<string, unknown> = {}) =>
     request(app).post('/api/v1/workspaces').set(authHeader(token)).send({ name: 'Household', ...extra })
 
-describe('feature gate - workspaces (Pro only)', () => {
+describe('feature gate - workspaces (a plan feature)', () => {
     let user: RegisteredUser
 
     beforeEach(async () => {
@@ -41,8 +45,9 @@ describe('feature gate - workspaces (Pro only)', () => {
 
     afterEach(() => disableBilling())
 
-    it('Plus is refused with 402 ENTITLEMENT_REQUIRED and nothing is created', async () => {
-        await setSubscription(user.userId, { planCode: 'plus' })
+    it('a plan without the feature is refused with 402 ENTITLEMENT_REQUIRED and nothing is created', async () => {
+        await setWorkspacesFeature(false)
+        await setSubscription(user.userId)
 
         const res = await createWorkspace(user.token)
 
@@ -52,8 +57,8 @@ describe('feature gate - workspaces (Pro only)', () => {
         expect(await Workspace.countDocuments({})).toBe(0)
     })
 
-    it('Pro is allowed', async () => {
-        await setSubscription(user.userId, { planCode: 'pro' })
+    it('a plan with the feature is allowed', async () => {
+        await setSubscription(user.userId)
 
         const res = await createWorkspace(user.token)
 
@@ -68,26 +73,28 @@ describe('feature gate - workspaces (Pro only)', () => {
         expect(res.status).toBe(201)
     })
 
-    it('an upgrade takes effect on the very next request - no re-login, no cached entitlement', async () => {
-        await setSubscription(user.userId, { planCode: 'plus' })
+    it('a plan change takes effect on the very next request - no re-login, no cached entitlement', async () => {
+        await setWorkspacesFeature(false)
+        await setSubscription(user.userId)
         expect((await createWorkspace(user.token)).status).toBe(402)
 
-        await setSubscription(user.userId, { planCode: 'pro' })
+        await setWorkspacesFeature(true)
 
         expect((await createWorkspace(user.token)).status).toBe(201)
     })
 
-    it('a downgrade takes effect on the very next request', async () => {
-        await setSubscription(user.userId, { planCode: 'pro' })
+    it('losing the feature takes effect on the very next request', async () => {
+        await setSubscription(user.userId)
         expect((await createWorkspace(user.token, { name: 'One' })).status).toBe(201)
 
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setWorkspacesFeature(false)
 
         expect((await createWorkspace(user.token, { name: 'Two' })).status).toBe(402)
     })
 
     it('refuses the gated request before validating its body', async () => {
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setWorkspacesFeature(false)
+        await setSubscription(user.userId)
 
         const res = await request(app).post('/api/v1/workspaces').set(authHeader(user.token)).send({})
 
@@ -100,10 +107,10 @@ describe('the client cannot assert its own entitlement', () => {
 
     beforeEach(async () => {
         enableBilling()
-        await seedTestPlans()
+        await seedTestPlans(RESTRICTED_PLAN)
         installFakeBillingProvider()
         user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setSubscription(user.userId)
     })
 
     afterEach(() => {
@@ -188,9 +195,9 @@ describe('GET /auth/user carries the entitlement snapshot (M2d)', () => {
 
     it('billing on: reports status, plan, features, limits and the read/write floor', async () => {
         enableBilling()
-        await seedTestPlans()
+        await seedTestPlans(RESTRICTED_PLAN)
         const user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setSubscription(user.userId)
 
         const res = await request(app).get('/api/v1/auth/user').set(authHeader(user.token))
 
@@ -198,7 +205,7 @@ describe('GET /auth/user carries the entitlement snapshot (M2d)', () => {
         const e = res.body.data.entitlements
         expect(e.billingEnabled).toBe(true)
         expect(e.status).toBe('active')
-        expect(e.planCode).toBe('plus')
+        expect(e.planCode).toBe('pro')
         expect(e.canWrite).toBe(true)
         expect(e.canRead).toBe(true)
         expect(e.canExport).toBe(true)

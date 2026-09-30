@@ -59,6 +59,9 @@ const LIVE_STATUSES: readonly SubscriptionStatus[] = ['active', 'past_due']
  * Deliberately simplified against the plan's full spec (§7): `newPaid`/`trialConverted` fire on the
  * first transition into `active`/`past_due`; involuntary vs voluntary churn is read straight off
  * `cancelAtPeriodEnd` at the moment of cancellation, not re-derived from history.
+ *
+ * `extra` carries counters the caller's own event also owes (a dispute's `disputes`), recorded under the
+ * same claim: an event's metrics slot can be claimed once, so two separate writes would drop the second.
  */
 interface SubscriptionChanges {
     status?: SubscriptionStatus
@@ -70,15 +73,16 @@ export const recordSubscriptionTransitionMetrics = async (
     before: ISubscription | null,
     changes: Record<string, unknown>,
     providerEventId: string,
-    occurredAt: Date
+    occurredAt: Date,
+    extra: Partial<MetricFlows> = {}
 ): Promise<void> => {
     const after = changes as SubscriptionChanges
+    const metrics: Partial<MetricFlows> = { ...extra }
     try {
         const oldStatus = before?.status
         const newStatus = after.status ?? oldStatus
         const wasLive = oldStatus !== undefined && LIVE_STATUSES.includes(oldStatus)
         const isLive = newStatus !== undefined && LIVE_STATUSES.includes(newStatus)
-        const metrics: Partial<MetricFlows> = {}
 
         if (isLive && !wasLive) {
             metrics.newPaid = 1
@@ -105,6 +109,7 @@ export const recordSubscriptionTransitionMetrics = async (
         await recordTransitionMetrics(providerEventId, occurredAt, metrics)
     } catch (error) {
         logger.error('Failed to record subscription transition metrics', { reason: (error as Error).message })
+        await recordTransitionMetrics(providerEventId, occurredAt, extra).catch(() => undefined)
     }
 }
 

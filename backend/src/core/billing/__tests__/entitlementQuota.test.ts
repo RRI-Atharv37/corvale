@@ -17,7 +17,7 @@ import {
 const NOW = new Date('2026-10-15T12:00:00.000Z')
 
 const subscription: SubscriptionSnapshot = {
-    planCode: 'plus',
+    planCode: 'pro',
     status: 'active',
     trialEndsAt: null,
     currentPeriodEnd: new Date(NOW.getTime() + 86_400_000),
@@ -82,7 +82,7 @@ describe('resolveEntitlements - subscription present but plan definition missing
         const e = resolveEntitlements(subscription, null, NOW)
 
         expect(e.status).toBe('active')
-        expect(e.planCode).toBe('plus')
+        expect(e.planCode).toBe('pro')
         expect(e.canWrite).toBe(true)
         expect(e.features).toEqual({ workspaces: false, prioritySupport: false, bankSync: false })
     })
@@ -109,7 +109,7 @@ describe('resolveEntitlements - no subscription', () => {
 describe('resolveEntitlements - the result does not alias its inputs', () => {
     it('mutating the returned features/limits leaves the plan definition untouched', () => {
         const plan: PlanDefinition = {
-            code: 'plus',
+            code: 'pro',
             features: { workspaces: false, prioritySupport: false, bankSync: false },
             limits: { receiptStorageBytes: 1, syncDevices: 1, workspaceMembers: null },
         }

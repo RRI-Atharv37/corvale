@@ -34,7 +34,7 @@ const item = (over: Record<string, unknown> = {}) => ({
 })
 
 const META = {
-  plans: ['plus', 'pro'],
+  plans: ['pro'],
   statuses: ['trialing', 'active', 'past_due', 'trial_expired', 'cancelled'],
   grandfatherKinds: ['free_forever', 'locked_rate', 'extended_trial'],
   dunningStages: ['payment_failed'],

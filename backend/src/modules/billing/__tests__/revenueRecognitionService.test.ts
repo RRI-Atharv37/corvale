@@ -44,7 +44,7 @@ const seedPaymentEvent = (providerSubscriptionId: string, payload: Record<string
         providerEventId,
         type: 'payment.succeeded',
         occurredAt: new Date('2026-11-20T12:00:00.000Z'),
-        payload: { providerSubscriptionId, total: 12000, currency: 'usd', ...payload },
+        payload: { providerSubscriptionId, total: 12000, currency: 'USD', interval: 'annual', planCode: 'pro', ...payload },
         ...overrides,
     })
 }
@@ -81,7 +81,7 @@ describe('runRevenueRecognitionSweep', () => {
         expect(entries).toHaveLength(12)
         expect(entries.map((entry) => entry.bucketIndex)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
         expect(entries.reduce((sum, entry) => sum + entry.recognizedAmountMinor, 0)).toBe(12000)
-        expect(entries.every((entry) => entry.currency === 'usd')).toBe(true)
+        expect(entries.every((entry) => entry.currency === 'USD')).toBe(true)
         expect(entries.every((entry) => entry.planCode === 'pro')).toBe(true)
         expect(entries[0].recognitionMonth).toBe('2026-11')
         expect(entries[11].recognitionMonth).toBe('2027-10')
@@ -103,7 +103,7 @@ describe('runRevenueRecognitionSweep', () => {
     it('claims a monthly-interval payment but recognizes nothing', async () => {
         enableFinanceOps()
         await seedAnnualSubscription('sub_monthly', { interval: 'monthly' })
-        await seedPaymentEvent('sub_monthly')
+        await seedPaymentEvent('sub_monthly', { interval: 'monthly' })
 
         const result = await runRevenueRecognitionSweep()
 
@@ -125,14 +125,26 @@ describe('runRevenueRecognitionSweep', () => {
         expect(result.entriesCreated).toBe(0)
     })
 
-    it('claims a payment with no matching subscription but recognizes nothing', async () => {
+    it('recognizes an annual payment whose subscription row no longer exists (BUG-45)', async () => {
         enableFinanceOps()
         await seedPaymentEvent('sub_unknown')
 
         const result = await runRevenueRecognitionSweep()
 
         expect(result.claimed).toBe(1)
+        expect(result.entriesCreated).toBe(12)
+    })
+
+    it('claims a payment whose price could not be classified, recognizes nothing and does not fall back to the subscription row', async () => {
+        enableFinanceOps()
+        await seedAnnualSubscription('sub_unclassified')
+        const event = await seedPaymentEvent('sub_unclassified', { interval: undefined, planCode: undefined })
+
+        const result = await runRevenueRecognitionSweep()
+
+        expect(result.claimed).toBe(1)
         expect(result.entriesCreated).toBe(0)
+        expect((await BillingEvent.findOne({ providerEventId: event.providerEventId }).lean())?.revenueRecognizedAt).not.toBeNull()
     })
 
     it('ignores event types other than payment.succeeded', async () => {
@@ -175,5 +187,66 @@ describe('runRevenueRecognitionSweep', () => {
 
         expect(result.claimed).toBe(2)
         expect(result.entriesCreated).toBe(24)
+    })
+
+    describe('classifies from the payment itself, not from the subscription as it is now (BUG-45)', () => {
+        it('recognizes an annual payment after the subscriber switched to monthly', async () => {
+            enableFinanceOps()
+            await seedAnnualSubscription('sub_switched_down', { interval: 'monthly' })
+            const event = await seedPaymentEvent('sub_switched_down')
+
+            const result = await runRevenueRecognitionSweep()
+
+            expect(result.entriesCreated).toBe(12)
+            const entries = await DeferredRevenueEntry.find({ sourceEventId: event.providerEventId }).lean()
+            expect(entries.reduce((sum, entry) => sum + entry.recognizedAmountMinor, 0)).toBe(12000)
+        })
+
+        it('does not spread a monthly payment over a year because the subscription is annual now', async () => {
+            enableFinanceOps()
+            await seedAnnualSubscription('sub_switched_up', { interval: 'annual' })
+            await seedPaymentEvent('sub_switched_up', { interval: 'monthly', total: 1000 })
+
+            const result = await runRevenueRecognitionSweep()
+
+            expect(result.claimed).toBe(1)
+            expect(result.entriesCreated).toBe(0)
+        })
+
+        it('classifies history by what was paid when finance ops is switched on after the subscription changed', async () => {
+            await seedAnnualSubscription('sub_late_enable', { interval: 'monthly', planCode: 'pro' })
+            await seedPaymentEvent('sub_late_enable')
+            await seedPaymentEvent('sub_late_enable', { total: 1000, interval: 'monthly' })
+            expect((await runRevenueRecognitionSweep()).skipped).toBe(true)
+
+            enableFinanceOps()
+            const result = await runRevenueRecognitionSweep()
+
+            expect(result.claimed).toBe(2)
+            expect(result.entriesCreated).toBe(12)
+        })
+
+        it('recognizes an annual payment after its payer erased their account and the ledger lost the provider ids', async () => {
+            enableFinanceOps()
+            const event = await seedPaymentEvent('sub_erased')
+            await BillingEvent.collection.updateOne(
+                { providerEventId: event.providerEventId },
+                { $unset: { 'payload.providerSubscriptionId': '', 'payload.providerCustomerId': '' }, $set: { redactedAt: new Date() } }
+            )
+
+            const result = await runRevenueRecognitionSweep()
+
+            expect(result.entriesCreated).toBe(12)
+        })
+    })
+
+    it('stores the currency uppercase whatever case the ledger carried', async () => {
+        enableFinanceOps()
+        const event = await seedPaymentEvent('sub_lower_currency', { currency: 'usd' })
+
+        await runRevenueRecognitionSweep()
+
+        const entries = await DeferredRevenueEntry.find({ sourceEventId: event.providerEventId }).lean()
+        expect(entries.every((entry) => entry.currency === 'USD')).toBe(true)
     })
 })

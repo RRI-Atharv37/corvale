@@ -1,4 +1,4 @@
-export const PLAN_CODES = ['plus', 'pro'] as const
+export const PLAN_CODES = ['pro'] as const
 export type PlanCode = (typeof PLAN_CODES)[number]
 
 export const SUBSCRIPTION_STATUSES = ['trialing', 'active', 'past_due', 'trial_expired', 'cancelled'] as const

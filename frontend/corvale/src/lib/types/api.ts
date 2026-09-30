@@ -39,7 +39,7 @@ export type EntitlementStatus = 'none' | 'trialing' | 'active' | 'past_due' | 't
 export interface EntitlementSnapshot {
     billingEnabled: boolean
     status: EntitlementStatus
-    planCode: 'plus' | 'pro' | null
+    planCode: 'pro' | null
     canRead: boolean
     canWrite: boolean
     canExport: boolean

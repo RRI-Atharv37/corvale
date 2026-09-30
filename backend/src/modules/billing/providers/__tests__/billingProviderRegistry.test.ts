@@ -27,7 +27,6 @@ const configureMor = (): void => {
     process.env.MOR_ENVIRONMENT = 'sandbox'
     process.env.MOR_WEBHOOK_SECRET = 'mor_secret'
     process.env.MOR_PRICES = JSON.stringify({
-        plus: { monthly: '101', annual: '102' },
         pro: { monthly: '201', annual: '202' },
     })
 }

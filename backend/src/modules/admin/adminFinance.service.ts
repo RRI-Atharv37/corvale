@@ -81,7 +81,7 @@ export const revenueRecognitionEntriesCursor = (query: Record<string, unknown>) 
  * exists yet (no MoR account until M0), so `reportedPayoutMinor` is admin-entered rather than fetched.
  */
 
-const CURRENCY_PATTERN = /^[a-z]{3}$/
+const CURRENCY_PATTERN = /^[a-z]{3}$/i
 
 const requireMonth = (value: unknown): string => {
     if (typeof value !== 'string' || !isValidPeriodMonth(value)) throw new CustomError(ERROR_MESSAGES.ADMIN.INVALID_PAYOUT, 400)
@@ -90,7 +90,7 @@ const requireMonth = (value: unknown): string => {
 
 const requireCurrency = (value: unknown): string => {
     if (typeof value !== 'string' || !CURRENCY_PATTERN.test(value)) throw new CustomError(ERROR_MESSAGES.ADMIN.INVALID_PAYOUT, 400)
-    return value
+    return value.toUpperCase()
 }
 
 const requireAmountMinor = (value: unknown): number => {
@@ -136,7 +136,7 @@ export interface PayoutReconciliationRow {
 }
 
 const toReconciliationRow = (payout: IProviderPayout, localRevenueByCurrency: Record<string, number>): PayoutReconciliationRow => {
-    const localRevenueMinor = localRevenueByCurrency[payout.currency] ?? 0
+    const localRevenueMinor = localRevenueByCurrency[payout.currency.toUpperCase()] ?? 0
     const variance = computePayoutVariance(payout.reportedPayoutMinor, localRevenueMinor)
     return {
         id: payout._id.toString(),

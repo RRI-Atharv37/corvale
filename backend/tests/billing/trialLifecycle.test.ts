@@ -117,7 +117,7 @@ describe('trial expiry - derived at request time', () => {
         await setSubscription(user.userId, { status: 'trialing', trialEndsAt: daysFromNow(-1), currentPeriodEnd: null })
         expect((await createAccount(user.token, 'Blocked')).status).toBe(402)
 
-        await setSubscription(user.userId, { status: 'active', planCode: 'plus' })
+        await setSubscription(user.userId, { status: 'active' })
 
         expect((await createAccount(user.token, 'After')).status).toBe(201)
         expect(await Account.countDocuments({ userId: user.userId })).toBe(2)

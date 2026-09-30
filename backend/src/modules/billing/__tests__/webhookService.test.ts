@@ -36,7 +36,7 @@ const makeEvent = (overrides: Partial<NormalizedBillingEvent> = {}): NormalizedB
         occurredAt: new Date('2026-09-20T10:00:00.000Z'),
         providerCustomerId: 'cus_1',
         providerSubscriptionId: 'sub_1',
-        planCode: 'plus',
+        planCode: 'pro',
         status: 'active',
         ...overrides,
     }
@@ -211,12 +211,12 @@ describe('recordAndApplyBillingEvent', () => {
     })
 
     it('a mutated redelivery of the same id leaves the recorded payload untouched', async () => {
-        const original = makeEvent({ planCode: 'plus' })
+        const original = makeEvent({ planCode: 'pro' })
         await recordAndApplyBillingEvent(original, async () => applied)
 
-        await recordAndApplyBillingEvent({ ...original, planCode: 'pro' }, async () => applied)
+        await recordAndApplyBillingEvent({ ...original, planCode: null }, async () => applied)
 
-        expect(JSON.stringify((await ledger(original.providerEventId))?.payload)).toContain('"plus"')
+        expect(JSON.stringify((await ledger(original.providerEventId))?.payload)).toContain('"pro"')
     })
 })
 

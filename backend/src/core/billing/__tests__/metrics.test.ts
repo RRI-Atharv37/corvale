@@ -49,7 +49,7 @@ describe('planMrrMinor', () => {
 })
 
 describe('calculateMrr', () => {
-    const prices = { plus: { monthly: 600, annual: 6000 }, pro: { monthly: 1200, annual: 9600 } }
+    const prices = { pro: { monthly: 1200, annual: 9600 } }
 
     const segment = (over: Partial<MetricStockSegment>): MetricStockSegment => ({
         planCode: 'pro',
@@ -89,7 +89,7 @@ describe('calculateMrr', () => {
     })
 
     it('skips a plan code with no price entry rather than throwing', () => {
-        const result = calculateMrr([segment({ planCode: 'plus', status: 'active', count: 1 })], {})
+        const result = calculateMrr([segment({ status: 'active', count: 1 })], {})
 
         expect(result.listPriceMrrMinor).toBe(0)
     })

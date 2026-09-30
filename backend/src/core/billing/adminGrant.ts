@@ -1,17 +1,8 @@
-import { FEATURE_KEYS, LIMIT_KEYS, type LimitKey, type PlanCode } from './constants'
+import { FEATURE_KEYS, LIMIT_KEYS, type LimitKey } from './constants'
 import type { AdminGrantSnapshot, Entitlements, PlanDefinition } from './entitlements'
-
-/** Plans in ascending order of what they include. */
-const PLAN_RANK: Record<PlanCode, number> = { plus: 1, pro: 2 }
 
 export const isAdminGrantActive = (grant: { until: Date } | null | undefined, now: Date): boolean =>
     !!grant && grant.until.getTime() > now.getTime()
-
-const higherPlan = (a: PlanCode | null, b: PlanCode | null | undefined): PlanCode | null => {
-    if (!b) return a
-    if (!a) return b
-    return PLAN_RANK[b] > PLAN_RANK[a] ? b : a
-}
 
 /** `null` is unlimited and beats any number; a missing value leaves the limit as it was. */
 const higherLimit = (current: number | null, incoming: number | null | undefined): number | null => {
@@ -53,7 +44,7 @@ export const applyAdminGrant = (
     return {
         ...base,
         status: lifts ? 'active' : base.status,
-        planCode: higherPlan(base.planCode, grant.planCode),
+        planCode: base.planCode ?? grant.planCode ?? null,
         canWrite: base.canWrite || lifts,
         canSyncPush: base.canSyncPush || lifts,
         graceEndsAt: lifts ? null : base.graceEndsAt,
@@ -63,16 +54,14 @@ export const applyAdminGrant = (
 }
 
 /**
- * True when the grant would raise something the customer's own plan does not already give: a higher plan, or
- * any limit above the plan's (unlimited counts as the highest). An override that lowers or merely matches is
+ * True when the grant would raise something the customer's own plan does not already give: any limit above
+ * the plan's (unlimited counts as the highest). An override that lowers or merely matches is
  * refused, so it can never be used as a covert downgrade.
  */
 export const isPlanUpgrade = (
-    grant: { planCode?: PlanCode | null; limits?: Partial<Record<LimitKey, number | null>> | null },
+    grant: { limits?: Partial<Record<LimitKey, number | null>> | null },
     basePlan: PlanDefinition
 ): boolean => {
-    if (grant.planCode && PLAN_RANK[grant.planCode] > PLAN_RANK[basePlan.code]) return true
-
     for (const key of LIMIT_KEYS) {
         const requested = grant.limits?.[key]
         if (requested === undefined) continue

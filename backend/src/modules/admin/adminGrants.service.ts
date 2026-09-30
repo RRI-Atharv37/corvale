@@ -110,7 +110,7 @@ export const applyGrant = async (
 
     if (kind === 'plan_override') {
         const basePlan = await getPlanDefinition(subscription.planCode)
-        if (!basePlan || !isPlanUpgrade({ planCode, limits }, basePlan)) throw new CustomError(ERROR_MESSAGES.ADMIN.GRANT_NOT_UPGRADE, 400)
+        if (!basePlan || !isPlanUpgrade({ limits }, basePlan)) throw new CustomError(ERROR_MESSAGES.ADMIN.GRANT_NOT_UPGRADE, 400)
     }
 
     const grant = {

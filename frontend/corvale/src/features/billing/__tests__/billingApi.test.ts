@@ -89,11 +89,11 @@ describe('actions', () => {
     it('requestPlanChange, requestCancellation and requestResume post to their own routes', async () => {
         vi.mocked(axiosInstance.post).mockResolvedValue({ success: true, data: { requested: true } })
 
-        await requestPlanChange({ planCode: 'plus', interval: 'monthly' })
+        await requestPlanChange({ planCode: 'pro', interval: 'monthly' })
         await requestCancellation()
         await requestResume()
 
-        expect(axiosInstance.post).toHaveBeenNthCalledWith(1, API_PATHS.BILLING.CHANGE_PLAN, { planCode: 'plus', interval: 'monthly' })
+        expect(axiosInstance.post).toHaveBeenNthCalledWith(1, API_PATHS.BILLING.CHANGE_PLAN, { planCode: 'pro', interval: 'monthly' })
         expect(axiosInstance.post).toHaveBeenNthCalledWith(2, API_PATHS.BILLING.CANCEL, {})
         expect(axiosInstance.post).toHaveBeenNthCalledWith(3, API_PATHS.BILLING.RESUME, {})
     })
@@ -101,7 +101,7 @@ describe('actions', () => {
     it('refuses a hosted URL that is not https, rather than hand it to the browser', async () => {
         vi.mocked(axiosInstance.post).mockResolvedValue({ success: true, data: { url: 'javascript:alert(1)' } })
 
-        await expect(startCheckout({ planCode: 'plus', interval: 'monthly' })).rejects.toThrow(/could not open/i)
+        await expect(startCheckout({ planCode: 'pro', interval: 'monthly' })).rejects.toThrow(/could not open/i)
         await expect(openBillingPortal()).rejects.toThrow(/could not open/i)
     })
 })

@@ -273,7 +273,7 @@ describe('POST /subscribers/:userId/dispute/clear', () => {
 
 describe('resync', () => {
     it('previews the drift between the local row and the live provider snapshot, without writing anything', async () => {
-        fake.remote.push({ providerSubscriptionId: `sub_${user.userId}`, status: 'past_due', planCode: 'plus', updatedAt: new Date() })
+        fake.remote.push({ providerSubscriptionId: `sub_${user.userId}`, status: 'past_due', cancelAtPeriodEnd: true, updatedAt: new Date() })
 
         const res = await get('/resync/preview')
 
@@ -281,7 +281,7 @@ describe('resync', () => {
         expect(res.body.data.differences).toEqual(
             expect.arrayContaining([
                 { field: 'status', local: 'active', remote: 'past_due' },
-                { field: 'planCode', local: 'pro', remote: 'plus' },
+                { field: 'cancelAtPeriodEnd', local: false, remote: true },
             ])
         )
         expect((await stored())?.status).toBe('active')

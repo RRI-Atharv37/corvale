@@ -7,7 +7,7 @@ import { Receipt } from '@modules/receipts'
 import { RECEIPT_UPLOAD_ROOT } from '@modules/receipts/receiptUtils'
 import { Transaction } from '@modules/transactions'
 import { Workspace } from '@modules/workspaces'
-import { SyncDevice } from '@modules/billing'
+import { Plan, SyncDevice } from '@modules/billing'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { authHeader, registerUser, seedUserDirectly, type RegisteredUser } from '@tests/helpers'
 import {
@@ -22,8 +22,8 @@ import {
 } from '@tests/billingHelpers'
 
 /**
- * M1 - downgrade Pro -> Plus with over-quota data (M5b). Governing rule: nothing is destroyed by a
- * billing state change. Over-limit data stays readable and downloadable; only *adding* to it stops:
+ * M1 - a plan's allowances shrinking under existing over-quota data (M5b). Governing rule: nothing is
+ * destroyed by a billing state change. Over-limit data stays readable and downloadable; only *adding* to it stops:
  *   - workspaces become read-only (members can still read; writes 402 ENTITLEMENT_REQUIRED)
  *   - receipts over the storage limit stay downloadable and deletable, new uploads are refused
  *   - sync devices beyond the limit keep pulling but stop pushing
@@ -31,6 +31,8 @@ import {
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj\n<< >>\nendobj\n%%EOF')
 const SIZE = PDF.length
+
+const editPlan = (fields: Record<string, unknown>) => Plan.updateOne({ code: 'pro' }, { $set: fields })
 
 const uploadReceipt = (token: string) =>
     request(app)
@@ -45,7 +47,7 @@ afterEach(() => {
     }
 })
 
-describe('downgrade - workspaces go read-only, nothing is deleted', () => {
+describe('plan tightened - workspaces go read-only, nothing is deleted', () => {
     let owner: RegisteredUser
     let editor: RegisteredUser
     let workspaceId: string
@@ -57,8 +59,8 @@ describe('downgrade - workspaces go read-only, nothing is deleted', () => {
         await seedTestPlans()
         owner = await registerUser(app)
         editor = await seedUserDirectly({ email: 'dg-editor@example.com' })
-        await setSubscription(owner.userId, { planCode: 'pro' })
-        await setSubscription(editor.userId, { planCode: 'plus' })
+        await setSubscription(owner.userId)
+        await setSubscription(editor.userId)
         workspaceId = await seedWorkspace(owner.userId, [{ userId: editor.userId, role: 'editor' }])
 
         accountId = await createAccountViaApi(app, owner.token, { workspaceId })
@@ -66,7 +68,7 @@ describe('downgrade - workspaces go read-only, nothing is deleted', () => {
         const tx = await createExpenseViaApi(app, owner.token, accountId, categoryId, { workspaceId, title: 'Shared lunch' })
         expect(tx.status).toBe(201)
 
-        await setSubscription(owner.userId, { planCode: 'plus' })
+        await editPlan({ 'features.workspaces': false })
     })
 
     const workspaceWrite = (token: string) =>
@@ -110,7 +112,7 @@ describe('downgrade - workspaces go read-only, nothing is deleted', () => {
         expect((await Workspace.findById(workspaceId))?.name).toBe('Shared')
     })
 
-    it('personal data on the same Plus plan is unaffected', async () => {
+    it('personal data on the same plan is unaffected', async () => {
         const res = await request(app)
             .post('/api/v1/accounts')
             .set(authHeader(owner.token))
@@ -125,30 +127,30 @@ describe('downgrade - workspaces go read-only, nothing is deleted', () => {
         expect((await Workspace.findById(workspaceId))?.members).toHaveLength(2)
     })
 
-    it('re-upgrading restores workspace writes on the same workspace', async () => {
-        await setSubscription(owner.userId, { planCode: 'pro' })
+    it('restoring the feature restores workspace writes on the same workspace', async () => {
+        await editPlan({ 'features.workspaces': true })
 
         expect((await workspaceWrite(editor.token)).status).toBe(201)
     })
 })
 
-describe('downgrade - receipts over the storage limit', () => {
+describe('plan tightened - receipts over the storage limit', () => {
     let user: RegisteredUser
     const receiptIds: string[] = []
 
     beforeEach(async () => {
         receiptIds.length = 0
         enableBilling()
-        await seedTestPlans({ plus: { limits: { receiptStorageBytes: SIZE } } })
+        await seedTestPlans()
         user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'pro' })
+        await setSubscription(user.userId)
         for (let i = 0; i < 3; i += 1) {
             const res = await uploadReceipt(user.token)
             expect(res.status).toBe(201)
             receiptIds.push(res.body.data._id)
         }
 
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await editPlan({ 'limits.receiptStorageBytes': SIZE })
     })
 
     it('every over-limit receipt stays downloadable', async () => {
@@ -184,15 +186,15 @@ describe('downgrade - receipts over the storage limit', () => {
         expect(res.status).toBe(200)
     })
 
-    it('re-upgrading lifts the block on the same receipts', async () => {
-        await setSubscription(user.userId, { planCode: 'pro' })
+    it('raising the limit lifts the block on the same receipts', async () => {
+        await editPlan({ 'limits.receiptStorageBytes': 10 * SIZE })
 
         expect((await uploadReceipt(user.token)).status).toBe(201)
         expect(await Receipt.countDocuments({ userId: user.userId })).toBe(4)
     })
 })
 
-describe('downgrade - extra sync devices pull but stop pushing', () => {
+describe('plan tightened - extra sync devices pull but stop pushing', () => {
     let user: RegisteredUser
     let n = 0
 
@@ -219,12 +221,12 @@ describe('downgrade - extra sync devices pull but stop pushing', () => {
         enableBilling()
         await seedTestPlans()
         user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'pro' })
+        await setSubscription(user.userId)
         for (const device of ['laptop', 'desktop', 'tablet']) {
             expect((await push(device)).status).toBe(200)
         }
 
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await editPlan({ 'limits.syncDevices': 1 })
     })
 
     it('only the earliest-registered device (within the limit) may keep pushing', async () => {
@@ -243,12 +245,12 @@ describe('downgrade - extra sync devices pull but stop pushing', () => {
         }
     })
 
-    it('no device registration is discarded by the downgrade', async () => {
+    it('no device registration is discarded when the limit drops', async () => {
         expect(await SyncDevice.countDocuments({ userId: user.userId })).toBe(3)
     })
 
-    it('re-upgrading lets all three push again', async () => {
-        await setSubscription(user.userId, { planCode: 'pro' })
+    it('lifting the limit lets all three push again', async () => {
+        await editPlan({ 'limits.syncDevices': null })
 
         for (const device of ['laptop', 'desktop', 'tablet']) {
             expect((await push(device)).status).toBe(200)
@@ -256,18 +258,18 @@ describe('downgrade - extra sync devices pull but stop pushing', () => {
     })
 })
 
-describe('downgrade - the entitlement snapshot tells the UI what happened', () => {
-    it('reports Plus features and limits while read/export stay true', async () => {
+describe('plan tightened - the entitlement snapshot tells the UI what happened', () => {
+    it('reports the reduced features and limits while read/export stay true', async () => {
         enableBilling()
         await seedTestPlans()
         const user = await registerUser(app)
-        await setSubscription(user.userId, { planCode: 'pro' })
-        await setSubscription(user.userId, { planCode: 'plus' })
+        await setSubscription(user.userId)
+        await editPlan({ 'features.workspaces': false, 'limits.syncDevices': 1 })
 
         const res = await request(app).get('/api/v1/auth/user').set(authHeader(user.token))
 
         const e = res.body.data.entitlements
-        expect(e.planCode).toBe('plus')
+        expect(e.planCode).toBe('pro')
         expect(e.features.workspaces).toBe(false)
         expect(e.limits.syncDevices).toBe(1)
         expect(e.canWrite).toBe(true)

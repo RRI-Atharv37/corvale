@@ -98,7 +98,7 @@ describe('billing models - constraints', () => {
     })
 
     it('Plan codes are unique', async () => {
-        const plan = { code: 'plus', name: 'Plus', features: {}, limits: {} }
+        const plan = { code: 'pro', name: 'Pro', features: {}, limits: {} }
 
         await Plan.create(plan)
 

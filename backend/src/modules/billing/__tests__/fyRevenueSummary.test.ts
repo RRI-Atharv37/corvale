@@ -33,7 +33,7 @@ const seedPaymentEvent = (providerSubscriptionId: string, occurredAt: Date, payl
         providerEventId: nextEventId(),
         type: 'payment.succeeded',
         occurredAt,
-        payload: { providerSubscriptionId, total: 1000, currency: 'usd', ...payload },
+        payload: { providerSubscriptionId, total: 1000, currency: 'USD', interval: 'monthly', planCode: 'pro', ...payload },
     })
 
 describe('computeFinancialYearRevenue', () => {
@@ -68,9 +68,9 @@ describe('computeFinancialYearRevenue', () => {
 
         const summary = await computeFinancialYearRevenue('2026-27', new Date('2026-09-22T00:00:00.000Z'))
 
-        expect(summary.totalsByCurrency).toEqual({ usd: 1000, inr: 500 })
-        expect(summary.byMonth.find((m) => m.periodMonth === '2026-04')?.totalsByCurrency).toEqual({ usd: 1000 })
-        expect(summary.byMonth.find((m) => m.periodMonth === '2026-05')?.totalsByCurrency).toEqual({ inr: 500 })
+        expect(summary.totalsByCurrency).toEqual({ USD: 1000, INR: 500 })
+        expect(summary.byMonth.find((m) => m.periodMonth === '2026-04')?.totalsByCurrency).toEqual({ USD: 1000 })
+        expect(summary.byMonth.find((m) => m.periodMonth === '2026-05')?.totalsByCurrency).toEqual({ INR: 500 })
     })
 
     it('includes monthly-plan payments in the month they were paid', async () => {
@@ -79,7 +79,7 @@ describe('computeFinancialYearRevenue', () => {
 
         const summary = await computeFinancialYearRevenue('2026-27', new Date('2026-09-22T00:00:00.000Z'))
 
-        expect(summary.totalsByCurrency.usd).toBe(700)
+        expect(summary.totalsByCurrency.USD).toBe(700)
     })
 
     it('excludes a payment for a subscription outside the financial year window', async () => {
@@ -96,5 +96,26 @@ describe('computeFinancialYearRevenue', () => {
 
         expect(summary.monthsIncluded).toEqual([])
         expect(summary.totalsByCurrency).toEqual({})
+    })
+
+    it('keeps a monthly payment in the total after its payer erased their account (BUG-45)', async () => {
+        const event = await seedPaymentEvent('sub_fy_erased', new Date('2026-05-10T00:00:00.000Z'), { total: 700 })
+        await BillingEvent.collection.updateOne(
+            { providerEventId: event.providerEventId },
+            { $unset: { 'payload.providerSubscriptionId': '', 'payload.providerCustomerId': '' }, $set: { redactedAt: new Date() } }
+        )
+
+        const summary = await computeFinancialYearRevenue('2026-27', new Date('2026-09-22T00:00:00.000Z'))
+
+        expect(summary.totalsByCurrency).toEqual({ USD: 700 })
+    })
+
+    it('counts a monthly payment after the subscriber moved to annual (BUG-45)', async () => {
+        await seedSubscription('sub_fy_moved', 'annual')
+        await seedPaymentEvent('sub_fy_moved', new Date('2026-05-10T00:00:00.000Z'), { total: 700, interval: 'monthly' })
+
+        const summary = await computeFinancialYearRevenue('2026-27', new Date('2026-09-22T00:00:00.000Z'))
+
+        expect(summary.totalsByCurrency).toEqual({ USD: 700 })
     })
 })
