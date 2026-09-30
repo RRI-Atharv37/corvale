@@ -6,6 +6,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     adjustAccountForTransactionChange,
     applyTransactionToAccount,
+    buildRecordScopeFilter,
     applyTransferToAccounts,
     assertEditableTransaction,
     deleteTransactionForUser,
@@ -278,19 +279,19 @@ export const deleteTransactionForOp = async (
         await Transaction.updateMany(
             {
                 _id: { $in: [transaction._id, transaction.transferPairId] },
-                userId: new Types.ObjectId(userId),
+                ...buildRecordScopeFilter(transaction),
             },
             { deletedAt }
         )
         return transaction._id.toString()
     }
 
-    const splitChildren = await fetchSplitChildren(transaction._id, userId)
+    const splitChildren = await fetchSplitChildren(transaction)
     if (splitChildren.length > 0) {
         await Transaction.updateMany(
             {
                 _id: { $in: splitChildren.map((child) => child._id) },
-                userId: new Types.ObjectId(userId),
+                ...buildRecordScopeFilter(transaction),
             },
             { deletedAt }
         )
@@ -656,7 +657,7 @@ export const updateTransactionForUser = async (
 
     assertEditableTransaction(transaction)
 
-    const splitChildren = await fetchSplitChildren(transaction._id, userId)
+    const splitChildren = await fetchSplitChildren(transaction)
     if (splitChildren.length > 0) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
     }
@@ -742,7 +743,7 @@ export const duplicateTransaction = async (transactionId: string, userId: string
 
     assertEditableTransaction(transaction)
 
-    const splitChildren = await fetchSplitChildren(transaction._id, userId)
+    const splitChildren = await fetchSplitChildren(transaction)
     if (splitChildren.length > 0) {
         throw new CustomError(ERROR_MESSAGES.TRANSACTION.SPLIT_NOT_EDITABLE, 400)
     }

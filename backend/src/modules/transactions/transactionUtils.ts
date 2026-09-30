@@ -7,6 +7,7 @@ import Transaction, { ITransaction, TransactionType } from './transaction.model'
 import { User } from '@modules/users'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
+import { buildScopedListFilter } from '@core/access/workspace'
 import { fromMinorUnits, parseAmountToMinorUnits, toMinorUnits } from '@core/money/moneyUtils'
 import {
     getBalanceDeltaMajor,
@@ -325,13 +326,22 @@ export const reverseTransferOnAccounts = async (
     await toAccount.save()
 }
 
+/**
+ * BUG-54: follow-up queries on a record that already passed `validateResourceAccess` are scoped
+ * the way the record is - by workspace for a workspace record, by owner for a personal one - never
+ * by the caller, who may be a co-member rather than the author.
+ */
+export const buildRecordScopeFilter = (
+    record: Pick<ITransaction, 'userId' | 'workspaceId'>
+): Record<string, unknown> =>
+    buildScopedListFilter(record.userId.toString(), record.workspaceId?.toString() ?? null)
+
 export const fetchSplitChildren = async (
-    parentId: Types.ObjectId | string,
-    userId: string
+    parent: Pick<ITransaction, '_id' | 'userId' | 'workspaceId'>
 ): Promise<ITransaction[]> => {
     return Transaction.find({
-        userId: new Types.ObjectId(userId),
-        splitTransactionId: parentId,
+        ...buildRecordScopeFilter(parent),
+        splitTransactionId: parent._id,
     }).sort({ createdAt: 1 })
 }
 
@@ -362,7 +372,7 @@ export const serializeTransactionWithSplits = async (
     }
 
     const [children, receipts] = await Promise.all([
-        fetchSplitChildren(transaction._id, userId),
+        fetchSplitChildren(transaction),
         fetchReceiptsForTransaction(transaction.receiptIds, userId),
     ])
 
@@ -669,13 +679,13 @@ export const deleteTransactionForUser = async (
         await reverseTransferOnAccounts(fromAccount, toAccount, transaction.amount, transaction.date)
         const deletedAt = new Date()
         await Transaction.updateMany(
-            { _id: { $in: [outbound._id, inbound._id] }, userId: new Types.ObjectId(userId) },
+            { _id: { $in: [outbound._id, inbound._id] }, ...buildRecordScopeFilter(transaction) },
             { deletedAt }
         )
         return
     }
 
-    const splitChildren = await fetchSplitChildren(transaction._id, userId)
+    const splitChildren = await fetchSplitChildren(transaction)
     const account = await validateAccountForTransaction(
         transaction.accountId.toString(),
         userId
@@ -689,7 +699,7 @@ export const deleteTransactionForUser = async (
         await Transaction.updateMany(
             {
                 _id: { $in: splitChildren.map((child) => child._id) },
-                userId: new Types.ObjectId(userId),
+                ...buildRecordScopeFilter(transaction),
             },
             { deletedAt }
         )
