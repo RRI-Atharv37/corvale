@@ -8,6 +8,7 @@ import { createSqliteOutboxStore } from './sqliteOutboxStore'
 import { runPullLoop } from './pullLoop'
 import { recordConflict, listUnresolvedConflicts } from './conflicts'
 import { parseOutboxEntity, type SyncEntityName } from './entityMap'
+import { getSyncRepository } from './syncRepositories'
 import { registerBackgroundSync, startBackgroundSyncBridge } from '../pwa/backgroundSync'
 
 const LAST_SYNCED_KEY = 'lastSyncedAt'
@@ -48,8 +49,16 @@ export const resetSyncEngineForTests = (): void => {
  * recorded into the `_conflicts` inbox before being reported back so `Outbox.flush` drops it from
  * the pending queue (see `sync/outbox.ts` module doc).
  */
-const buildPushFn = (db: LocalDb) => async (ops: OutboxOp[]): Promise<PushResult[]> => {
+const buildPushFn = (db: LocalDb, appliedStamps: AppliedStamp[]) => async (ops: OutboxOp[]): Promise<PushResult[]> => {
     const response = await pushOutboxOps(ops, getStoredActiveWorkspaceId())
+
+    for (const result of response.results) {
+        if (result.status !== 'applied' || !result.updatedAt) continue
+        const op = ops.find((candidate) => candidate.opId === result.opId)
+        if (op && op.operation !== 'delete') {
+            appliedStamps.push({ entity: op.entity, updatedAt: result.updatedAt })
+        }
+    }
 
     for (const result of response.results) {
         if (result.status !== 'conflict' || !result.conflict) continue
@@ -68,13 +77,50 @@ const buildPushFn = (db: LocalDb) => async (ops: OutboxOp[]): Promise<PushResult
         opId: result.opId,
         status: result.status === 'noop' ? 'applied' : result.status,
         message: result.message,
+        updatedAt: result.updatedAt,
     }))
 }
+
+interface AppliedStamp {
+    entity: string
+    updatedAt: string
+}
+
+/**
+ * BUG-57: after an op is applied the local row still carries the client-clock `updatedAt` it was
+ * stamped with, so the next edit would use that as its `baseUpdatedAt` and conflict with the
+ * server's copy. Writes the server's stamp back onto the row and clears its pending flag once the
+ * last queued op for the record is through.
+ */
+const reconcileAppliedRows = async (db: LocalDb, outbox: Outbox, stamps: AppliedStamp[]): Promise<void> => {
+    if (stamps.length === 0) return
+    const pendingEntities = new Set((await outbox.listPending()).map((op) => op.entity))
+    for (const { entity, updatedAt } of stamps) {
+        const { entityType, recordId } = parseOutboxEntity(entity)
+        const repository = getSyncRepository(entityType)
+        if (!repository) continue
+        await repository.markServerApplied(db, recordId, updatedAt, pendingEntities.has(entity))
+    }
+}
+
+/** Each round sends at most one edit per record (see `outbox.ts`), so a record edited N times offline needs N rounds. */
+const MAX_FLUSH_ROUNDS = 25
 
 export const flushOutbox = async (): Promise<void> => {
     const db = await getLocalDb()
     const outbox = await getOutbox()
-    await outbox.flush(buildPushFn(db))
+
+    for (let round = 0; round < MAX_FLUSH_ROUNDS; round += 1) {
+        const before = (await outbox.listPending()).length
+        if (before === 0) return
+
+        const appliedStamps: AppliedStamp[] = []
+        await outbox.flush(buildPushFn(db, appliedStamps))
+        await reconcileAppliedRows(db, outbox, appliedStamps)
+
+        const after = (await outbox.listPending()).length
+        if (after === 0 || after >= before) return
+    }
 }
 
 export const pullChanges = async (): Promise<void> => {

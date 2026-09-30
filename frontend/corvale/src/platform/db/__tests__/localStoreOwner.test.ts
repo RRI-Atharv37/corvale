@@ -5,6 +5,7 @@ import { MIGRATIONS } from '../migrations/schema'
 import type { LocalDb } from '../LocalDb'
 import { getStoredOwnerId, setStoredOwnerId } from '../localStoreOwner'
 import { seedFromBootstrap } from '../repositories/bootstrapSeed'
+import { getCheckpoint } from '../../sync/checkpointStore'
 import type { BootstrapSyncSnapshot } from '../../sync/syncApi'
 
 const emptySnapshot: BootstrapSyncSnapshot = {
@@ -49,8 +50,14 @@ describe('localStoreOwner (SEC-38)', () => {
         await seedFromBootstrap(db, emptySnapshot, 'user-a')
 
         expect(await getStoredOwnerId(db)).toBe('user-a')
-        const cp = await db.select<{ value: string }>("SELECT value FROM _sync_meta WHERE key = 'checkpoint'")
-        expect(cp[0]?.value).toBe(emptySnapshot.checkpoint)
+        expect(await getCheckpoint(db, null)).toBe(emptySnapshot.checkpoint)
+    })
+
+    it('seedFromBootstrap records the checkpoint under the scope that was bootstrapped (BUG-55)', async () => {
+        await seedFromBootstrap(db, emptySnapshot, 'user-a', 'ws-1')
+
+        expect(await getCheckpoint(db, 'ws-1')).toBe(emptySnapshot.checkpoint)
+        expect(await getCheckpoint(db, null)).toBeNull()
     })
 
     it('seedFromBootstrap leaves the owner unset when no id is passed', async () => {

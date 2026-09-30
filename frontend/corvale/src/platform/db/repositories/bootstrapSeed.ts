@@ -2,6 +2,7 @@ import type { LocalDb } from '../LocalDb'
 import { tableInvalidationBus } from '@lib/tableInvalidationBus'
 import { Repository, type SyncableRecord, type SyncableTableName } from './Repository'
 import { setStoredOwnerId } from '../localStoreOwner'
+import { setCheckpoint } from '../../sync/checkpointStore'
 import type { BootstrapSyncSnapshot } from '../../sync/syncApi'
 
 type SeedableField = Exclude<keyof BootstrapSyncSnapshot, 'checkpoint'>
@@ -21,8 +22,9 @@ const REPOSITORIES: Record<SeedableField, Repository<SyncableRecord>> = {
 
 /**
  * Seeds every local table from a `/sync/bootstrap` response inside a single
- * transaction, then persists its checkpoint so a subsequent `/sync/pull` can
- * resume from exactly where the bootstrap left off. `ownerId` (the signed-in
+ * transaction, then persists its checkpoint - under the scope (personal, or the
+ * workspace) the snapshot was fetched for - so a subsequent `/sync/pull` of that
+ * scope can resume from exactly where the bootstrap left off. `ownerId` (the signed-in
  * user's id) is recorded in the same transaction so `provisionLocalDb` can
  * detect a store that belongs to a different account (SEC-38). Table
  * invalidation is published after commit so any mounted `useLocalQuery` hooks
@@ -31,7 +33,8 @@ const REPOSITORIES: Record<SeedableField, Repository<SyncableRecord>> = {
 export const seedFromBootstrap = async (
   db: LocalDb,
   snapshot: BootstrapSyncSnapshot,
-  ownerId?: string
+  ownerId?: string,
+  workspaceId?: string | null
 ): Promise<void> => {
   const fields = Object.keys(REPOSITORIES) as SeedableField[]
 
@@ -43,11 +46,7 @@ export const seedFromBootstrap = async (
       // bootstrap transaction for every other table.
       await REPOSITORIES[field].upsertFromServer(tx, snapshot[field] ?? [])
     }
-    await tx.exec(
-      `INSERT INTO _sync_meta (key, value) VALUES ('checkpoint', ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-      [snapshot.checkpoint]
-    )
+    await setCheckpoint(tx, workspaceId, snapshot.checkpoint)
     if (ownerId) {
       await setStoredOwnerId(tx, ownerId)
     }

@@ -150,6 +150,30 @@ const PULL_LIMIT_MAX = 500
 const encodeCheckpoint = (cursors: SyncCursorMap): string =>
     Buffer.from(JSON.stringify({ cursors })).toString('base64url')
 
+/**
+ * `updatedAt` is stamped when a write is built and lands a little later, so a pull can return a
+ * later-stamped write before an earlier-stamped one has committed, and a cursor sitting on the
+ * former would skip the latter for good (BUG-60). A finished pull therefore hands back a cursor
+ * that lags "now" by this window: anything stamped inside it is delivered again on the next pull,
+ * which is harmless because applying a pulled doc is idempotent.
+ */
+export const SYNC_PULL_SAFETY_WINDOW_MS = 10_000
+
+const ZERO_OBJECT_ID = '000000000000000000000000'
+
+const clampToSafetyWindow = (cursors: SyncCursorMap): SyncCursorMap => {
+    const watermark = Date.now() - SYNC_PULL_SAFETY_WINDOW_MS
+    const clamped: SyncCursorMap = {}
+    for (const entity of Object.keys(cursors) as SyncEntityName[]) {
+        const cursor = cursors[entity] as SyncCursor
+        clamped[entity] =
+            new Date(cursor.updatedAt).getTime() > watermark
+                ? { updatedAt: new Date(watermark).toISOString(), id: ZERO_OBJECT_ID }
+                : cursor
+    }
+    return clamped
+}
+
 const isValidSyncCursor = (value: unknown): value is SyncCursor => {
     if (!value || typeof value !== 'object') {
         return false
@@ -266,7 +290,7 @@ export const buildBootstrapSnapshot = async (
         }
     }
 
-    return { checkpoint: encodeCheckpoint(cursors), snapshot }
+    return { checkpoint: encodeCheckpoint(clampToSafetyWindow(cursors)), snapshot }
 }
 
 export interface SyncChange {
@@ -346,7 +370,9 @@ export const buildPullPage = async (
         }
     }
 
-    return { changes, tombstones, checkpoint: encodeCheckpoint(nextCursors), hasMore }
+    // Mid-sweep pages keep the exact cursor so paging always advances; only the last page clamps.
+    const finalCursors = hasMore ? nextCursors : clampToSafetyWindow(nextCursors)
+    return { changes, tombstones, checkpoint: encodeCheckpoint(finalCursors), hasMore }
 }
 
 /**
@@ -374,7 +400,7 @@ export const computeCurrentCheckpoint = async (
         }
     }
 
-    return encodeCheckpoint(cursors)
+    return encodeCheckpoint(clampToSafetyWindow(cursors))
 }
 
 /**

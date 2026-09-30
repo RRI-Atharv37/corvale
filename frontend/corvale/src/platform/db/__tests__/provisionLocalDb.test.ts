@@ -11,8 +11,8 @@ vi.mock('../../sync/syncApi', () => ({ fetchBootstrapSnapshot: (...args: unknown
 const seedFromBootstrapMock = vi.fn()
 vi.mock('../repositories/bootstrapSeed', () => ({ seedFromBootstrap: (...args: unknown[]) => seedFromBootstrapMock(...args) }))
 
-const getCheckpointMock = vi.fn()
-vi.mock('../../sync/pullLoop', () => ({ getCheckpoint: (...args: unknown[]) => getCheckpointMock(...args) }))
+const hasAnyCheckpointMock = vi.fn()
+vi.mock('../../sync/checkpointStore', () => ({ hasAnyCheckpoint: (...args: unknown[]) => hasAnyCheckpointMock(...args) }))
 
 const resetLocalDataMock = vi.fn()
 vi.mock('../../sync/syncEngine', () => ({ resetLocalData: (...args: unknown[]) => resetLocalDataMock(...args) }))
@@ -54,7 +54,7 @@ describe('provisionLocalDb (D5 - sign in once, then offline forever)', () => {
         setLocalDb(fakeDb)
         vi.mocked(isLocalFirstEnabled).mockReset().mockReturnValue(true)
         vi.mocked(getStoredActiveWorkspaceId).mockReset().mockReturnValue(null)
-        getCheckpointMock.mockReset().mockResolvedValue(null)
+        hasAnyCheckpointMock.mockReset().mockResolvedValue(false)
         fetchBootstrapSnapshotMock.mockReset().mockResolvedValue(snapshot)
         seedFromBootstrapMock.mockReset().mockResolvedValue(undefined)
         resetLocalDataMock.mockReset().mockResolvedValue(undefined)
@@ -75,7 +75,7 @@ describe('provisionLocalDb (D5 - sign in once, then offline forever)', () => {
         await provisionLocalDb('user-a')
 
         expect(fetchBootstrapSnapshotMock).toHaveBeenCalledWith(null)
-        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a')
+        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a', null)
         expect(resetLocalDataMock).not.toHaveBeenCalled()
     })
 
@@ -85,10 +85,11 @@ describe('provisionLocalDb (D5 - sign in once, then offline forever)', () => {
         await provisionLocalDb('user-a')
 
         expect(fetchBootstrapSnapshotMock).toHaveBeenCalledWith('workspace-1')
+        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a', 'workspace-1')
     })
 
     it('is a no-op when the store already belongs to the user signing in', async () => {
-        getCheckpointMock.mockResolvedValue('2026-08-24T00:00:00.000Z_prev')
+        hasAnyCheckpointMock.mockResolvedValue(true)
         vi.mocked(fakeDb.select).mockResolvedValue([{ total: 12 }])
         getStoredOwnerIdMock.mockResolvedValue('user-a')
 
@@ -100,7 +101,7 @@ describe('provisionLocalDb (D5 - sign in once, then offline forever)', () => {
     })
 
     it('SEC-38: wipes and reseeds when the provisioned store belongs to a different account', async () => {
-        getCheckpointMock.mockResolvedValue('2026-08-24T00:00:00.000Z_prev')
+        hasAnyCheckpointMock.mockResolvedValue(true)
         vi.mocked(fakeDb.select).mockResolvedValue([{ total: 12 }])
         getStoredOwnerIdMock.mockResolvedValue('user-b')
 
@@ -108,29 +109,29 @@ describe('provisionLocalDb (D5 - sign in once, then offline forever)', () => {
 
         expect(resetLocalDataMock).toHaveBeenCalledTimes(1)
         expect(fetchBootstrapSnapshotMock).toHaveBeenCalledWith(null)
-        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a')
+        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a', null)
     })
 
     it('SEC-38: wipes and reseeds a provisioned store that has no recorded owner (seeded before the fix)', async () => {
-        getCheckpointMock.mockResolvedValue('2026-08-24T00:00:00.000Z_prev')
+        hasAnyCheckpointMock.mockResolvedValue(true)
         vi.mocked(fakeDb.select).mockResolvedValue([{ total: 12 }])
         getStoredOwnerIdMock.mockResolvedValue(null)
 
         await provisionLocalDb('user-a')
 
         expect(resetLocalDataMock).toHaveBeenCalledTimes(1)
-        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a')
+        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a', null)
     })
 
     it('re-seeds when a checkpoint exists but the store is empty (BUG-30: rebuilt / half-seeded store)', async () => {
-        getCheckpointMock.mockResolvedValue('2026-08-24T00:00:00.000Z_prev')
+        hasAnyCheckpointMock.mockResolvedValue(true)
         vi.mocked(fakeDb.select).mockResolvedValue([{ total: 0 }])
 
         await provisionLocalDb('user-a')
 
         expect(resetLocalDataMock).not.toHaveBeenCalled()
         expect(fetchBootstrapSnapshotMock).toHaveBeenCalledWith(null)
-        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a')
+        expect(seedFromBootstrapMock).toHaveBeenCalledWith(await getLocalDb(), snapshot, 'user-a', null)
     })
 
     it('swallows a bootstrap fetch failure instead of throwing out of the login flow', async () => {

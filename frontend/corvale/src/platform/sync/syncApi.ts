@@ -72,6 +72,8 @@ export interface SyncOpResult {
     resultId: string | null
     conflict?: { serverDoc: Record<string, unknown> }
     message?: string
+    /** Set by the server on an applied create/update: the `updatedAt` it stored for the record. */
+    updatedAt?: string
 }
 
 export interface PushOpsResponse {

@@ -2,6 +2,8 @@ import React, { createContext, useCallback, useEffect, useMemo, useState } from 
 import type { Workspace, WorkspaceRole } from '@features/workspaces/types'
 import { fetchWorkspaces } from '@features/workspaces/workspaceApi'
 import { getApiErrorMessage } from '@lib/apiError'
+import { isLocalFirstEnabled } from '@lib/localFirstFlag'
+import { syncNow } from '@platform/sync/syncEngine'
 import {
     getStoredActiveWorkspaceId,
     setStoredActiveWorkspaceId,
@@ -83,6 +85,9 @@ const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const setActiveWorkspace = useCallback((workspaceId: string | null) => {
         setActiveWorkspaceIdState(workspaceId)
         setStoredActiveWorkspaceId(workspaceId)
+        if (isLocalFirstEnabled()) {
+            syncNow().catch(() => {})
+        }
     }, [])
 
     const activeWorkspace = useMemo(

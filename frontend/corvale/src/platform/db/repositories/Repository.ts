@@ -130,8 +130,22 @@ const toSqlValue = (column: string, value: unknown): unknown => {
 export class Repository<T extends SyncableRecord> {
   constructor(private readonly table: SyncableTableName) {}
 
-  /** Upserts server-shaped documents (as returned by bootstrap/pull) as already-synced rows. */
+  /** Ids of this table's records that still have an op waiting in the outbox. */
+  private async idsWithPendingOps(db: LocalDb): Promise<Set<string>> {
+    const prefix = `${TABLE_TO_ENTITY[this.table]}:`
+    const rows = await db.select<{ entity: string }>('SELECT DISTINCT entity FROM _outbox WHERE entity LIKE ?', [
+      `${prefix}%`,
+    ])
+    return new Set(rows.map((row) => row.entity.slice(prefix.length)))
+  }
+
+  /**
+   * Upserts server-shaped documents (as returned by bootstrap/pull) as already-synced rows. A record
+   * that still has queued local ops is left alone: overwriting it would hide the edit the user just
+   * made (BUG-57), and its own ops bring the server copy back into step once they are applied.
+   */
   async upsertFromServer(db: LocalDb, docs: T[]): Promise<void> {
+    const pendingIds = docs.length > 0 ? await this.idsWithPendingOps(db) : new Set<string>()
     const localUpdatedAt = new Date().toISOString()
     const promoted = PROMOTED_COLUMNS[this.table] ?? []
     const columns = ['_id', 'data', 'updatedAt', 'deletedAt', '_localUpdatedAt', '_dirty', '_syncState', ...promoted]
@@ -147,6 +161,7 @@ export class Repository<T extends SyncableRecord> {
     ].join(', ')
 
     for (const doc of docs) {
+      if (pendingIds.has(doc._id)) continue
       const record = doc as unknown as Record<string, unknown>
       const values = [
         doc._id,
@@ -166,6 +181,29 @@ export class Repository<T extends SyncableRecord> {
         values
       )
     }
+  }
+
+  /**
+   * Records the `updatedAt` the server gave a record once one of its ops was applied, so the next
+   * local edit's `baseUpdatedAt` matches the server's copy instead of a client-clock stamp (BUG-57).
+   * `stillPending` keeps the row flagged while further ops for it are still queued.
+   */
+  async markServerApplied(db: LocalDb, id: string, updatedAt: string, stillPending: boolean): Promise<void> {
+    const rows = await db.select<SyncableRow>(`SELECT data FROM ${this.table} WHERE _id = ?`, [id])
+    if (rows.length === 0) {
+      return
+    }
+    const existing = await deserializeData<Record<string, unknown>>(db, rows[0].data)
+    await db.exec(
+      `UPDATE ${this.table} SET data = ?, updatedAt = ?, _dirty = ?, _syncState = ? WHERE _id = ?`,
+      [
+        await serializeData(db, { ...existing, updatedAt }),
+        updatedAt,
+        stillPending ? 1 : 0,
+        stillPending ? 'pending' : 'synced',
+        id,
+      ]
+    )
   }
 
   async findById(db: LocalDb, id: string): Promise<T | null> {

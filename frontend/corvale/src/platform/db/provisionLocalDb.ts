@@ -1,7 +1,7 @@
 import type { LocalDb } from './LocalDb'
 import { getLocalDb } from './localDbInstance'
 import { getStoredOwnerId } from './localStoreOwner'
-import { getCheckpoint } from '../sync/pullLoop'
+import { hasAnyCheckpoint } from '../sync/checkpointStore'
 import { resetLocalData } from '../sync/syncEngine'
 import { fetchBootstrapSnapshot } from '../sync/syncApi'
 import { seedFromBootstrap } from './repositories/bootstrapSeed'
@@ -11,7 +11,7 @@ import { getStoredActiveWorkspaceId } from '@lib/workspaceScope'
 /**
  * True when the store holds no rows in any core synced table. BUG-30: a store that was rebuilt
  * from scratch (or half-seeded then interrupted) can end up with a checkpoint row but no data -
- * `getCheckpoint() !== null` alone would then wrongly treat it as provisioned and leave every
+ * a recorded checkpoint alone would then wrongly treat it as provisioned and leave every
  * page empty until the incremental pull loop slowly backfills. Checking for actual rows catches
  * the present-but-empty case too.
  */
@@ -47,8 +47,7 @@ export const provisionLocalDb = async (ownerId?: string): Promise<void> => {
 
     try {
         const db = await getLocalDb()
-        const checkpoint = await getCheckpoint(db)
-        const provisioned = checkpoint !== null && !(await localStoreIsEmpty(db))
+        const provisioned = (await hasAnyCheckpoint(db)) && !(await localStoreIsEmpty(db))
 
         if (provisioned) {
             const storedOwnerId = await getStoredOwnerId(db)
@@ -58,8 +57,9 @@ export const provisionLocalDb = async (ownerId?: string): Promise<void> => {
             await resetLocalData()
         }
 
-        const snapshot = await fetchBootstrapSnapshot(getStoredActiveWorkspaceId())
-        await seedFromBootstrap(db, snapshot, ownerId)
+        const workspaceId = getStoredActiveWorkspaceId()
+        const snapshot = await fetchBootstrapSnapshot(workspaceId)
+        await seedFromBootstrap(db, snapshot, ownerId, workspaceId)
     } catch (error) {
         console.error('Local DB provisioning failed; falling back to incremental sync', error)
     }

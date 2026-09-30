@@ -79,10 +79,12 @@ export interface SyncOpResult {
     resultId: string | null
     conflict?: SyncOpConflict
     message?: string
+    /** On an applied create/update: the `updatedAt` stored for the record, which the client rebases its queued edits onto. */
+    updatedAt?: string
 }
 
 type ApplyOpOutcome =
-    | { status: 'applied'; resultId: string | null }
+    | { status: 'applied'; resultId: string | null; updatedAt?: string }
     | { status: 'noop'; resultId: string | null }
     | { status: 'conflict'; resultId: string | null; conflict: SyncOpConflict }
     | { status: 'id_conflict'; resultId: null }
@@ -114,6 +116,15 @@ const isOwnedByCaller = async (existing: OwnableDoc, userId: string): Promise<bo
     return existing.userId.toString() === userId
 }
 
+const readStoredUpdatedAt = async (model: unknown, id: string): Promise<string | undefined> => {
+    const stored = (await (model as Model<Document>)
+        .findById(id)
+        .select('updatedAt')
+        .setOptions({ [SOFT_DELETE_BYPASS]: true })
+        .lean()) as unknown as { updatedAt?: Date } | null
+    return stored?.updatedAt ? new Date(stored.updatedAt).toISOString() : undefined
+}
+
 const applyCreateOp = async (
     userId: string,
     payload: Record<string, unknown>
@@ -135,7 +146,7 @@ const applyCreateOp = async (
 
     if (payload.intent === 'transaction.transfer') {
         const resultId = await createTransferForOp(userId, payload)
-        return { status: 'applied', resultId }
+        return { status: 'applied', resultId, updatedAt: await readStoredUpdatedAt(Transaction, resultId) }
     }
 
     // Sync payloads carry `amount` in minor units (mirroring the local SQLite/Transaction schema),
@@ -163,7 +174,8 @@ const applyCreateOp = async (
             : {}),
     }
     const created = await createTransactionForUser(userId, transactionPayload)
-    return { status: 'applied', resultId: created._id.toString() }
+    const createdId = created._id.toString()
+    return { status: 'applied', resultId: createdId, updatedAt: await readStoredUpdatedAt(Transaction, createdId) }
 }
 
 /**
@@ -233,7 +245,8 @@ const applyUpdateWithConcurrencyGuard = async <
         )
     }
 
-    return { status: 'applied', resultId: updated._id.toString() }
+    const updatedId = updated._id.toString()
+    return { status: 'applied', resultId: updatedId, updatedAt: await readStoredUpdatedAt(model, updatedId) }
 }
 
 const applyUpdateOp = async (
@@ -303,7 +316,8 @@ const applyGenericCreate = async <T extends MinimalSyncDoc & OwnableDoc>(
     }
 
     const created = await createForOp()
-    return { status: 'applied', resultId: created._id.toString() }
+    const createdId = created._id.toString()
+    return { status: 'applied', resultId: createdId, updatedAt: await readStoredUpdatedAt(model, createdId) }
 }
 
 const applyGenericUpdate = async <T extends EntityDoc>(
@@ -649,6 +663,7 @@ export const applyPushBatch = async (
                 status: outcome.status,
                 resultId: outcome.resultId,
                 ...(outcome.status === 'conflict' ? { conflict: outcome.conflict } : {}),
+                ...(outcome.status === 'applied' && outcome.updatedAt ? { updatedAt: outcome.updatedAt } : {}),
             })
         } catch (error) {
             await SyncOperation.deleteOne({ userId, opId: rawOp.opId })

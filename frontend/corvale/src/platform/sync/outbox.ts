@@ -18,6 +18,12 @@
  * - sending both would manufacture a spurious conflict. So only the first
  * `update` per entity goes out; once anything for an entity is skipped, the
  * rest of that entity's ops are held back too, to keep its own order intact.
+ *
+ * The same reasoning holds for an `update` that follows a `create` of the same record in one batch
+ * when it carries a `baseUpdatedAt`: that base is the client's own stamp of the row, not the
+ * `updatedAt` the server gives the created row. Such an update waits for the next flush, and every
+ * time an op is applied the server-reported `updatedAt` becomes the base of the entity's remaining
+ * queued updates (BUG-57), so a chain of offline edits applies without conflicting with itself.
  */
 
 export type OutboxOperation = 'create' | 'update' | 'delete'
@@ -58,6 +64,8 @@ export interface PushResult {
      * say "something failed". Threaded straight into `OutboxOp.lastError`.
      */
     message?: string
+    /** The `updatedAt` the server gave the record when it applied a create/update; absent on older backends. */
+    updatedAt?: string
 }
 
 export interface Outbox {
@@ -133,6 +141,7 @@ const buildBatch = (pending: OutboxOp[], now: number): OutboxOp[] => {
     const batch: OutboxOp[] = []
     const blockedEntities = new Set<string>()
     const updateSentForEntity = new Set<string>()
+    const createSentForEntity = new Set<string>()
 
     for (const op of pending) {
         if (blockedEntities.has(op.entity)) {
@@ -146,13 +155,30 @@ const buildBatch = (pending: OutboxOp[], now: number): OutboxOp[] => {
             blockedEntities.add(op.entity)
             continue
         }
+        if (op.operation === 'update' && op.baseUpdatedAt !== undefined && createSentForEntity.has(op.entity)) {
+            blockedEntities.add(op.entity)
+            continue
+        }
         if (op.operation === 'update') {
             updateSentForEntity.add(op.entity)
+        }
+        if (op.operation === 'create') {
+            createSentForEntity.add(op.entity)
         }
         batch.push(op)
     }
 
     return batch
+}
+
+/** Points every still-queued update of `entity` that has a precondition at the server's fresh `updatedAt`. */
+const rebaseQueuedUpdates = async (store: OutboxStore, entity: string, baseUpdatedAt: string): Promise<void> => {
+    const queued = await store.list()
+    for (const op of queued) {
+        if (op.entity === entity && op.operation === 'update' && op.baseUpdatedAt !== undefined) {
+            await store.update(op.opId, { baseUpdatedAt })
+        }
+    }
 }
 
 export interface OutboxOptions {
@@ -223,6 +249,10 @@ export const createOutbox = (store: OutboxStore = createMemoryOutboxStore(), opt
         for (const result of results) {
             if (result.status === 'applied' || result.status === 'conflict') {
                 await store.remove(result.opId)
+                const applied = batch.find((candidate) => candidate.opId === result.opId)
+                if (result.status === 'applied' && result.updatedAt && applied) {
+                    await rebaseQueuedUpdates(store, applied.entity, result.updatedAt)
+                }
                 continue
             }
 

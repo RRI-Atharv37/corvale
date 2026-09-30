@@ -320,4 +320,97 @@ describe('outbox', () => {
             expect(remaining.map((op) => op.entity)).toEqual(['account:acc2'])
         })
     })
+
+    describe('rebasing queued ops onto the server updatedAt (BUG-57)', () => {
+        it('re-points a later queued update at the updatedAt the server assigned to the earlier op', async () => {
+            await outbox.enqueue({
+                entity: 'transaction:txn1',
+                operation: 'update',
+                payload: { title: 'first' },
+                baseUpdatedAt: 'server-0',
+            })
+            await outbox.enqueue({
+                entity: 'transaction:txn1',
+                operation: 'update',
+                payload: { title: 'second' },
+                baseUpdatedAt: 'client-1',
+            })
+
+            await outbox.flush(async (ops) => {
+                expect(ops).toHaveLength(1)
+                return [{ opId: ops[0].opId, status: 'applied' as const, updatedAt: 'server-1' }]
+            })
+
+            const [remaining] = await outbox.listPending()
+            expect(remaining.payload).toEqual({ title: 'second' })
+            expect(remaining.baseUpdatedAt).toBe('server-1')
+        })
+
+        it('leaves other entities and ops without a precondition untouched', async () => {
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'update', payload: {}, baseUpdatedAt: 's0' })
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'update', payload: {}, baseUpdatedAt: 'c1' })
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'update', payload: {} })
+            await outbox.enqueue({ entity: 'transaction:txn2', operation: 'update', payload: {}, baseUpdatedAt: 'other' })
+
+            await outbox.flush(async (ops) => [
+                { opId: ops[0].opId, status: 'applied' as const, updatedAt: 'server-1' },
+                ...ops.slice(1).map((op) => ({ opId: op.opId, status: 'applied' as const })),
+            ])
+
+            const pending = await outbox.listPending()
+            expect(pending.map((op) => [op.entity, op.baseUpdatedAt])).toEqual([
+                ['transaction:txn1', 'server-1'],
+                ['transaction:txn1', undefined],
+            ])
+        })
+
+        it('does not rebase when the server reported no updatedAt (older backend)', async () => {
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'update', payload: {}, baseUpdatedAt: 's0' })
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'update', payload: {}, baseUpdatedAt: 'c1' })
+
+            await outbox.flush(applyAll)
+
+            const [remaining] = await outbox.listPending()
+            expect(remaining.baseUpdatedAt).toBe('c1')
+        })
+
+        it('holds back an update with a precondition that follows a create in the same flush, then sends it rebased', async () => {
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'create', payload: { title: 'new' } })
+            await outbox.enqueue({
+                entity: 'transaction:txn1',
+                operation: 'update',
+                payload: { title: 'edited' },
+                baseUpdatedAt: 'client-created-at',
+            })
+
+            const sentBatches: OutboxOp[][] = []
+            const pushFn = async (ops: OutboxOp[]) => {
+                sentBatches.push(ops)
+                return ops.map((op) => ({ opId: op.opId, status: 'applied' as const, updatedAt: 'server-created-at' }))
+            }
+
+            await outbox.flush(pushFn)
+            expect(sentBatches[0].map((op) => op.operation)).toEqual(['create'])
+
+            await outbox.flush(pushFn)
+            expect(sentBatches[1].map((op) => op.operation)).toEqual(['update'])
+            expect(sentBatches[1][0].baseUpdatedAt).toBe('server-created-at')
+            expect(await outbox.listPending()).toEqual([])
+        })
+
+        it('still sends a create, an update without a precondition and a delete together', async () => {
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'create', payload: {} })
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'update', payload: {} })
+            await outbox.enqueue({ entity: 'transaction:txn1', operation: 'delete', payload: {} })
+
+            const pushFn = vi.fn(applyAll)
+            await outbox.flush(pushFn)
+
+            expect((pushFn.mock.calls[0][0] as OutboxOp[]).map((op) => op.operation)).toEqual([
+                'create',
+                'update',
+                'delete',
+            ])
+        })
+    })
 })

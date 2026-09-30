@@ -68,6 +68,10 @@ export const createSqliteOutboxStore = (db: LocalDb): OutboxStore => ({
             sets.push('nextAttemptAt = ?')
             values.push(patch.nextAttemptAt === null || patch.nextAttemptAt === undefined ? null : String(patch.nextAttemptAt))
         }
+        if ('baseUpdatedAt' in patch) {
+            sets.push('baseUpdatedAt = ?')
+            values.push(patch.baseUpdatedAt ?? null)
+        }
         if (sets.length === 0) {
             return
         }
