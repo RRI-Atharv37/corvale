@@ -3,6 +3,7 @@ import request from 'supertest'
 import app from '@http/app'
 import { Transaction } from '@modules/transactions'
 import { authHeader, createSecondUser, seedUserDirectly } from '@tests/helpers'
+import { seedWorkspace } from '@tests/billingHelpers'
 
 async function createTestAccount(token: string, openingBalance = 1000) {
     const res = await request(app)
@@ -225,5 +226,50 @@ describe('Tags - transaction filter', () => {
         expect(res.status).toBe(200)
         expect(res.body.data).toHaveLength(1)
         expect(res.body.data[0].title).toBe('In Range')
+    })
+})
+
+describe('Tags - rename leaves shared workspace records alone (BUG-58)', () => {
+    it('renames the tag on personal transactions only', async () => {
+        const owner = await seedUserDirectly({ email: 'tag-ws-owner@example.com' })
+        const member = await seedUserDirectly({ email: 'tag-ws-member@example.com' })
+        const workspaceId = await seedWorkspace(owner.userId, [{ userId: member.userId, role: 'editor' }])
+        const categoryId = await getFoodMasterId(member.token)
+
+        const personalAccount = await createTestAccount(member.token)
+        const workspaceAccount = (
+            await request(app)
+                .post('/api/v1/accounts')
+                .set(authHeader(member.token))
+                .send({ name: 'Joint', type: 'checking', openingBalance: 500, workspaceId })
+        ).body.data
+        const tagId = (
+            await request(app).post('/api/v1/tags').set(authHeader(member.token)).send({ name: 'OldLabel' })
+        ).body.data._id
+
+        await createTaggedTransaction(member.token, personalAccount._id, categoryId, 'Private coffee', ['OldLabel'])
+        const shared = await request(app)
+            .post('/api/v1/transactions')
+            .set(authHeader(member.token))
+            .send({
+                type: 'expense',
+                title: 'Shared coffee',
+                amount: 10,
+                date: '2026-01-15T12:00:00.000Z',
+                accountId: workspaceAccount._id,
+                categoryId,
+                tags: ['OldLabel'],
+                workspaceId,
+            })
+        expect(shared.status).toBe(201)
+
+        const res = await request(app)
+            .put(`/api/v1/tags/${tagId}`)
+            .set(authHeader(member.token))
+            .send({ name: 'NewLabel' })
+
+        expect(res.status).toBe(200)
+        expect((await Transaction.findOne({ title: 'Private coffee' }))?.tags).toEqual(['NewLabel'])
+        expect((await Transaction.findOne({ title: 'Shared coffee' }))?.tags).toEqual(['OldLabel'])
     })
 })

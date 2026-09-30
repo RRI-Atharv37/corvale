@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import { Response, NextFunction } from 'express'
 
 import { IUser, User } from '@modules/users'
+import { isDemoAccountEmail, isDemoRequestAllowed } from '@modules/demo/demoIdentity'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { AuthRequest } from '@http/middleware/authTypes'
@@ -48,6 +49,10 @@ const authenticateRequest = async (req: AuthRequest): Promise<IUser> => {
     const tokenVersion = decoded.tv ?? 0
     if (tokenVersion !== user.tokenVersion) {
         throw new CustomError(ERROR_MESSAGES.AUTH.TOKEN_REVOKED, 401)
+    }
+
+    if (isDemoAccountEmail(user.email) && !isDemoRequestAllowed(req.method, req.originalUrl)) {
+        throw new CustomError(ERROR_MESSAGES.AUTH.DEMO_READ_ONLY, 403)
     }
 
     return user

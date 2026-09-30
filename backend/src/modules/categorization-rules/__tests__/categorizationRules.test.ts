@@ -3,6 +3,7 @@ import request from 'supertest'
 import app from '@http/app'
 import { Transaction } from '@modules/transactions'
 import { authHeader, createSecondUser, seedUserDirectly } from '@tests/helpers'
+import { seedWorkspace } from '@tests/billingHelpers'
 
 async function createTestAccount(token: string, openingBalance = 1000, name = 'Checking') {
     const res = await request(app)
@@ -313,5 +314,46 @@ describe('Categorization rules - bulk apply and test', () => {
 
         expect(res.status).toBe(200)
         expect(res.body.data.matched).toBe(false)
+    })
+})
+
+describe('Categorization rules - bulk apply leaves shared workspace records alone (BUG-58)', () => {
+    it('rewrites personal transactions only', async () => {
+        const owner = await seedUserDirectly({ email: 'rule-ws-owner@example.com' })
+        const member = await seedUserDirectly({ email: 'rule-ws-member@example.com' })
+        const workspaceId = await seedWorkspace(owner.userId, [{ userId: member.userId, role: 'editor' }])
+        const foodCategoryId = await getFoodMasterId(member.token)
+        const transportCategoryId = await getTransportMasterId(member.token)
+
+        const personalAccount = await createTestAccount(member.token)
+        const workspaceAccount = (
+            await request(app)
+                .post('/api/v1/accounts')
+                .set(authHeader(member.token))
+                .send({ name: 'Joint', type: 'checking', openingBalance: 500, workspaceId })
+        ).body.data
+
+        await createExpense(member.token, personalAccount._id, foodCategoryId, 'Lyft private', 18)
+        const shared = await createExpense(member.token, workspaceAccount._id, foodCategoryId, 'Lyft shared', 18, {
+            workspaceId,
+        })
+        expect(shared.status).toBe(201)
+        await createRule(member.token, {
+            name: 'Rideshare',
+            matchType: 'description_contains',
+            matchValue: 'lyft',
+            categoryId: transportCategoryId,
+            tags: ['rideshare'],
+        })
+
+        const res = await request(app).post('/api/v1/categorization-rules/bulk-apply').set(authHeader(member.token))
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.updated).toBe(1)
+        const priv = await Transaction.findOne({ title: 'Lyft private' })
+        expect(priv?.categoryId.toString()).toBe(transportCategoryId)
+        const sharedDoc = await Transaction.findOne({ title: 'Lyft shared' })
+        expect(sharedDoc?.categoryId.toString()).toBe(foodCategoryId)
+        expect(sharedDoc?.tags ?? []).toEqual([])
     })
 })

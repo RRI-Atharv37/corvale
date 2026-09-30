@@ -7,12 +7,12 @@ import { SavingsGoal } from '@modules/savings-goals'
 import { Transaction } from '@modules/transactions'
 import type { SupportedCurrency } from '@core/money/currencyUtils'
 
-/** Updates stored currency on all user-owned financial records (no conversion). */
+/** Updates stored currency on the user's personal financial records (no conversion). Shared workspace records are never touched. */
 export const syncUserCurrencyData = async (
     userId: Types.ObjectId,
     currency: SupportedCurrency
 ): Promise<void> => {
-    const filter = { userId }
+    const filter = { userId, workspaceId: null }
     const update = { $set: { currency } }
 
     await Promise.all([

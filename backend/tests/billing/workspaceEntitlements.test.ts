@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import request from 'supertest'
 
 import app from '@http/app'
+import { Account } from '@modules/accounts'
 import { Transaction } from '@modules/transactions'
 import { getWorkspaceEntitlements } from '@modules/billing'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
@@ -234,27 +235,24 @@ describe("a lapsed owner freezes the workspace for everyone, and only the worksp
 
 describe('workspace-scoped sync', () => {
     let n = 0
+    const accountOp = (scope: string | null, name = `Shared ${(n += 1)}`) => ({
+        opId: `ws-op-${(n += 1)}`,
+        entity: 'account',
+        operation: 'create',
+        payload: { name, type: 'checking', openingBalance: 1, workspaceId: scope },
+    })
+    const push = (token: string, body: Record<string, unknown>) =>
+        request(app).post('/api/v1/sync/push').set(authHeader(token)).send(body)
     const pushToWorkspace = (token: string, deviceId?: string) =>
-        request(app)
-            .post('/api/v1/sync/push')
-            .set(authHeader(token))
-            .send({
-                workspaceId,
-                ...(deviceId ? { deviceId } : {}),
-                ops: [
-                    {
-                        opId: `ws-op-${(n += 1)}`,
-                        entity: 'account',
-                        operation: 'create',
-                        payload: { name: `Shared ${n}`, type: 'checking', openingBalance: 1 },
-                    },
-                ],
-            })
+        push(token, { workspaceId, ...(deviceId ? { deviceId } : {}), ops: [accountOp(workspaceId)] })
 
     it("an editor's push is governed by the owner's subscription, not their own", async () => {
         await setSubscription(editor.userId, BILLING_STATES.trial_expired)
 
-        expect((await pushToWorkspace(editor.token)).status).toBe(200)
+        const res = await pushToWorkspace(editor.token)
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results[0].status).toBe('applied')
     })
 
     it('a lapsed owner blocks workspace pushes but not workspace pulls', async () => {
@@ -263,6 +261,97 @@ describe('workspace-scoped sync', () => {
         expect((await pushToWorkspace(editor.token)).status).toBe(402)
         const pull = await request(app).get('/api/v1/sync/pull').query({ workspaceId }).set(authHeader(editor.token))
         expect(pull.status).toBe(200)
+    })
+
+    it("SEC-71: a lapsed editor's personal op inside a workspace-envelope push is refused", async () => {
+        await setSubscription(editor.userId, BILLING_STATES.trial_expired)
+
+        const res = await push(editor.token, {
+            workspaceId,
+            ops: [accountOp(null, 'Borrowed'), accountOp(workspaceId, 'Legit')],
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results.map((r: { status: string }) => r.status)).toEqual(['rejected', 'applied'])
+        expect(res.body.data.results[0].message).toBe(ERROR_MESSAGES.BILLING.READ_ONLY)
+        expect(await Account.countDocuments({ userId: editor.userId, workspaceId: null })).toBe(0)
+        expect(await Account.countDocuments({ workspaceId, name: 'Legit' })).toBe(1)
+    })
+
+    it('SEC-71: a lapsed editor cannot update or delete their own personal records through a workspace envelope', async () => {
+        const personalAcct = await createAccountViaApi(app, editor.token)
+        await setSubscription(editor.userId, BILLING_STATES.trial_expired)
+
+        const res = await push(editor.token, {
+            workspaceId,
+            ops: [
+                {
+                    opId: 'del-personal',
+                    entity: 'account',
+                    operation: 'delete',
+                    payload: { _id: personalAcct },
+                },
+            ],
+        })
+
+        expect(res.body.data.results[0].status).toBe('rejected')
+        expect(await Account.countDocuments({ _id: personalAcct })).toBe(1)
+    })
+
+    it('SEC-71: a frozen workspace refuses envelope-less ops that carry its id', async () => {
+        await setSubscription(owner.userId, BILLING_STATES.trial_expired)
+
+        const res = await push(editor.token, { ops: [accountOp(workspaceId, 'Sneaked'), accountOp(null, 'Personal')] })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.results.map((r: { status: string }) => r.status)).toEqual(['rejected', 'applied'])
+        expect(await Account.countDocuments({ workspaceId, name: 'Sneaked' })).toBe(0)
+        expect(await Account.countDocuments({ userId: editor.userId, name: 'Personal' })).toBe(1)
+    })
+
+    it('SEC-71: a frozen workspace refuses envelope-less updates and deletes of its records', async () => {
+        await setSubscription(owner.userId, BILLING_STATES.trial_expired)
+
+        const res = await push(editor.token, {
+            ops: [{ opId: 'del-ws-tx', entity: 'transaction', operation: 'delete', payload: { _id: txToDelete } }],
+        })
+
+        expect(res.body.data.results[0].status).toBe('rejected')
+        expect(await Transaction.countDocuments({ _id: txToDelete, deletedAt: null })).toBe(1)
+    })
+
+    it('SEC-71: an op naming a workspace the caller does not belong to is rejected, not applied', async () => {
+        const stranger = await seedUserDirectly({ email: 'ws-stranger@example.com' })
+        await setSubscription(stranger.userId, BILLING_STATES.active)
+
+        const res = await push(stranger.token, { ops: [accountOp(workspaceId, 'Intruder')] })
+
+        expect(res.body.data.results[0].status).toBe('rejected')
+        expect(await Account.countDocuments({ workspaceId, name: 'Intruder' })).toBe(0)
+    })
+
+    it("SEC-71: a personal op in a workspace-envelope push still honours the caller's device limit", async () => {
+        await setSubscription(editor.userId, { ...BILLING_STATES.active, planCode: 'plus' })
+        const first = await push(editor.token, { deviceId: 'device-first', ops: [accountOp(null, 'From first')] })
+        expect(first.body.data.results[0].status).toBe('applied')
+
+        const second = await push(editor.token, {
+            workspaceId,
+            deviceId: 'device-second',
+            ops: [accountOp(null, 'From second')],
+        })
+
+        expect(second.body.data.results[0].status).toBe('rejected')
+        expect(await Account.countDocuments({ userId: editor.userId, name: 'From second' })).toBe(0)
+    })
+
+    it('with billing off, ops are not judged per scope', async () => {
+        disableBilling()
+        await setSubscription(editor.userId, BILLING_STATES.trial_expired)
+
+        const res = await push(editor.token, { workspaceId, ops: [accountOp(null, 'Free')] })
+
+        expect(res.body.data.results[0].status).toBe('applied')
     })
 })
 

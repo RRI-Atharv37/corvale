@@ -1,5 +1,6 @@
 export const ERROR_MESSAGES = {
     AUTH: {
+        DEMO_READ_ONLY: 'The demo account is read-only',
         FILL_ALL_FIELDS: 'Please fill in all fields',
         INVALID_CREDENTIALS: 'Invalid credentials',
         TOKEN_MISSING: 'Not authorized, no token',

@@ -2,26 +2,29 @@ import { Account } from '@modules/accounts'
 import { recomputeAccountBalanceMajor } from '@modules/accounts/accountBalance'
 import { Budget } from '@modules/budgets'
 import { Category } from '@modules/categories'
+import { CategorizationRule } from '@modules/categorization-rules'
+import { Notification } from '@modules/notifications'
+import { ReconciliationSession } from '@modules/reconciliation'
+import { RecurringRule } from '@modules/recurring'
+import { SavedReport } from '@modules/reports'
+import { Pushover, Saver } from '@modules/savers'
+import { SavingsGoalContribution } from '@modules/savings-goals'
+import { SyncOperation } from '@modules/sync'
+import { Tag } from '@modules/tags'
+import { TransactionTemplate } from '@modules/transaction-templates'
+import { Workspace, WorkspaceInvite } from '@modules/workspaces'
+import { SOFT_DELETE_BYPASS } from '@core/softDelete/softDelete'
 import { ensureMasterCategoriesSeeded } from '@modules/categories/categorySeed'
 import { SavingsGoal } from '@modules/savings-goals'
 import { Subscription } from '@modules/billing'
 import { Transaction, type TransactionType } from '@modules/transactions'
 import { User, type IUser } from '@modules/users'
 import { CURRENT_LEGAL_VERSIONS } from '@modules/users/legalVersions'
+import { getDemoAccountEmail, getDemoAccountPassword, DEFAULT_DEMO_EMAIL, DEFAULT_DEMO_PASSWORD } from './demoIdentity'
 import { resolveMonthlyPeriod } from '@shared/budget'
 import { toMinorUnits } from '@shared/money'
 
-/**
- * M9 - the shared, public, read-only demo account. Real credentials by design (the whole point is
- * a "View demo" link anyone can use), so both sides default to the same literal value; an operator
- * who wants a different pair sets both `DEMO_ACCOUNT_EMAIL`/`DEMO_ACCOUNT_PASSWORD` here and the
- * matching `VITE_DEMO_EMAIL`/`VITE_DEMO_PASSWORD` on the frontend build.
- */
-export const DEFAULT_DEMO_EMAIL = 'demo@corvale.app'
-export const DEFAULT_DEMO_PASSWORD = 'CorvaleDemo!2026'
-
-export const getDemoAccountEmail = (): string => process.env.DEMO_ACCOUNT_EMAIL?.trim() || DEFAULT_DEMO_EMAIL
-export const getDemoAccountPassword = (): string => process.env.DEMO_ACCOUNT_PASSWORD || DEFAULT_DEMO_PASSWORD
+export { DEFAULT_DEMO_EMAIL, DEFAULT_DEMO_PASSWORD, getDemoAccountEmail, getDemoAccountPassword }
 
 // Far enough out it never needs bumping; see the comment on `upsertDemoSubscription` for why this exists.
 const RETENTION_HOLD_FOREVER = new Date('9999-12-31T00:00:00.000Z')
@@ -99,12 +102,33 @@ const upsertDemoSubscription = async (userId: string): Promise<void> => {
     )
 }
 
+const HARD_DELETE = { [SOFT_DELETE_BYPASS]: true }
+
+/**
+ * Resets every collection a visitor could have written into. Personal-scope only for the
+ * workspace-capable models: the demo's authored rows inside someone else's workspace are theirs to
+ * keep, and the demo's membership in that workspace is dropped instead.
+ */
 const wipeDemoData = async (userId: string): Promise<void> => {
     await Promise.all([
-        Account.deleteMany({ userId }),
-        Transaction.deleteMany({ userId }),
-        Budget.deleteMany({ userId }),
-        SavingsGoal.deleteMany({ userId }),
+        Account.deleteMany({ userId, workspaceId: null }),
+        Transaction.deleteMany({ userId, workspaceId: null }, HARD_DELETE),
+        Budget.deleteMany({ userId, workspaceId: null }),
+        SavingsGoal.deleteMany({ userId, workspaceId: null }),
+        RecurringRule.deleteMany({ userId, workspaceId: null }),
+        ReconciliationSession.deleteMany({ userId, workspaceId: null }),
+        SavedReport.deleteMany({ userId, workspaceId: null }, HARD_DELETE),
+        Category.deleteMany({ userId }),
+        Tag.deleteMany({ userId }, HARD_DELETE),
+        CategorizationRule.deleteMany({ userId }, HARD_DELETE),
+        TransactionTemplate.deleteMany({ userId }, HARD_DELETE),
+        Notification.deleteMany({ userId }, HARD_DELETE),
+        Saver.deleteMany({ userId }, HARD_DELETE),
+        Pushover.deleteMany({ userId }),
+        SavingsGoalContribution.deleteMany({ userId }),
+        SyncOperation.deleteMany({ userId }),
+        WorkspaceInvite.deleteMany({ $or: [{ inviteeUserId: userId }, { inviterUserId: userId }] }),
+        Workspace.updateMany({ 'members.userId': userId, ownerId: { $ne: userId } }, { $pull: { members: { userId } } }),
     ])
 }
 

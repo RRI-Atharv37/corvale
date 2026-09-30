@@ -30,12 +30,20 @@ const assertCanWrite = (entitlements: Entitlements): void => {
  * workspace owner for a workspace. Naming a workspace requires belonging to it, so a non-member
  * gets the same 403 the controllers give and learns nothing about the owner's billing state.
  */
-const resolveSubject = async (req: AuthRequest, callerId: string, scope: BillingScope | undefined): Promise<Subject> => {
-    const workspaceId = scope ? await scope(req) : null
+const resolveSubjectFor = async (callerId: string, workspaceId: string | null): Promise<Subject> => {
     if (!workspaceId) return { userId: callerId, inWorkspace: false }
 
     const workspace = await assertWorkspaceMembership(workspaceId, callerId)
     return { userId: workspace.ownerId.toString(), inWorkspace: true }
+}
+
+const resolveSubject = async (req: AuthRequest, callerId: string, scope: BillingScope | undefined): Promise<Subject> =>
+    resolveSubjectFor(callerId, scope ? await scope(req) : null)
+
+const assertWorkspaceIncluded = (entitlements: Entitlements, subject: Subject): void => {
+    if (subject.inWorkspace && !entitlements.features.workspaces) {
+        throw paymentRequired(ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
+    }
 }
 
 /**
@@ -72,11 +80,20 @@ export const requireWriteAccessIn = (scope: BillingScope): RequestHandler => gat
  * workspace is frozen (402) for every member; personal data on the same plan is untouched.
  */
 export const requireScopedWriteAccess = (scope: BillingScope): RequestHandler =>
-    gate((_req, entitlements, subject) => {
-        if (subject.inWorkspace && !entitlements.features.workspaces) {
-            throw paymentRequired(ERROR_MESSAGES.BILLING.ENTITLEMENT_REQUIRED)
-        }
-    }, scope)
+    gate((_req, entitlements, subject) => assertWorkspaceIncluded(entitlements, subject), scope)
+
+/**
+ * The same decision as `requireScopedWriteAccess`, for a caller that already knows the scope of one
+ * write - a sync op judged on the scope it actually lands in, not the one the request envelope names.
+ */
+export const assertScopedWriteAccess = async (callerId: string, workspaceId: string | null): Promise<void> => {
+    if (!isBillingEnabled()) return
+
+    const subject = await resolveSubjectFor(callerId, workspaceId)
+    const entitlements = await getUserEntitlements(subject.userId)
+    assertCanWrite(entitlements)
+    assertWorkspaceIncluded(entitlements, subject)
+}
 
 /** Write access, plus the plan must include `feature` (402 ENTITLEMENT_REQUIRED otherwise). */
 export const requireEntitlement = (feature: FeatureKey, scope?: BillingScope): RequestHandler =>

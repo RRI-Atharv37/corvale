@@ -11,6 +11,7 @@ import { applyPushBatch } from './syncPush.service'
 import { parseOptionalWorkspaceId } from '@core/access/workspace'
 import { getUserId } from '@core/auth/requestUser'
 import { handleResponses } from '@core/http/response'
+import { createSyncPushScopeGuard } from '@modules/billing/syncDevice.middleware'
 
 export const getSyncBootstrap = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
@@ -42,6 +43,11 @@ export const getSyncPull = asyncHandler(async (req: AuthRequest, res: Response) 
 })
 
 export const pushSyncOps = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const result = await applyPushBatch(getUserId(req), req.body?.ops, req.body?.workspaceId)
+    const result = await applyPushBatch(
+        getUserId(req),
+        req.body?.ops,
+        req.body?.workspaceId,
+        createSyncPushScopeGuard(req)
+    )
     handleResponses(res, 200, result)
 })

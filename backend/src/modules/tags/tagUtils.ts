@@ -110,12 +110,12 @@ export const renameTagOnTransactions = async (
 
     await Promise.all([
         Transaction.updateMany(
-            { userId: userObjectId, tags: oldName },
+            { userId: userObjectId, workspaceId: null, tags: oldName },
             { $set: { 'tags.$[tag]': newName } },
             { arrayFilters: [{ tag: oldName }] }
         ),
         RecurringRule.updateMany(
-            { userId: userObjectId, tags: oldName },
+            { userId: userObjectId, workspaceId: null, tags: oldName },
             { $set: { 'tags.$[tag]': newName } },
             { arrayFilters: [{ tag: oldName }] }
         ),

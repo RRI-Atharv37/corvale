@@ -205,6 +205,7 @@ export const bulkApplyCategorizationRules = async (
 
     const transactions = await Transaction.find({
         userId: userObjectId,
+        workspaceId: null,
         type: { $ne: 'transfer' },
         ...LISTABLE_TRANSACTION_FILTER,
     }).select('_id title description amount accountId type tags categoryId')

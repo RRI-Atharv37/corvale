@@ -566,6 +566,38 @@ const applyOp = async (userId: string, op: SyncOpInput): Promise<ApplyOpOutcome>
     return handlers.delete(userId, payload)
 }
 
+const WORKSPACE_CAPABLE_ENTITY_MODELS: Record<string, Model<any>> = {
+    transaction: Transaction,
+    account: Account,
+    budget: Budget,
+    savingsGoal: SavingsGoal,
+    recurringRule: RecurringRule,
+}
+
+/**
+ * The scope an op lands in (`null` = the caller's personal data): the payload's `workspaceId` on a
+ * create, the stored document's on an update or delete. Entities that have no workspace scope are
+ * always personal, whatever their payload says.
+ */
+const resolveOpScope = async (op: SyncOpInput): Promise<string | null> => {
+    const model = WORKSPACE_CAPABLE_ENTITY_MODELS[op.entity]
+    if (!model) return null
+
+    const payload = op.payload ?? {}
+    if (op.operation === 'create') {
+        return parseOptionalWorkspaceId(payload.workspaceId) ?? null
+    }
+
+    const id = payload._id
+    if (typeof id !== 'string' || !Types.ObjectId.isValid(id)) return null
+    const stored = (await model
+        .findById(id)
+        .select('workspaceId')
+        .setOptions({ [SOFT_DELETE_BYPASS]: true })
+        .lean()) as { workspaceId?: Types.ObjectId | null } | null
+    return stored?.workspaceId ? stored.workspaceId.toString() : null
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 const PENDING_CLAIM_POLL_INTERVAL_MS = 15
@@ -615,7 +647,8 @@ const claimSyncOperation = async (userId: string, op: SyncOpInput): Promise<Clai
 export const applyPushBatch = async (
     userId: string,
     ops: unknown,
-    rawWorkspaceId: unknown
+    rawWorkspaceId: unknown,
+    authorizeScope?: (workspaceId: string | null) => Promise<void>
 ): Promise<{ results: SyncOpResult[]; checkpoint: string }> => {
     if (!Array.isArray(ops) || ops.length === 0) {
         throw new CustomError('ops must be a non-empty array', 400)
@@ -649,6 +682,7 @@ export const applyPushBatch = async (
             }
 
             try {
+                if (authorizeScope) await authorizeScope(await resolveOpScope(rawOp))
                 const outcome = await applyOp(userId, rawOp)
 
                 if (outcome.status === 'applied' || outcome.status === 'noop') {
