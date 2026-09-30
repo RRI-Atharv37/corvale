@@ -113,6 +113,22 @@ const PROMOTED_COLUMN_DEFAULTS: Readonly<Record<string, unknown>> = {
   priority: 0,
 }
 
+/**
+ * Fields the server derives and refuses on a create or update op. The local engine still needs them
+ * on the row, so they are dropped from the pushed payload only.
+ */
+const SERVER_DERIVED_FIELDS: Partial<Record<SyncableTableName, readonly string[]>> = {
+  accounts: ['currentBalance'],
+}
+
+const toWirePayload = (table: SyncableTableName, doc: SyncableRecord): Record<string, unknown> => {
+  const derived = SERVER_DERIVED_FIELDS[table]
+  if (!derived) return doc
+  const payload: Record<string, unknown> = { ...doc }
+  for (const field of derived) delete payload[field]
+  return payload
+}
+
 /** SQLite has no boolean type; promoted boolean fields (isArchived, isActive) store as 0/1. */
 const toSqlValue = (column: string, value: unknown): unknown => {
   const resolved = value === undefined ? PROMOTED_COLUMN_DEFAULTS[column] : value
@@ -284,7 +300,7 @@ export class Repository<T extends SyncableRecord> {
     await outbox.enqueue({
       entity: buildOutboxEntity(TABLE_TO_ENTITY[this.table], doc._id),
       operation: 'create',
-      payload: doc as unknown as Record<string, unknown>,
+      payload: toWirePayload(this.table, doc),
     })
     return doc
   }
@@ -309,7 +325,7 @@ export class Repository<T extends SyncableRecord> {
     await outbox.enqueue({
       entity: buildOutboxEntity(TABLE_TO_ENTITY[this.table], doc._id),
       operation: 'update',
-      payload: doc as unknown as Record<string, unknown>,
+      payload: toWirePayload(this.table, doc),
       baseUpdatedAt,
     })
     return doc

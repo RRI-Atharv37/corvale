@@ -135,6 +135,7 @@ const BackupRestoreSettings: React.FC = () => {
                 : await commitBackupRestore(selectedFile, activeWorkspaceId)
             const totalCreated = Object.values(result.created).reduce((sum, count) => sum + count, 0)
             toast.success(`Restore complete - ${totalCreated} records created`)
+            result.warnings?.forEach((warning) => toast(warning))
             setSelectedFile(null)
             setPreview(null)
             if (fileInputRef.current) {

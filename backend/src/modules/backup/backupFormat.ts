@@ -51,6 +51,7 @@ export interface BackupRestorePreview {
 export interface BackupRestoreResult {
     created: BackupEntityCounts
     idMapping: Record<string, string>
+    warnings?: string[]
 }
 
 export const emptyCounts = (): BackupEntityCounts => ({

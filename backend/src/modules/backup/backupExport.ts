@@ -149,12 +149,22 @@ export const exportUserBackup = async (
         categoryIds.add(rule.categoryId.toString())
     }
 
-    const [userCategories, categorizationRules, transactionTemplates, tags] = await Promise.all([
+    const [userCategories, allCategorizationRules, allTransactionTemplates, tags] = await Promise.all([
         Category.find({ userId: new Types.ObjectId(userId) }).lean(),
         CategorizationRule.find({ userId }).lean(),
         TransactionTemplate.find({ userId }).lean(),
         Tag.find({ userId }).lean(),
     ])
+
+    // Rules and templates are per user, not per scope; one that names an account outside this
+    // export's scope could not be restored from it, so it belongs to the other scope's backup.
+    const exportedAccountIds = new Set(accounts.map((account) => account._id.toString()))
+    const categorizationRules = allCategorizationRules.filter(
+        (rule) => !rule.accountId || exportedAccountIds.has(rule.accountId.toString())
+    )
+    const transactionTemplates = allTransactionTemplates.filter((template) =>
+        exportedAccountIds.has(template.accountId.toString())
+    )
 
     for (const category of userCategories) {
         categoryIds.add(category._id.toString())
@@ -182,9 +192,29 @@ export const exportUserBackup = async (
     const exportedCategoryIds = new Set(userCategories.map((category) => category._id.toString()))
     masterCategories.forEach((category) => exportedCategoryIds.add(category._id.toString()))
 
+    // A workspace transaction can be filed under a co-member's private category. Ship it as a
+    // neutral copy (serializeDoc drops the owner) so the file restores without a broken reference.
+    const foreignCategoryIds = [...categoryIds]
+        .filter((id) => Types.ObjectId.isValid(id) && !exportedCategoryIds.has(id))
+        .map((id) => new Types.ObjectId(id))
+    const foreignCategories =
+        foreignCategoryIds.length > 0
+            ? await Category.find({ _id: { $in: foreignCategoryIds } }).lean()
+            : []
+
+    const foreignParentIds = foreignCategories
+        .map((category) => category.masterCategoryId)
+        .filter((id): id is Types.ObjectId => id != null && !exportedCategoryIds.has(id.toString()))
+    const foreignParents =
+        foreignParentIds.length > 0
+            ? await Category.find({ _id: { $in: foreignParentIds }, userId: null }).lean()
+            : []
+
     const exportedCategories = [
         ...userCategories.map((doc) => serializeDoc(doc as Record<string, unknown>)),
         ...masterCategories.map((doc) => serializeDoc(doc as Record<string, unknown>)),
+        ...foreignCategories.map((doc) => serializeDoc(doc as Record<string, unknown>)),
+        ...foreignParents.map((doc) => serializeDoc(doc as Record<string, unknown>)),
     ]
 
     const exportedTags = tags.map((doc) => serializeDoc(doc as Record<string, unknown>))

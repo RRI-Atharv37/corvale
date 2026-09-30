@@ -31,6 +31,7 @@ import { releaseQuota, reserveQuota } from '@modules/billing/usage.service'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
+    deleteReceiptObject,
     isObjectStorageConfigured,
     putReceiptObject,
     receiptObjectKey,
@@ -48,6 +49,7 @@ import {
     BACKUP_VERSION,
     buildCounts,
     emptyCounts,
+    type BackupEntityCounts,
     type BackupRestorePreview,
     type BackupRestoreResult,
     type CorvaleBackupPayload,
@@ -162,7 +164,7 @@ const validateReceiptRecord = (receipt: Record<string, unknown>): void => {
     }
 }
 
-export const previewBackupRestore = (
+const describeBackup = (
     backup: CorvaleBackupPayload,
     targetWorkspaceId: string | null
 ): BackupRestorePreview => {
@@ -253,9 +255,503 @@ const parseDate = (value: unknown): Date => {
     throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
 }
 
-const loadMasterCategoryIds = async (): Promise<Set<string>> => {
-    const masters = await Category.find({ userId: null, masterCategoryId: null }).select('_id').lean()
-    return new Set(masters.map((category) => category._id.toString()))
+interface MasterCategories {
+    ids: Set<string>
+    otherId: string | null
+}
+
+const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/i
+
+const loadMasterCategories = async (): Promise<MasterCategories> => {
+    const masters = await Category.find({ userId: null, masterCategoryId: null })
+        .select('_id name')
+        .lean()
+    return {
+        ids: new Set(masters.map((category) => category._id.toString())),
+        otherId: masters.find((category) => category.name === 'Other')?._id.toString() ?? null,
+    }
+}
+
+interface WritableModel {
+    new (doc: Record<string, unknown>): { validateSync: () => unknown }
+    insertMany: (docs: Record<string, unknown>[]) => Promise<unknown>
+    deleteMany: (filter: Record<string, unknown>) => PromiseLike<unknown>
+}
+
+interface RestoreStep {
+    countKey: keyof BackupEntityCounts
+    model: WritableModel
+    docs: Record<string, unknown>[]
+}
+
+interface PlannedReceipt {
+    newId: Types.ObjectId
+    record: Record<string, unknown>
+    buffer: Buffer
+}
+
+interface RestorePlan {
+    warnings: string[]
+    tagRecords: Record<string, unknown>[]
+    receipts: PlannedReceipt[]
+    steps: RestoreStep[]
+    idMapping: Map<string, string>
+}
+
+const assignIds = (records: Record<string, unknown>[]) => {
+    const ids = records.map(() => new Types.ObjectId())
+    const map = new Map<string, string>()
+    records.forEach((record, index) => map.set(String(record.id), ids[index].toString()))
+    return { ids, map }
+}
+
+/**
+ * Resolves every reference in the backup and builds every document before anything is written, so a
+ * broken reference or an invalid record is reported (preview) or rejected (restore) with the target
+ * untouched. Ids are generated up front, which lets transfer pairs, split parents and receipts be
+ * linked in the documents themselves rather than patched in afterwards.
+ */
+const buildRestorePlan = (
+    backup: CorvaleBackupPayload,
+    userObjectId: Types.ObjectId,
+    workspaceObjectId: Types.ObjectId | null,
+    masters: MasterCategories,
+    receiptFiles?: Map<string, Buffer>
+): RestorePlan => {
+    const masterCategoryIds = masters.ids
+    // SEC-51: account and category references are resolved through their own maps, which only
+    // ever hold ids created by this restore (plus the shared master categories). A crafted
+    // backup can no longer install an identity mapping that a later record resolves as its
+    // `accountId`/`categoryId`.
+    const categoryIdMap = new Map<string, string>()
+    for (const masterId of masterCategoryIds) {
+        categoryIdMap.set(masterId, masterId)
+    }
+
+    const customCategories = backup.categories.filter(
+        (record) => !masterCategoryIds.has(String(record.id))
+    )
+    const categories = assignIds(customCategories)
+    categories.map.forEach((value, key) => categoryIdMap.set(key, value))
+
+    const accounts = assignIds(backup.accounts)
+    const budgets = assignIds(backup.budgets)
+    const goals = assignIds(backup.savingsGoals)
+    const recurringRules = assignIds(backup.recurringRules)
+    const categorizationRules = assignIds(backup.categorizationRules)
+    const templates = assignIds(backup.transactionTemplates)
+    const transactions = assignIds(backup.transactions)
+
+    const receipts: PlannedReceipt[] = []
+    const receiptIdMap = new Map<string, string>()
+    for (const record of backup.receipts) {
+        const buffer = receiptFiles?.get(String(record.storedFilename ?? ''))
+        if (!buffer) {
+            continue
+        }
+        const newId = new Types.ObjectId()
+        receiptIdMap.set(String(record.id), newId.toString())
+        receipts.push({ newId, record, buffer })
+    }
+
+    // A receipt id whose file did not come back (JSON backups, a co-member's receipt in a workspace
+    // export, a receipt deleted since) is dropped, as the restore docs describe.
+    const restoredReceiptIds = (values: unknown): Types.ObjectId[] =>
+        Array.isArray(values)
+            ? values
+                  .map((value) => receiptIdMap.get(String(value)))
+                  .filter((value): value is string => value != null)
+                  .map((value) => new Types.ObjectId(value))
+            : []
+
+    // A category the file names but does not carry (a co-member's private category in a workspace
+    // backup exported before those were included) is filed under "Other" rather than blocking the
+    // restore. Only an id shaped like a real one qualifies; anything else stays a broken reference.
+    let refiledTransactions = 0
+    let refiledRecurringRules = 0
+    const mapCategoryOrOther = (value: unknown, onFallback: () => void): Types.ObjectId => {
+        const id = String(value ?? '')
+        const mapped = categoryIdMap.get(id)
+        if (mapped) {
+            return new Types.ObjectId(mapped)
+        }
+        if (masters.otherId && OBJECT_ID_PATTERN.test(id)) {
+            onFallback()
+            return new Types.ObjectId(masters.otherId)
+        }
+        throw new CustomError(ERROR_MESSAGES.BACKUP.BROKEN_REFERENCE, 400)
+    }
+
+    // Transfer legs must not share a creation time: the later leg is the inbound one everywhere a
+    // direction is read. The outbound leg is the earlier-created one, the first in the file on a tie.
+    const legCreatedAt = new Map<string, Date>()
+    const positionBySourceId = new Map(backup.transactions.map((record, index) => [String(record.id), index]))
+    const recordBySourceId = new Map(backup.transactions.map((record) => [String(record.id), record]))
+    const createdAtMillis = (record: Record<string, unknown>): number => {
+        const parsed = Date.parse(String(record.createdAt ?? ''))
+        return Number.isNaN(parsed) ? 0 : parsed
+    }
+    for (const record of backup.transactions) {
+        const sourceId = String(record.id)
+        const pair = record.transferPairId ? recordBySourceId.get(String(record.transferPairId)) : undefined
+        if (record.type !== 'transfer' || !pair || legCreatedAt.has(sourceId)) {
+            continue
+        }
+        const delta = createdAtMillis(record) - createdAtMillis(pair)
+        const recordIsOutbound =
+            delta !== 0
+                ? delta < 0
+                : (positionBySourceId.get(sourceId) ?? 0) < (positionBySourceId.get(String(pair.id)) ?? 0)
+        const outbound = recordIsOutbound ? record : pair
+        const inbound = recordIsOutbound ? pair : record
+        const outboundMillis = createdAtMillis(outbound) || Date.now()
+        legCreatedAt.set(String(outbound.id), new Date(outboundMillis))
+        legCreatedAt.set(String(inbound.id), new Date(Math.max(createdAtMillis(inbound), outboundMillis + 1)))
+    }
+
+    const steps: RestoreStep[] = [
+        {
+            countKey: 'categories',
+            model: Category as unknown as WritableModel,
+            docs: customCategories.map((record, index) => ({
+                _id: categories.ids[index],
+                userId: userObjectId,
+                masterCategoryId: mapOptionalId(categoryIdMap, record.masterCategoryId, masterCategoryIds),
+                name: record.name,
+                icon: record.icon,
+                color: record.color,
+                isDefault: false,
+                isArchived: record.isArchived ?? false,
+                sortOrder: record.sortOrder ?? 0,
+            })),
+        },
+        {
+            countKey: 'accounts',
+            model: Account as unknown as WritableModel,
+            docs: backup.accounts.map((record, index) => ({
+                _id: accounts.ids[index],
+                userId: userObjectId,
+                workspaceId: workspaceObjectId,
+                name: record.name,
+                type: record.type,
+                currency: record.currency,
+                // balanceUnit round-trips whatever unit the exported account was actually stored
+                // in (Sprint C5) - a backup predating that field has none, so it correctly
+                // defaults to 'major', matching what a pre-migration account's raw numbers mean.
+                balanceUnit: record.balanceUnit === 'minor' ? 'minor' : 'major',
+                openingBalance: record.openingBalance ?? 0,
+                openingBalanceDate: record.openingBalanceDate
+                    ? parseDate(record.openingBalanceDate)
+                    : null,
+                currentBalance: record.currentBalance ?? record.openingBalance ?? 0,
+                isDefault: false,
+                isArchived: record.isArchived ?? false,
+            })),
+        },
+        {
+            countKey: 'budgets',
+            model: Budget as unknown as WritableModel,
+            docs: backup.budgets.map((record, index) => ({
+                _id: budgets.ids[index],
+                userId: userObjectId,
+                workspaceId: workspaceObjectId,
+                name: record.name,
+                periodType: record.periodType,
+                periodStart: parseDate(record.periodStart),
+                periodEnd: parseDate(record.periodEnd),
+                categoryId: mapOptionalId(categoryIdMap, record.categoryId, masterCategoryIds),
+                amount: record.amount,
+                currency: record.currency,
+                rollover: record.rollover ?? false,
+                accountIds: mapIdArray(accounts.map, record.accountIds),
+                isArchived: record.isArchived ?? false,
+            })),
+        },
+        {
+            countKey: 'savingsGoals',
+            model: SavingsGoal as unknown as WritableModel,
+            docs: backup.savingsGoals.map((record, index) => ({
+                _id: goals.ids[index],
+                userId: userObjectId,
+                workspaceId: workspaceObjectId,
+                name: record.name,
+                targetAmount: record.targetAmount,
+                currentAmount: record.currentAmount ?? 0,
+                currency: record.currency,
+                targetDate: record.targetDate ? parseDate(record.targetDate) : null,
+                status: record.status ?? 'active',
+                accountId: mapOptionalId(accounts.map, record.accountId, new Set()),
+                autoContribution: record.autoContribution ?? {},
+                completedAt: record.completedAt ? parseDate(record.completedAt) : null,
+            })),
+        },
+        {
+            countKey: 'recurringRules',
+            model: RecurringRule as unknown as WritableModel,
+            docs: backup.recurringRules.map((record, index) => ({
+                _id: recurringRules.ids[index],
+                userId: userObjectId,
+                workspaceId: workspaceObjectId,
+                title: record.title,
+                type: record.type,
+                amount: record.amount,
+                currency: record.currency,
+                accountId: mapRequiredId(accounts.map, record.accountId),
+                categoryId: mapCategoryOrOther(record.categoryId, () => (refiledRecurringRules += 1)),
+                interval: record.interval,
+                customIntervalDays: record.customIntervalDays,
+                nextDueDate: parseDate(record.nextDueDate),
+                description: record.description,
+                paymentMethod: record.paymentMethod,
+                tags: record.tags ?? [],
+                isActive: record.isActive ?? true,
+                isArchived: record.isArchived ?? false,
+            })),
+        },
+        {
+            countKey: 'categorizationRules',
+            model: CategorizationRule as unknown as WritableModel,
+            docs: backup.categorizationRules.map((record, index) => ({
+                _id: categorizationRules.ids[index],
+                userId: userObjectId,
+                name: record.name,
+                matchType: record.matchType,
+                matchValue: record.matchValue,
+                amountMin: record.amountMin,
+                amountMax: record.amountMax,
+                accountId: record.accountId
+                    ? mapOptionalId(accounts.map, record.accountId, new Set())
+                    : undefined,
+                categoryId: mapRequiredId(categoryIdMap, record.categoryId),
+                tags: record.tags ?? [],
+                priority: record.priority ?? 0,
+                isActive: record.isActive ?? true,
+            })),
+        },
+        {
+            countKey: 'transactionTemplates',
+            model: TransactionTemplate as unknown as WritableModel,
+            docs: backup.transactionTemplates.map((record, index) => ({
+                _id: templates.ids[index],
+                userId: userObjectId,
+                name: record.name,
+                type: record.type,
+                amount: record.amount,
+                accountId: mapRequiredId(accounts.map, record.accountId),
+                categoryId: mapRequiredId(categoryIdMap, record.categoryId),
+                tags: record.tags ?? [],
+                description: record.description,
+            })),
+        },
+        {
+            countKey: 'transactions',
+            model: Transaction as unknown as WritableModel,
+            docs: backup.transactions.map((record, index) => ({
+                _id: transactions.ids[index],
+                userId: userObjectId,
+                workspaceId: workspaceObjectId,
+                accountId: mapRequiredId(accounts.map, record.accountId),
+                categoryId: mapCategoryOrOther(record.categoryId, () => (refiledTransactions += 1)),
+                type: record.type,
+                status: record.status ?? 'posted',
+                amount: record.amount,
+                currency: record.currency,
+                title: record.title,
+                description: record.description,
+                date: parseDate(record.date),
+                source: record.source,
+                paymentMethod: record.paymentMethod,
+                tags: record.tags ?? [],
+                transferPairId: record.transferPairId
+                    ? mapOptionalId(transactions.map, record.transferPairId, new Set())
+                    : null,
+                splitTransactionId: record.splitTransactionId
+                    ? mapOptionalId(transactions.map, record.splitTransactionId, new Set())
+                    : null,
+                recurringPaymentId: record.recurringPaymentId
+                    ? mapOptionalId(recurringRules.map, record.recurringPaymentId, new Set())
+                    : null,
+                receiptIds: restoredReceiptIds(record.receiptIds),
+                ...(legCreatedAt.has(String(record.id)) ? { createdAt: legCreatedAt.get(String(record.id)) } : {}),
+            })),
+        },
+        {
+            countKey: 'savingsGoalContributions',
+            model: SavingsGoalContribution as unknown as WritableModel,
+            docs: backup.savingsGoalContributions.map((record) => ({
+                _id: new Types.ObjectId(),
+                userId: userObjectId,
+                goalId: mapRequiredId(goals.map, record.goalId),
+                amount: record.amount,
+                type: record.type,
+                note: record.note,
+                contributedAt: parseDate(record.contributedAt),
+            })),
+        },
+    ]
+
+    for (const step of steps) {
+        for (const doc of step.docs) {
+            if (new step.model(doc).validateSync()) {
+                throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+            }
+        }
+    }
+
+    const idMapping = new Map<string, string>()
+    for (const map of [
+        accounts.map,
+        categoryIdMap,
+        budgets.map,
+        goals.map,
+        recurringRules.map,
+        categorizationRules.map,
+        templates.map,
+        transactions.map,
+        receiptIdMap,
+    ]) {
+        map.forEach((value, key) => idMapping.set(key, value))
+    }
+
+    const warnings: string[] = []
+    if (refiledTransactions > 0 || refiledRecurringRules > 0) {
+        warnings.push(
+            `${refiledTransactions} transaction(s) and ${refiledRecurringRules} recurring rule(s) used categories that are not in this backup and were filed under Other.`
+        )
+    }
+
+    return { warnings, tagRecords: backup.tags, receipts, steps, idMapping }
+}
+
+const analyzeBackup = async (
+    backup: CorvaleBackupPayload,
+    targetWorkspaceId: string | null,
+    userObjectId: Types.ObjectId,
+    receiptFiles?: Map<string, Buffer>
+): Promise<{ preview: BackupRestorePreview; plan: RestorePlan | null }> => {
+    const preview = describeBackup(backup, targetWorkspaceId)
+    if (!preview.valid) {
+        return { preview, plan: null }
+    }
+
+    const masters = await loadMasterCategories()
+    const workspaceObjectId = targetWorkspaceId ? new Types.ObjectId(targetWorkspaceId) : null
+
+    try {
+        const plan = buildRestorePlan(
+            backup,
+            userObjectId,
+            workspaceObjectId,
+            masters,
+            receiptFiles
+        )
+        return { preview: { ...preview, warnings: [...preview.warnings, ...plan.warnings] }, plan }
+    } catch (error) {
+        if (error instanceof CustomError) {
+            return {
+                preview: { ...preview, valid: false, errors: [...preview.errors, error.message] },
+                plan: null,
+            }
+        }
+        throw error
+    }
+}
+
+export const previewBackupRestore = async (
+    backup: CorvaleBackupPayload,
+    targetWorkspaceId: string | null
+): Promise<BackupRestorePreview> => {
+    const { preview } = await analyzeBackup(backup, targetWorkspaceId, new Types.ObjectId())
+    return preview
+}
+
+interface WrittenRows {
+    model: WritableModel
+    ids: Types.ObjectId[]
+}
+
+interface ReservedReceipt {
+    storedFilename: string
+    size: number
+}
+
+const restoreReceipt = async (
+    userId: string,
+    userObjectId: Types.ObjectId,
+    planned: PlannedReceipt,
+    written: WrittenRows[],
+    reserved: ReservedReceipt[]
+): Promise<void> => {
+    const { record, buffer, newId } = planned
+
+    // Restore used to write the file blind and copy `mimeType`/`size` straight from the
+    // backup JSON (SEC-28), skipping every control `POST /receipts` enforces. Run the
+    // same pipeline here: sniff the real bytes, allowlist the detected type, size from
+    // the buffer, per-user quota, then virus-scan the written file.
+    const detectedMimeType = assertValidReceiptBuffer(buffer)
+    const actualSize = buffer.byteLength
+
+    await assertWithinReceiptStorageQuota(userId, actualSize)
+    await reserveQuota(userId, 'receiptBytes', actualSize)
+
+    const ext = path.extname(String(record.originalFilename ?? '')).toLowerCase()
+    const safeExt = ext.length <= 10 ? ext : ''
+    const newStoredFilename = `${crypto.randomUUID()}${safeExt}`
+    reserved.push({ storedFilename: newStoredFilename, size: actualSize })
+
+    const destPath = getReceiptFilePath(userId, newStoredFilename)
+    fs.mkdirSync(path.dirname(destPath), { recursive: true })
+    fs.writeFileSync(destPath, buffer)
+
+    await scanUploadedFile(destPath)
+
+    if (isObjectStorageConfigured()) {
+        await putReceiptObject(receiptObjectKey(userId, newStoredFilename), destPath, detectedMimeType)
+        // Object storage is the only durable copy - the local write was staging for the
+        // scan and the upload, exactly as in `uploadReceipt` (SEC-23).
+        deleteReceiptFile(userId, newStoredFilename)
+    }
+
+    written.push({ model: Receipt as unknown as WritableModel, ids: [newId] })
+    await Receipt.create({
+        _id: newId,
+        userId: userObjectId,
+        originalFilename: record.originalFilename,
+        storedFilename: newStoredFilename,
+        mimeType: detectedMimeType,
+        size: actualSize,
+    })
+}
+
+const rollbackRestore = async (
+    userId: string,
+    userObjectId: Types.ObjectId,
+    written: WrittenRows[],
+    reserved: ReservedReceipt[]
+): Promise<void> => {
+    for (const { model, ids } of [...written].reverse()) {
+        try {
+            await model.deleteMany({ userId: userObjectId, _id: { $in: ids } })
+        } catch {
+            // Best effort: the original failure is what the caller must see.
+        }
+    }
+
+    for (const receipt of reserved) {
+        try {
+            deleteReceiptFile(userId, receipt.storedFilename)
+            if (isObjectStorageConfigured()) {
+                await deleteReceiptObject(receiptObjectKey(userId, receipt.storedFilename))
+            }
+        } catch {
+            // Best effort, as above.
+        }
+        try {
+            await releaseQuota(userId, 'receiptBytes', receipt.size)
+        } catch {
+            // Best effort, as above.
+        }
+    }
 }
 
 export const restoreUserBackup = async (
@@ -264,359 +760,63 @@ export const restoreUserBackup = async (
     targetWorkspaceId: string | null,
     receiptFiles?: Map<string, Buffer>
 ): Promise<BackupRestoreResult> => {
-    const preview = previewBackupRestore(backup, targetWorkspaceId)
-    if (!preview.valid) {
+    const userObjectId = new Types.ObjectId(userId)
+    const { preview, plan } = await analyzeBackup(backup, targetWorkspaceId, userObjectId, receiptFiles)
+    if (!plan) {
         throw new CustomError(preview.errors.join(' '), 400)
     }
 
-    const idMap = new Map<string, string>()
-    // SEC-51: account and category references are resolved through their own maps, which only
-    // ever hold ids created by this restore (plus the shared master categories). A crafted
-    // backup can no longer install an identity mapping (e.g. via a budget whose `id` is a
-    // victim's account ObjectId) that a later record resolves as its `accountId`/`categoryId`.
-    const accountIdMap = new Map<string, string>()
-    const categoryIdMap = new Map<string, string>()
-    const masterCategoryIds = await loadMasterCategoryIds()
-    for (const masterId of masterCategoryIds) {
-        categoryIdMap.set(masterId, masterId)
-    }
     const created = emptyCounts()
+    const written: WrittenRows[] = []
+    const reserved: ReservedReceipt[] = []
+    const tagIdMap = new Map<string, string>()
 
-    const userObjectId = new Types.ObjectId(userId)
-    const workspaceObjectId = targetWorkspaceId ? new Types.ObjectId(targetWorkspaceId) : null
-
-    for (const record of backup.categories) {
-        const sourceId = String(record.id)
-        if (masterCategoryIds.has(sourceId)) {
-            categoryIdMap.set(sourceId, sourceId)
-            continue
+    try {
+        for (const planned of plan.receipts) {
+            await restoreReceipt(userId, userObjectId, planned, written, reserved)
         }
+        created.receipts = plan.receipts.length
 
-        const createdCategory = await Category.create({
-            userId: userObjectId,
-            masterCategoryId: mapOptionalId(categoryIdMap, record.masterCategoryId, masterCategoryIds),
-            name: record.name,
-            icon: record.icon,
-            color: record.color,
-            isDefault: false,
-            isArchived: record.isArchived ?? false,
-            sortOrder: record.sortOrder ?? 0,
-        })
-        categoryIdMap.set(sourceId, createdCategory._id.toString())
-        created.categories += 1
-    }
-
-    for (const record of backup.tags) {
-        const sourceId = String(record.id)
-        const existing = await Tag.findOne({ userId, name: record.name })
-        if (existing) {
-            idMap.set(sourceId, existing._id.toString())
-            continue
-        }
-
-        const createdTag = await Tag.create({
-            userId: userObjectId,
-            name: record.name,
-            color: record.color,
-        })
-        idMap.set(sourceId, createdTag._id.toString())
-        created.tags += 1
-    }
-
-    for (const record of backup.accounts) {
-        const sourceId = String(record.id)
-        const createdAccount = await Account.create({
-            userId: userObjectId,
-            workspaceId: workspaceObjectId,
-            name: record.name,
-            type: record.type,
-            currency: record.currency,
-            // balanceUnit round-trips whatever unit the exported account was actually stored
-            // in (Sprint C5) - a backup predating that field has none, so it correctly
-            // defaults to 'major', matching what a pre-migration account's raw numbers mean.
-            balanceUnit: record.balanceUnit === 'minor' ? 'minor' : 'major',
-            openingBalance: record.openingBalance ?? 0,
-            openingBalanceDate: record.openingBalanceDate
-                ? parseDate(record.openingBalanceDate)
-                : null,
-            currentBalance: record.currentBalance ?? record.openingBalance ?? 0,
-            isDefault: false,
-            isArchived: record.isArchived ?? false,
-        })
-        accountIdMap.set(sourceId, createdAccount._id.toString())
-        created.accounts += 1
-    }
-
-    for (const record of backup.budgets) {
-        const sourceId = String(record.id)
-        const createdBudget = await Budget.create({
-            userId: userObjectId,
-            workspaceId: workspaceObjectId,
-            name: record.name,
-            periodType: record.periodType,
-            periodStart: parseDate(record.periodStart),
-            periodEnd: parseDate(record.periodEnd),
-            categoryId: mapOptionalId(categoryIdMap, record.categoryId, masterCategoryIds),
-            amount: record.amount,
-            currency: record.currency,
-            rollover: record.rollover ?? false,
-            accountIds: mapIdArray(accountIdMap, record.accountIds),
-            isArchived: record.isArchived ?? false,
-        })
-        idMap.set(sourceId, createdBudget._id.toString())
-        created.budgets += 1
-    }
-
-    for (const record of backup.savingsGoals) {
-        const sourceId = String(record.id)
-        const createdGoal = await SavingsGoal.create({
-            userId: userObjectId,
-            workspaceId: workspaceObjectId,
-            name: record.name,
-            targetAmount: record.targetAmount,
-            currentAmount: record.currentAmount ?? 0,
-            currency: record.currency,
-            targetDate: record.targetDate ? parseDate(record.targetDate) : null,
-            status: record.status ?? 'active',
-            accountId: mapOptionalId(accountIdMap, record.accountId, new Set()),
-            autoContribution: record.autoContribution ?? {},
-            completedAt: record.completedAt ? parseDate(record.completedAt) : null,
-        })
-        idMap.set(sourceId, createdGoal._id.toString())
-        created.savingsGoals += 1
-    }
-
-    for (const record of backup.recurringRules) {
-        const sourceId = String(record.id)
-        const createdRule = await RecurringRule.create({
-            userId: userObjectId,
-            workspaceId: workspaceObjectId,
-            title: record.title,
-            type: record.type,
-            amount: record.amount,
-            currency: record.currency,
-            accountId: mapRequiredId(accountIdMap, record.accountId),
-            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
-            interval: record.interval,
-            customIntervalDays: record.customIntervalDays,
-            nextDueDate: parseDate(record.nextDueDate),
-            description: record.description,
-            paymentMethod: record.paymentMethod,
-            tags: record.tags ?? [],
-            isActive: record.isActive ?? true,
-            isArchived: record.isArchived ?? false,
-        })
-        idMap.set(sourceId, createdRule._id.toString())
-        created.recurringRules += 1
-    }
-
-    for (const record of backup.categorizationRules) {
-        const sourceId = String(record.id)
-        const createdCategorizationRule = await CategorizationRule.create({
-            userId: userObjectId,
-            name: record.name,
-            matchType: record.matchType,
-            matchValue: record.matchValue,
-            amountMin: record.amountMin,
-            amountMax: record.amountMax,
-            accountId: record.accountId
-                ? mapOptionalId(accountIdMap, record.accountId, new Set())
-                : undefined,
-            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
-            tags: record.tags ?? [],
-            priority: record.priority ?? 0,
-            isActive: record.isActive ?? true,
-        })
-        idMap.set(sourceId, createdCategorizationRule._id.toString())
-        created.categorizationRules += 1
-    }
-
-    for (const record of backup.transactionTemplates) {
-        const sourceId = String(record.id)
-        const createdTemplate = await TransactionTemplate.create({
-            userId: userObjectId,
-            name: record.name,
-            type: record.type,
-            amount: record.amount,
-            accountId: mapRequiredId(accountIdMap, record.accountId),
-            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
-            tags: record.tags ?? [],
-            description: record.description,
-        })
-        idMap.set(sourceId, createdTemplate._id.toString())
-        created.transactionTemplates += 1
-    }
-
-    for (const record of backup.receipts) {
-        const sourceId = String(record.id)
-        const storedFilename = String(record.storedFilename ?? '')
-        const fileBuffer = receiptFiles?.get(storedFilename)
-
-        if (!fileBuffer) {
-            continue
-        }
-
-        // Restore used to write the file blind and copy `mimeType`/`size` straight from the
-        // backup JSON (SEC-28), skipping every control `POST /receipts` enforces. Run the
-        // same pipeline here: sniff the real bytes, allowlist the detected type, size from
-        // the buffer, per-user quota, then virus-scan the written file.
-        const detectedMimeType = assertValidReceiptBuffer(fileBuffer)
-        const actualSize = fileBuffer.byteLength
-
-        await assertWithinReceiptStorageQuota(userId, actualSize)
-        await reserveQuota(userId, 'receiptBytes', actualSize)
-
-        try {
-            const ext = path.extname(String(record.originalFilename ?? '')).toLowerCase()
-            const safeExt = ext.length <= 10 ? ext : ''
-            const newStoredFilename = `${crypto.randomUUID()}${safeExt}`
-
-            const destPath = getReceiptFilePath(userId, newStoredFilename)
-            fs.mkdirSync(path.dirname(destPath), { recursive: true })
-            fs.writeFileSync(destPath, fileBuffer)
-
-            try {
-                await scanUploadedFile(destPath)
-            } catch (error) {
-                deleteReceiptFile(userId, newStoredFilename)
-                throw error
+        for (const record of plan.tagRecords) {
+            const sourceId = String(record.id)
+            const existing = await Tag.findOne({ userId, name: record.name })
+            if (existing) {
+                tagIdMap.set(sourceId, existing._id.toString())
+                continue
             }
 
-            if (isObjectStorageConfigured()) {
-                await putReceiptObject(
-                    receiptObjectKey(userId, newStoredFilename),
-                    destPath,
-                    detectedMimeType
-                )
-                // Object storage is the only durable copy - the local write was staging for the
-                // scan and the upload, exactly as in `uploadReceipt` (SEC-23).
-                deleteReceiptFile(userId, newStoredFilename)
-            }
-
-            const createdReceipt = await Receipt.create({
+            const createdTag = await Tag.create({
                 userId: userObjectId,
-                originalFilename: record.originalFilename,
-                storedFilename: newStoredFilename,
-                mimeType: detectedMimeType,
-                size: actualSize,
+                name: record.name,
+                color: record.color,
             })
-
-            idMap.set(sourceId, createdReceipt._id.toString())
-            created.receipts += 1
-        } catch (error) {
-            await releaseQuota(userId, 'receiptBytes', actualSize)
-            throw error
+            written.push({ model: Tag as unknown as WritableModel, ids: [createdTag._id] })
+            tagIdMap.set(sourceId, createdTag._id.toString())
+            created.tags += 1
         }
-    }
 
-    const deferredTransactionUpdates: {
-        sourceId: string
-        transferPairId?: unknown
-        splitTransactionId?: unknown
-        recurringPaymentId?: unknown
-        receiptIds?: unknown
-    }[] = []
-
-    // SEC-50: build every transaction doc first (resolving refs, which can still throw a broken-
-    // reference 400), then write the batch in one `insertMany` rather than an awaited create per
-    // record. Ids are pre-generated so the deferred link-up pass can resolve them.
-    const transactionDocs: Record<string, unknown>[] = []
-    for (const record of backup.transactions) {
-        const sourceId = String(record.id)
-        const newId = new Types.ObjectId()
-        idMap.set(sourceId, newId.toString())
-
-        transactionDocs.push({
-            _id: newId,
-            userId: userObjectId,
-            workspaceId: workspaceObjectId,
-            accountId: mapRequiredId(accountIdMap, record.accountId),
-            categoryId: mapRequiredId(categoryIdMap, record.categoryId),
-            type: record.type,
-            status: record.status ?? 'posted',
-            amount: record.amount,
-            currency: record.currency,
-            title: record.title,
-            description: record.description,
-            date: parseDate(record.date),
-            source: record.source,
-            paymentMethod: record.paymentMethod,
-            tags: record.tags ?? [],
-        })
-
-        if (
-            record.transferPairId ||
-            record.splitTransactionId ||
-            record.recurringPaymentId ||
-            (Array.isArray(record.receiptIds) && record.receiptIds.length > 0)
-        ) {
-            deferredTransactionUpdates.push({
-                sourceId,
-                transferPairId: record.transferPairId,
-                splitTransactionId: record.splitTransactionId,
-                recurringPaymentId: record.recurringPaymentId,
-                receiptIds: record.receiptIds,
+        for (const step of plan.steps) {
+            if (step.docs.length === 0) {
+                continue
+            }
+            written.push({
+                model: step.model,
+                ids: step.docs
+                    .map((doc) => doc._id)
+                    .filter((id): id is Types.ObjectId => id instanceof Types.ObjectId),
             })
+            await step.model.insertMany(step.docs)
+            created[step.countKey] = step.docs.length
         }
+    } catch (error) {
+        await rollbackRestore(userId, userObjectId, written, reserved)
+        throw error
     }
-
-    if (transactionDocs.length > 0) {
-        await Transaction.insertMany(transactionDocs)
-    }
-    created.transactions = transactionDocs.length
-
-    const deferredOps: {
-        updateOne: { filter: Record<string, unknown>; update: Record<string, unknown> }
-    }[] = []
-    for (const update of deferredTransactionUpdates) {
-        const newId = idMap.get(update.sourceId)
-        if (!newId) {
-            continue
-        }
-
-        const patch: Record<string, unknown> = {}
-
-        if (update.transferPairId) {
-            patch.transferPairId = mapOptionalId(idMap, update.transferPairId, new Set())
-        }
-        if (update.splitTransactionId) {
-            patch.splitTransactionId = mapOptionalId(idMap, update.splitTransactionId, new Set())
-        }
-        if (update.recurringPaymentId) {
-            patch.recurringPaymentId = mapOptionalId(idMap, update.recurringPaymentId, new Set())
-        }
-        if (update.receiptIds) {
-            patch.receiptIds = mapIdArray(idMap, update.receiptIds)
-        }
-
-        if (Object.keys(patch).length > 0) {
-            deferredOps.push({ updateOne: { filter: { _id: newId }, update: { $set: patch } } })
-        }
-    }
-    if (deferredOps.length > 0) {
-        await Transaction.bulkWrite(deferredOps)
-    }
-
-    const contributionDocs = backup.savingsGoalContributions.map((record) => ({
-        userId: userObjectId,
-        goalId: mapRequiredId(idMap, record.goalId),
-        amount: record.amount,
-        type: record.type,
-        note: record.note,
-        contributedAt: parseDate(record.contributedAt),
-    }))
-    if (contributionDocs.length > 0) {
-        await SavingsGoalContribution.insertMany(contributionDocs)
-    }
-    created.savingsGoalContributions = contributionDocs.length
 
     return {
         created,
-        idMapping: Object.fromEntries([
-            ...accountIdMap.entries(),
-            ...categoryIdMap.entries(),
-            ...idMap.entries(),
-        ]),
+        idMapping: Object.fromEntries([...plan.idMapping.entries(), ...tagIdMap.entries()]),
+        ...(plan.warnings.length > 0 ? { warnings: plan.warnings } : {}),
     }
 }
 

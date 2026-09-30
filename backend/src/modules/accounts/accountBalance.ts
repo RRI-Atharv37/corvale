@@ -12,6 +12,7 @@ import {
     UserBalanceSummary,
 } from '@shared/balances'
 import { fromMinorUnits, roundMoney } from '@shared/money'
+import { isInboundTransferLeg } from '@shared/transferDirection'
 import { toObjectId } from '@core/db/objectId'
 
 export { roundMoney }
@@ -173,7 +174,12 @@ export const recomputeAccountBalanceMajor = async (
 
             if (transaction.type === 'transfer' && transaction.transferPairId) {
                 const pairCreatedAt = pairCreatedAtById.get(transaction.transferPairId.toString())
-                const isInbound = pairCreatedAt !== undefined && transaction.createdAt > pairCreatedAt
+                const isInbound =
+                    pairCreatedAt !== undefined &&
+                    isInboundTransferLeg(
+                        { id: transaction._id.toString(), createdAt: transaction.createdAt },
+                        { id: transaction.transferPairId.toString(), createdAt: pairCreatedAt }
+                    )
                 effectiveType = isInbound ? 'income' : 'transfer'
             }
 

@@ -69,7 +69,7 @@ export const previewRestore = asyncHandler(async (req: AuthRequest, res: Respons
     }
 
     const backup = parseBackupPayload(payload)
-    const preview = previewBackupRestore(backup, targetWorkspaceId)
+    const preview = await previewBackupRestore(backup, targetWorkspaceId)
     handleResponses(res, 200, preview)
 })
 

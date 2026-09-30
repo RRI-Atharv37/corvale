@@ -468,6 +468,7 @@ export const createTransferForOp = async (
             description: trimmedDescription,
             date: parsedDate,
             transferPairId: outbound._id,
+            createdAt: new Date(outbound.createdAt.getTime() + 1),
         })
 
         outbound.transferPairId = inbound._id
@@ -610,6 +611,7 @@ export const createTransfer = async (userId: string, body: Record<string, unknow
             description: trimmedDescription,
             date: parsedDate,
             transferPairId: outbound._id,
+            createdAt: new Date(outbound.createdAt.getTime() + 1),
         })
 
         outbound.transferPairId = inbound._id

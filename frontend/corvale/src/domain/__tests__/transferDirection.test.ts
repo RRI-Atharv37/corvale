@@ -40,6 +40,16 @@ describe('domain/accountBalances: getTransferDirection (BUG-35)', () => {
     expect(getTransferDirection(inbound, pairCreatedAtById)).toBe('in')
   })
 
+  it('resolves legs created in the same millisecond to exactly one out and one in', () => {
+    const stamp = '2026-05-01T00:00:00.000Z'
+    const first = baseTx({ _id: 'a-leg', type: 'transfer', transferPairId: 'b-leg', createdAt: stamp })
+    const second = baseTx({ _id: 'b-leg', type: 'transfer', transferPairId: 'a-leg', createdAt: stamp })
+
+    const pairCreatedAtById = buildPairCreatedAtById([first, second])
+    const directions = [getTransferDirection(first, pairCreatedAtById), getTransferDirection(second, pairCreatedAtById)]
+    expect(directions.sort()).toEqual(['in', 'out'])
+  })
+
   it('returns undefined for a non-transfer transaction', () => {
     const expense = baseTx({ type: 'expense' })
     expect(getTransferDirection(expense, buildPairCreatedAtById([expense]))).toBeUndefined()

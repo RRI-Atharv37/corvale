@@ -1,6 +1,8 @@
 import type { LocalDb } from '@platform/db/LocalDb'
-import { Repository } from '@platform/db/repositories/Repository'
+import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
+import { fromMinorUnits } from '@shared/money'
+import { persistLocalAccountBalance } from './accountBalances'
 import type {
   LocalAccount,
   LocalBudget,
@@ -139,10 +141,10 @@ const scopeFilter = <T extends { workspaceId?: string | null }>(rows: T[], works
  * Local equivalent of `backend/utils/backupUtils.ts`'s `exportUserBackup`. Dumps every syncable
  * table (soft-deleted rows already excluded - `Repository.list` filters `deletedAt IS NULL`) into
  * the same versioned JSON shape as the server export. `tags`/`categorizationRules`/
- * `transactionTemplates`/`savingsGoalContributions` are never workspace-scoped on the server (no
- * `workspaceId` field on those models), so - like the server - they are exported in full regardless
- * of `scope.workspaceId`; `accounts`/`transactions`/`budgets`/`savingsGoals`/`recurringRules` are
- * filtered to the requested scope.
+ * `transactionTemplates`/`savingsGoalContributions` have no `workspaceId` field on the server, so -
+ * like the server - they are not filtered by it; rules and templates that name an account outside
+ * the requested scope are left out, as they could not be restored from it. `accounts`/`transactions`/
+ * `budgets`/`savingsGoals`/`recurringRules` are filtered to the requested scope.
  */
 export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): Promise<CorvaleBackupPayload> => {
   const workspaceId = scope.workspaceId
@@ -166,6 +168,10 @@ export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): P
   const scopedGoals = scopeFilter(savingsGoals, workspaceId)
   const scopedRecurring = scopeFilter(recurringRules, workspaceId)
 
+  const scopedAccountIds = new Set(scopedAccounts.map((account) => account._id))
+  const scopedRules = categorizationRules.filter((rule) => !rule.accountId || scopedAccountIds.has(rule.accountId))
+  const scopedTemplates = transactionTemplates.filter((template) => scopedAccountIds.has(template.accountId))
+
   const goalIds = new Set(scopedGoals.map((goal) => goal._id))
   const allContributions = await contributionsRepo.list(db)
   const scopedContributions = allContributions.filter((contribution) => goalIds.has(contribution.goalId))
@@ -184,8 +190,8 @@ export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): P
     if (budget.categoryId) referencedCategoryIds.add(budget.categoryId)
   }
   for (const rule of scopedRecurring) referencedCategoryIds.add(rule.categoryId)
-  for (const rule of categorizationRules) referencedCategoryIds.add(rule.categoryId)
-  for (const template of transactionTemplates) referencedCategoryIds.add(template.categoryId)
+  for (const rule of scopedRules) referencedCategoryIds.add(rule.categoryId)
+  for (const template of scopedTemplates) referencedCategoryIds.add(template.categoryId)
 
   const referencedMasters = masterCategories.filter((category) => referencedCategoryIds.has(category._id))
   const exportedCategories = [...userCategories, ...referencedMasters]
@@ -202,8 +208,8 @@ export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): P
     savingsGoals: scopedGoals.map(serializeLocalDoc),
     savingsGoalContributions: scopedContributions.map(serializeLocalDoc),
     recurringRules: scopedRecurring.map(serializeLocalDoc),
-    categorizationRules: categorizationRules.map(serializeLocalDoc),
-    transactionTemplates: transactionTemplates.map(serializeLocalDoc),
+    categorizationRules: scopedRules.map(serializeLocalDoc),
+    transactionTemplates: scopedTemplates.map(serializeLocalDoc),
     transactions: scopedTransactions.map(serializeLocalDoc),
     // Receipt metadata/files are out of scope for the local store - see module header comment.
     receipts: [],
@@ -307,6 +313,9 @@ export interface LocalBackupRestoreOptions {
   targetWorkspaceId: string | null
 }
 
+const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/i
+const BROKEN_REFERENCE_MESSAGE = 'Backup contains a broken reference and cannot be restored'
+
 const asString = (value: unknown): string => String(value)
 const asOptionalString = (value: unknown): string | undefined =>
   value == null || value === '' ? undefined : String(value)
@@ -317,9 +326,10 @@ const asBoolean = (value: unknown, fallback = false): boolean => (typeof value =
  * Local equivalent of `backend/utils/backupUtils.ts`'s `restoreUserBackup` - same entity order, same
  * id-remapping invariant (every restored row gets a fresh `generateLocalObjectId()`, with every FK
  * reference rewritten through a single shared `idMap`, exactly mirroring the backend's one-`idMap`-
- * for-everything design), and the same pass-through rule for shared master categories. Writes go
- * through `Repository.create`, so every restored row is captured by the outbox for sync (Sprint
- * 13.6) - which also means a workspace-scoped restore attempted while offline fails naturally via
+ * for-everything design), and the same pass-through rule for shared master categories. Every
+ * restored row is captured by the outbox for sync (Sprint 13.6) - transfers and splits as one
+ * grouped op each, the shape the server requires - which also means a workspace-scoped restore
+ * attempted while offline fails naturally via
  * `Outbox.enqueue`'s existing "Workspace-scoped writes require connectivity" guard the moment the
  * first workspace-scoped row is created. The whole restore runs inside one `db.transaction`, so that
  * failure (or any other) rolls back every row written so far - stronger than the backend's restore,
@@ -352,17 +362,50 @@ export const restoreLocalBackup = async (
     const id = String(value)
     if (masterCategoryIds.has(id)) return id
     const mapped = idMap.get(id)
-    if (!mapped) throw new Error('Backup contains a broken reference and cannot be restored')
+    if (!mapped) throw new Error(BROKEN_REFERENCE_MESSAGE)
     return mapped
   }
   const mapRequiredId = (value: unknown): string => {
     const mapped = mapOptionalId(value)
-    if (!mapped) throw new Error('Backup contains a broken reference and cannot be restored')
+    if (!mapped) throw new Error(BROKEN_REFERENCE_MESSAGE)
     return mapped
+  }
+  const otherCategoryId =
+    existingCategories.find(
+      (category) => category.userId === null && category.masterCategoryId === null && category.name === 'Other'
+    )?._id ?? null
+  let refiledCategoryRefs = 0
+  // A category the file names but does not carry (a co-member's private category in a workspace
+  // backup) is filed under "Other"; only an id shaped like a real one qualifies.
+  const mapCategoryOrOther = (value: unknown): string => {
+    try {
+      return mapRequiredId(value)
+    } catch (error) {
+      if (otherCategoryId && OBJECT_ID_PATTERN.test(String(value ?? ''))) {
+        refiledCategoryRefs += 1
+        return otherCategoryId
+      }
+      throw error
+    }
   }
   const mapIdArray = (values: unknown): string[] => {
     if (!Array.isArray(values)) return []
     return values.map((value) => mapOptionalId(value)).filter((value): value is string => value != null)
+  }
+
+  const transactionsBySourceId = new Map(backup.transactions.map((record) => [asString(record.id), record]))
+  const positionBySourceId = new Map(backup.transactions.map((record, index) => [asString(record.id), index]))
+  const splitLinesByParent = new Map<string, Record<string, unknown>[]>()
+  for (const record of backup.transactions) {
+    if (!record.splitTransactionId) continue
+    const parentSourceId = asString(record.splitTransactionId)
+    if (!transactionsBySourceId.has(parentSourceId)) throw new Error(BROKEN_REFERENCE_MESSAGE)
+    splitLinesByParent.set(parentSourceId, [...(splitLinesByParent.get(parentSourceId) ?? []), record])
+  }
+  for (const record of backup.transactions) {
+    if (record.type !== 'transfer') continue
+    const pair = record.transferPairId ? transactionsBySourceId.get(asString(record.transferPairId)) : undefined
+    if (!pair || asString(pair.transferPairId) !== asString(record.id)) throw new Error(BROKEN_REFERENCE_MESSAGE)
   }
 
   await db.transaction(async (tx) => {
@@ -416,9 +459,15 @@ export const restoreLocalBackup = async (
     }
 
     // Accounts (never remap workspaceId - always the current restore target, mirroring the backend).
+    // The local engine holds balances in major units, so a server account stored in minor units
+    // (`balanceUnit: 'minor'`) is converted, as `serializeAccountDocForWire` does for sync. The
+    // balance is recomputed from the restored ledger below.
+    const restoredAccountIds: string[] = []
     for (const record of backup.accounts) {
       const sourceId = asString(record.id)
       const newId = generateLocalObjectId()
+      const openingBalance = asNumber(record.openingBalance, 0)
+      const openingBalanceMajor = record.balanceUnit === 'minor' ? fromMinorUnits(openingBalance) : openingBalance
       const doc: LocalAccount = {
         _id: newId,
         updatedAt: nowIso(),
@@ -427,14 +476,15 @@ export const restoreLocalBackup = async (
         name: asString(record.name),
         type: record.type as LocalAccount['type'],
         currency: asString(record.currency),
-        openingBalance: asNumber(record.openingBalance, 0),
+        openingBalance: openingBalanceMajor,
         openingBalanceDate:
           typeof record.openingBalanceDate === 'string' ? record.openingBalanceDate : null,
-        currentBalance: asNumber(record.currentBalance ?? record.openingBalance, 0),
+        currentBalance: openingBalanceMajor,
         isArchived: asBoolean(record.isArchived, false),
       }
       await accountsRepo.create(tx, doc)
       idMap.set(sourceId, newId)
+      restoredAccountIds.push(newId)
       created.accounts += 1
     }
 
@@ -505,7 +555,7 @@ export const restoreLocalBackup = async (
         amount: asNumber(record.amount, 0),
         currency: asString(record.currency),
         accountId: mapRequiredId(record.accountId),
-        categoryId: mapRequiredId(record.categoryId),
+        categoryId: mapCategoryOrOther(record.categoryId),
         interval: record.interval as LocalRecurringRule['interval'],
         customIntervalDays: record.customIntervalDays as number | undefined,
         nextDueDate: asString(record.nextDueDate),
@@ -566,24 +616,29 @@ export const restoreLocalBackup = async (
       created.transactionTemplates += 1
     }
 
-    // Transactions: create first with direct FKs, then a deferred pass patches transfer/split/
-    // recurring cross-references once every transaction has a fresh id in `idMap` - mirrors the
-    // backend's two-pass approach exactly (a transfer's pair, or a split's parent, may not have
-    // been created yet when its sibling row is first written).
-    const deferred: { sourceId: string; transferPairId?: unknown; splitTransactionId?: unknown; recurringPaymentId?: unknown }[] =
-      []
+    // Transactions. The server only accepts a transfer as one grouped `transaction.transfer` op and
+    // a split as one create carrying `splits` (see `domain/transfers.ts` / `domain/splits.ts`), so
+    // those rows are written locally without their own ops and queued as a single grouped op each.
+    // Rows get strictly increasing `createdAt` stamps: the local engine reads a transfer leg's
+    // direction from creation order, and the backup itself does not carry it.
+    const baseMs = Date.now()
+    let tick = 0
+    const stamp = () => new Date(baseMs + tick++).toISOString()
+    const legTime = (record: Record<string, unknown>): number => {
+      const parsed = Date.parse(String(record.createdAt ?? ''))
+      return Number.isNaN(parsed) ? 0 : parsed
+    }
 
-    for (const record of backup.transactions) {
-      const sourceId = asString(record.id)
-      const newId = generateLocalObjectId()
-      const doc: LocalTransactionRecord = {
-        _id: newId,
-        updatedAt: nowIso(),
-        createdAt: nowIso(),
+    const buildTransactionDoc = (record: Record<string, unknown>, id: string): LocalTransactionRecord => {
+      const createdAt = stamp()
+      return {
+        _id: id,
+        updatedAt: createdAt,
+        createdAt,
         userId: options.userId,
         workspaceId: options.targetWorkspaceId,
         accountId: mapRequiredId(record.accountId),
-        categoryId: mapRequiredId(record.categoryId),
+        categoryId: mapCategoryOrOther(record.categoryId),
         type: record.type as LocalTransactionRecord['type'],
         status: (record.status as LocalTransactionRecord['status']) ?? 'posted',
         amount: asNumber(record.amount, 0),
@@ -595,45 +650,112 @@ export const restoreLocalBackup = async (
         tags: (record.tags as string[] | undefined) ?? [],
         paymentMethod: asOptionalString(record.paymentMethod),
         source: asOptionalString(record.source),
-        // Left null on the initial write; patched below once sibling ids exist.
         splitTransactionId: null,
         transferPairId: null,
       }
-      await transactionsRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
-      created.transactions += 1
-
-      if (record.transferPairId || record.splitTransactionId || record.recurringPaymentId) {
-        deferred.push({
-          sourceId,
-          transferPairId: record.transferPairId,
-          splitTransactionId: record.splitTransactionId,
-          recurringPaymentId: record.recurringPaymentId,
-        })
-      }
     }
 
-    for (const update of deferred) {
-      const newId = idMap.get(update.sourceId)
-      if (!newId) continue
+    const handled = new Set<string>()
+    for (const record of backup.transactions) {
+      const sourceId = asString(record.id)
+      if (handled.has(sourceId) || record.splitTransactionId) continue
 
-      const existing = await transactionsRepo.findById(tx, newId)
-      if (!existing) continue
+      if (record.type === 'transfer') {
+        const pairSourceId = asString(record.transferPairId)
+        const pair = transactionsBySourceId.get(pairSourceId) as Record<string, unknown>
+        const timeDelta = legTime(record) - legTime(pair)
+        const recordIsOutbound =
+          timeDelta !== 0
+            ? timeDelta < 0
+            : (positionBySourceId.get(sourceId) ?? 0) < (positionBySourceId.get(pairSourceId) ?? 0)
+        const outboundRecord = recordIsOutbound ? record : pair
+        const inboundRecord = recordIsOutbound ? pair : record
 
-      const patched: LocalTransactionRecord = { ...(existing as LocalTransactionRecord) }
-      if (update.transferPairId) patched.transferPairId = mapOptionalId(update.transferPairId)
-      if (update.splitTransactionId) patched.splitTransactionId = mapOptionalId(update.splitTransactionId)
-      if (update.recurringPaymentId) {
+        const outboundId = generateLocalObjectId()
+        const inboundId = generateLocalObjectId()
+        const outbound: LocalTransactionRecord = {
+          ...buildTransactionDoc(outboundRecord, outboundId),
+          transferPairId: inboundId,
+        }
+        const inbound: LocalTransactionRecord = {
+          ...buildTransactionDoc(inboundRecord, inboundId),
+          transferPairId: outboundId,
+        }
+        await transactionsRepo.createLocalOnly(tx, outbound)
+        await transactionsRepo.createLocalOnly(tx, inbound)
+        await enqueueGroupedTransactionCreate(tx, outboundId, {
+          intent: 'transaction.transfer',
+          _id: outboundId,
+          pairId: inboundId,
+          amount: outbound.amount,
+          date: outbound.date,
+          fromAccountId: outbound.accountId,
+          toAccountId: inbound.accountId,
+          title: outbound.title,
+          description: outbound.description,
+          status: outbound.status,
+          workspaceId: options.targetWorkspaceId,
+        })
+        idMap.set(asString(outboundRecord.id), outboundId)
+        idMap.set(asString(inboundRecord.id), inboundId)
+        handled.add(sourceId)
+        handled.add(pairSourceId)
+        created.transactions += 2
+        continue
+      }
+
+      const lines = splitLinesByParent.get(sourceId)
+      if (lines) {
+        const parentId = generateLocalObjectId()
+        const parent: LocalTransactionRecord = { ...buildTransactionDoc(record, parentId), hasSplitChildren: true }
+        const children = lines.map((line) => {
+          const childId = generateLocalObjectId()
+          idMap.set(asString(line.id), childId)
+          return { ...buildTransactionDoc(line, childId), splitTransactionId: parentId }
+        })
+        parent.categoryId = children[0].categoryId
+        await transactionsRepo.createLocalOnly(tx, parent)
+        for (const child of children) {
+          await transactionsRepo.createLocalOnly(tx, child)
+        }
+        await enqueueGroupedTransactionCreate(tx, parentId, {
+          _id: parentId,
+          type: parent.type,
+          status: parent.status,
+          title: parent.title,
+          amount: parent.amount,
+          date: parent.date,
+          accountId: parent.accountId,
+          description: parent.description,
+          paymentMethod: parent.paymentMethod,
+          tags: parent.tags,
+          workspaceId: options.targetWorkspaceId,
+          splits: children.map((child) => ({ _id: child._id, categoryId: child.categoryId, amount: child.amount })),
+        })
+        idMap.set(sourceId, parentId)
+        created.transactions += 1 + children.length
+        continue
+      }
+
+      const newId = generateLocalObjectId()
+      const doc = buildTransactionDoc(record, newId)
+      if (record.recurringPaymentId) {
         // Non-fatal: recurring draft generation is server-authoritative (Sprint 13.9), so this link
         // is best-effort fidelity for a cross-restore from a server export, not load-bearing for any
         // local computation today.
         try {
-          patched.recurringPaymentId = mapOptionalId(update.recurringPaymentId)
+          doc.recurringPaymentId = mapOptionalId(record.recurringPaymentId)
         } catch {
-          patched.recurringPaymentId = null
+          doc.recurringPaymentId = null
         }
       }
-      await transactionsRepo.update(tx, patched, existing.updatedAt)
+      await transactionsRepo.create(tx, doc)
+      idMap.set(sourceId, newId)
+      created.transactions += 1
+    }
+
+    for (const accountId of restoredAccountIds) {
+      await persistLocalAccountBalance(tx, accountId)
     }
 
     // Savings goal contributions
@@ -657,5 +779,12 @@ export const restoreLocalBackup = async (
   return {
     created,
     idMapping: Object.fromEntries(idMap.entries()),
+    ...(refiledCategoryRefs > 0
+      ? {
+          warnings: [
+            `${refiledCategoryRefs} transaction(s) and recurring rule(s) used categories that are not in this backup and were filed under Other.`,
+          ],
+        }
+      : {}),
   }
 }

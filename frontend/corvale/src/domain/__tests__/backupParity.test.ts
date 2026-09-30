@@ -340,7 +340,7 @@ describe('domain/backup: exportLocalBackup', () => {
     }
   })
 
-  it('scopes accounts/transactions/budgets/savingsGoals/recurringRules to the requested workspace, but not tags/rules/templates', async () => {
+  it('scopes accounts/transactions/budgets/savingsGoals/recurringRules and account-bound templates to the requested workspace, but not tags', async () => {
     const db = await freshDb()
     const masterCategoryId = nextId()
     await seedFullSourceData(db, masterCategoryId)
@@ -354,11 +354,11 @@ describe('domain/backup: exportLocalBackup', () => {
     expect(workspaceScopedPayload.transactions).toHaveLength(0)
     expect(workspaceScopedPayload.budgets).toHaveLength(0)
     expect(workspaceScopedPayload.savingsGoals).toHaveLength(0)
-    // ...but tags/categorizationRules/transactionTemplates are personal-only on the server (no
-    // workspaceId field) and always export in full regardless of the requested scope.
+    // ...tags and account-less rules have no scope and always export; the template names a personal
+    // account, which is not in this workspace export, so it stays out (it could not be restored).
     expect(workspaceScopedPayload.tags).toHaveLength(1)
     expect(workspaceScopedPayload.categorizationRules).toHaveLength(1)
-    expect(workspaceScopedPayload.transactionTemplates).toHaveLength(1)
+    expect(workspaceScopedPayload.transactionTemplates).toHaveLength(0)
 
     expect(workspacePersonalPayload.accounts).toHaveLength(2)
   })

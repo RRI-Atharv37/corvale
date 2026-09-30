@@ -1,6 +1,7 @@
 import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository } from '@platform/db/repositories/Repository'
 import { recomputeAccountBalance as sharedRecomputeAccountBalance } from '@shared/balances'
+import { isInboundTransferLeg } from '@shared/transferDirection'
 import type { LocalAccount, LocalTransaction } from './types'
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
@@ -39,7 +40,12 @@ export const getTransferDirection = (
   const pairCreatedAt = pairCreatedAtById.get(tx._id)
   if (pairCreatedAt === undefined) return undefined
   const ownCreatedAt = tx.createdAt ?? tx.updatedAt
-  return ownCreatedAt > pairCreatedAt ? 'in' : 'out'
+  return isInboundTransferLeg(
+    { id: tx._id, createdAt: ownCreatedAt },
+    { id: tx.transferPairId, createdAt: pairCreatedAt }
+  )
+    ? 'in'
+    : 'out'
 }
 
 const toRecomputeTransactions = (
@@ -80,6 +86,23 @@ export const recomputeLocalAccountBalance = async (db: LocalDb, accountId: strin
     },
     toRecomputeTransactions(transactions, account._id, pairCreatedAtById)
   )
+}
+
+/** Recomputes one account's balance and writes it straight to the row, bypassing the outbox (balance is derived, never pushed). */
+export const persistLocalAccountBalance = async (db: LocalDb, accountId: string): Promise<number> => {
+  const account = await accountsRepo.findById(db, accountId)
+  if (!account) {
+    throw new Error(`Account ${accountId} not found locally`)
+  }
+  const balance = await recomputeLocalAccountBalance(db, accountId)
+  const updated: LocalAccount = { ...account, currentBalance: balance }
+  await db.exec(`UPDATE accounts SET data = ?, currentBalance = ?, _localUpdatedAt = ? WHERE _id = ?`, [
+    JSON.stringify(updated),
+    balance,
+    new Date().toISOString(),
+    accountId,
+  ])
+  return balance
 }
 
 /**

@@ -28,6 +28,7 @@ import { isMasterCategory, ensureMasterCategoriesSeeded } from "@modules/categor
 import { serializeReceipt, SerializedReceipt } from "@modules/receipts/receiptUtils";
 import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
 import { roundMoney } from "@shared/money";
+import { isInboundTransferLeg } from '@shared/transferDirection'
 
 export interface SplitInput {
     /** Client-supplied child id (BUG-34 follow-up, sync-push splits only) - resolved the same way
@@ -443,7 +444,11 @@ export const attachTransferDirections = async <T extends SerializedTransaction>(
         if (!pairCreatedAt) {
             return tx
         }
-        return { ...tx, transferDirection: tx.createdAt.getTime() > pairCreatedAt.getTime() ? 'in' : 'out' }
+        const isInbound = isInboundTransferLeg(
+            { id: tx._id.toString(), createdAt: tx.createdAt },
+            { id: tx.transferPairId.toString(), createdAt: pairCreatedAt }
+        )
+        return { ...tx, transferDirection: isInbound ? 'in' : 'out' }
     })
 }
 
@@ -664,7 +669,11 @@ export const deleteTransactionForUser = async (
             'editor'
         )
 
-        const outbound = transaction.createdAt <= pair.createdAt ? transaction : pair
+        const transactionIsInbound = isInboundTransferLeg(
+            { id: transaction._id.toString(), createdAt: transaction.createdAt },
+            { id: pair._id.toString(), createdAt: pair.createdAt }
+        )
+        const outbound = transactionIsInbound ? pair : transaction
         const inbound = outbound._id.equals(transaction._id) ? pair : transaction
 
         const fromAccount = await validateAccountForTransaction(
