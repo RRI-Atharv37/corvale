@@ -3,6 +3,7 @@ import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/reposi
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { fromMinorUnits } from '@shared/money'
 import { isTransferRole } from '@shared/transferDirection'
+import { BackupValidationError, reconcileGoal, validateBackupRecords } from '@shared/backupValidation'
 import { persistLocalAccountBalance } from './accountBalances'
 import type {
   LocalAccount,
@@ -32,6 +33,9 @@ export const BACKUP_VERSION = 1 as const
 /** Mirrors `backend/utils/backupUtils.ts`'s `BACKUP_MAX_JSON_BYTES` - no ZIP mode locally (no
  * client-side archiver dependency and no receipt files to bundle), so only the JSON cap applies. */
 export const LOCAL_BACKUP_MAX_JSON_BYTES = 10 * 1024 * 1024
+
+/** Mirrors the server's per-section record cap (`BACKUP_MAX_RECORDS_PER_COLLECTION`, SEC-50). */
+export const LOCAL_BACKUP_MAX_RECORDS_PER_COLLECTION = 100_000
 
 export interface LocalBackupScope {
   workspaceId: string | null
@@ -80,13 +84,18 @@ interface LocalSavingsGoalContributionRecord extends LocalSavingsGoalContributio
   type?: string
   note?: string
 }
+interface LocalAccountRecord extends LocalAccount {
+  isDefault?: boolean
+  interestRate?: number
+  minimumPayment?: number
+}
 interface LocalTransactionRecord extends LocalTransaction {
   currency?: string
   recurringPaymentId?: string | null
   receiptIds?: string[]
 }
 
-const accountsRepo = new Repository<LocalAccount>('accounts')
+const accountsRepo = new Repository<LocalAccountRecord>('accounts')
 const transactionsRepo = new Repository<LocalTransactionRecord>('transactions')
 const categoriesRepo = new Repository<LocalCategoryRecord>('categories')
 const budgetsRepo = new Repository<LocalBudgetRecord>('budgets')
@@ -249,8 +258,12 @@ export const parseLocalBackupPayload = (raw: unknown): CorvaleBackupPayload => {
   }
 
   for (const key of REQUIRED_ARRAYS) {
-    if (!Array.isArray(backup[key])) {
+    const section = backup[key]
+    if (!Array.isArray(section)) {
       throw new Error('Backup file is not a valid Corvale backup')
+    }
+    if (section.length > LOCAL_BACKUP_MAX_RECORDS_PER_COLLECTION) {
+      throw new Error('Backup contains too many records to restore')
     }
   }
 
@@ -295,6 +308,13 @@ export const previewLocalRestore = (
     warnings.push('You are offline - restoring workspace data requires connectivity and will fail until you reconnect.')
   }
 
+  try {
+    validateBackupRecords(backup)
+  } catch (error) {
+    if (!(error instanceof BackupValidationError)) throw error
+    errors.push(error.message)
+  }
+
   const counts = buildCounts(backup)
 
   return {
@@ -318,10 +338,6 @@ const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/i
 const BROKEN_REFERENCE_MESSAGE = 'Backup contains a broken reference and cannot be restored'
 
 const asString = (value: unknown): string => String(value)
-const asOptionalString = (value: unknown): string | undefined =>
-  value == null || value === '' ? undefined : String(value)
-const asNumber = (value: unknown, fallback = 0): number => (typeof value === 'number' ? value : Number(value ?? fallback))
-const asBoolean = (value: unknown, fallback = false): boolean => (typeof value === 'boolean' ? value : (value as boolean) ?? fallback)
 
 /**
  * Local equivalent of `backend/utils/backupUtils.ts`'s `restoreUserBackup` - same entity order, same
@@ -350,7 +366,7 @@ export const restoreLocalBackup = async (
     throw new Error('Workspace-scoped writes require connectivity - you are offline')
   }
 
-  const idMap = new Map<string, string>()
+  const validated = validateBackupRecords(backup)
   const created = emptyCounts()
 
   const existingCategories = await categoriesRepo.list(db)
@@ -358,91 +374,96 @@ export const restoreLocalBackup = async (
     existingCategories.filter((category) => category.userId === null && category.masterCategoryId === null).map((c) => c._id)
   )
 
-  const mapOptionalId = (value: unknown): string | null => {
-    if (value == null || value === '') return null
-    const id = String(value)
-    if (masterCategoryIds.has(id)) return id
-    const mapped = idMap.get(id)
+  // One map per kind of record, so a reference can only ever resolve to a row of the kind it names:
+  // a crafted file cannot aim a transaction's account at a budget, or a rule's category at an account.
+  const maps = {
+    categories: new Map<string, string>([...masterCategoryIds].map((id) => [id, id])),
+    tags: new Map<string, string>(),
+    accounts: new Map<string, string>(),
+    budgets: new Map<string, string>(),
+    goals: new Map<string, string>(),
+    recurring: new Map<string, string>(),
+    rules: new Map<string, string>(),
+    templates: new Map<string, string>(),
+    transactions: new Map<string, string>(),
+  }
+
+  const resolve = (map: Map<string, string>, value: unknown): string => {
+    const mapped = map.get(String(value ?? ''))
     if (!mapped) throw new Error(BROKEN_REFERENCE_MESSAGE)
     return mapped
   }
-  const mapRequiredId = (value: unknown): string => {
-    const mapped = mapOptionalId(value)
-    if (!mapped) throw new Error(BROKEN_REFERENCE_MESSAGE)
-    return mapped
-  }
+  const resolveOptional = (map: Map<string, string>, value: unknown): string | null =>
+    value == null || value === '' ? null : resolve(map, value)
+
   const otherCategoryId =
     existingCategories.find(
       (category) => category.userId === null && category.masterCategoryId === null && category.name === 'Other'
     )?._id ?? null
   let refiledCategoryRefs = 0
+  let demotedDefaults = 0
+  let recalculatedGoals = 0
   // A category the file names but does not carry (a co-member's private category in a workspace
   // backup) is filed under "Other"; only an id shaped like a real one qualifies.
   const mapCategoryOrOther = (value: unknown): string => {
-    try {
-      return mapRequiredId(value)
-    } catch (error) {
-      if (otherCategoryId && OBJECT_ID_PATTERN.test(String(value ?? ''))) {
-        refiledCategoryRefs += 1
-        return otherCategoryId
-      }
-      throw error
+    const mapped = maps.categories.get(String(value ?? ''))
+    if (mapped) return mapped
+    if (otherCategoryId && OBJECT_ID_PATTERN.test(String(value ?? ''))) {
+      refiledCategoryRefs += 1
+      return otherCategoryId
     }
+    throw new Error(BROKEN_REFERENCE_MESSAGE)
   }
-  const mapIdArray = (values: unknown): string[] => {
-    if (!Array.isArray(values)) return []
-    return values.map((value) => mapOptionalId(value)).filter((value): value is string => value != null)
-  }
+  const resolveAll = (map: Map<string, string>, values: unknown): string[] =>
+    Array.isArray(values) ? values.map((value) => resolve(map, value)) : []
 
   const transactionsBySourceId = new Map(backup.transactions.map((record) => [asString(record.id), record]))
+  const fieldsBySourceId = new Map(backup.transactions.map((record, index) => [asString(record.id), validated.transactions[index]]))
   const positionBySourceId = new Map(backup.transactions.map((record, index) => [asString(record.id), index]))
   const splitLinesByParent = new Map<string, Record<string, unknown>[]>()
   for (const record of backup.transactions) {
     if (!record.splitTransactionId) continue
     const parentSourceId = asString(record.splitTransactionId)
-    if (!transactionsBySourceId.has(parentSourceId)) throw new Error(BROKEN_REFERENCE_MESSAGE)
     splitLinesByParent.set(parentSourceId, [...(splitLinesByParent.get(parentSourceId) ?? []), record])
-  }
-  for (const record of backup.transactions) {
-    if (record.type !== 'transfer') continue
-    const pair = record.transferPairId ? transactionsBySourceId.get(asString(record.transferPairId)) : undefined
-    if (!pair || asString(pair.transferPairId) !== asString(record.id)) throw new Error(BROKEN_REFERENCE_MESSAGE)
   }
 
   await db.transaction(async (tx) => {
     const nowIso = () => new Date().toISOString()
+    const iso = (value: Date | null | undefined): string | null => (value ? value.toISOString() : null)
 
-    // Categories: pass-through for shared master categories, fresh row for custom ones.
-    for (const record of backup.categories) {
+    // Categories: pass-through for shared master categories, fresh row for custom ones. A custom
+    // category's parent must be a shared master, never another restored row.
+    for (const [index, record] of backup.categories.entries()) {
       const sourceId = asString(record.id)
-      if (masterCategoryIds.has(sourceId)) {
-        idMap.set(sourceId, sourceId)
-        continue
-      }
+      if (masterCategoryIds.has(sourceId)) continue
+      const fields = validated.categories[index]
       const newId = generateLocalObjectId()
+      const parentId = resolveOptional(maps.categories, record.masterCategoryId)
+      if (parentId !== null && !masterCategoryIds.has(parentId)) throw new Error(BROKEN_REFERENCE_MESSAGE)
       const doc: LocalCategoryRecord = {
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
-        masterCategoryId: mapOptionalId(record.masterCategoryId),
-        name: asString(record.name),
-        color: asOptionalString(record.color),
-        icon: asOptionalString(record.icon),
-        sortOrder: record.sortOrder != null ? asNumber(record.sortOrder) : undefined,
-        isArchived: asBoolean(record.isArchived, false),
+        masterCategoryId: parentId,
+        name: fields.name,
+        color: fields.color,
+        icon: fields.icon,
+        sortOrder: fields.sortOrder,
+        isArchived: fields.isArchived,
       }
       await categoriesRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.categories.set(sourceId, newId)
       created.categories += 1
     }
 
     // Tags: dedup by name against what's already local, matching the server's `Tag.findOne` check.
     const existingTags = await tagsRepo.list(tx)
-    for (const record of backup.tags) {
+    for (const [index, record] of backup.tags.entries()) {
       const sourceId = asString(record.id)
-      const existing = existingTags.find((tag) => tag.name === record.name)
+      const fields = validated.tags[index]
+      const existing = existingTags.find((tag) => tag.name === fields.name)
       if (existing) {
-        idMap.set(sourceId, existing._id)
+        maps.tags.set(sourceId, existing._id)
         continue
       }
       const newId = generateLocalObjectId()
@@ -450,11 +471,11 @@ export const restoreLocalBackup = async (
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
-        name: asString(record.name),
-        color: asOptionalString(record.color),
+        name: fields.name,
+        color: fields.color,
       }
       await tagsRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.tags.set(sourceId, newId)
       existingTags.push(doc)
       created.tags += 1
     }
@@ -464,156 +485,176 @@ export const restoreLocalBackup = async (
     // (`balanceUnit: 'minor'`) is converted, as `serializeAccountDocForWire` does for sync. The
     // balance is recomputed from the restored ledger below.
     const restoredAccountIds: string[] = []
-    for (const record of backup.accounts) {
-      const sourceId = asString(record.id)
+    let defaultAvailable =
+      !options.targetWorkspaceId &&
+      !(await accountsRepo.list(tx)).some((account) => account.isDefault && !account.isArchived && !account.workspaceId)
+    for (const [index, record] of backup.accounts.entries()) {
+      const fields = validated.accounts[index]
       const newId = generateLocalObjectId()
-      const openingBalance = asNumber(record.openingBalance, 0)
-      const openingBalanceMajor = record.balanceUnit === 'minor' ? fromMinorUnits(openingBalance) : openingBalance
-      const doc: LocalAccount = {
+      const openingBalanceMajor =
+        fields.balanceUnit === 'minor' ? fromMinorUnits(fields.openingBalance) : fields.openingBalance
+      let isDefault = false
+      if (fields.wantsDefault && !fields.isArchived && !options.targetWorkspaceId) {
+        if (defaultAvailable) {
+          isDefault = true
+          defaultAvailable = false
+        } else {
+          demotedDefaults += 1
+        }
+      }
+      const doc: LocalAccountRecord = {
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
         workspaceId: options.targetWorkspaceId,
-        name: asString(record.name),
-        type: record.type as LocalAccount['type'],
-        currency: asString(record.currency),
+        name: fields.name,
+        type: fields.type,
+        currency: fields.currency,
         openingBalance: openingBalanceMajor,
-        openingBalanceDate:
-          typeof record.openingBalanceDate === 'string' ? record.openingBalanceDate : null,
+        openingBalanceDate: iso(fields.openingBalanceDate),
         currentBalance: openingBalanceMajor,
-        isArchived: asBoolean(record.isArchived, false),
+        isArchived: fields.isArchived,
+        isDefault,
+        ...(fields.interestRate !== undefined ? { interestRate: fields.interestRate } : {}),
+        ...(fields.minimumPayment !== undefined ? { minimumPayment: fields.minimumPayment } : {}),
       }
       await accountsRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.accounts.set(asString(record.id), newId)
       restoredAccountIds.push(newId)
       created.accounts += 1
     }
 
     // Budgets
-    for (const record of backup.budgets) {
-      const sourceId = asString(record.id)
+    for (const [index, record] of backup.budgets.entries()) {
+      const fields = validated.budgets[index]
       const newId = generateLocalObjectId()
       const doc: LocalBudgetRecord = {
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
         workspaceId: options.targetWorkspaceId,
-        name: asOptionalString(record.name),
-        periodType: asOptionalString(record.periodType),
-        periodStart: asString(record.periodStart),
-        periodEnd: asString(record.periodEnd),
-        categoryId: mapOptionalId(record.categoryId),
-        amount: asNumber(record.amount, 0),
-        currency: asOptionalString(record.currency),
-        rollover: asBoolean(record.rollover, false),
-        accountIds: mapIdArray(record.accountIds),
-        isArchived: asBoolean(record.isArchived, false),
+        name: fields.name,
+        periodType: fields.periodType,
+        periodStart: fields.periodStart.toISOString(),
+        periodEnd: fields.periodEnd.toISOString(),
+        categoryId: resolveOptional(maps.categories, record.categoryId),
+        amount: fields.amount,
+        currency: fields.currency,
+        rollover: fields.rollover,
+        accountIds: resolveAll(maps.accounts, record.accountIds),
+        isArchived: fields.isArchived,
       }
       await budgetsRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.budgets.set(asString(record.id), newId)
       created.budgets += 1
     }
 
-    // Savings goals
-    for (const record of backup.savingsGoals) {
-      const sourceId = asString(record.id)
+    // Savings goals: the saved amount is the sum of the contributions, never the file's figure.
+    for (const [index, record] of backup.savingsGoals.entries()) {
+      const { declaredAmount, ...fields } = validated.goals[index]
+      const currentAmount = validated.contributedByGoal.get(asString(record.id)) ?? 0
+      if (currentAmount !== declaredAmount) recalculatedGoals += 1
+      const { status, completedAt } = reconcileGoal(fields, currentAmount)
       const newId = generateLocalObjectId()
+      const auto = fields.autoContribution as Record<string, unknown>
       const doc: LocalSavingsGoalRecord = {
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
         workspaceId: options.targetWorkspaceId,
-        name: asString(record.name),
-        targetAmount: asNumber(record.targetAmount, 0),
-        currentAmount: asNumber(record.currentAmount, 0),
-        currency: asOptionalString(record.currency),
-        targetDate: (record.targetDate as string | null) ?? null,
-        status: (record.status as LocalSavingsGoal['status']) ?? 'active',
-        accountId: mapOptionalId(record.accountId),
-        autoContribution: (record.autoContribution as LocalSavingsGoal['autoContribution']) ?? {
+        name: fields.name,
+        targetAmount: fields.targetAmount,
+        currentAmount,
+        currency: fields.currency,
+        targetDate: iso(fields.targetDate),
+        status,
+        accountId: resolveOptional(maps.accounts, record.accountId),
+        autoContribution: {
           enabled: false,
           amount: 0,
           interval: 'monthly',
-        },
-        completedAt: (record.completedAt as string | null) ?? null,
+          ...auto,
+          ...(auto.lastContributedAt instanceof Date ? { lastContributedAt: auto.lastContributedAt.toISOString() } : {}),
+        } as LocalSavingsGoal['autoContribution'],
+        completedAt: iso(completedAt),
       }
       await goalsRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.goals.set(asString(record.id), newId)
       created.savingsGoals += 1
     }
 
     // Recurring rules
-    for (const record of backup.recurringRules) {
-      const sourceId = asString(record.id)
+    for (const [index, record] of backup.recurringRules.entries()) {
+      const fields = validated.recurringRules[index]
       const newId = generateLocalObjectId()
       const doc: LocalRecurringRule = {
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
         workspaceId: options.targetWorkspaceId,
-        title: asString(record.title),
-        type: record.type as LocalRecurringRule['type'],
-        amount: asNumber(record.amount, 0),
-        currency: asString(record.currency),
-        accountId: mapRequiredId(record.accountId),
+        title: fields.title,
+        type: fields.type,
+        amount: fields.amount,
+        currency: fields.currency,
+        accountId: resolve(maps.accounts, record.accountId),
         categoryId: mapCategoryOrOther(record.categoryId),
-        interval: record.interval as LocalRecurringRule['interval'],
-        customIntervalDays: record.customIntervalDays as number | undefined,
-        nextDueDate: asString(record.nextDueDate),
-        description: asOptionalString(record.description),
-        paymentMethod: asOptionalString(record.paymentMethod),
-        tags: (record.tags as string[] | undefined) ?? [],
-        isActive: asBoolean(record.isActive, true),
-        isArchived: asBoolean(record.isArchived, false),
-        isCancelled: asBoolean(record.isCancelled, false),
+        interval: fields.interval,
+        customIntervalDays: fields.customIntervalDays,
+        nextDueDate: fields.nextDueDate.toISOString(),
+        description: fields.description,
+        paymentMethod: fields.paymentMethod,
+        tags: fields.tags,
+        isActive: fields.isActive,
+        isArchived: fields.isArchived,
+        isCancelled: fields.isCancelled,
       }
       await recurringRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.recurring.set(asString(record.id), newId)
       created.recurringRules += 1
     }
 
     // Categorization rules
-    for (const record of backup.categorizationRules) {
-      const sourceId = asString(record.id)
+    for (const [index, record] of backup.categorizationRules.entries()) {
+      const fields = validated.categorizationRules[index]
       const newId = generateLocalObjectId()
       const doc: LocalCategorizationRule = {
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
-        name: asString(record.name),
-        matchType: record.matchType as LocalCategorizationRule['matchType'],
-        matchValue: asOptionalString(record.matchValue),
-        amountMin: record.amountMin as number | undefined,
-        amountMax: record.amountMax as number | undefined,
-        accountId: record.accountId ? (mapOptionalId(record.accountId) ?? undefined) : undefined,
-        categoryId: mapRequiredId(record.categoryId),
-        tags: (record.tags as string[] | undefined) ?? [],
-        priority: asNumber(record.priority, 0),
-        isActive: asBoolean(record.isActive, true),
+        name: fields.name,
+        matchType: fields.matchType,
+        matchValue: fields.matchValue,
+        amountMin: fields.amountMin,
+        amountMax: fields.amountMax,
+        accountId: record.accountId ? resolve(maps.accounts, record.accountId) : undefined,
+        categoryId: resolve(maps.categories, record.categoryId),
+        tags: fields.tags,
+        priority: fields.priority,
+        isActive: fields.isActive,
       }
       await rulesRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.rules.set(asString(record.id), newId)
       created.categorizationRules += 1
     }
 
     // Transaction templates
-    for (const record of backup.transactionTemplates) {
-      const sourceId = asString(record.id)
+    for (const [index, record] of backup.transactionTemplates.entries()) {
+      const fields = validated.templates[index]
       const newId = generateLocalObjectId()
       const doc: LocalTransactionTemplate = {
         _id: newId,
         updatedAt: nowIso(),
         userId: options.userId,
-        name: asString(record.name),
-        type: record.type as LocalTransactionTemplate['type'],
-        amount: asNumber(record.amount, 0),
-        accountId: mapRequiredId(record.accountId),
-        categoryId: mapRequiredId(record.categoryId),
-        tags: (record.tags as string[] | undefined) ?? [],
-        description: asOptionalString(record.description),
+        name: fields.name,
+        type: fields.type,
+        amount: fields.amount,
+        accountId: resolve(maps.accounts, record.accountId),
+        categoryId: resolve(maps.categories, record.categoryId),
+        tags: fields.tags,
+        description: fields.description,
       }
       await templatesRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.templates.set(asString(record.id), newId)
       created.transactionTemplates += 1
     }
 
@@ -632,25 +673,28 @@ export const restoreLocalBackup = async (
 
     const buildTransactionDoc = (record: Record<string, unknown>, id: string): LocalTransactionRecord => {
       const createdAt = stamp()
+      const fields = fieldsBySourceId.get(asString(record.id))!
       return {
         _id: id,
         updatedAt: createdAt,
         createdAt,
         userId: options.userId,
         workspaceId: options.targetWorkspaceId,
-        accountId: mapRequiredId(record.accountId),
+        accountId: resolve(maps.accounts, record.accountId),
         categoryId: mapCategoryOrOther(record.categoryId),
-        type: record.type as LocalTransactionRecord['type'],
-        status: (record.status as LocalTransactionRecord['status']) ?? 'posted',
-        amount: asNumber(record.amount, 0),
-        currency: asOptionalString(record.currency),
-        title: asString(record.title),
-        description: asOptionalString(record.description),
-        date: asString(record.date),
-        clearedStatus: 'pending',
-        tags: (record.tags as string[] | undefined) ?? [],
-        paymentMethod: asOptionalString(record.paymentMethod),
-        source: asOptionalString(record.source),
+        type: fields.type,
+        status: fields.status,
+        amount: fields.amount,
+        currency: fields.currency,
+        title: fields.title,
+        description: fields.description,
+        date: fields.date.toISOString(),
+        clearedStatus: fields.clearedStatus,
+        reconciledAt: iso(fields.reconciledAt),
+        externalId: fields.externalId,
+        tags: fields.tags,
+        paymentMethod: fields.paymentMethod,
+        source: fields.source,
         splitTransactionId: null,
         transferPairId: null,
       }
@@ -702,8 +746,8 @@ export const restoreLocalBackup = async (
           status: outbound.status,
           workspaceId: options.targetWorkspaceId,
         })
-        idMap.set(asString(outboundRecord.id), outboundId)
-        idMap.set(asString(inboundRecord.id), inboundId)
+        maps.transactions.set(asString(outboundRecord.id), outboundId)
+        maps.transactions.set(asString(inboundRecord.id), inboundId)
         handled.add(sourceId)
         handled.add(pairSourceId)
         created.transactions += 2
@@ -716,7 +760,7 @@ export const restoreLocalBackup = async (
         const parent: LocalTransactionRecord = { ...buildTransactionDoc(record, parentId), hasSplitChildren: true }
         const children = lines.map((line) => {
           const childId = generateLocalObjectId()
-          idMap.set(asString(line.id), childId)
+          maps.transactions.set(asString(line.id), childId)
           return { ...buildTransactionDoc(line, childId), splitTransactionId: parentId }
         })
         parent.categoryId = children[0].categoryId
@@ -738,25 +782,18 @@ export const restoreLocalBackup = async (
           workspaceId: options.targetWorkspaceId,
           splits: children.map((child) => ({ _id: child._id, categoryId: child.categoryId, amount: child.amount })),
         })
-        idMap.set(sourceId, parentId)
+        maps.transactions.set(sourceId, parentId)
         created.transactions += 1 + children.length
         continue
       }
 
       const newId = generateLocalObjectId()
       const doc = buildTransactionDoc(record, newId)
-      if (record.recurringPaymentId) {
-        // Non-fatal: recurring draft generation is server-authoritative (Sprint 13.9), so this link
-        // is best-effort fidelity for a cross-restore from a server export, not load-bearing for any
-        // local computation today.
-        try {
-          doc.recurringPaymentId = mapOptionalId(record.recurringPaymentId)
-        } catch {
-          doc.recurringPaymentId = null
-        }
-      }
+      // Recurring draft generation is server-authoritative (Sprint 13.9); the link is best-effort
+      // fidelity and, like every reference here, can only point at a restored recurring rule.
+      doc.recurringPaymentId = record.recurringPaymentId ? (maps.recurring.get(asString(record.recurringPaymentId)) ?? null) : null
       await transactionsRepo.create(tx, doc)
-      idMap.set(sourceId, newId)
+      maps.transactions.set(sourceId, newId)
       created.transactions += 1
     }
 
@@ -765,32 +802,48 @@ export const restoreLocalBackup = async (
     }
 
     // Savings goal contributions
-    for (const record of backup.savingsGoalContributions) {
-      const newId = generateLocalObjectId()
+    for (const [index, record] of backup.savingsGoalContributions.entries()) {
+      const fields = validated.contributions[index]
       const doc: LocalSavingsGoalContributionRecord = {
-        _id: newId,
+        _id: generateLocalObjectId(),
         updatedAt: nowIso(),
         userId: options.userId,
-        goalId: mapRequiredId(record.goalId),
-        amount: asNumber(record.amount, 0),
-        type: asOptionalString(record.type),
-        note: asOptionalString(record.note),
-        contributedAt: asString(record.contributedAt),
+        goalId: resolve(maps.goals, record.goalId),
+        amount: fields.amount,
+        type: fields.type,
+        note: fields.note,
+        contributedAt: fields.contributedAt.toISOString(),
       }
       await contributionsRepo.create(tx, doc)
       created.savingsGoalContributions += 1
     }
   })
 
+  const warnings: string[] = []
+  if (refiledCategoryRefs > 0) {
+    warnings.push(
+      `${refiledCategoryRefs} transaction(s) and recurring rule(s) used categories that are not in this backup and were filed under Other.`
+    )
+  }
+  if (recalculatedGoals > 0) {
+    warnings.push(
+      `${recalculatedGoals} savings goal(s) had a saved amount that did not match their contributions and were recalculated.`
+    )
+  }
+  if (demotedDefaults > 0) {
+    warnings.push(
+      'The default account in this backup was restored as a regular account because a default account already exists.'
+    )
+  }
+
+  const idMapping: Record<string, string> = {}
+  for (const map of Object.values(maps)) {
+    for (const [source, target] of map) idMapping[source] = target
+  }
+
   return {
     created,
-    idMapping: Object.fromEntries(idMap.entries()),
-    ...(refiledCategoryRefs > 0
-      ? {
-          warnings: [
-            `${refiledCategoryRefs} transaction(s) and recurring rule(s) used categories that are not in this backup and were filed under Other.`,
-          ],
-        }
-      : {}),
+    idMapping,
+    ...(warnings.length > 0 ? { warnings } : {}),
   }
 }

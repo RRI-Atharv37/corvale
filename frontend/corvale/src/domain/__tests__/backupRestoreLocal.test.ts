@@ -5,7 +5,7 @@ import { MIGRATIONS } from '@platform/db/migrations/schema'
 import { Repository } from '@platform/db/repositories/Repository'
 import { createSqliteOutboxStore } from '@platform/sync/sqliteOutboxStore'
 import type { LocalDb } from '@platform/db/LocalDb'
-import type { LocalAccount, LocalCategory, LocalTransaction } from '../types'
+import type { LocalAccount, LocalCategory, LocalRecurringRule, LocalTransaction } from '../types'
 import { restoreLocalBackup, type CorvaleBackupPayload } from '../backup'
 
 /**
@@ -433,5 +433,123 @@ describe('restoreLocalBackup - account balances (BUG-63)', () => {
     const savings = accounts.find((a) => a.name === 'Savings')
     expect(checking?.currentBalance).toBeCloseTo(1000 - 22.5 - 100 - 100, 2)
     expect(savings?.currentBalance).toBeCloseTo(600, 2)
+  })
+})
+
+describe('restoreLocalBackup - fields survive the round trip (BUG-64)', () => {
+  type Extras = LocalAccount & { isDefault?: boolean; interestRate?: number; minimumPayment?: number }
+  type TxExtras = LocalTransaction & { reconciledAt?: string | null; externalId?: string }
+  const extraAccountsRepo = new Repository<Extras>('accounts')
+  const extraTransactionsRepo = new Repository<TxExtras>('transactions')
+
+  const fidelityPayload = (): CorvaleBackupPayload =>
+    payloadOf({
+      accounts: [
+        accountRecord('a-check', 'Checking', 'checking', { isDefault: true }),
+        accountRecord('a-card', 'Card', 'credit', { openingBalance: 0, interestRate: 19.99, minimumPayment: 35.5 }),
+      ],
+      recurringRules: [
+        {
+          id: 'r1',
+          title: 'Cancelled streaming',
+          type: 'expense',
+          amount: 1299,
+          currency: 'USD',
+          accountId: 'a-check',
+          categoryId: MASTER_ID,
+          interval: 'monthly',
+          nextDueDate: '2026-03-01T00:00:00.000Z',
+          isActive: false,
+          isArchived: false,
+          isCancelled: true,
+        },
+      ],
+      transactions: [
+        txRecord('t-cleared', 'a-check', { title: 'Imported row', clearedStatus: 'cleared', externalId: 'FITID-0001' }),
+        txRecord('t-rec', 'a-check', {
+          title: 'Reconciled row',
+          clearedStatus: 'reconciled',
+          reconciledAt: '2026-02-01T09:30:00.000Z',
+        }),
+        txRecord('t-plain', 'a-check', { title: 'Plain row' }),
+      ],
+    })
+
+  it('keeps cleared and reconciled state and the external id', async () => {
+    const db = await seedTarget()
+    await restore(db, fidelityPayload())
+
+    const rows = await extraTransactionsRepo.list(db)
+    const cleared = rows.find((row) => row.title === 'Imported row')
+    const reconciled = rows.find((row) => row.title === 'Reconciled row')
+    const plain = rows.find((row) => row.title === 'Plain row')
+
+    expect(cleared?.clearedStatus).toBe('cleared')
+    expect(cleared?.externalId).toBe('FITID-0001')
+    expect(reconciled?.clearedStatus).toBe('reconciled')
+    expect(reconciled?.reconciledAt).toBe('2026-02-01T09:30:00.000Z')
+    expect(plain?.clearedStatus).toBe('pending')
+    expect(plain?.externalId).toBeUndefined()
+  })
+
+  it('sends the external id with the create op so the server keeps the re-import dedupe key', async () => {
+    const db = await seedTarget()
+    await restore(db, fidelityPayload())
+
+    const ops = await createSqliteOutboxStore(db).list()
+    const op = ops.find((o) => o.entity.startsWith('transaction:') && o.payload.title === 'Imported row')
+    expect(op?.payload.externalId).toBe('FITID-0001')
+  })
+
+  it('keeps the default account and the credit terms', async () => {
+    const db = await seedTarget()
+    await restore(db, fidelityPayload())
+
+    const accounts = await extraAccountsRepo.list(db)
+    const checking = accounts.find((account) => account.name === 'Checking')
+    const card = accounts.find((account) => account.name === 'Card')
+    expect(checking?.isDefault).toBe(true)
+    expect(card?.isDefault).toBeFalsy()
+    expect(card?.interestRate).toBe(19.99)
+    expect(card?.minimumPayment).toBe(35.5)
+  })
+
+  it('does not take the default from an account the device already has', async () => {
+    const db = await seedTarget()
+    await extraAccountsRepo.upsertFromServer(db, [
+      {
+        ...(accountRecord('a-existing', 'Existing', 'checking') as unknown as Extras),
+        _id: 'a-existing',
+        updatedAt: nowIso(),
+        userId: 'u2',
+        workspaceId: null,
+        isDefault: true,
+        isArchived: false,
+      },
+    ])
+
+    const result = await restore(db, fidelityPayload())
+
+    const accounts = await extraAccountsRepo.list(db)
+    expect(accounts.filter((account) => account.isDefault).map((account) => account.name)).toEqual(['Existing'])
+    expect(result.warnings?.join(' ')).toMatch(/default account/i)
+  })
+
+  it('never marks a workspace account as the default', async () => {
+    const db = await seedTarget()
+    await restoreLocalBackup(db, fidelityPayload(), { userId: 'u2', targetWorkspaceId: 'w1' })
+
+    const accounts = await extraAccountsRepo.list(db)
+    expect(accounts.some((account) => account.isDefault)).toBe(false)
+  })
+
+  it('keeps a cancelled recurring rule cancelled', async () => {
+    const db = await seedTarget()
+    await restore(db, fidelityPayload())
+
+    const rules = await new Repository<LocalRecurringRule>('recurringRules').list(db)
+    expect(rules).toHaveLength(1)
+    expect(rules[0].isCancelled).toBe(true)
+    expect(rules[0].isActive).toBe(false)
   })
 })

@@ -35,7 +35,8 @@ export interface LocalTransaction extends SyncableRecord {
   title: string
   description?: string
   date: string
-  clearedStatus?: 'cleared' | 'pending'
+  clearedStatus?: 'cleared' | 'pending' | 'reconciled'
+  reconciledAt?: string | null
   tags?: string[]
   paymentMethod?: string
   source?: string

@@ -1,3 +1,5 @@
+import { BACKUP_VALIDATION_MESSAGES } from '@shared/backupValidation'
+
 export const ERROR_MESSAGES = {
     AUTH: {
         DEMO_READ_ONLY: 'The demo account is read-only',
@@ -171,12 +173,12 @@ export const ERROR_MESSAGES = {
         INVALID_MERGE_TARGET: 'Cannot merge a row that has no matching transaction',
     },
     BACKUP: {
-        INVALID_FORMAT: 'Backup file is not a valid Corvale backup',
+        INVALID_FORMAT: BACKUP_VALIDATION_MESSAGES.INVALID_FORMAT,
         UNSUPPORTED_VERSION: 'Unsupported backup version',
         INVALID_FILE_TYPE: 'Backup file must be a JSON or ZIP export',
         FILE_TOO_LARGE: 'Backup file exceeds the 10 MB size limit',
         FILE_REQUIRED: 'Backup file is required',
-        BROKEN_REFERENCE: 'Backup contains a broken reference and cannot be restored',
+        BROKEN_REFERENCE: BACKUP_VALIDATION_MESSAGES.BROKEN_REFERENCE,
         ARCHIVE_TOO_MANY_ENTRIES: 'Backup archive contains too many entries',
         TOO_MANY_RECORDS: 'Backup contains too many records to restore',
         ARCHIVE_UNCOMPRESSED_TOO_LARGE: 'Backup archive is too large once uncompressed',

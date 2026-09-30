@@ -56,6 +56,7 @@ import {
     type BackupRestoreResult,
     type CorvaleBackupPayload,
 } from './backupFormat'
+import { BackupValidationError, reconcileGoal, validateBackupRecords } from '@shared/backupValidation'
 
 // Read fresh on every call (not cached at module load) so tests can override via process.env,
 // mirroring the pattern in middleware/rateLimitMiddleware.ts's createAuthRateLimiter.
@@ -244,19 +245,6 @@ const mapIdArray = (idMap: Map<string, string>, values: unknown): Types.ObjectId
         .filter((value): value is Types.ObjectId => value != null)
 }
 
-const parseDate = (value: unknown): Date => {
-    if (value instanceof Date) {
-        return value
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
-        const parsed = new Date(value)
-        if (!isNaN(parsed.getTime())) {
-            return parsed
-        }
-    }
-    throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
-}
-
 interface MasterCategories {
     ids: Set<string>
     otherId: string | null
@@ -318,6 +306,7 @@ const buildRestorePlan = (
     userObjectId: Types.ObjectId,
     workspaceObjectId: Types.ObjectId | null,
     masters: MasterCategories,
+    hasExistingDefaultAccount: boolean,
     receiptFiles?: Map<string, Buffer>
 ): RestorePlan => {
     const masterCategoryIds = masters.ids
@@ -329,6 +318,9 @@ const buildRestorePlan = (
     for (const masterId of masterCategoryIds) {
         categoryIdMap.set(masterId, masterId)
     }
+
+    // A custom category's parent must be a shared master, never another restored category.
+    const masterOnlyIdMap = new Map([...masterCategoryIds].map((id): [string, string] => [id, id]))
 
     const customCategories = backup.categories.filter(
         (record) => !masterCategoryIds.has(String(record.id))
@@ -418,6 +410,13 @@ const buildRestorePlan = (
         legCreatedAt.set(String(inbound.id), new Date(Math.max(createdAtMillis(inbound), outboundMillis + 1)))
     }
 
+    const validated = validateBackupRecords(backup)
+    const { splitParentIds, contributedByGoal } = validated
+
+    let defaultAvailable = workspaceObjectId === null && !hasExistingDefaultAccount
+    let demotedDefaults = 0
+    let recalculatedGoals = 0
+
     const steps: RestoreStep[] = [
         {
             countKey: 'categories',
@@ -425,7 +424,7 @@ const buildRestorePlan = (
             docs: customCategories.map((record, index) => ({
                 _id: categories.ids[index],
                 userId: userObjectId,
-                masterCategoryId: mapOptionalId(categoryIdMap, record.masterCategoryId, masterCategoryIds),
+                masterCategoryId: mapOptionalId(masterOnlyIdMap, record.masterCategoryId, masterCategoryIds),
                 name: record.name,
                 icon: record.icon,
                 color: record.color,
@@ -437,25 +436,37 @@ const buildRestorePlan = (
         {
             countKey: 'accounts',
             model: Account as unknown as WritableModel,
-            docs: backup.accounts.map((record, index) => ({
-                _id: accounts.ids[index],
-                userId: userObjectId,
-                workspaceId: workspaceObjectId,
-                name: record.name,
-                type: record.type,
-                currency: record.currency,
-                // balanceUnit round-trips whatever unit the exported account was actually stored
-                // in (Sprint C5) - a backup predating that field has none, so it correctly
-                // defaults to 'major', matching what a pre-migration account's raw numbers mean.
-                balanceUnit: record.balanceUnit === 'minor' ? 'minor' : 'major',
-                openingBalance: record.openingBalance ?? 0,
-                openingBalanceDate: record.openingBalanceDate
-                    ? parseDate(record.openingBalanceDate)
-                    : null,
-                currentBalance: record.currentBalance ?? record.openingBalance ?? 0,
-                isDefault: false,
-                isArchived: record.isArchived ?? false,
-            })),
+            docs: backup.accounts.map((record, index) => {
+                const fields = validated.accounts[index]
+                let isDefault = false
+                if (fields.wantsDefault && !fields.isArchived && workspaceObjectId === null) {
+                    if (defaultAvailable) {
+                        isDefault = true
+                        defaultAvailable = false
+                    } else {
+                        demotedDefaults += 1
+                    }
+                }
+                // balanceUnit round-trips whatever unit the exported account was stored in (Sprint
+                // C5); a backup predating the field has none and defaults to 'major'. The balance
+                // itself is never read from the file: refreshAccountBalances derives it.
+                return {
+                    _id: accounts.ids[index],
+                    userId: userObjectId,
+                    workspaceId: workspaceObjectId,
+                    name: fields.name,
+                    type: fields.type,
+                    currency: fields.currency,
+                    balanceUnit: fields.balanceUnit,
+                    openingBalance: fields.openingBalance,
+                    openingBalanceDate: fields.openingBalanceDate,
+                    currentBalance: fields.openingBalance,
+                    isDefault,
+                    isArchived: fields.isArchived,
+                    interestRate: fields.interestRate,
+                    minimumPayment: fields.minimumPayment,
+                }
+            }),
         },
         {
             countKey: 'budgets',
@@ -464,35 +475,30 @@ const buildRestorePlan = (
                 _id: budgets.ids[index],
                 userId: userObjectId,
                 workspaceId: workspaceObjectId,
-                name: record.name,
-                periodType: record.periodType,
-                periodStart: parseDate(record.periodStart),
-                periodEnd: parseDate(record.periodEnd),
                 categoryId: mapOptionalId(categoryIdMap, record.categoryId, masterCategoryIds),
-                amount: record.amount,
-                currency: record.currency,
-                rollover: record.rollover ?? false,
                 accountIds: mapIdArray(accounts.map, record.accountIds),
-                isArchived: record.isArchived ?? false,
+                ...validated.budgets[index],
             })),
         },
         {
             countKey: 'savingsGoals',
             model: SavingsGoal as unknown as WritableModel,
-            docs: backup.savingsGoals.map((record, index) => ({
-                _id: goals.ids[index],
-                userId: userObjectId,
-                workspaceId: workspaceObjectId,
-                name: record.name,
-                targetAmount: record.targetAmount,
-                currentAmount: record.currentAmount ?? 0,
-                currency: record.currency,
-                targetDate: record.targetDate ? parseDate(record.targetDate) : null,
-                status: record.status ?? 'active',
-                accountId: mapOptionalId(accounts.map, record.accountId, new Set()),
-                autoContribution: record.autoContribution ?? {},
-                completedAt: record.completedAt ? parseDate(record.completedAt) : null,
-            })),
+            docs: backup.savingsGoals.map((record, index) => {
+                const { declaredAmount, ...fields } = validated.goals[index]
+                const currentAmount = contributedByGoal.get(String(record.id)) ?? 0
+                if (currentAmount !== declaredAmount) {
+                    recalculatedGoals += 1
+                }
+                return {
+                    _id: goals.ids[index],
+                    userId: userObjectId,
+                    workspaceId: workspaceObjectId,
+                    accountId: mapOptionalId(accounts.map, record.accountId, new Set()),
+                    ...fields,
+                    ...reconcileGoal(fields, currentAmount),
+                    currentAmount,
+                }
+            }),
         },
         {
             countKey: 'recurringRules',
@@ -501,20 +507,9 @@ const buildRestorePlan = (
                 _id: recurringRules.ids[index],
                 userId: userObjectId,
                 workspaceId: workspaceObjectId,
-                title: record.title,
-                type: record.type,
-                amount: record.amount,
-                currency: record.currency,
                 accountId: mapRequiredId(accounts.map, record.accountId),
                 categoryId: mapCategoryOrOther(record.categoryId, () => (refiledRecurringRules += 1)),
-                interval: record.interval,
-                customIntervalDays: record.customIntervalDays,
-                nextDueDate: parseDate(record.nextDueDate),
-                description: record.description,
-                paymentMethod: record.paymentMethod,
-                tags: record.tags ?? [],
-                isActive: record.isActive ?? true,
-                isArchived: record.isArchived ?? false,
+                ...validated.recurringRules[index],
             })),
         },
         {
@@ -523,18 +518,11 @@ const buildRestorePlan = (
             docs: backup.categorizationRules.map((record, index) => ({
                 _id: categorizationRules.ids[index],
                 userId: userObjectId,
-                name: record.name,
-                matchType: record.matchType,
-                matchValue: record.matchValue,
-                amountMin: record.amountMin,
-                amountMax: record.amountMax,
                 accountId: record.accountId
                     ? mapOptionalId(accounts.map, record.accountId, new Set())
                     : undefined,
                 categoryId: mapRequiredId(categoryIdMap, record.categoryId),
-                tags: record.tags ?? [],
-                priority: record.priority ?? 0,
-                isActive: record.isActive ?? true,
+                ...validated.categorizationRules[index],
             })),
         },
         {
@@ -543,13 +531,9 @@ const buildRestorePlan = (
             docs: backup.transactionTemplates.map((record, index) => ({
                 _id: templates.ids[index],
                 userId: userObjectId,
-                name: record.name,
-                type: record.type,
-                amount: record.amount,
                 accountId: mapRequiredId(accounts.map, record.accountId),
                 categoryId: mapRequiredId(categoryIdMap, record.categoryId),
-                tags: record.tags ?? [],
-                description: record.description,
+                ...validated.templates[index],
             })),
         },
         {
@@ -561,16 +545,7 @@ const buildRestorePlan = (
                 workspaceId: workspaceObjectId,
                 accountId: mapRequiredId(accounts.map, record.accountId),
                 categoryId: mapCategoryOrOther(record.categoryId, () => (refiledTransactions += 1)),
-                type: record.type,
-                status: record.status ?? 'posted',
-                amount: record.amount,
-                currency: record.currency,
-                title: record.title,
-                description: record.description,
-                date: parseDate(record.date),
-                source: record.source,
-                paymentMethod: record.paymentMethod,
-                tags: record.tags ?? [],
+                ...validated.transactions[index],
                 transferPairId: record.transferPairId
                     ? mapOptionalId(transactions.map, record.transferPairId, new Set())
                     : null,
@@ -581,6 +556,7 @@ const buildRestorePlan = (
                     ? mapOptionalId(recurringRules.map, record.recurringPaymentId, new Set())
                     : null,
                 receiptIds: restoredReceiptIds(record.receiptIds),
+                hasSplitChildren: splitParentIds.has(String(record.id)),
                 transferRole: legRole.get(String(record.id)) ?? null,
                 ...(legCreatedAt.has(String(record.id)) ? { createdAt: legCreatedAt.get(String(record.id)) } : {}),
             })),
@@ -588,14 +564,11 @@ const buildRestorePlan = (
         {
             countKey: 'savingsGoalContributions',
             model: SavingsGoalContribution as unknown as WritableModel,
-            docs: backup.savingsGoalContributions.map((record) => ({
+            docs: backup.savingsGoalContributions.map((record, index) => ({
                 _id: new Types.ObjectId(),
                 userId: userObjectId,
                 goalId: mapRequiredId(goals.map, record.goalId),
-                amount: record.amount,
-                type: record.type,
-                note: record.note,
-                contributedAt: parseDate(record.contributedAt),
+                ...validated.contributions[index],
             })),
         },
     ]
@@ -630,6 +603,17 @@ const buildRestorePlan = (
         )
     }
 
+    if (recalculatedGoals > 0) {
+        warnings.push(
+            `${recalculatedGoals} savings goal(s) had a saved amount that did not match their contributions and were recalculated.`
+        )
+    }
+    if (demotedDefaults > 0) {
+        warnings.push(
+            'The default account in this backup was restored as a regular account because a default account already exists.'
+        )
+    }
+
     return { warnings, tagRecords: backup.tags, receipts, steps, idMapping }
 }
 
@@ -646,6 +630,14 @@ const analyzeBackup = async (
 
     const masters = await loadMasterCategories()
     const workspaceObjectId = targetWorkspaceId ? new Types.ObjectId(targetWorkspaceId) : null
+    const hasExistingDefaultAccount =
+        workspaceObjectId === null &&
+        (await Account.exists({
+            userId: userObjectId,
+            workspaceId: null,
+            isDefault: true,
+            isArchived: false,
+        })) !== null
 
     try {
         const plan = buildRestorePlan(
@@ -653,11 +645,12 @@ const analyzeBackup = async (
             userObjectId,
             workspaceObjectId,
             masters,
+            hasExistingDefaultAccount,
             receiptFiles
         )
         return { preview: { ...preview, warnings: [...preview.warnings, ...plan.warnings] }, plan }
     } catch (error) {
-        if (error instanceof CustomError) {
+        if (error instanceof CustomError || error instanceof BackupValidationError) {
             return {
                 preview: { ...preview, valid: false, errors: [...preview.errors, error.message] },
                 plan: null,

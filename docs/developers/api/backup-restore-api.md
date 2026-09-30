@@ -27,7 +27,16 @@ Same payload handling as preview, but writes to the database. **Every restored r
 
 Receipt files (ZIP restores only) are matched to their record by `storedFilename`, written to disk under a new random filename; a receipt with no matching file in the archive is skipped rather than failing the restore.
 
-Response: `{ created: <counts per entity>, idMapping: <old id → new id> }` (201). A broken reference in the payload throws 400 (`BACKUP.BROKEN_REFERENCE`) and aborts - partial writes made before the error are not automatically rolled back.
+Every record is checked against the same rules the REST API applies to new data before anything is written, and a record that fails is refused with a 400 (the preview reports the same error):
+
+- Amounts must be whole numbers of minor units, and a transaction or recurring rule must use its account's currency.
+- A transfer must be two legs on different accounts that name each other, with the same amount. A split must be a parent expense with at least two lines on the same account that add up to it.
+- Categorization rules, recurring rules, budgets, goals and templates follow their normal bounds (for example a rule match value is at most 200 characters, and a custom recurring rule needs its interval days).
+- Two records of the same kind may not share an id.
+
+Values the server derives are recalculated, never read from the file: account balances come from the restored ledger, a savings goal's saved amount comes from its contributions (its status follows), and a split parent's `hasSplitChildren` comes from its lines. Reconciliation state, `externalId`, credit terms, a cancelled recurring rule and the default account are restored as they were. A backup's default account stays the default only if the target scope is personal and has no default yet.
+
+Response: `{ created: <counts per entity>, idMapping: <old id → new id>, warnings? }` (201). A broken reference or an invalid record throws 400 (`BACKUP.BROKEN_REFERENCE` or one of the `BACKUP.INVALID_*` messages) and nothing is kept - everything written before the error is rolled back.
 
 ## Related pages
 
