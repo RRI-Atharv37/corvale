@@ -9,6 +9,9 @@ export type TransactionType = (typeof TRANSACTION_TYPES)[number]
 export const TRANSACTION_STATUSES = ['posted', 'draft'] as const
 export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number]
 
+export const TRANSFER_ROLES = ['out', 'in'] as const
+export type TransferRole = (typeof TRANSFER_ROLES)[number]
+
 export const CLEARED_STATUSES = ['pending', 'cleared', 'reconciled'] as const
 export type ClearedStatus = (typeof CLEARED_STATUSES)[number]
 
@@ -29,6 +32,9 @@ export interface ITransaction extends Document {
     paymentMethod?: string
     tags?: string[]
     transferPairId?: Types.ObjectId | null
+    /** Which side of a transfer this leg is: `out` debits its account, `in` credits it. Null on
+     * non-transfers and on legs written before the field existed until `migrate:transfer-roles`. */
+    transferRole?: TransferRole | null
     splitTransactionId?: Types.ObjectId | null
     recurringPaymentId?: Types.ObjectId | null
     receiptIds?: Types.ObjectId[]
@@ -74,6 +80,7 @@ const TransactionSchema = new Schema<ITransaction>(
         paymentMethod: { type: String, trim: true },
         tags: [{ type: String, trim: true }],
         transferPairId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction', default: null },
+        transferRole: { type: String, enum: TRANSFER_ROLES, default: null },
         splitTransactionId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Transaction',

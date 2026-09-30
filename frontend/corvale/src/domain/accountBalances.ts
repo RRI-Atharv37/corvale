@@ -1,48 +1,53 @@
 import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository } from '@platform/db/repositories/Repository'
 import { recomputeAccountBalance as sharedRecomputeAccountBalance } from '@shared/balances'
-import { isInboundTransferLeg } from '@shared/transferDirection'
+import { isInboundTransferLeg, type TransferRole } from '@shared/transferDirection'
 import type { LocalAccount, LocalTransaction } from './types'
 
 const accountsRepo = new Repository<LocalAccount>('accounts')
 const transactionsRepo = new Repository<LocalTransaction>('transactions')
 
-/**
- * Both legs of a transfer persist with `type: 'transfer'` (mirrors
- * `backend/controllers/accountController.ts`'s `recomputeBalance` comment) -
- * direction is only recoverable via creation order relative to the paired
- * leg. The outbound leg keeps the 'transfer' delta formula (a withdrawal);
- * the inbound leg is fed as 'income' to reuse the income delta formula. This
- * needs every local transaction (not just the target account's) since a
- * leg's pair lives in a different account.
- */
-export const buildPairCreatedAtById = (transactions: LocalTransaction[]): Map<string, string> => {
-  const byId = new Map(transactions.map((tx) => [tx._id, tx.createdAt ?? tx.updatedAt]))
-  const pairCreatedAtById = new Map<string, string>()
-  for (const tx of transactions) {
-    if (tx.type === 'transfer' && tx.transferPairId) {
-      const pairCreatedAt = byId.get(tx.transferPairId)
-      if (pairCreatedAt) pairCreatedAtById.set(tx._id, pairCreatedAt)
-    }
-  }
-  return pairCreatedAtById
+export interface TransferPairStamp {
+  createdAt: string
+  transferRole?: TransferRole | null
 }
 
-/** Direction a transfer leg represents, resolved via the creation-order heuristic above. `undefined`
- * when the pair isn't in `pairCreatedAtById` (e.g. filtered out of the current query) - callers
- * should fall back to a neutral, non-directional display for that case, mirroring the backend's
- * `attachTransferDirections` (`backend/src/modules/transactions/transactionUtils.ts`). */
+/**
+ * Both legs of a transfer persist with `type: 'transfer'`; each leg's stored `transferRole` says
+ * which side it is. A leg without one (synced down before the backend backfill) is resolved against
+ * its pair by creation order instead. The outbound leg keeps the 'transfer' delta formula (a
+ * withdrawal); the inbound leg is fed as 'income' to reuse the income delta formula. This needs
+ * every local transaction (not just the target account's) since a leg's pair lives in a different
+ * account.
+ */
+export const buildTransferPairStamps = (transactions: LocalTransaction[]): Map<string, TransferPairStamp> => {
+  const byId = new Map(transactions.map((tx) => [tx._id, tx]))
+  const stamps = new Map<string, TransferPairStamp>()
+  for (const tx of transactions) {
+    if (tx.type === 'transfer' && tx.transferPairId) {
+      const pair = byId.get(tx.transferPairId)
+      const pairCreatedAt = pair && (pair.createdAt ?? pair.updatedAt)
+      if (pair && pairCreatedAt) stamps.set(tx._id, { createdAt: pairCreatedAt, transferRole: pair.transferRole })
+    }
+  }
+  return stamps
+}
+
+/** Direction a transfer leg represents. `undefined` when the leg has no stored role and its pair isn't
+ * in `pairStamps` (e.g. filtered out of the current query) - callers should fall back to a neutral,
+ * non-directional display for that case, mirroring the backend's `attachTransferDirections`
+ * (`backend/src/modules/transactions/transactionUtils.ts`). */
 export const getTransferDirection = (
-  tx: Pick<LocalTransaction, '_id' | 'type' | 'transferPairId' | 'createdAt' | 'updatedAt'>,
-  pairCreatedAtById: Map<string, string>
+  tx: Pick<LocalTransaction, '_id' | 'type' | 'transferPairId' | 'transferRole' | 'createdAt' | 'updatedAt'>,
+  pairStamps: Map<string, TransferPairStamp>
 ): 'out' | 'in' | undefined => {
   if (tx.type !== 'transfer' || !tx.transferPairId) return undefined
-  const pairCreatedAt = pairCreatedAtById.get(tx._id)
-  if (pairCreatedAt === undefined) return undefined
+  const pair = pairStamps.get(tx._id)
+  if (!tx.transferRole && pair === undefined) return undefined
   const ownCreatedAt = tx.createdAt ?? tx.updatedAt
   return isInboundTransferLeg(
-    { id: tx._id, createdAt: ownCreatedAt },
-    { id: tx.transferPairId, createdAt: pairCreatedAt }
+    { id: tx._id, createdAt: ownCreatedAt, transferRole: tx.transferRole },
+    { id: tx.transferPairId, createdAt: pair?.createdAt ?? ownCreatedAt, transferRole: pair?.transferRole }
   )
     ? 'in'
     : 'out'
@@ -51,14 +56,14 @@ export const getTransferDirection = (
 const toRecomputeTransactions = (
   transactions: LocalTransaction[],
   accountId: string,
-  pairCreatedAtById: Map<string, string>
+  pairStamps: Map<string, TransferPairStamp>
 ) =>
   transactions
     .filter((tx) => tx.accountId === accountId)
     .map((tx) => {
       let effectiveType = tx.type
       if (tx.type === 'transfer' && tx.transferPairId) {
-        effectiveType = getTransferDirection(tx, pairCreatedAtById) === 'in' ? 'income' : 'transfer'
+        effectiveType = getTransferDirection(tx, pairStamps) === 'in' ? 'income' : 'transfer'
       }
       return {
         type: effectiveType,
@@ -76,7 +81,7 @@ export const recomputeLocalAccountBalance = async (db: LocalDb, accountId: strin
     throw new Error(`Account ${accountId} not found locally`)
   }
   const transactions = await transactionsRepo.list(db)
-  const pairCreatedAtById = buildPairCreatedAtById(transactions)
+  const pairStamps = buildTransferPairStamps(transactions)
   return sharedRecomputeAccountBalance(
     {
       type: account.type,
@@ -84,7 +89,7 @@ export const recomputeLocalAccountBalance = async (db: LocalDb, accountId: strin
       currentBalance: account.currentBalance,
       openingBalanceDate: account.openingBalanceDate ?? null,
     },
-    toRecomputeTransactions(transactions, account._id, pairCreatedAtById)
+    toRecomputeTransactions(transactions, account._id, pairStamps)
   )
 }
 
@@ -115,7 +120,7 @@ export const persistLocalAccountBalance = async (db: LocalDb, accountId: string)
  */
 export const recomputeAllLocalAccountBalances = async (db: LocalDb): Promise<Map<string, number>> => {
   const [accounts, transactions] = await Promise.all([accountsRepo.list(db), transactionsRepo.list(db)])
-  const pairCreatedAtById = buildPairCreatedAtById(transactions)
+  const pairStamps = buildTransferPairStamps(transactions)
   const results = new Map<string, number>()
 
   await db.transaction(async (tx) => {
@@ -127,7 +132,7 @@ export const recomputeAllLocalAccountBalances = async (db: LocalDb): Promise<Map
           currentBalance: account.currentBalance,
           openingBalanceDate: account.openingBalanceDate ?? null,
         },
-        toRecomputeTransactions(transactions, account._id, pairCreatedAtById)
+        toRecomputeTransactions(transactions, account._id, pairStamps)
       )
       results.set(account._id, balance)
 

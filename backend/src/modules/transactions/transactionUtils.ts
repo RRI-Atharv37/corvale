@@ -4,7 +4,7 @@ import { IAccount, Account } from '@modules/accounts'
 import { refreshAccountBalances } from '@modules/accounts/accountBalance'
 import { ICategory, Category } from '@modules/categories'
 import { Receipt } from '@modules/receipts'
-import Transaction, { ITransaction, TransactionType } from './transaction.model'
+import Transaction, { ITransaction, TransactionType, TransferRole } from './transaction.model'
 import { User } from '@modules/users'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
@@ -58,6 +58,7 @@ export interface SerializedTransaction {
     paymentMethod?: string
     tags?: string[]
     transferPairId?: Types.ObjectId | null
+    transferRole?: TransferRole | null
     splitTransactionId?: Types.ObjectId | null
     hasSplitChildren?: boolean
     recurringPaymentId?: Types.ObjectId | null
@@ -293,14 +294,13 @@ export const isTransferLeg = (transaction: ITransaction): boolean =>
     transaction.type === 'transfer' && transaction.transferPairId != null
 
 /**
- * Both legs of a transfer persist with `type: 'transfer'` and no other stored field marking which
- * one is the debit and which is the credit - direction is only recoverable via creation order
- * relative to the paired leg (mirrors `frontend/corvale/src/domain/accountBalances.ts`'s identical
- * heuristic, used there for the balance engine). Resolves pairs found within `transactions` itself
- * first (the common case - both legs land on the same list page), then batches one `_id: { $in }`
- * lookup for any pairs missing from that set (RLS's documented allowed shape for "load rows the
- * caller already holds ids for"). A leg whose pair can't be resolved (e.g. deleted) is left
- * without a direction - callers fall back to a neutral, non-directional display for it.
+ * Each transfer leg stores its own `transferRole`, which decides its direction. A leg from before
+ * the field existed (not yet backfilled by `migrate:transfer-roles`) is resolved against its pair by
+ * creation order instead (see `@shared/transferDirection`). Pairs are found within `transactions`
+ * itself first (the common case - both legs land on the same list page), then one `_id: { $in }`
+ * lookup covers the rest (RLS's documented allowed shape for "load rows the caller already holds ids
+ * for"). A legacy leg whose pair can't be resolved (e.g. deleted) is left without a direction -
+ * callers fall back to a neutral, non-directional display for it.
  */
 export const attachTransferDirections = async <T extends SerializedTransaction>(
     transactions: T[]
@@ -310,22 +310,31 @@ export const attachTransferDirections = async <T extends SerializedTransaction>(
         return transactions
     }
 
-    const createdAtById = new Map<string, Date>(
-        transactions.map((tx) => [tx._id.toString(), tx.createdAt])
+    const stampById = new Map<string, { createdAt: Date; transferRole?: TransferRole | null }>(
+        transactions.map((tx) => [
+            tx._id.toString(),
+            { createdAt: tx.createdAt, transferRole: tx.transferRole },
+        ])
     )
 
     const missingIds = [
         ...new Set(
             legs
+                .filter((tx) => !tx.transferRole)
                 .map((tx) => tx.transferPairId!.toString())
-                .filter((pairId) => !createdAtById.has(pairId))
+                .filter((pairId) => !stampById.has(pairId))
         ),
     ]
 
     if (missingIds.length > 0) {
-        const pairs = await Transaction.find({ _id: { $in: missingIds } }).select('createdAt')
+        const pairs = await Transaction.find({ _id: { $in: missingIds } }).select(
+            'createdAt transferRole'
+        )
         for (const pair of pairs) {
-            createdAtById.set(pair._id.toString(), pair.createdAt)
+            stampById.set(pair._id.toString(), {
+                createdAt: pair.createdAt,
+                transferRole: pair.transferRole,
+            })
         }
     }
 
@@ -333,13 +342,17 @@ export const attachTransferDirections = async <T extends SerializedTransaction>(
         if (tx.type !== 'transfer' || !tx.transferPairId) {
             return tx
         }
-        const pairCreatedAt = createdAtById.get(tx.transferPairId.toString())
-        if (!pairCreatedAt) {
+        const pair = stampById.get(tx.transferPairId.toString())
+        if (!tx.transferRole && !pair) {
             return tx
         }
         const isInbound = isInboundTransferLeg(
-            { id: tx._id.toString(), createdAt: tx.createdAt },
-            { id: tx.transferPairId.toString(), createdAt: pairCreatedAt }
+            { id: tx._id.toString(), createdAt: tx.createdAt, transferRole: tx.transferRole },
+            {
+                id: tx.transferPairId.toString(),
+                createdAt: pair?.createdAt ?? tx.createdAt,
+                transferRole: pair?.transferRole,
+            }
         )
         return { ...tx, transferDirection: isInbound ? 'in' : 'out' }
     })
@@ -493,8 +506,12 @@ export const deleteTransactionForUser = async (
         )
 
         const transactionIsInbound = isInboundTransferLeg(
-            { id: transaction._id.toString(), createdAt: transaction.createdAt },
-            { id: pair._id.toString(), createdAt: pair.createdAt }
+            {
+                id: transaction._id.toString(),
+                createdAt: transaction.createdAt,
+                transferRole: transaction.transferRole,
+            },
+            { id: pair._id.toString(), createdAt: pair.createdAt, transferRole: pair.transferRole }
         )
         const outbound = transactionIsInbound ? pair : transaction
         const inbound = outbound._id.equals(transaction._id) ? pair : transaction

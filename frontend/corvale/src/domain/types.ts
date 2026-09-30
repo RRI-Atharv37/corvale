@@ -47,6 +47,9 @@ export interface LocalTransaction extends SyncableRecord {
   hasSplitChildren?: boolean
   /** Set on both legs of a transfer (mirrors `backend/models/Transaction.ts`); null otherwise. */
   transferPairId?: string | null
+  /** Which side of a transfer this leg is (`out` debits its account, `in` credits it); mirrors the
+   * server field. Absent on rows synced down before the backend backfill. */
+  transferRole?: 'out' | 'in' | null
   /**
    * Mongoose `timestamps: true` creation time - present on every server
    * document (hence in the `data` JSON blob) even though it isn't a

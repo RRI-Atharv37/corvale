@@ -27,6 +27,7 @@ import { SavingsGoal } from '@modules/savings-goals'
 import { SavingsGoalContribution } from '@modules/savings-goals'
 import { Tag } from '@modules/tags'
 import { Transaction } from '@modules/transactions'
+import { isTransferRole, type TransferRole } from '@shared/transferDirection'
 import { TransactionTemplate } from '@modules/transaction-templates'
 import { releaseQuota, reserveQuota } from '@modules/billing/usage.service'
 import { CustomError } from '@core/errors/customError'
@@ -383,9 +384,11 @@ const buildRestorePlan = (
         throw new CustomError(ERROR_MESSAGES.BACKUP.BROKEN_REFERENCE, 400)
     }
 
-    // Transfer legs must not share a creation time: the later leg is the inbound one everywhere a
-    // direction is read. The outbound leg is the earlier-created one, the first in the file on a tie.
+    // Each restored leg gets its stored `transferRole`: the file's own when it carries one, else the
+    // earlier-created leg is outbound (the first in the file on a tie). Legs still get distinct
+    // creation times so a reader that falls back to creation order agrees with the role.
     const legCreatedAt = new Map<string, Date>()
+    const legRole = new Map<string, TransferRole>()
     const positionBySourceId = new Map(backup.transactions.map((record, index) => [String(record.id), index]))
     const recordBySourceId = new Map(backup.transactions.map((record) => [String(record.id), record]))
     const createdAtMillis = (record: Record<string, unknown>): number => {
@@ -399,13 +402,18 @@ const buildRestorePlan = (
             continue
         }
         const delta = createdAtMillis(record) - createdAtMillis(pair)
-        const recordIsOutbound =
-            delta !== 0
+        const recordIsOutbound = isTransferRole(record.transferRole)
+            ? record.transferRole === 'out'
+            : isTransferRole(pair.transferRole)
+              ? pair.transferRole === 'in'
+              : delta !== 0
                 ? delta < 0
                 : (positionBySourceId.get(sourceId) ?? 0) < (positionBySourceId.get(String(pair.id)) ?? 0)
         const outbound = recordIsOutbound ? record : pair
         const inbound = recordIsOutbound ? pair : record
         const outboundMillis = createdAtMillis(outbound) || Date.now()
+        legRole.set(String(outbound.id), 'out')
+        legRole.set(String(inbound.id), 'in')
         legCreatedAt.set(String(outbound.id), new Date(outboundMillis))
         legCreatedAt.set(String(inbound.id), new Date(Math.max(createdAtMillis(inbound), outboundMillis + 1)))
     }
@@ -573,6 +581,7 @@ const buildRestorePlan = (
                     ? mapOptionalId(recurringRules.map, record.recurringPaymentId, new Set())
                     : null,
                 receiptIds: restoredReceiptIds(record.receiptIds),
+                transferRole: legRole.get(String(record.id)) ?? null,
                 ...(legCreatedAt.has(String(record.id)) ? { createdAt: legCreatedAt.get(String(record.id)) } : {}),
             })),
         },

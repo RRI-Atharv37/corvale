@@ -32,6 +32,7 @@ import { applyCategorizationRules, mergeTags } from "@modules/categorization-rul
 import { validateReceiptOwnership } from '@modules/receipts/receiptUtils'
 import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
 import { refreshAccountBalances } from '@modules/accounts/accountBalance'
+import { isInboundTransferLeg } from '@shared/transferDirection'
 
 const SUPPORTED_CREATE_TYPES = ['income', 'expense'] as const
 
@@ -448,6 +449,7 @@ export const createTransferForOp = async (
             accountId: fromAccountId,
             categoryId: transferCategoryId,
             type: 'transfer',
+            transferRole: 'out',
             status: status ?? 'posted',
             amount: amountMinor,
             currency: fromAccount.currency,
@@ -463,6 +465,7 @@ export const createTransferForOp = async (
             accountId: toAccountId,
             categoryId: transferCategoryId,
             type: 'transfer',
+            transferRole: 'in',
             status: status ?? 'posted',
             amount: amountMinor,
             currency: toAccount.currency,
@@ -518,7 +521,14 @@ export const getTransactionDetail = async (
 
     if (isTransferLeg(transaction) && transaction.transferPairId) {
         const pair = await loadTransaction(transaction.transferPairId.toString(), userId, 'viewer')
-        const isInbound = transaction.createdAt.getTime() > pair.createdAt.getTime()
+        const isInbound = isInboundTransferLeg(
+            {
+                id: transaction._id.toString(),
+                createdAt: transaction.createdAt,
+                transferRole: transaction.transferRole,
+            },
+            { id: pair._id.toString(), createdAt: pair.createdAt, transferRole: pair.transferRole }
+        )
         payload.transferDirection = isInbound ? 'in' : 'out'
         payload.transferPair = { ...serializeTransaction(pair), transferDirection: isInbound ? 'out' : 'in' }
     }
@@ -592,6 +602,7 @@ export const createTransfer = async (userId: string, body: Record<string, unknow
             accountId: fromAccountId,
             categoryId: transferCategoryId,
             type: 'transfer',
+            transferRole: 'out',
             status: status ?? 'posted',
             amount: amountMinor,
             currency: fromAccount.currency,
@@ -606,6 +617,7 @@ export const createTransfer = async (userId: string, body: Record<string, unknow
             accountId: toAccountId,
             categoryId: transferCategoryId,
             type: 'transfer',
+            transferRole: 'in',
             status: status ?? 'posted',
             amount: amountMinor,
             currency: toAccount.currency,

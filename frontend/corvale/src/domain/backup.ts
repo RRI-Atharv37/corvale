@@ -2,6 +2,7 @@ import type { LocalDb } from '@platform/db/LocalDb'
 import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/repositories/Repository'
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { fromMinorUnits } from '@shared/money'
+import { isTransferRole } from '@shared/transferDirection'
 import { persistLocalAccountBalance } from './accountBalances'
 import type {
   LocalAccount,
@@ -620,7 +621,7 @@ export const restoreLocalBackup = async (
     // a split as one create carrying `splits` (see `domain/transfers.ts` / `domain/splits.ts`), so
     // those rows are written locally without their own ops and queued as a single grouped op each.
     // Rows get strictly increasing `createdAt` stamps: the local engine reads a transfer leg's
-    // direction from creation order, and the backup itself does not carry it.
+    // direction from the stored role, or from creation order for a row without one.
     const baseMs = Date.now()
     let tick = 0
     const stamp = () => new Date(baseMs + tick++).toISOString()
@@ -664,10 +665,13 @@ export const restoreLocalBackup = async (
         const pairSourceId = asString(record.transferPairId)
         const pair = transactionsBySourceId.get(pairSourceId) as Record<string, unknown>
         const timeDelta = legTime(record) - legTime(pair)
-        const recordIsOutbound =
-          timeDelta !== 0
-            ? timeDelta < 0
-            : (positionBySourceId.get(sourceId) ?? 0) < (positionBySourceId.get(pairSourceId) ?? 0)
+        const recordIsOutbound = isTransferRole(record.transferRole)
+          ? record.transferRole === 'out'
+          : isTransferRole(pair.transferRole)
+            ? pair.transferRole === 'in'
+            : timeDelta !== 0
+              ? timeDelta < 0
+              : (positionBySourceId.get(sourceId) ?? 0) < (positionBySourceId.get(pairSourceId) ?? 0)
         const outboundRecord = recordIsOutbound ? record : pair
         const inboundRecord = recordIsOutbound ? pair : record
 
@@ -676,10 +680,12 @@ export const restoreLocalBackup = async (
         const outbound: LocalTransactionRecord = {
           ...buildTransactionDoc(outboundRecord, outboundId),
           transferPairId: inboundId,
+          transferRole: 'out',
         }
         const inbound: LocalTransactionRecord = {
           ...buildTransactionDoc(inboundRecord, inboundId),
           transferPairId: outboundId,
+          transferRole: 'in',
         }
         await transactionsRepo.createLocalOnly(tx, outbound)
         await transactionsRepo.createLocalOnly(tx, inbound)

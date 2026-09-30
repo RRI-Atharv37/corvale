@@ -70,8 +70,8 @@ const persistAccountBalance = async (db: LocalDb, accountId: string): Promise<vo
  * under the shared "Other" category, same-currency requirement between the two accounts. Both
  * accounts' balances are recomputed from scratch in the same SQLite transaction as the writes - no
  * incremental balance math locally (see the "Account balance" architecture decision). The
- * outbound leg is created with an earlier `createdAt` than the inbound leg so
- * `domain/accountBalances.ts`'s creation-order heuristic resolves direction correctly.
+ * legs carry their `transferRole` (outbound/inbound) and, for readers that fall back to creation
+ * order, the outbound leg is created with an earlier `createdAt` than the inbound leg.
  *
  * Both rows are written via `createLocalOnly` (no per-row outbox op) and synced up as a single
  * grouped `intent: 'transaction.transfer'` push op instead (BUG-34 follow-up) - `applyCreateOp`
@@ -132,6 +132,7 @@ export const createLocalTransfer = async (
     clearedStatus: 'pending',
     splitTransactionId: null,
     transferPairId: inboundId,
+    transferRole: 'out',
   }
 
   const inbound: LocalTransaction = {
@@ -151,6 +152,7 @@ export const createLocalTransfer = async (
     clearedStatus: 'pending',
     splitTransactionId: null,
     transferPairId: outboundId,
+    transferRole: 'in',
   }
 
   await db.transaction(async (tx) => {

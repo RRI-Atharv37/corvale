@@ -131,9 +131,9 @@ export const computeUserBalances = async (
  * Recomputes one account's balance from scratch - its opening balance and
  * opening-balance date plus every posted, non-split transaction on it - and
  * returns the result in **major units** (the caller stores it in the account's
- * own `balanceUnit`). Transfer legs are resolved to in/out by creation order
- * relative to their pair, the same technique `deleteTransactionForUser` uses,
- * since both legs persist as `type: 'transfer'`.
+ * own `balanceUnit`). Transfer legs are resolved to in/out by their stored
+ * `transferRole`, or by creation order relative to their pair for a leg not yet
+ * backfilled, since both legs persist as `type: 'transfer'`.
  *
  * Shared by the REST recompute endpoint, `updateAccount` (opening-balance edits
  * trigger a recompute) and the sync push path, so the three stay identical.
@@ -151,19 +151,24 @@ export const recomputeAccountBalanceMajor = async (
         ...scope,
         accountId: account._id,
     })
-        .select('type amount status splitTransactionId transferPairId createdAt date')
+        .select('type amount status splitTransactionId transferPairId transferRole createdAt date')
         .lean()
 
     const pairIds = transactions
-        .filter((transaction) => transaction.type === 'transfer' && transaction.transferPairId)
+        .filter(
+            (transaction) =>
+                transaction.type === 'transfer' &&
+                transaction.transferPairId &&
+                !transaction.transferRole
+        )
         .map((transaction) => transaction.transferPairId!)
 
     const pairs = pairIds.length
         ? await Transaction.find({ ...scope, _id: { $in: pairIds } })
-              .select('createdAt')
+              .select('createdAt transferRole')
               .lean()
         : []
-    const pairCreatedAtById = new Map(pairs.map((pair) => [pair._id.toString(), pair.createdAt]))
+    const pairStampById = new Map(pairs.map((pair) => [pair._id.toString(), pair]))
 
     const isMinor = account.balanceUnit === 'minor'
     const openingBalanceMajor = isMinor
@@ -180,13 +185,22 @@ export const recomputeAccountBalanceMajor = async (
             let effectiveType = transaction.type
 
             if (transaction.type === 'transfer' && transaction.transferPairId) {
-                const pairCreatedAt = pairCreatedAtById.get(transaction.transferPairId.toString())
+                const pair = pairStampById.get(transaction.transferPairId.toString())
                 const isInbound =
-                    pairCreatedAt !== undefined &&
-                    isInboundTransferLeg(
-                        { id: transaction._id.toString(), createdAt: transaction.createdAt },
-                        { id: transaction.transferPairId.toString(), createdAt: pairCreatedAt }
-                    )
+                    transaction.transferRole != null || pair !== undefined
+                        ? isInboundTransferLeg(
+                              {
+                                  id: transaction._id.toString(),
+                                  createdAt: transaction.createdAt,
+                                  transferRole: transaction.transferRole,
+                              },
+                              {
+                                  id: transaction.transferPairId.toString(),
+                                  createdAt: pair?.createdAt ?? transaction.createdAt,
+                                  transferRole: pair?.transferRole,
+                              }
+                          )
+                        : false
                 effectiveType = isInbound ? 'income' : 'transfer'
             }
 

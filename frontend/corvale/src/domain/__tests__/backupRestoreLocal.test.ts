@@ -341,6 +341,41 @@ describe('restoreLocalBackup - transfer direction after restore (BUG-67)', () =>
     const accounts = await accountsRepo.list(db)
     expect(accounts.find((a) => a.name === 'Savings')?.currentBalance).toBeCloseTo(600, 2)
   })
+
+  it('stores a role on each restored leg: outbound on the debited account, inbound on the credited one', async () => {
+    const db = await seedTarget()
+
+    await restore(db, ledgerPayload())
+
+    const accounts = await accountsRepo.list(db)
+    const checking = accounts.find((a) => a.name === 'Checking')
+    const savings = accounts.find((a) => a.name === 'Savings')
+    const legs = (await transactionsRepo.list(db)).filter((t) => t.type === 'transfer')
+    expect(legs.find((t) => t.transferRole === 'out')?.accountId).toBe(checking?._id)
+    expect(legs.find((t) => t.transferRole === 'in')?.accountId).toBe(savings?._id)
+  })
+
+  it("takes the file's own roles over creation order", async () => {
+    const db = await seedTarget()
+    const payload = ledgerPayload()
+    payload.transactions = payload.transactions.map((record) =>
+      record.type === 'transfer'
+        ? {
+            ...record,
+            transferRole: record.id === 't-out' ? 'out' : 'in',
+            createdAt: record.id === 't-out' ? '2026-03-01T00:00:00.000Z' : '2026-01-01T00:00:00.000Z',
+          }
+        : record
+    )
+
+    await restore(db, payload)
+
+    const accounts = await accountsRepo.list(db)
+    const checking = accounts.find((a) => a.name === 'Checking')
+    const legs = (await transactionsRepo.list(db)).filter((t) => t.type === 'transfer')
+    expect(legs.find((t) => t.transferRole === 'out')?.accountId).toBe(checking?._id)
+    expect(accounts.find((a) => a.name === 'Savings')?.currentBalance).toBeCloseTo(600, 2)
+  })
 })
 
 describe('restoreLocalBackup - account balances (BUG-63)', () => {

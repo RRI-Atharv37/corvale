@@ -19,7 +19,7 @@ import {
     type TransactionSortOrder,
 } from '@domain/transactionSearch'
 import { applyLocalCategorizationRules } from '@domain/categorizationRules'
-import { buildPairCreatedAtById, getTransferDirection, recomputeLocalAccountBalance } from '@domain/accountBalances'
+import { buildTransferPairStamps, getTransferDirection, recomputeLocalAccountBalance } from '@domain/accountBalances'
 import { createLocalTransfer } from '@domain/transfers'
 import { createLocalSplitExpense } from '@domain/splits'
 import { unwrapApiData } from '@lib/apiHelpers'
@@ -252,12 +252,12 @@ export const useTransactionsData = (params: UseTransactionsDataParams): UseTrans
 
             const accounts = await accountsRepo.list(db)
             const currencyByAccountId = new Map(accounts.map((account) => [account._id, account.currency]))
-            const pairCreatedAtById = buildPairCreatedAtById(scoped)
+            const pairStamps = buildTransferPairStamps(scoped)
 
             return scoped.map((tx) => ({
                 ...tx,
                 currency: currencyByAccountId.get(tx.accountId) ?? 'USD',
-                transferDirection: getTransferDirection(tx, pairCreatedAtById),
+                transferDirection: getTransferDirection(tx, pairStamps),
             }))
         },
         [typeFilter, statusFilter, tagFilter, searchQuery, dateFilterActive, startDate, endDate, sortBy, sortOrder, timezone, activeWorkspaceId]

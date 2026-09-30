@@ -74,6 +74,8 @@ describe('domain/transfers: createLocalTransfer', () => {
     expect(inbound?.type).toBe('transfer')
     expect(outbound?.transferPairId).toBe(result.inboundId)
     expect(inbound?.transferPairId).toBe(result.outboundId)
+    expect(outbound?.transferRole).toBe('out')
+    expect(inbound?.transferRole).toBe('in')
     expect(outbound?.accountId).toBe(fromId)
     expect(inbound?.accountId).toBe(toId)
     expect(outbound?.amount).toBe(20000)
