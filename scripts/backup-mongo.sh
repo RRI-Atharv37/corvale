@@ -16,35 +16,59 @@
 #   4. Set a 30-day delete lifecycle rule on the bucket (see the Retention section of
 #      docs/developers/guides/backup-restore-runbook.md) - this script does not prune the bucket.
 #
+# The erasure ledger (collection `erasureledgers`: keyed hashes of deleted accounts, see the Erasure
+# ledger section of the runbook) is also written to its own small archive on every run, so a restore
+# can re-erase accounts deleted since the dump. `--ledger-only` dumps just that archive; run it from
+# cron hourly (`0 * * * * .../backup-mongo.sh --ledger-only`) to shrink the gap after a total loss.
+#
+# Dumps are plaintext financial data: this script creates everything owner-only (umask 077) and never
+# puts the Mongo password on a command line (mongodump reads it from a config file on stdin).
+#
 # Receipt files (the uploads-data volume) are NOT covered here. Use a host/disk
 # snapshot, or set RECEIPT_STORAGE_DRIVER=s3 and back up that bucket.
 #
 # Restore procedure: docs/developers/guides/backup-restore-runbook.md
 
 set -euo pipefail
+umask 077
 
 BUCKET="gs://REPLACE_WITH_YOUR_BUCKET"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${BACKUP_OUT_DIR:-$HOME/backups}"
 RETAIN_DAYS="${BACKUP_RETAIN_DAYS:-7}"
+LEDGER_ONLY=false
+[ "${1:-}" = "--ledger-only" ] && LEDGER_ONLY=true
 
 mkdir -p "$OUT_DIR"
+chmod 700 "$OUT_DIR"
 cd "$PROJECT_DIR"
 
 MU=$(grep -E '^MONGO_ROOT_USERNAME=' .env | cut -d= -f2-)
 MP=$(grep -E '^MONGO_ROOT_PASSWORD=' .env | cut -d= -f2-)
 : "${MU:?MONGO_ROOT_USERNAME not found in .env}"
 : "${MP:?MONGO_ROOT_PASSWORD not found in .env}"
+MP_YAML=$(printf '%s' "$MP" | sed "s/'/''/g")
+unset MP
+
+dump() {
+  printf "password: '%s'
+" "$MP_YAML" | docker compose exec -T mongo mongodump --config=/dev/stdin --username "$MU" --authenticationDatabase admin --db corvale --archive --gzip "$@"
+}
 
 TS=$(date +%Y%m%d-%H%M%S)
-FILE="$OUT_DIR/corvale-$TS.archive.gz"
 
-docker compose exec -T mongo mongodump \
-  --username "$MU" --password "$MP" --authenticationDatabase admin \
-  --db corvale --archive --gzip > "$FILE"
+LEDGER_FILE="$OUT_DIR/corvale-erasure-ledger-$TS.archive.gz"
+dump --collection erasureledgers > "$LEDGER_FILE"
+chmod 600 "$LEDGER_FILE"
+gcloud storage cp "$LEDGER_FILE" "$BUCKET/corvale-erasure-ledger-$TS.archive.gz" --quiet
 
-gcloud storage cp "$FILE" "$BUCKET/corvale-$TS.archive.gz" --quiet
+if [ "$LEDGER_ONLY" = false ]; then
+  FILE="$OUT_DIR/corvale-$TS.archive.gz"
+  dump > "$FILE"
+  chmod 600 "$FILE"
+  gcloud storage cp "$FILE" "$BUCKET/corvale-$TS.archive.gz" --quiet
+fi
 
 find "$OUT_DIR" -name 'corvale-*.archive.gz' -mtime "+$RETAIN_DAYS" -delete
 
-echo "backup ok: $FILE ($(du -h "$FILE" | cut -f1))"
+echo "backup ok: ${FILE:-$LEDGER_FILE} ($(du -h "${FILE:-$LEDGER_FILE}" | cut -f1))"

@@ -6,6 +6,7 @@ import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import {
     createBackupZipStream,
+    exportAccountExtras,
     exportUserBackup,
     extractBackupFromUpload,
     parseBackupPayload,
@@ -52,6 +53,16 @@ export const exportBackup = asyncHandler(async (req: AuthRequest, res: Response)
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.status(200).send(JSON.stringify(payload, null, 2))
+})
+
+export const exportBackupExtras = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = getUserId(req)
+    const workspaceId = await resolveExportScope(
+        userId,
+        typeof req.query.workspaceId === 'string' ? req.query.workspaceId : undefined
+    )
+
+    handleResponses(res, 200, await exportAccountExtras(userId, workspaceId))
 })
 
 export const previewRestore = asyncHandler(async (req: AuthRequest, res: Response) => {

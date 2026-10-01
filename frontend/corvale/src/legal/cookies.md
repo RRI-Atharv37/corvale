@@ -159,6 +159,7 @@ table above is the part that describes what is actually stored and why.
 | --- | --- |
 | `corvale_active_workspace_id` | Current workspace |
 | `corvale_cached_user` | Cached name and preferences |
+| `corvale_device_id` | Random id for this install, used to count your signed-in devices |
 | `corvale_offline_grant` | Signed offline permission slip |
 | `corvale_pin_salt`, `corvale_pin_verifier` | PIN verifier and salt |
 | `corvale_pin_attempts` | Failed PIN attempt count |
@@ -169,6 +170,6 @@ table above is the part that describes what is actually stored and why.
 ## Changes and contact
 
 If this page changes materially we will update the version at the top and ask you to review it
-next time you sign in.
+next time you sign in, the same way as for the Terms of Service and the Privacy Policy.
 
 Questions: privacy@corvale.app. See also the [Privacy Policy](./privacy.md).

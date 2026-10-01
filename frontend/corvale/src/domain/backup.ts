@@ -17,7 +17,9 @@ import type {
   LocalTransaction,
   LocalTransactionTemplate,
 } from './types'
-import type { BackupEntityCounts, BackupRestorePreview, BackupRestoreResult } from '@lib/types/api'
+import type { AccountExtras, BackupEntityCounts, BackupRestorePreview, BackupRestoreResult } from '@lib/types/api'
+
+export type { AccountExtras }
 
 /**
  * Local (SQLite) port of `backend/utils/backupUtils.ts` for Sprint 13.10 - generates the exact same
@@ -41,7 +43,21 @@ export interface LocalBackupScope {
   workspaceId: string | null
 }
 
-export interface CorvaleBackupPayload {
+export const ACCOUNT_EXTRA_SECTIONS = [
+  'reconciliationSessions',
+  'savedReports',
+  'savers',
+  'rollovers',
+  'profile',
+  'devices',
+  'workspaceMemberships',
+] as const satisfies readonly (keyof AccountExtras)[]
+
+const EXTRA_ARRAY_SECTIONS = ACCOUNT_EXTRA_SECTIONS.filter((key) => key !== 'profile')
+
+export interface CorvaleBackupPayload extends Partial<AccountExtras> {
+  /** Account-level sections this export could not include (offline); present only when some were left out. */
+  omittedSections?: string[]
   version: typeof BACKUP_VERSION
   exportedAt: string
   scope: LocalBackupScope
@@ -229,6 +245,26 @@ export const exportLocalBackup = async (db: LocalDb, scope: LocalBackupScope): P
   return payload
 }
 
+/**
+ * SEC-93: the local database holds none of the account-level data, so the desktop export fetches it
+ * from the server. Offline it still exports everything it has and lists what it left out.
+ */
+export const exportLocalBackupWithExtras = async (
+  db: LocalDb,
+  scope: LocalBackupScope,
+  fetchExtras: (workspaceId: string | null) => Promise<AccountExtras>
+): Promise<CorvaleBackupPayload> => {
+  const payload = await exportLocalBackup(db, scope)
+  try {
+    return { ...payload, ...(await fetchExtras(scope.workspaceId)) }
+  } catch {
+    return { ...payload, omittedSections: [...ACCOUNT_EXTRA_SECTIONS] }
+  }
+}
+
+const hasAccountExtras = (backup: CorvaleBackupPayload): boolean =>
+  EXTRA_ARRAY_SECTIONS.some((key) => (backup[key]?.length ?? 0) > 0) || backup.profile != null
+
 const REQUIRED_ARRAYS = [
   'accounts',
   'categories',
@@ -267,6 +303,17 @@ export const parseLocalBackupPayload = (raw: unknown): CorvaleBackupPayload => {
     }
   }
 
+  for (const key of EXTRA_ARRAY_SECTIONS) {
+    const section = backup[key]
+    if (section === undefined) continue
+    if (!Array.isArray(section) || section.length > LOCAL_BACKUP_MAX_RECORDS_PER_COLLECTION) {
+      throw new Error('Backup file is not a valid Corvale backup')
+    }
+  }
+  if (backup.profile !== undefined && backup.profile !== null && (typeof backup.profile !== 'object' || Array.isArray(backup.profile))) {
+    throw new Error('Backup file is not a valid Corvale backup')
+  }
+
   return backup as CorvaleBackupPayload
 }
 
@@ -301,6 +348,12 @@ export const previewLocalRestore = (
   if (backup.receipts.length > 0) {
     warnings.push(
       'Receipt metadata is included, but receipt files are not restored by the local backup - restore this file on the server, or via a ZIP export, to bring receipts back.'
+    )
+  }
+
+  if (hasAccountExtras(backup)) {
+    warnings.push(
+      'This file also contains reconciliation sessions, saved reports, saver history, your profile, devices and workspace memberships. They are kept in the file for your records and are not restored.'
     )
   }
 

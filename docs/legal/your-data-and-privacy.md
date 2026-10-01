@@ -30,7 +30,9 @@ the date you accepted the current Terms and Privacy Policy.
 Use **Backup and restore** in Settings.
 
 - **JSON** - every record: transactions, accounts, categories, tags, budgets, savings goals,
-  recurring rules, templates, reconciliation sessions, and saver history.
+  recurring rules, templates, reconciliation sessions, saved reports, saver and rollover history,
+  your profile and preferences, the devices you sync from, and your workspace memberships. The desktop
+  app adds the last six from our servers, and tells you if it was offline and had to leave them out.
 - **ZIP** - the same JSON plus every receipt file you have uploaded.
 
 **Export is never restricted.** Not when your account is inactive, not in any billing state, not

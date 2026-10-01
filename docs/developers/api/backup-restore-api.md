@@ -13,7 +13,13 @@ Query params: `format` (`json` default, or `zip`), `workspaceId` (optional; requ
 - `json` - a single pretty-printed JSON file. Includes accounts, categories, tags, budgets, savings goals and their contributions, recurring rules, categorization rules, transaction templates, transactions, and receipt **metadata** (not the files).
 - `zip` - the same JSON payload plus the actual receipt files, streamed as an archive built with `archiver`.
 
+Alongside those sections the payload carries the account-level data: `reconciliationSessions`, `savedReports`, `savers` (current saver amounts), `rollovers` (month-end rollover history), `profile` (name, email and preferences, never credentials or token state), `devices` and `workspaceMemberships`. Reconciliation sessions and saved reports follow the export scope. The other four belong to you rather than to a workspace, so a workspace export leaves them empty (`profile` is `null`). A restore never writes these sections back; it ignores them and the preview says so. A file exported before they existed restores as before.
+
 Every document is serialized with `_id` renamed to `id` (string), `__v` and `userId` stripped, and dates/ObjectIds converted to strings.
+
+## GET /backup/extras
+
+Query params: `workspaceId` (optional; requires editor access). Returns the account-level sections described above on their own, as `{ success, data }`. The desktop app calls it to add them to an export built from its local database, which does not hold them. When it cannot reach the server it still exports everything it has and lists the sections it left out in an `omittedSections` field.
 
 ## POST /backup/preview
 

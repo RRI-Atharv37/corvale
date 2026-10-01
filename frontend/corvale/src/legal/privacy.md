@@ -382,7 +382,11 @@ and you can export everything and delete your account at any time.
   and then deleted.
 - **Our backups:** kept for 30 days, then deleted, and stored in the United States alongside the
   live database. A deleted account disappears from the live database immediately, but a backup
-  copy can persist for that long. We do not restore an individual account from a backup.
+  copy can persist for that long. We do not restore an individual account from a backup. If we
+  ever have to restore the whole database from a backup, we delete again every account you had
+  already deleted, using a short record of erased accounts: a keyed hash of the account id and the
+  date of erasure, kept for the same 30 days and then removed. It cannot be turned back into a name,
+  an email address or any of your records.
 
 ## How we protect it
 
@@ -416,7 +420,10 @@ report a vulnerability are published in the repository's `SECURITY.md`.
 You can:
 
 - **Get a copy of your data.** Settings → Backup and Restore exports everything as JSON, or as a
-  ZIP including your receipts. **Export is never restricted, in any circumstances.**
+  ZIP including your receipts. The desktop app adds the parts of your account that live only on our
+  servers (reconciliation sessions, saved reports, saver history, profile, devices and workspace
+  memberships); if it cannot reach us it tells you which it left out, and exporting again online
+  includes them. **Export is never restricted, in any circumstances.**
 - **Correct your data.** Everything in Corvale is editable in the app.
 - **Delete your data.** Settings → Delete Account erases your account and every private record
   attached to it, including all receipt files, from the live service. This is a real deletion, not

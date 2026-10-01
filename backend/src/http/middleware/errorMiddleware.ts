@@ -16,6 +16,9 @@ export const errorHandler = (
     // returns the standard error shape and never reaches Sentry as a false incident. The
     // shared lookup helpers pre-validate now; this is the backstop for every other call site.
     const isCastError = !isCustomError && (err as { name?: string }).name === 'CastError'
+    // SEC-96: a Mongoose ValidationError is the same kind of fault - bad client input - and its
+    // message quotes the rejected value, so it is answered generically and never reported.
+    const isValidationError = !isCustomError && (err as { name?: string }).name === 'ValidationError'
     // body-parser and other middleware (e.g. PayloadTooLargeError) throw plain
     // Errors carrying a real HTTP status via .statusCode/.status rather than a
     // CustomError; relay it instead of collapsing every non-CustomError to 500.
@@ -23,7 +26,7 @@ export const errorHandler = (
         (err as { statusCode?: unknown; status?: unknown }).status
     const statusCode = isCustomError
         ? err.statusCode
-        : isCastError
+        : isCastError || isValidationError
           ? 400
           : typeof externalStatus === 'number' && externalStatus >= 400 && externalStatus < 600
             ? externalStatus
@@ -32,13 +35,15 @@ export const errorHandler = (
         ? err.message
         : isCastError
           ? ERROR_MESSAGES.GENERAL.INVALID_IDENTIFIER
-          : 'Internal Server Error'
+          : isValidationError
+            ? ERROR_MESSAGES.GENERAL.INVALID_INPUT
+            : 'Internal Server Error'
 
     logger.error(message, {
         statusCode,
         path: req.path,
         method: req.method,
-        stack: isCustomError || isCastError ? undefined : err.stack,
+        stack: isCustomError || isCastError || isValidationError ? undefined : err.stack,
     })
 
     // Only 5xx (unexpected/server-side) failures go to error tracking -- 4xx CustomErrors
@@ -51,6 +56,6 @@ export const errorHandler = (
         success: false,
         statusCode,
         message,
-        stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+        stack: process.env.NODE_ENV === 'production' || isValidationError ? null : err.stack,
     })
 }

@@ -68,7 +68,8 @@ Before touching anything, spend two minutes establishing the shape of the proble
    faster and safer than forward-fixing under pressure.
 2. **Restore from backup** per the [Backup & Restore Runbook](./backup-restore-runbook.md) if
    data is actually corrupted or lost, restoring into a scratch database first per that runbook's
-   own procedure.
+   own procedure. Save the live erasure ledger first and replay it afterwards, so accounts users
+   deleted since the backup are not reinstated (see that runbook's *Erasure ledger* section).
 3. Only once the bleeding has stopped, investigate root cause with the pressure off.
 
 **Sev-2** - fix on the next reasonable work session; no need to interrupt anything else, but

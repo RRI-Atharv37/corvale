@@ -1,6 +1,6 @@
 import axiosInstance from '@lib/axiosInstance'
 import { API_PATHS, BASE_URL } from '@lib/apiPaths'
-import type { ApiResponse, BackupRestorePreview, BackupRestoreResult } from '@lib/types/api'
+import type { AccountExtras, ApiResponse, BackupRestorePreview, BackupRestoreResult } from '@lib/types/api'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { saveExportedFile } from '@platform/desktop/downloadExport'
 
@@ -36,6 +36,14 @@ export const exportBackup = async (
 
     const filename = `corvale-backup.${format === 'zip' ? 'zip' : 'json'}`
     await saveExportedFile(blobData, filename)
+}
+
+/** The account-level sections the local database does not hold (SEC-93); the desktop export merges them in. */
+export const fetchBackupExtras = async (workspaceId: string | null): Promise<AccountExtras> => {
+    const response = await axiosInstance.get<ApiResponse<AccountExtras>>(API_PATHS.BACKUP.EXTRAS, {
+        params: workspaceId ? { workspaceId } : undefined,
+    })
+    return unwrapApiData(response)
 }
 
 export const previewBackupRestore = async (

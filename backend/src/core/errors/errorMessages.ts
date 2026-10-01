@@ -44,6 +44,7 @@ export const ERROR_MESSAGES = {
         ROUTE_NOT_FOUND: 'Route not found',
         UNSAFE_REQUEST_BODY: 'Request body contains invalid characters',
         INVALID_IDENTIFIER: 'Malformed identifier in request',
+        INVALID_INPUT: 'One or more fields in the request are invalid',
     },
     INCOME: {
         FILL_ALL_FIELDS: 'Please fill in all fields',

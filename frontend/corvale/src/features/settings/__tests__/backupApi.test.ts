@@ -9,7 +9,7 @@ vi.mock('@platform/desktop/downloadExport', async () => {
   return { ...actual, saveExportedFile: (...a: unknown[]) => saveExportedFileMock(...a) }
 })
 
-const { exportBackup } = await import('../backupApi')
+const { exportBackup, fetchBackupExtras } = await import('../backupApi')
 
 describe('exportBackup (BUG-26: desktop-aware save)', () => {
   beforeEach(() => {
@@ -34,5 +34,32 @@ describe('exportBackup (BUG-26: desktop-aware save)', () => {
 
     expect(getMock.mock.calls[0][1]).toMatchObject({ params: { format: 'zip', workspaceId: 'ws-1' } })
     expect(saveExportedFileMock).toHaveBeenCalledWith(blob, 'corvale-backup.zip')
+  })
+})
+
+describe('fetchBackupExtras (SEC-93: desktop export)', () => {
+  beforeEach(() => getMock.mockReset())
+
+  it('reads the account-level sections for the personal scope', async () => {
+    const extras = { reconciliationSessions: [], profile: { email: 'a@example.com' } }
+    getMock.mockResolvedValueOnce({ success: true, data: extras })
+
+    await expect(fetchBackupExtras(null)).resolves.toEqual(extras)
+    expect(getMock.mock.calls[0][0]).toBe('/backup/extras')
+    expect(getMock.mock.calls[0][1]?.params ?? {}).not.toHaveProperty('workspaceId')
+  })
+
+  it('forwards the workspace scope', async () => {
+    getMock.mockResolvedValueOnce({ success: true, data: {} })
+
+    await fetchBackupExtras('ws-1')
+
+    expect(getMock.mock.calls[0][1]).toMatchObject({ params: { workspaceId: 'ws-1' } })
+  })
+
+  it('lets a network failure propagate so the export can report what it left out', async () => {
+    getMock.mockRejectedValueOnce(new Error('Network Error'))
+
+    await expect(fetchBackupExtras(null)).rejects.toThrow('Network Error')
   })
 })

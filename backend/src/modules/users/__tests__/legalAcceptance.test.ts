@@ -4,7 +4,12 @@ import app from '@http/app'
 import { User } from '@modules/users'
 import { authHeader, registerUser } from '@tests/helpers'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
-import { PRIVACY_VERSION, TERMS_VERSION } from "@modules/users/legalVersions";
+import {
+    COOKIES_VERSION,
+    PRIVACY_VERSION,
+    TERMS_VERSION,
+    isLegalAcceptanceCurrent,
+} from '@modules/users/legalVersions'
 
 /**
  * Acceptance spec for the consent record and 18+ attestation (M0c / M0c2).
@@ -54,6 +59,7 @@ describe('Legal acceptance at signup', () => {
         expect(user?.legalAcceptance?.ageAttested).toBe(true)
         expect(user?.legalAcceptance?.termsVersion).toBe(TERMS_VERSION)
         expect(user?.legalAcceptance?.privacyVersion).toBe(PRIVACY_VERSION)
+        expect(user?.legalAcceptance?.cookiesVersion).toBe(COOKIES_VERSION)
         expect(user?.legalAcceptance?.acceptedAt).toBeInstanceOf(Date)
     })
 
@@ -111,6 +117,7 @@ describe('Legal acceptance status and re-consent', () => {
         expect(res.body.data.legalVersions).toEqual({
             termsVersion: TERMS_VERSION,
             privacyVersion: PRIVACY_VERSION,
+            cookiesVersion: COOKIES_VERSION,
         })
         expect(res.body.data.legalAcceptance.termsVersion).toBe(TERMS_VERSION)
     })
@@ -162,5 +169,45 @@ describe('Legal acceptance status and re-consent', () => {
     it('requires authentication', async () => {
         const res = await request(app).post('/api/v1/auth/legal/accept').send({})
         expect(res.status).toBe(401)
+    })
+})
+
+describe('Cookie Policy version pin (SEC-93, S58)', () => {
+    const current = {
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
+        cookiesVersion: COOKIES_VERSION,
+    }
+
+    it('treats an acceptance of the current versions as current', () => {
+        expect(isLegalAcceptanceCurrent(current)).toBe(true)
+    })
+
+    it('treats a stale Cookie Policy version as out of date even when Terms and Privacy match', () => {
+        expect(isLegalAcceptanceCurrent({ ...current, cookiesVersion: '2020-01-01' })).toBe(false)
+    })
+
+    it('treats an acceptance recorded before the Cookie Policy was pinned as out of date', () => {
+        expect(isLegalAcceptanceCurrent({ termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_VERSION })).toBe(false)
+    })
+
+    it('re-stamps the Cookie Policy version when the user accepts again', async () => {
+        const { token, userId } = await registerUser(app)
+        await User.findByIdAndUpdate(userId, { 'legalAcceptance.cookiesVersion': 'stale-version' })
+
+        const res = await request(app).post('/api/v1/auth/legal/accept').set(authHeader(token)).send({})
+
+        expect(res.status).toBe(200)
+        expect((await User.findById(userId))?.legalAcceptance?.cookiesVersion).toBe(COOKIES_VERSION)
+    })
+
+    it('still lets an account with a pre-pin acceptance record save other changes', async () => {
+        const { userId } = await registerUser(app)
+        await User.updateOne({ _id: userId }, { $unset: { 'legalAcceptance.cookiesVersion': 1 } })
+
+        const user = await User.findById(userId)
+        user!.fullName = 'Renamed'
+
+        await expect(user!.save()).resolves.toBeTruthy()
     })
 })

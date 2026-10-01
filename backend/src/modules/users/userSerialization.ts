@@ -1,6 +1,6 @@
 import type { EntitlementSnapshot } from '@core/billing/entitlementSnapshot'
 import type { IUser, LegalAcceptance } from './user.model'
-import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from './legalVersions'
+import { COOKIES_VERSION, CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from './legalVersions'
 
 export const toPublicUser = (user: IUser, entitlements: EntitlementSnapshot) => ({
     _id: user._id,
@@ -29,6 +29,7 @@ export const toPublicUser = (user: IUser, entitlements: EntitlementSnapshot) => 
 export const buildLegalAcceptance = (): LegalAcceptance => ({
     termsVersion: TERMS_VERSION,
     privacyVersion: PRIVACY_VERSION,
+    cookiesVersion: COOKIES_VERSION,
     acceptedAt: new Date(),
     ageAttested: true,
 })

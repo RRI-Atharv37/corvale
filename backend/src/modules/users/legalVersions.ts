@@ -32,17 +32,25 @@ export const TERMS_VERSION = '2026-09-28'
 // reflect that promoted columns (amounts, dates, names) stay plaintext on the device by design.
 // The Cookie Policy is part of the privacy disclosures, so the bump rides PRIVACY_VERSION and
 // fires LegalGate re-consent.
+// 2026-10-01 (S58 / SEC-94): privacy.md now discloses the erasure record kept for the backup
+// window. Still unreleased, so it rides the 2026-09-29 first-release re-consent rather than a bump.
 export const PRIVACY_VERSION = '2026-09-29'
+// SEC-93: cookies.md promises a review prompt when it changes materially, which `PRIVACY_VERSION`
+// alone cannot deliver for a cookie-only change. Bump this - not just the document date - when the
+// Cookie Policy changes in a way a reasonable user would want to re-read.
+export const COOKIES_VERSION = '2026-09-29'
 
 /** Shipped on every user payload so the client can compare without a second round trip. */
 export const CURRENT_LEGAL_VERSIONS = {
     termsVersion: TERMS_VERSION,
     privacyVersion: PRIVACY_VERSION,
+    cookiesVersion: COOKIES_VERSION,
 } as const
 
 export interface LegalAcceptanceRecord {
     termsVersion: string
     privacyVersion: string
+    cookiesVersion?: string
     acceptedAt: Date
     ageAttested: boolean
 }
@@ -53,8 +61,9 @@ export interface LegalAcceptanceRecord {
  * users get prompted exactly once without a migration script.
  */
 export const isLegalAcceptanceCurrent = (
-    acceptance?: Pick<LegalAcceptanceRecord, 'termsVersion' | 'privacyVersion'> | null
+    acceptance?: Pick<LegalAcceptanceRecord, 'termsVersion' | 'privacyVersion' | 'cookiesVersion'> | null
 ): boolean =>
     !!acceptance &&
     acceptance.termsVersion === TERMS_VERSION &&
-    acceptance.privacyVersion === PRIVACY_VERSION
+    acceptance.privacyVersion === PRIVACY_VERSION &&
+    acceptance.cookiesVersion === COOKIES_VERSION

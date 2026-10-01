@@ -20,6 +20,16 @@ const REPO_ROOT = path.join(__dirname, '..', '..', '..')
 const read = (p: string) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const CI = read(path.join(REPO_ROOT, '.github', 'workflows', 'ci.yml'))
 const RELEASE = read(path.join(REPO_ROOT, '.github', 'workflows', 'release.yml'))
+const DEPENDABOT = read(path.join(REPO_ROOT, '.github', 'dependabot.yml'))
+
+/** The text of one top-level job in a workflow, from its `  name:` key to the next job. */
+function jobBlock(workflow: string, job: string): string {
+    const start = workflow.search(new RegExp(`^  ${job}:\\s*$`, 'm'))
+    if (start === -1) return ''
+    const rest = workflow.slice(start + 1)
+    const next = rest.search(/^ {2}[A-Za-z0-9_-]+:\s*$/m)
+    return next === -1 ? rest : rest.slice(0, next)
+}
 
 /** Every `uses:` reference in a workflow file, with the ref after the last `@`. */
 function usesRefs(workflow: string): { uses: string; ref: string }[] {
@@ -81,5 +91,39 @@ describe('release.yml - signing job unreachable by forks (SEC-66, S34)', () => {
         const topLevel = RELEASE.slice(0, RELEASE.indexOf('jobs:'))
         const block = /permissions:\s*\n((?:\s+\S.*\n)+)/.exec(topLevel)?.[1] ?? ''
         expect(block).toMatch(/contents:\s*read/)
+    })
+})
+
+describe('ci.yml - the admin app and the payment page are covered (SEC-92, S58)', () => {
+    const admin = jobBlock(CI, 'admin')
+    const pay = jobBlock(CI, 'pay')
+
+    it('has an admin job that installs, audits, lints, type-checks, tests and builds frontend/admin', () => {
+        expect(admin).not.toBe('')
+        expect(admin).toMatch(/working-directory:\s*frontend\/admin/)
+        expect(admin).toMatch(/cache-dependency-path:\s*frontend\/admin\/package-lock\.json/)
+        expect(admin).toMatch(/run:\s*npm ci/)
+        expect(admin).toMatch(/run:\s*npm audit --audit-level=high/)
+        expect(admin).toMatch(/run:\s*npm run lint/)
+        expect(admin).toMatch(/run:\s*npm run typecheck/)
+        expect(admin).toMatch(/run:\s*npm test/)
+        expect(admin).toMatch(/run:\s*npm run build/)
+    })
+
+    it('has a pay job that runs the frontend/pay test suite', () => {
+        expect(pay).not.toBe('')
+        expect(pay).toMatch(/working-directory:\s*frontend\/pay/)
+        expect(pay).toMatch(/run:\s*npm test/)
+    })
+
+    it('checks out and sets up Node with the shared NODE_VERSION in both jobs', () => {
+        for (const job of [admin, pay]) {
+            expect(job).toMatch(/actions\/checkout@/)
+            expect(job).toMatch(/node-version:\s*\$\{\{\s*env\.NODE_VERSION\s*\}\}/)
+        }
+    })
+
+    it('has Dependabot watching the admin app', () => {
+        expect(DEPENDABOT).toMatch(/package-ecosystem:\s*npm\s+directory:\s*\/frontend\/admin/)
     })
 })

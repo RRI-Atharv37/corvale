@@ -49,6 +49,7 @@ import {
 import {
     BACKUP_MAX_ZIP_BYTES,
     BACKUP_VERSION,
+    BACKUP_EXTRA_ARRAY_SECTIONS,
     buildCounts,
     emptyCounts,
     type BackupEntityCounts,
@@ -128,8 +129,26 @@ export const parseBackupPayload = (raw: unknown): CorvaleBackupPayload => {
         validateReceiptRecord(receipt)
     }
 
+    // SEC-93: the account-level sections are never written back, so they are only shape-checked.
+    for (const key of BACKUP_EXTRA_ARRAY_SECTIONS) {
+        const section = backup[key]
+        if (section === undefined) continue
+        if (!Array.isArray(section) || section.some((record) => !isPlainRecord(record))) {
+            throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+        }
+        if (section.length > maxRecordsPerCollection) {
+            throw new CustomError(ERROR_MESSAGES.BACKUP.TOO_MANY_RECORDS, 400)
+        }
+    }
+    if (backup.profile !== undefined && backup.profile !== null && !isPlainRecord(backup.profile)) {
+        throw new CustomError(ERROR_MESSAGES.BACKUP.INVALID_FORMAT, 400)
+    }
+
     return backup as CorvaleBackupPayload
 }
+
+const hasAccountExtras = (backup: CorvaleBackupPayload): boolean =>
+    BACKUP_EXTRA_ARRAY_SECTIONS.some((key) => (backup[key]?.length ?? 0) > 0) || backup.profile != null
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -190,6 +209,12 @@ const describeBackup = (
     if (backup.receipts.length > 0) {
         warnings.push(
             'Receipt metadata is included. Binary receipt files are only restored from ZIP backups.'
+        )
+    }
+
+    if (hasAccountExtras(backup)) {
+        warnings.push(
+            'This file also contains reconciliation sessions, saved reports, saver history, your profile, devices and workspace memberships. They are kept in the file for your records and are not restored.'
         )
     }
 

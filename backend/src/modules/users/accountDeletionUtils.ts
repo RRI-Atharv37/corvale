@@ -31,6 +31,7 @@ import { Expense } from '@modules/legacy'
 import { IWorkspace, Workspace } from '@modules/workspaces'
 import { WorkspaceInvite } from '@modules/workspaces'
 import User from './user.model'
+import { recordErasure } from './erasureLedger.service'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { deleteReceiptObject, isObjectStorageConfigured, receiptObjectKey } from '@infra/storage/receiptStorage'
@@ -377,6 +378,9 @@ export const deleteUserAccountCascade = async (userId: string): Promise<void> =>
     await Workspace.updateMany({ 'members.userId': userId }, { $pull: { members: { userId } } })
 
     for (const workspaceId of seatWorkspaceIds) await recomputeWorkspaceSeats(workspaceId)
+
+    // SEC-94: after the data, before the row - a restored backup can be re-erased from this record.
+    await recordErasure(userId)
 
     // SEC-49: hard-delete, not just revoke - no userId-linked rows outlive the account.
     await deleteAllRefreshTokensForUser(userId)

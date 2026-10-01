@@ -23,8 +23,8 @@ import termsMd from './terms.md?raw'
  *
  * All fact placeholders were resolved on 2026-08-29 (launch); no `[[TOKEN]]`s remain. Documents no
  * longer share one date - each carries the date it was last materially changed. `terms.md`,
- * `privacy.md`, `cookies.md` and `refund-policy.md` track `TERMS_VERSION` / `PRIVACY_VERSION` in
- * `backend/src/modules/users/legalVersions.ts` (bumping either forces re-acceptance through
+ * `privacy.md`, `cookies.md` and `refund-policy.md` track `TERMS_VERSION` / `PRIVACY_VERSION` /
+ * `COOKIES_VERSION` in `backend/src/modules/users/legalVersions.ts` (bumping any forces re-acceptance through
  * `LegalGate`); `financial-disclaimer.md` and `contact.md` are dated independently and are not
  * gated by either version. See `PAPERWORK.md` for the pre-publish checklist.
  */

@@ -19,7 +19,30 @@ export interface BackupEntityCounts {
     receipts: number
 }
 
-export interface CorvaleBackupPayload {
+/**
+ * SEC-93: account-level data that the export carries so it really is "everything", but that a restore
+ * does not write back. Optional on the type because a file exported before this existed has none of it.
+ */
+export interface BackupAccountExtras {
+    reconciliationSessions: Record<string, unknown>[]
+    savedReports: Record<string, unknown>[]
+    savers: Record<string, unknown>[]
+    rollovers: Record<string, unknown>[]
+    profile: Record<string, unknown> | null
+    devices: Record<string, unknown>[]
+    workspaceMemberships: Record<string, unknown>[]
+}
+
+export const BACKUP_EXTRA_ARRAY_SECTIONS = [
+    'reconciliationSessions',
+    'savedReports',
+    'savers',
+    'rollovers',
+    'devices',
+    'workspaceMemberships',
+] as const satisfies readonly (keyof BackupAccountExtras)[]
+
+export interface CorvaleBackupPayload extends Partial<BackupAccountExtras> {
     version: typeof BACKUP_VERSION
     exportedAt: string
     scope: BackupScope

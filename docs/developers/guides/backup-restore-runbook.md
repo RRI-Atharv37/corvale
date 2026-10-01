@@ -42,6 +42,12 @@ volume-snapshot equivalent) are a stronger complement, not a replacement - they 
 a different failure mode (need to roll back to an exact point in time) than an off-cluster
 `mongodump` archive (protects against losing the cluster/host entirely).
 
+**The bundled script.** The self-hosting stack ships `scripts/backup-mongo.sh`, which dumps the
+`corvale` database, uploads it to your bucket and writes everything owner-only (`umask 077`). It never
+puts the Mongo password on a command line, where any local user could read it from the process list:
+`mongodump` reads the password from a config file piped on stdin instead. It also writes the
+[erasure ledger](#erasure-ledger) to its own small archive on every run.
+
 **Storage.** A dump is a plaintext, unencrypted export of every user's financial data. Store it
 encrypted at rest (e.g. a private bucket with server-side encryption) and restrict access to
 whoever is actually on call for restores - treat dump access the same as production database
@@ -74,6 +80,47 @@ enforced in two separate places:
 If you ever change the retention window, change it in the bucket policy **and** in the Privacy
 Policy and Terms of Service, so the published number stays true.
 
+## Erasure ledger
+
+A deleted account disappears from the live database immediately, but every backup taken before the
+deletion still contains it. A full restore would bring those accounts back, passwords and records
+included. To stop that, Corvale keeps a short record of erased accounts in the `erasureledgers`
+collection: a keyed hash of each deleted account id (HMAC-SHA256 with `ERASURE_LEDGER_KEY`) and the
+erasure date. It holds nothing that points back to a person, and each row expires after 30 days,
+the same window as the backups.
+
+After any restore, replay the ledger so those accounts are erased again.
+
+1. **Before you restore, if the live database still answers,** save its ledger. This is the only
+   copy that knows about the most recent deletions:
+
+   ```bash
+   mongodump --uri="<live-connection-string>" --db=corvale --collection=erasureledgers --gzip --archive=./erasure-ledger-live.archive.gz
+   ```
+
+2. Restore the dump as described below.
+3. Load the saved ledger into the restored database. `mongorestore` reports rows that already exist as duplicates and skips them, which is expected:
+
+   ```bash
+   mongorestore --uri="<restored-connection-string>" --gzip --archive=./erasure-ledger-live.archive.gz --nsInclude="corvale.erasureledgers"
+   ```
+
+   After a total loss there is no live ledger. Use the newest `corvale-erasure-ledger-*.archive.gz` in
+   the bucket instead. `scripts/backup-mongo.sh --ledger-only` produces that archive on its own, so
+   running it hourly from cron keeps the gap to an hour. A deletion made after the newest archive
+   cannot be replayed from the ledger. Re-erase it from your record of the deletion request.
+4. From `backend/`, with the same `ERASURE_LEDGER_KEY` the application used, preview and then apply
+   the replay:
+
+   ```bash
+   npm run replay:erasures:dry-run
+   npm run replay:erasures
+   ```
+
+`ERASURE_LEDGER_KEY` is part of what a restore needs, like the other secrets. If it is lost or
+changed, the stored hashes no longer match any account and the replay finds nothing. Do not rotate it
+inside the 30-day window.
+
 ## Restoring a backup
 
 Restore into a **scratch database or a fresh scratch deployment first** - never straight into
@@ -101,6 +148,8 @@ Before treating a restore as complete:
   for `users`, `accounts`, `transactions` at minimum).
 - [ ] Start the API against the restored database and confirm `GET /health` and `GET /ready`
   both pass, then log in as a test account and confirm balances render.
+- [ ] Erasures replayed: `npm run replay:erasures:dry-run` reports `matched: 0` afterwards, so no
+  deleted account is live again.
 - [ ] Confirm indexes came back - `mongorestore` recreates them from each collection's
   `.metadata.json`; `db.<collection>.getIndexes()` should match the pre-incident index list.
 

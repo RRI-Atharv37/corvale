@@ -14,6 +14,7 @@ import {
     validateBackupFile,
 } from '../backupApi'
 import { LOCAL_BACKUP_ACCEPT, useLocalBackup, validateLocalBackupFile } from '../hooks/useLocalBackup'
+import { OMITTED_SECTIONS_NOTICE, hasOmittedSections } from '../backupExportNotice'
 
 const countLabels: { key: keyof BackupEntityCounts; label: string }[] = [
     { key: 'accounts', label: 'Accounts' },
@@ -61,14 +62,16 @@ const BackupRestoreSettings: React.FC = () => {
     const handleExport = async (format: 'json' | 'zip') => {
         setExporting(format)
         try {
+            let omitted = false
             if (localFirst) {
                 // ZIP (receipts) has no local equivalent - see `domain/backup.ts`'s header comment;
                 // the ZIP button is hidden in local-first mode so this branch is JSON-only in practice.
-                await localBackup.exportLocal()
+                omitted = hasOmittedSections(await localBackup.exportLocal())
             } else {
                 await exportBackup(format, activeWorkspaceId)
             }
             toast.success(format === 'zip' ? 'ZIP backup downloaded' : 'JSON backup downloaded')
+            if (omitted) toast(OMITTED_SECTIONS_NOTICE, { duration: 10000 })
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to export backup'))
         } finally {

@@ -19,6 +19,15 @@ updates:
           - '*'
 
   - package-ecosystem: npm
+    directory: /frontend/admin
+    schedule:
+      interval: weekly
+    groups:
+      npm-admin:
+        patterns:
+          - '*'
+
+  - package-ecosystem: npm
     directory: /docs
     schedule:
       interval: weekly

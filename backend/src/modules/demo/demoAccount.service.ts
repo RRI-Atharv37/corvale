@@ -56,6 +56,7 @@ const upsertDemoUser = async (now: Date): Promise<IUser> => {
     user.legalAcceptance = {
         termsVersion: CURRENT_LEGAL_VERSIONS.termsVersion,
         privacyVersion: CURRENT_LEGAL_VERSIONS.privacyVersion,
+        cookiesVersion: CURRENT_LEGAL_VERSIONS.cookiesVersion,
         acceptedAt: now,
         ageAttested: true,
     }

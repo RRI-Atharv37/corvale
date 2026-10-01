@@ -14,6 +14,14 @@ export const setErrorTrackingClient = (client: ErrorTrackingClient | null): void
 
 export const isErrorTrackingConfigured = (): boolean => Boolean(process.env.SENTRY_DSN)
 
+// SEC-96: Mongoose messages quote the rejected value (`value "x"`, a backticked enum value, the
+// number in `Path `amount` (-5)`), so a user's input would ride along in the exception message.
+const redactQuotedValues = (message: string): string =>
+    message
+        .replace(/"[^"]*"/g, '"[redacted]"')
+        .replace(/(Path `[^`]+` )\([^)]*\)/g, '$1([redacted])')
+        .replace(/`[^`]*` (is not a valid enum value)/g, '`[redacted]` $1')
+
 /**
  * Reduces a Sentry event to what the Privacy Policy commits to sending: the error message,
  * its stack trace, and the failing request's method and path. Everything else an SDK
@@ -25,6 +33,10 @@ export const isErrorTrackingConfigured = (): boolean => Boolean(process.env.SENT
  * sync with that wording: loosening the scrubber means changing the published promise first.
  */
 export const scrubErrorEvent = (event: ErrorEvent): ErrorEvent => {
+    if (typeof event.message === 'string') event.message = redactQuotedValues(event.message)
+    for (const exception of event.exception?.values ?? []) {
+        if (typeof exception.value === 'string') exception.value = redactQuotedValues(exception.value)
+    }
     delete event.user
     delete event.server_name
     delete event.breadcrumbs

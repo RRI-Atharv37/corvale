@@ -175,6 +175,7 @@ export const API_PATHS = {
     },
     BACKUP: {
         EXPORT: '/backup/export',
+        EXTRAS: '/backup/extras',
         PREVIEW: '/backup/preview',
         RESTORE: '/backup/restore',
     },

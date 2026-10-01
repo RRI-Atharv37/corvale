@@ -1,8 +1,8 @@
 import { isLocalFirstEnabled } from '@lib/localFirstFlag'
-import { exportBackup } from './backupApi'
+import { exportBackup, fetchBackupExtras } from './backupApi'
 import { saveExportedFile } from '@platform/desktop/downloadExport'
 import { getLocalDb } from '@platform/db/localDbInstance'
-import { exportLocalBackup } from '@domain/backup'
+import { exportLocalBackupWithExtras } from '@domain/backup'
 
 /**
  * SEC-48: export the signed-in user's personal data with no active-workspace context.
@@ -12,14 +12,15 @@ import { exportLocalBackup } from '@domain/backup'
  * (workspaceId: null) export is the right scope. Mirrors `BackupRestoreSettings`' JSON export
  * one-for-one otherwise.
  */
-export const exportPersonalBackup = async (): Promise<void> => {
+export const exportPersonalBackup = async (): Promise<{ omittedSections: string[] }> => {
     if (isLocalFirstEnabled()) {
         const db = await getLocalDb()
-        const payload = await exportLocalBackup(db, { workspaceId: null })
+        const payload = await exportLocalBackupWithExtras(db, { workspaceId: null }, fetchBackupExtras)
         const filename = `corvale-backup-personal-${payload.exportedAt.slice(0, 10)}.json`
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
         await saveExportedFile(blob, filename)
-        return
+        return { omittedSections: payload.omittedSections ?? [] }
     }
     await exportBackup('json')
+    return { omittedSections: [] }
 }

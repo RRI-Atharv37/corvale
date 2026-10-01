@@ -2,13 +2,14 @@ import { useCallback } from 'react'
 import { getLocalDb } from '@platform/db/localDbInstance'
 import {
     LOCAL_BACKUP_MAX_JSON_BYTES,
-    exportLocalBackup,
+    exportLocalBackupWithExtras,
     parseLocalBackupPayload,
     previewLocalRestore,
     restoreLocalBackup,
     type CorvaleBackupPayload,
 } from '@domain/backup'
 import { saveExportedFile } from '@platform/desktop/downloadExport'
+import { fetchBackupExtras } from '../backupApi'
 import { useUser } from '@/app/providers/useUser'
 import { useWorkspace } from '@/app/providers/useWorkspace'
 import type { BackupRestorePreview, BackupRestoreResult } from '@lib/types/api'
@@ -42,7 +43,7 @@ const readFileAsJson = async (file: File): Promise<unknown> => {
 }
 
 export interface UseLocalBackupResult {
-    exportLocal: () => Promise<void>
+    exportLocal: () => Promise<{ omittedSections: string[] }>
     previewLocalRestoreFile: (file: File) => Promise<BackupRestorePreview>
     commitLocalRestoreFile: (file: File) => Promise<BackupRestoreResult>
 }
@@ -58,12 +59,13 @@ export const useLocalBackup = (): UseLocalBackupResult => {
 
     const exportLocal = useCallback(async () => {
         const db = await getLocalDb()
-        const payload = await exportLocalBackup(db, { workspaceId: activeWorkspaceId ?? null })
+        const payload = await exportLocalBackupWithExtras(db, { workspaceId: activeWorkspaceId ?? null }, fetchBackupExtras)
         const scopeLabel = payload.scope.workspaceId ? 'workspace' : 'personal'
         const filename = `corvale-backup-${scopeLabel}-${payload.exportedAt.slice(0, 10)}.json`
         const json = JSON.stringify(payload, null, 2)
         const blob = new Blob([json], { type: 'application/json' })
         await saveExportedFile(blob, filename)
+        return { omittedSections: payload.omittedSections ?? [] }
     }, [activeWorkspaceId])
 
     const parseFile = useCallback(async (file: File): Promise<CorvaleBackupPayload> => {

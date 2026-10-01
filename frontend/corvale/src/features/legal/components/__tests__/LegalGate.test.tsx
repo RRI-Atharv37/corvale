@@ -107,6 +107,35 @@ describe('LegalGate', () => {
         expect(screen.queryByText('Dashboard content')).not.toBeInTheDocument()
     })
 
+    it('blocks an account whose stored Cookie Policy version has gone stale (SEC-93)', () => {
+        const withCookies = { ...CURRENT, cookiesVersion: '2026-09-29' }
+        renderGate({
+            ...baseUser,
+            legalVersions: withCookies,
+            legalAcceptance: { ...accepted, cookiesVersion: '2020-01-01' },
+        })
+
+        expect(screen.queryByText('Dashboard content')).not.toBeInTheDocument()
+        expect(screen.getByRole('link', { name: /cookie policy/i })).toHaveAttribute('href', '/cookies')
+    })
+
+    it('blocks an acceptance recorded before the Cookie Policy was pinned (SEC-93)', () => {
+        renderGate({
+            ...baseUser,
+            legalVersions: { ...CURRENT, cookiesVersion: '2026-09-29' },
+            legalAcceptance: accepted,
+        })
+
+        expect(screen.queryByText('Dashboard content')).not.toBeInTheDocument()
+    })
+
+    it('renders children when all three versions match (SEC-93)', () => {
+        const withCookies = { ...CURRENT, cookiesVersion: '2026-09-29' }
+        renderGate({ ...baseUser, legalVersions: withCookies, legalAcceptance: { ...accepted, cookiesVersion: '2026-09-29' } })
+
+        expect(screen.getByText('Dashboard content')).toBeInTheDocument()
+    })
+
     it('links both documents so they can be read before accepting', () => {
         renderGate(baseUser)
 

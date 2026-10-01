@@ -13,6 +13,7 @@ export type DateFormat = 'dd/mm/yy' | 'yy/mm/dd' | 'mm/dd/yy'
 export interface LegalAcceptance {
     termsVersion: string
     privacyVersion: string
+    cookiesVersion?: string
     acceptedAt: string
     ageAttested: boolean
 }
@@ -20,6 +21,7 @@ export interface LegalAcceptance {
 export interface LegalVersions {
     termsVersion: string
     privacyVersion: string
+    cookiesVersion?: string
 }
 
 export interface NotificationPreferences {
@@ -169,6 +171,17 @@ export interface BackupEntityCounts {
     transactionTemplates: number
     transactions: number
     receipts: number
+}
+
+/** Account-level data the export carries but a restore does not write back (SEC-93). */
+export interface AccountExtras {
+    reconciliationSessions: Record<string, unknown>[]
+    savedReports: Record<string, unknown>[]
+    savers: Record<string, unknown>[]
+    rollovers: Record<string, unknown>[]
+    profile: Record<string, unknown> | null
+    devices: Record<string, unknown>[]
+    workspaceMemberships: Record<string, unknown>[]
 }
 
 export interface BackupRestorePreview {

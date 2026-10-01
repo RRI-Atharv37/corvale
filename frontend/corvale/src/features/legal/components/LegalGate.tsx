@@ -6,13 +6,14 @@ import { API_PATHS } from '@lib/apiPaths'
 import { getApiErrorMessage } from '@lib/apiError'
 import { unwrapApiData } from '@lib/apiHelpers'
 import { exportPersonalBackup } from '@features/settings/personalBackupExport'
+import { OMITTED_SECTIONS_NOTICE, hasOmittedSections } from '@features/settings/backupExportNotice'
 import { useUser } from '@/app/providers/useUser'
 import DeleteAccountSettings from '@features/settings/components/DeleteAccountSettings'
 import type { ApiResponse, User } from '@lib/types/api'
 
 /**
- * Blocks the dashboard until the signed-in user has accepted the current Terms and Privacy
- * Policy (M0c).
+ * Blocks the dashboard until the signed-in user has accepted the current Terms, Privacy
+ * Policy and Cookie Policy (M0c).
  *
  * Two situations reach this gate:
  *
@@ -47,7 +48,8 @@ const LegalGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         !!versions &&
         (!accepted ||
             accepted.termsVersion !== versions.termsVersion ||
-            accepted.privacyVersion !== versions.privacyVersion)
+            accepted.privacyVersion !== versions.privacyVersion ||
+            (!!versions.cookiesVersion && accepted.cookiesVersion !== versions.cookiesVersion))
 
     if (!needsAcceptance) {
         return <>{children}</>
@@ -73,8 +75,9 @@ const LegalGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const handleExport = async () => {
         setIsExporting(true)
         try {
-            await exportPersonalBackup()
+            const result = await exportPersonalBackup()
             toast.success('Your data export has been downloaded.')
+            if (hasOmittedSections(result)) toast(OMITTED_SECTIONS_NOTICE, { duration: 10000 })
         } catch (err) {
             toast.error(getApiErrorMessage(err, 'Could not export your data. Please try again.'))
         } finally {
@@ -102,7 +105,7 @@ const LegalGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <p className="mt-3 text-sm leading-relaxed text-text-secondary">
                     {isFirstTime
                         ? 'Before you carry on, please review and accept the documents covering your use of Corvale. This only happens once.'
-                        : 'Our Terms of Service or Privacy Policy have changed since you last accepted them. Please review the current versions to continue.'}
+                        : 'Our Terms of Service, Privacy Policy or Cookie Policy have changed since you last accepted them. Please review the current versions to continue.'}
                 </p>
 
                 <ul className="mt-5 space-y-2 text-sm">
@@ -120,6 +123,14 @@ const LegalGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             className="text-accent underline underline-offset-2 hover:opacity-80"
                         >
                             Privacy Policy
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to="/cookies"
+                            className="text-accent underline underline-offset-2 hover:opacity-80"
+                        >
+                            Cookie Policy
                         </Link>
                     </li>
                 </ul>

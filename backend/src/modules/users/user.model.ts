@@ -29,6 +29,8 @@ export interface EmailPreferences {
 export interface LegalAcceptance {
     termsVersion: string
     privacyVersion: string
+    /** Absent on acceptances recorded before the Cookie Policy was pinned (SEC-93); those read as stale. */
+    cookiesVersion?: string
     acceptedAt: Date
     ageAttested: boolean
 }
@@ -64,6 +66,7 @@ const legalAcceptanceSchema = new Schema<LegalAcceptance>(
     {
         termsVersion: { type: String, required: true },
         privacyVersion: { type: String, required: true },
+        cookiesVersion: { type: String },
         acceptedAt: { type: Date, required: true },
         ageAttested: { type: Boolean, required: true },
     },
