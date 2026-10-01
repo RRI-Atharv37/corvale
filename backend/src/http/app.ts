@@ -12,13 +12,8 @@ import { buildCorsOriginAllowlist } from '@infra/config/corsOriginAllowlist'
 import { createGlobalRateLimiter } from '@http/middleware/rateLimitMiddleware'
 import { errorHandler } from '@http/middleware/errorMiddleware'
 import { requestLogger } from '@http/middleware/requestLoggerMiddleware'
+import { createTrustProxyGuard } from '@http/middleware/trustProxyGuardMiddleware'
 
-/**
- * TRUST_PROXY is unset (false) by default so req.ip is the socket's own address, matching
- * Express's default. Behind a reverse proxy, set it to the number of hops (e.g. "1") or a
- * trusted IP/CIDR list so the rate limiters key on the real client IP instead of the proxy's
- * (SEC-26) - see https://expressjs.com/en/guide/behind-proxies.html.
- */
 /**
  * SEC-68: deny every powerful browser feature Corvale never uses. Kept identical to the
  * `Permissions-Policy` in `frontend/corvale/nginx.conf` so the policy reads the same from
@@ -41,6 +36,12 @@ const PERMISSIONS_POLICY = [
     'usb=()',
 ].join(', ')
 
+/**
+ * TRUST_PROXY is unset (false) by default so req.ip is the socket's own address, matching
+ * Express's default. Behind a reverse proxy, set it to the number of hops (e.g. "1") or a
+ * trusted IP/CIDR list so the rate limiters key on the real client IP instead of the proxy's
+ * (SEC-26) - see https://expressjs.com/en/guide/behind-proxies.html.
+ */
 const parseTrustProxy = (value: string | undefined): boolean | number | string => {
     if (value === undefined) return false
     if (value === 'true') return true
@@ -55,6 +56,7 @@ export const createApp = (): express.Application => {
 
     const app = express()
     app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY))
+    app.use(createTrustProxyGuard())
 
     /**
      * Pin the query parser to 'simple' explicitly (SEC-35). This is already the Express 5

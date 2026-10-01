@@ -228,6 +228,19 @@ Two things to know:
   `ports:` entries there (e.g. `10.0.0.5:5000:5000`). Never bind back to `0.0.0.0` on a
   public-facing host.
 
+### Client IP addresses and TRUST_PROXY
+
+The bundled `docker-compose.yml` sets `TRUST_PROXY: 1` on the `backend` service: the API trusts exactly one proxy hop, the reverse proxy on your host. This matters more than it looks. Without it, every request reaches the API from the Docker network gateway, so Corvale sees one client address for everybody.
+
+When that happens:
+
+- Every rate limiter becomes a single shared budget. A few failed logins from one visitor can lock every user out of login, signup and password reset.
+- `ADMIN_IP_ALLOWLIST` can only ever match the gateway, so it either blocks the operator or admits everyone.
+
+Keep the value at `1` for the Caddy setup above. Raise it only if a second proxy or CDN sits in front of Caddy, and never set it to `true`, which trusts a client-supplied `X-Forwarded-For` header. If you run the API without Docker behind a proxy, set `TRUST_PROXY` in `backend/.env` yourself.
+
+In production the API logs a warning the first time it receives a proxied request while `TRUST_PROXY` is off, so a misconfigured deployment shows up in `docker compose logs backend`.
+
 ## Security headers
 
 The frontend container's nginx (`frontend/corvale/nginx.conf`) sends these on every response:
@@ -255,6 +268,8 @@ Node image's built-in `node` user, and the `frontend` image on the `nginxinc/ngi
 base (which is why nginx listens on `8080` inside the container, mapped from the host's `8080`).
 Both declare a Docker `HEALTHCHECK` against their `/health` endpoint, so `docker compose ps` and
 your orchestrator can see when a container has wedged.
+
+The images are built on a supported Node.js LTS release (24) and the current stable nginx branch, and every base image in the Dockerfiles and `docker-compose.yml` is pinned by digest. A pinned digest does not move on its own, so Dependabot opens weekly pull requests that update the tag and digest together. Merge them promptly, then rebuild with `docker compose build --pull`.
 
 ## Enabling ClamAV virus scanning
 

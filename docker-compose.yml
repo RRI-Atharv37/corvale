@@ -20,7 +20,7 @@
 
 services:
   mongo:
-    image: mongo:7
+    image: mongo:7@sha256:9854f7139445d766a9523571d6f047530c45547460ffcf8259eb2bf4264632ca
     restart: unless-stopped
     # SEC-37: this service is deliberately NOT published to the host. There is no `ports:` entry
     # here and there must never be one - the absent mapping is load-bearing. The bundled MongoDB
@@ -59,6 +59,10 @@ services:
       # admits it. Change this if you're serving the frontend container from a different host
       # or port (e.g. behind a reverse proxy - see docs/developers/guides/deployment.md).
       CLIENT_URL: http://localhost:8080
+      # SEC-90: exactly one hop, the host reverse proxy (Caddy). Without it every request reaches the
+      # API from the Docker bridge gateway, so each rate limiter and ADMIN_IP_ALLOWLIST collapse onto
+      # that one address. Raise it only if another proxy sits in front of Caddy.
+      TRUST_PROXY: 1
     depends_on:
       - mongo
     ports:
@@ -98,7 +102,7 @@ services:
   #   docker compose --profile clamav up -d --build
   # and set VIRUS_SCAN_ENABLED=true, CLAMAV_HOST=clamav in backend/.env.
   clamav:
-    image: clamav/clamav:stable
+    image: clamav/clamav:stable@sha256:ebec5bc138401b36ae987caa1a3fa3c3b2a21ed3d51f0bfa5852825e663e67b0
     restart: unless-stopped
     profiles: ['clamav']
     volumes:

@@ -36,6 +36,21 @@ updates:
         patterns:
           - '*'
 
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /frontend/corvale
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

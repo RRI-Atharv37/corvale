@@ -13,9 +13,8 @@ services:
       # Exact public origin of the frontend. CORS is locked to this, and it's
       # used to build password-reset / verification email links.
       CLIENT_URL: https://corvale.app
-      # Proxy hops in front of the API (Caddy on the same host = 1) so rate
-      # limiters and Secure-cookie detection see the real client protocol/IP.
-      TRUST_PROXY: 1
+      # TRUST_PROXY (one proxy hop) is already set in docker-compose.yml. Override it here only if
+      # more than one proxy sits in front of the API, e.g. TRUST_PROXY: 2
     # The tracked docker-compose.yml already binds both services to 127.0.0.1 (SEC-65), so a
     # same-host reverse proxy needs nothing here. Only add a `ports:` override if the proxy runs
     # on a DIFFERENT host and must reach the containers over a private network - bind to that

@@ -6,7 +6,7 @@
 # Vite bakes VITE_* variables into the built JS at build time, not at container start - so they
 # arrive as build ARGs here, not as runtime environment variables. See
 # docs/developers/guides/deployment.md for how docker-compose.yml wires these from a root .env file.
-FROM node:20-alpine AS build
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build
 WORKDIR /app
 
 COPY frontend/corvale/package.json frontend/corvale/package-lock.json ./frontend/corvale/
@@ -36,7 +36,7 @@ RUN npm run build
 
 # SEC-67: the unprivileged nginx image runs its master + workers as the `nginx` user (uid 101)
 # and expects its listener on a high port - nginx.conf listens on 8080 to match.
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e AS runtime
 USER root
 COPY --from=build /app/dist/frontend /usr/share/nginx/html
 COPY frontend/corvale/nginx.conf /etc/nginx/conf.d/default.conf

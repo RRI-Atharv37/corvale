@@ -40,7 +40,7 @@ Create a `.env` file in the `backend/` folder.
 | `WORKSPACE_INVITE_RATE_LIMIT_MAX` | No | `30` | Max workspace invitations per window per IP. A dedicated budget because the endpoint reveals whether an email has an account |
 | `GLOBAL_RATE_LIMIT_WINDOW_MS` | No | `900000` (15 min) | Rate limit window for mutating requests (POST/PUT/PATCH/DELETE) across the whole API |
 | `GLOBAL_RATE_LIMIT_MAX` | No | `300` | Max mutating requests per window per IP across the whole API |
-| `TRUST_PROXY` | No | unset (`false`) | Express `trust proxy` setting - set to the number of hops (e.g. `1`) behind a reverse proxy so rate limiters key on the real client IP |
+| `TRUST_PROXY` | No | unset (`false`); `1` in the bundled `docker-compose.yml` | Express `trust proxy` setting - set to the number of hops (e.g. `1`) behind a reverse proxy so rate limiters and `ADMIN_IP_ALLOWLIST` key on the real client IP. A production process logs a warning when it sees proxied traffic with this off |
 | `VIRUS_SCAN_ENABLED` | No | `false` | Enable ClamAV scan on receipt upload |
 | `CLAMAV_HOST` | No | `127.0.0.1` | ClamAV daemon host |
 | `CLAMAV_PORT` | No | `3310` | ClamAV daemon port |
