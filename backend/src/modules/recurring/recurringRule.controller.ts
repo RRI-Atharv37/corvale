@@ -27,6 +27,7 @@ import {
 import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 import { buildScopedListFilter, parseOptionalWorkspaceId } from '@core/access/workspace'
 import { getUserId } from '@core/auth/requestUser'
+import { isObjectIdString } from '@core/db/objectId'
 import { handleResponses } from '@core/http/response'
 import { validateRequiredFields } from '@core/http/validation'
 import { serializeTransactions } from "@modules/transactions/transactionUtils";
@@ -313,8 +314,11 @@ export const getRecurringDrafts = asyncHandler(async (req: AuthRequest, res: Res
         splitTransactionId: null,
     }
 
-    if (req.query.ruleId) {
-        filter.recurringPaymentId = new Types.ObjectId(String(req.query.ruleId))
+    if (req.query.ruleId !== undefined && req.query.ruleId !== '') {
+        if (!isObjectIdString(req.query.ruleId)) {
+            throw new CustomError(ERROR_MESSAGES.RECURRING.INVALID_RULE_ID_FILTER, 400)
+        }
+        filter.recurringPaymentId = new Types.ObjectId(req.query.ruleId)
     }
 
     const drafts = await Transaction.find(filter).sort({ date: 1, createdAt: 1 })

@@ -4,8 +4,11 @@ import { Response } from 'express'
 import { ACCOUNT_TYPES, AccountType } from './account.model'
 import { AuthRequest } from '@http/middleware/authTypes'
 import { CustomError } from '@core/errors/customError'
-import { roundMoney } from './accountBalance'
 import { parseOptionalSupportedCurrency, parseSupportedCurrency } from '@core/money/currencyUtils'
+import {
+    parseOpeningBalanceMajor as parseOpeningBalance,
+    parseOptionalNonNegativeMajor as parseOptionalNonNegativeNumber,
+} from '@core/money/moneyUtils'
 import { getUserId } from '@core/auth/requestUser'
 import { handleResponses } from '@core/http/response'
 import { resolveClientObjectId } from '@core/db/objectId'
@@ -21,14 +24,6 @@ import {
     updateAccount as updateAccountService,
 } from './account.service'
 
-const parseOpeningBalance = (value: unknown): number => {
-    const balance = roundMoney(Number(value ?? 0))
-    if (isNaN(balance)) {
-        throw new CustomError('Invalid opening balance format', 400)
-    }
-    return balance
-}
-
 /**
  * The date the opening balance is stated "as of" - transactions before it don't
  * move `currentBalance` (see shared/src/balances.ts). `undefined`/`null`/`''`
@@ -43,17 +38,6 @@ const parseOpeningBalanceDate = (value: unknown): Date | null => {
         throw new CustomError('Invalid opening balance date', 400)
     }
     return parsed
-}
-
-const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): number | undefined => {
-    if (value === undefined || value === null) {
-        return undefined
-    }
-    const parsed = Number(value)
-    if (isNaN(parsed) || parsed < 0) {
-        throw new CustomError(`Invalid ${fieldName}; must be a non-negative number`, 400)
-    }
-    return roundMoney(parsed)
 }
 
 const parseAccountType = (value: unknown): AccountType => {

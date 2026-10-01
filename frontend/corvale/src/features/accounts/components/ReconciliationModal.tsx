@@ -12,6 +12,11 @@ import { getApiErrorMessage } from '@lib/apiError'
 import { formatCurrency, toDateInputValue } from '@lib/format'
 import type { Account, ReconciliationSession } from '@features/accounts/types'
 import type { Transaction } from '@features/transactions/types'
+import {
+    computeClearedDelta,
+    effectiveBalanceType,
+    fetchUnreconciledTransactions,
+} from '@features/accounts/reconciliationLedger'
 
 interface ReconciliationModalProps {
     account: Account
@@ -33,17 +38,11 @@ const ReconciliationModal: React.FC<ReconciliationModalProps> = ({
     const [finishing, setFinishing] = useState(false)
     const [result, setResult] = useState<ReconciliationSession | null>(null)
 
-    const fetchTransactions = useCallback(async (): Promise<Transaction[]> => {
-        try {
-            const response = await axiosInstance.get(API_PATHS.TRANSACTIONS.GET_ALL, {
-                params: { accountId: account._id, limit: 200, sortBy: 'date', sortOrder: 'asc' },
-            })
-            const data = unwrapApiData(response) as { data: Transaction[] }
-            return data.data.filter((t) => t.clearedStatus !== 'reconciled')
-        } catch (error) {
-            throw new Error(getApiErrorMessage(error, 'Failed to load transactions'))
-        }
-    }, [account._id])
+    const fetchTransactions = useCallback(
+        (): Promise<Transaction[]> =>
+            fetchUnreconciledTransactions({ _id: account._id, workspaceId: account.workspaceId }),
+        [account._id, account.workspaceId]
+    )
 
     const {
         data: transactions,
@@ -65,12 +64,10 @@ const ReconciliationModal: React.FC<ReconciliationModalProps> = ({
 
     const { data: history, refetch: refetchHistory } = useAsyncData(fetchHistory, [fetchHistory])
 
-    const clearedTotal = useMemo(() => {
-        if (!transactions) return 0
-        return transactions
-            .filter((t) => t.clearedStatus === 'cleared')
-            .reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0)
-    }, [transactions])
+    const clearedTotal = useMemo(
+        () => (transactions ? computeClearedDelta(transactions, account.type) : 0),
+        [transactions, account.type]
+    )
 
     const toggleCleared = async (transaction: Transaction) => {
         const nextStatus = transaction.clearedStatus === 'cleared' ? 'pending' : 'cleared'
@@ -275,10 +272,12 @@ const ReconciliationModal: React.FC<ReconciliationModalProps> = ({
                                         </div>
                                         <span
                                             className={`text-sm font-medium shrink-0 ${
-                                                transaction.type === 'income' ? 'text-income' : 'text-expense'
+                                                effectiveBalanceType(transaction) === 'income'
+                                                    ? 'text-income'
+                                                    : 'text-expense'
                                             }`}
                                         >
-                                            {transaction.type === 'income' ? '+' : '-'}
+                                            {effectiveBalanceType(transaction) === 'income' ? '+' : '-'}
                                             {formatCurrency(transaction.amount, account.currency)}
                                         </span>
                                     </button>

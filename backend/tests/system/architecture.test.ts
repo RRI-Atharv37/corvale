@@ -186,7 +186,6 @@ const CONTROLLERS_WITH_LEGACY_DB_ACCESS = [
     'src/modules/notifications/notification.controller.ts',
     'src/modules/onboarding/onboarding.controller.ts',
     'src/modules/receipts/receipt.controller.ts',
-    'src/modules/reconciliation/reconciliation.controller.ts',
     'src/modules/recurring/recurringRule.controller.ts',
     'src/modules/savers/pushover.controller.ts',
     'src/modules/savers/saver.controller.ts',

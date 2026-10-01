@@ -3,14 +3,17 @@ import { Response } from 'express'
 import { Types } from 'mongoose'
 
 import { IUser, User } from '@modules/users'
-import { ACCOUNT_TYPES, Account } from '@modules/accounts'
+import { ACCOUNT_TYPES } from '@modules/accounts'
+import { createAccount } from '@modules/accounts/account.service'
 import { Budget } from '@modules/budgets'
 import { SavingsGoal } from '@modules/savings-goals'
 import { AuthRequest } from '@http/middleware/authTypes'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { DEFAULT_CURRENCY, parseOptionalSupportedCurrency } from '@core/money/currencyUtils'
-import { parseAmountToMinorUnits } from '@core/money/moneyUtils'
+import { parseOpeningBalanceMajor } from '@core/money/moneyUtils'
+import { parseGoalAmount } from '@modules/savings-goals/savingsGoalUtils'
+import { isObjectIdString } from '@core/db/objectId'
 import { DEFAULT_TIMEZONE } from '@core/time/timezoneUtils'
 import {
     ONBOARDING_STEPS,
@@ -22,8 +25,7 @@ import {
 import { getUserId } from '@core/auth/requestUser'
 import { handleResponses } from '@core/http/response'
 import { validateRequiredFields } from '@core/http/validation'
-import { resolveMonthlyPeriod } from "@modules/budgets/budgetUtils";
-import { roundMoney } from "@shared/money";
+import { parseBudgetAmount, resolveMonthlyPeriod, validateCategoryForBudget } from "@modules/budgets/budgetUtils";
 
 const loadUser = async (userId: string): Promise<IUser> => {
     const user = await User.findById(userId)
@@ -78,29 +80,20 @@ const createOnboardingAccount = async (
         throw new CustomError(`Invalid account type. Must be one of: ${ACCOUNT_TYPES.join(', ')}`, 400)
     }
 
-    const parsedOpeningBalance = roundMoney(Number(openingBalance ?? 0))
-    if (isNaN(parsedOpeningBalance)) {
-        throw new CustomError('Invalid opening balance format', 400)
+    if (typeof accountName !== 'string' || accountName.trim() === '') {
+        throw new CustomError('Account name must be text', 400)
     }
 
-    const parsedOpeningBalanceDate = parseOnboardingOpeningBalanceDate(body.openingBalanceDate)
-
-    const existingCount = await Account.countDocuments({
+    return createAccount({
         userId,
         workspaceId: null,
-        isArchived: false,
-    })
-
-    return Account.create({
-        userId,
-        workspaceId: null,
-        name: String(accountName).trim(),
-        type: accountType,
+        name: accountName.trim(),
+        type: accountType as (typeof ACCOUNT_TYPES)[number],
         currency: parseOptionalSupportedCurrency(currency),
-        openingBalance: parsedOpeningBalance,
-        openingBalanceDate: parsedOpeningBalanceDate,
-        currentBalance: parsedOpeningBalance,
-        isDefault: existingCount === 0,
+        openingBalance: parseOpeningBalanceMajor(openingBalance),
+        openingBalanceDate: parseOnboardingOpeningBalanceDate(body.openingBalanceDate),
+        isDefault: false,
+        clientId: null,
     })
 }
 
@@ -112,9 +105,15 @@ const createOnboardingBudget = async (
 ) => {
     validateRequiredFields(body, ['budgetName', 'budgetAmount'])
 
-    const amount = parseAmountToMinorUnits(body.budgetAmount)
-    if (amount <= 0) {
-        throw new CustomError('Invalid budget amount; must be a positive number', 400)
+    const amount = parseBudgetAmount(body.budgetAmount)
+
+    let categoryId: Types.ObjectId | null = null
+    if (body.categoryId !== undefined && body.categoryId !== null && body.categoryId !== '') {
+        if (!isObjectIdString(body.categoryId)) {
+            throw new CustomError(ERROR_MESSAGES.CATEGORY.INVALID_CATEGORY_ID, 400)
+        }
+        const category = await validateCategoryForBudget(body.categoryId, userId)
+        categoryId = category._id
     }
 
     const now = new Date()
@@ -131,7 +130,7 @@ const createOnboardingBudget = async (
         periodType: 'monthly',
         periodStart,
         periodEnd,
-        categoryId: body.categoryId ? new Types.ObjectId(String(body.categoryId)) : null,
+        categoryId,
         amount,
         currency: parseOptionalSupportedCurrency(currency),
     })
@@ -140,10 +139,7 @@ const createOnboardingBudget = async (
 const createOnboardingGoal = async (userId: string, currency: string, body: Record<string, unknown>) => {
     validateRequiredFields(body, ['goalName', 'targetAmount'])
 
-    const targetAmount = parseAmountToMinorUnits(body.targetAmount)
-    if (targetAmount <= 0) {
-        throw new CustomError('Invalid goal amount; must be a positive number', 400)
-    }
+    const targetAmount = parseGoalAmount(body.targetAmount)
 
     return SavingsGoal.create({
         userId,

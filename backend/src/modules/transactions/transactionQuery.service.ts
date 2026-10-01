@@ -34,15 +34,41 @@ import { Category } from '@modules/categories'
 
 export { CSV_HEADERS }
 
-export const parsePagination = (page: unknown, limit: unknown) => {
-    const pageNumber = Number(page ?? 1)
-    const limitNumber = Number(limit ?? 10)
+export const MAX_PAGE_SIZE = 500
 
-    if (isNaN(pageNumber) || isNaN(limitNumber) || pageNumber < 1 || limitNumber < 1) {
+const parsePositiveInteger = (value: unknown, fallback: number): number => {
+    if (value === undefined) {
+        return fallback
+    }
+    if (typeof value !== 'string' && typeof value !== 'number') {
         throw new CustomError('Invalid page or limit number', 400)
     }
+    const parsed = typeof value === 'number' ? value : /^\d+$/.test(value) ? Number(value) : NaN
+    if (!Number.isSafeInteger(parsed) || parsed < 1) {
+        throw new CustomError('Invalid page or limit number', 400)
+    }
+    return parsed
+}
+
+export const parsePagination = (page: unknown, limit: unknown) => {
+    const pageNumber = parsePositiveInteger(page, 1)
+    const limitNumber = Math.min(parsePositiveInteger(limit, 10), MAX_PAGE_SIZE)
 
     return { pageNumber, limitNumber }
+}
+
+const parseClearedStatusFilter = (value: unknown): string | { $in: string[] } => {
+    const members = typeof value === 'string' ? value.split(',') : []
+    const invalid =
+        members.length === 0 ||
+        members.some((member) => !CLEARED_STATUSES.includes(member as (typeof CLEARED_STATUSES)[number]))
+    if (invalid) {
+        throw new CustomError(
+            `Invalid clearedStatus filter. Must be one of: ${CLEARED_STATUSES.join(', ')}`,
+            400
+        )
+    }
+    return members.length === 1 ? members[0] : { $in: [...new Set(members)] }
 }
 
 const buildListFilter = (
@@ -80,13 +106,7 @@ const buildListFilter = (
     }
 
     if (clearedStatus !== undefined && clearedStatus !== '') {
-        if (!CLEARED_STATUSES.includes(clearedStatus as (typeof CLEARED_STATUSES)[number])) {
-            throw new CustomError(
-                `Invalid clearedStatus filter. Must be one of: ${CLEARED_STATUSES.join(', ')}`,
-                400
-            )
-        }
-        filter.clearedStatus = clearedStatus
+        filter.clearedStatus = parseClearedStatusFilter(clearedStatus)
     }
 
     if (accountId !== undefined && accountId !== '') {
@@ -239,7 +259,12 @@ export const searchTransactions = async (input: QueryInput) => {
     validateRequiredFields({ keyword }, ['keyword'])
 
     const regex = buildSearchRegex(keyword as string)
-    const numericKeyword = !isNaN(Number(keyword)) ? parseClientAmount(keyword) : null
+    let numericKeyword: number | null = null
+    try {
+        numericKeyword = parseClientAmount(keyword)
+    } catch {
+        numericKeyword = null
+    }
     const workspaceId = await resolveListWorkspaceId(userId, input.workspaceId)
 
     const filter: Record<string, unknown> = {

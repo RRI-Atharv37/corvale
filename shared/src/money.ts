@@ -17,15 +17,34 @@ export const fromMinorUnits = (minorUnits: number): number => {
     return Math.round(minorUnits) / 100
 }
 
-/** Parse and validate a client-supplied amount, returning minor units. */
-export const parseAmountToMinorUnits = (value: unknown): number => {
-    // Guard before Number(): Number(false)/Number([]) both coerce to 0, so a
-    // non-numeric, non-string amount would otherwise slip through as a valid $0.
-    if (typeof value !== 'number' && typeof value !== 'string') {
+/** Largest amount, in major units, any money input may carry; beyond it integer minor-unit sums lose precision. */
+export const MAX_AMOUNT_MAJOR = 1_000_000_000_000
+
+const DECIMAL_AMOUNT = /^-?\d+(\.\d+)?$/
+
+/**
+ * Parse a client-supplied signed amount into major units. Numbers must be finite and within
+ * `MAX_AMOUNT_MAJOR`; strings must be plain decimals (no hex, exponent, whitespace or separators).
+ */
+export const parseSignedMajorAmount = (value: unknown): number => {
+    let amount: number
+    if (typeof value === 'number') {
+        amount = value
+    } else if (typeof value === 'string' && DECIMAL_AMOUNT.test(value)) {
+        amount = Number(value)
+    } else {
         throw new Error('Invalid amount')
     }
-    const amount = Number(value)
-    if (isNaN(amount) || amount < 0) {
+    if (!Number.isFinite(amount) || Math.abs(amount) > MAX_AMOUNT_MAJOR) {
+        throw new Error('Invalid amount')
+    }
+    return amount
+}
+
+/** Parse and validate a client-supplied non-negative amount, returning minor units. */
+export const parseAmountToMinorUnits = (value: unknown): number => {
+    const amount = parseSignedMajorAmount(value)
+    if (amount < 0) {
         throw new Error('Invalid amount')
     }
     return toMinorUnits(amount)

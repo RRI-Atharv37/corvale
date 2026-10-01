@@ -30,12 +30,29 @@ const validateUserTag = async (tagId: string, userId: string): Promise<ITag> => 
     return tag
 }
 
+const parseTagNameInput = (value: unknown): string => {
+    if (typeof value !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.TAG.INVALID_NAME_TYPE, 400)
+    }
+    return normalizeTagName(value)
+}
+
+const parseTagColorInput = (value: unknown): string | undefined => {
+    if (value === undefined || value === null) {
+        return undefined
+    }
+    if (typeof value !== 'string') {
+        throw new CustomError(ERROR_MESSAGES.TAG.INVALID_COLOR_TYPE, 400)
+    }
+    return value.trim()
+}
+
 export const createTag = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
 
     validateRequiredFields(req.body, ['name'])
 
-    const name = normalizeTagName(req.body.name)
+    const name = parseTagNameInput(req.body.name)
     if (!isValidTagName(name)) {
         throw new CustomError('Tag name must be between 1 and 50 characters', 400)
     }
@@ -49,7 +66,7 @@ export const createTag = asyncHandler(async (req: AuthRequest, res: Response) =>
     }
 
     const existingCount = await Tag.countDocuments({ userId })
-    const color = req.body.color?.trim() || pickDefaultTagColor(existingCount)
+    const color = parseTagColorInput(req.body.color) || pickDefaultTagColor(existingCount)
     const clientId = resolveClientObjectId(req.body._id)
 
     let tag
@@ -91,11 +108,14 @@ export const updateTag = asyncHandler(async (req: AuthRequest, res: Response) =>
 
     validateRequiredFields({ tagId }, ['tagId'])
 
+    const nextName = name !== undefined ? parseTagNameInput(name) : undefined
+    const nextColor = color !== undefined ? parseTagColorInput(color) : undefined
+
     const tag = await validateUserTag(tagId, userId)
     const previousName = tag.name
 
-    if (name !== undefined) {
-        const trimmedName = normalizeTagName(name)
+    if (nextName !== undefined) {
+        const trimmedName = nextName
         if (!isValidTagName(trimmedName)) {
             throw new CustomError('Tag name must be between 1 and 50 characters', 400)
         }
@@ -113,7 +133,7 @@ export const updateTag = asyncHandler(async (req: AuthRequest, res: Response) =>
     }
 
     if (color !== undefined) {
-        tag.color = color.trim() || undefined
+        tag.color = nextColor || undefined
     }
 
     const updatedTag = await tag.save()

@@ -5,6 +5,11 @@ export const toObjectId = (userId: string): Types.ObjectId => {
     return new Types.ObjectId(userId)
 }
 
+const OBJECT_ID_STRING = /^[0-9a-f]{24}$/i
+
+export const isObjectIdString = (value: unknown): value is string =>
+    typeof value === 'string' && OBJECT_ID_STRING.test(value)
+
 /**
  * Validates an optional client-supplied `_id` (Sprint 13.2: offline-created
  * records must be creatable/referenceable under a client-generated ObjectId

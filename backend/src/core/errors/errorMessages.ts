@@ -75,6 +75,8 @@ export const ERROR_MESSAGES = {
     TAG: {
         TAG_NOT_FOUND: 'Tag not found',
         TAG_ALREADY_EXISTS: 'A tag with this name already exists',
+        INVALID_NAME_TYPE: 'Tag name must be text',
+        INVALID_COLOR_TYPE: 'Tag color must be text',
     },
     TRANSACTION_TEMPLATE: {
         TEMPLATE_NOT_FOUND: 'Transaction template not found',
@@ -97,6 +99,7 @@ export const ERROR_MESSAGES = {
         CANNOT_MODIFY_MASTER: 'Master categories cannot be modified',
         CANNOT_UNSET_DEFAULT: 'Cannot unset default category; set another category as default instead',
         INVALID_REORDER: 'One or more categories are invalid or not owned by you',
+        INVALID_CATEGORY_ID: 'Invalid category id',
     },
     TRANSACTION: {
         TRANSACTION_NOT_FOUND: 'Transaction not found',
@@ -155,6 +158,7 @@ export const ERROR_MESSAGES = {
         RULE_ALREADY_ARCHIVED: 'Recurring rule is already archived',
         NOT_A_DRAFT: 'Transaction is not a draft',
         NOT_RECURRING_DRAFT: 'Transaction is not a recurring draft',
+        INVALID_RULE_ID_FILTER: 'Invalid ruleId filter',
     },
     NOTIFICATION: {
         NOTIFICATION_NOT_FOUND: 'Notification not found',
@@ -190,6 +194,10 @@ export const ERROR_MESSAGES = {
     RECONCILIATION: {
         INVALID_CLEARED_STATUS: 'Invalid clearedStatus',
         SESSION_NOT_FOUND: 'Reconciliation session not found',
+        INVALID_RECONCILED_AT: 'Invalid reconciledAt date',
+        INVALID_STATEMENT_DATE: 'Invalid statement end date',
+        INVALID_STATEMENT_BALANCE: 'Statement balance must be a valid number',
+        INVALID_ACCOUNT_ID: 'Invalid account id',
     },
     EXCHANGE_RATE: {
         RATE_NOT_FOUND: 'Exchange rate not found',

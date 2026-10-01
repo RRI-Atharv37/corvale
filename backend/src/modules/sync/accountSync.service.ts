@@ -9,7 +9,10 @@ import { isDuplicateKeyError, resolveClientObjectId } from '@core/db/objectId'
 import { validateRequiredFields } from '@core/http/validation'
 import { recomputeAccountBalanceMajor } from "@modules/accounts/accountBalance";
 import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
-import { roundMoney } from "@shared/money";
+import {
+    parseOpeningBalanceMajor as parseOpeningBalance,
+    parseOptionalNonNegativeMajor as parseOptionalNonNegativeNumber,
+} from '@core/money/moneyUtils'
 
 /**
  * Sprint 13.9: create/update/delete logic for POST /sync/push, mirroring
@@ -33,14 +36,6 @@ const unsetPreviousDefault = async (userId: string, excludeAccountId?: string): 
     await Account.updateMany(filter, { $set: { isDefault: false } })
 }
 
-const parseOpeningBalance = (value: unknown): number => {
-    const balance = roundMoney(Number(value ?? 0))
-    if (isNaN(balance)) {
-        throw new CustomError('Invalid opening balance format', 400)
-    }
-    return balance
-}
-
 const parseOpeningBalanceDate = (value: unknown): Date | null => {
     if (value === undefined || value === null || value === '') {
         return null
@@ -50,17 +45,6 @@ const parseOpeningBalanceDate = (value: unknown): Date | null => {
         throw new CustomError('Invalid opening balance date', 400)
     }
     return parsed
-}
-
-const parseOptionalNonNegativeNumber = (value: unknown, fieldName: string): number | undefined => {
-    if (value === undefined || value === null) {
-        return undefined
-    }
-    const parsed = Number(value)
-    if (isNaN(parsed) || parsed < 0) {
-        throw new CustomError(`Invalid ${fieldName}; must be a non-negative number`, 400)
-    }
-    return roundMoney(parsed)
 }
 
 const assertCreditOnlyFields = (type: string, body: Record<string, unknown>): void => {

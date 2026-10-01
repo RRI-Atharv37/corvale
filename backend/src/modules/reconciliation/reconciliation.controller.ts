@@ -4,16 +4,20 @@ import { Response } from 'express'
 import { AuthRequest } from '@http/middleware/authTypes'
 import { CustomError } from '@core/errors/customError'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
-import { CLEARED_STATUSES, Transaction } from '@modules/transactions'
-import ReconciliationSession from './reconciliationSession.model'
-import { Account } from '@modules/accounts'
-import { fromMinorUnits } from '@shared/money'
-import { buildScopedListFilter } from '@core/access/workspace'
+import { CLEARED_STATUSES } from '@modules/transactions'
+import { roundMoney, parseSignedMajorAmount } from '@core/money/moneyUtils'
+import { isObjectIdString } from '@core/db/objectId'
 import { getUserId } from '@core/auth/requestUser'
 import { validateRequiredFields } from '@core/http/validation'
-import { assertWorkspaceMembership, validateResourceAccess } from "@modules/workspaces/access";
-import { roundMoney } from "@shared/money";
-import { getBalanceDeltaMajor } from "@modules/transactions/transactionUtils";
+import { createSession, isClearedStatus, listSessions, setClearedStatus } from './reconciliation.service'
+
+const parseDate = (value: unknown, message: string): Date => {
+    const parsed = typeof value === 'string' || typeof value === 'number' ? new Date(value) : null
+    if (!parsed || isNaN(parsed.getTime())) {
+        throw new CustomError(message, 400)
+    }
+    return parsed
+}
 
 export const updateClearedStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = getUserId(req)
@@ -22,32 +26,21 @@ export const updateClearedStatus = asyncHandler(async (req: AuthRequest, res: Re
 
     validateRequiredFields(req.body, ['clearedStatus'])
 
-    if (!CLEARED_STATUSES.includes(clearedStatus)) {
+    if (!isClearedStatus(clearedStatus)) {
         throw new CustomError(
             `${ERROR_MESSAGES.RECONCILIATION.INVALID_CLEARED_STATUS}. Must be one of: ${CLEARED_STATUSES.join(', ')}`,
             400
         )
     }
 
-    const transaction = await Transaction.findById(transactionId)
-    if (!transaction) {
-        throw new CustomError(ERROR_MESSAGES.TRANSACTION.TRANSACTION_NOT_FOUND, 404)
-    }
-
-    if (transaction.workspaceId) {
-        await assertWorkspaceMembership(transaction.workspaceId.toString(), userId, 'editor')
-    } else if (transaction.userId.toString() !== userId) {
-        throw new CustomError(ERROR_MESSAGES.AUTH.NOT_AUTHORIZED, 403)
-    }
-
-    transaction.clearedStatus = clearedStatus
-    if (reconciledAt) {
-        transaction.reconciledAt = new Date(reconciledAt)
-    } else if (clearedStatus !== 'reconciled') {
-        transaction.reconciledAt = null
-    }
-
-    await transaction.save()
+    const transaction = await setClearedStatus({
+        userId,
+        transactionId,
+        clearedStatus,
+        reconciledAt: reconciledAt
+            ? parseDate(reconciledAt, ERROR_MESSAGES.RECONCILIATION.INVALID_RECONCILED_AT)
+            : null,
+    })
 
     res.status(200).json({
         success: true,
@@ -61,61 +54,22 @@ export const createReconciliationSession = asyncHandler(async (req: AuthRequest,
 
     validateRequiredFields(req.body, ['accountId', 'statementEndDate', 'statementBalance'])
 
-    const account = await validateResourceAccess(
-        Account,
-        accountId,
-        userId,
-        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
-        'editor'
-    )
-
-    const workspaceId = account.workspaceId ? account.workspaceId.toString() : null
-
-    // Transfer legs can't be sign-resolved from a single record (both legs share
-    // type: 'transfer' with no stored direction), so they're excluded here; only
-    // income/expense transactions feed the reconciliation balance. When the
-    // account carries an openingBalanceDate, activity before it is already folded
-    // into openingBalance (see shared/src/balances.ts) and must not be summed
-    // again - so it's excluded with a lower date bound.
-    const dateFilter: Record<string, Date> = { $lte: new Date(statementEndDate) }
-    if (account.openingBalanceDate) {
-        dateFilter.$gte = new Date(account.openingBalanceDate)
+    if (!isObjectIdString(accountId)) {
+        throw new CustomError(ERROR_MESSAGES.RECONCILIATION.INVALID_ACCOUNT_ID, 400)
     }
 
-    const transactions = await Transaction.find({
-        ...buildScopedListFilter(userId, workspaceId),
-        accountId,
-        type: { $ne: 'transfer' },
-        date: dateFilter,
-    })
+    let balance: number
+    try {
+        balance = roundMoney(parseSignedMajorAmount(statementBalance))
+    } catch {
+        throw new CustomError(ERROR_MESSAGES.RECONCILIATION.INVALID_STATEMENT_BALANCE, 400)
+    }
 
-    // 'reconciled' transactions were cleared in a prior session and still count as settled.
-    const settledTransactions = transactions.filter(
-        (t) => t.clearedStatus === 'cleared' || t.clearedStatus === 'reconciled'
-    )
-    const pendingTransactions = transactions.filter((t) => t.clearedStatus === 'pending')
-
-    const sumDeltas = (list: typeof transactions): number =>
-        roundMoney(
-            list.reduce((sum, t) => sum + getBalanceDeltaMajor(t.type, t.amount, account.type), 0)
-        )
-
-    const openingBalanceMajor =
-        account.balanceUnit === 'minor' ? fromMinorUnits(account.openingBalance) : account.openingBalance
-    const clearedBalance = roundMoney(openingBalanceMajor + sumDeltas(settledTransactions))
-    const pendingBalance = sumDeltas(pendingTransactions)
-
-    const balanceDifferential = roundMoney(Math.abs(statementBalance - clearedBalance))
-
-    const session = await ReconciliationSession.create({
+    const session = await createSession({
         userId,
-        workspaceId,
         accountId,
-        statementEndDate: new Date(statementEndDate),
-        statementBalance,
-        clearedBalance,
-        pendingBalance,
-        balanceDifferential,
+        statementEndDate: parseDate(statementEndDate, ERROR_MESSAGES.RECONCILIATION.INVALID_STATEMENT_DATE),
+        statementBalance: balance,
     })
 
     res.status(201).json({
@@ -125,23 +79,7 @@ export const createReconciliationSession = asyncHandler(async (req: AuthRequest,
 })
 
 export const getReconciliationSessions = asyncHandler(async (req: AuthRequest, res: Response) => {
-    const userId = getUserId(req)
-    const { accountId } = req.params
-
-    const account = await validateResourceAccess(
-        Account,
-        accountId,
-        userId,
-        ERROR_MESSAGES.ACCOUNT.ACCOUNT_NOT_FOUND,
-        'viewer'
-    )
-
-    const workspaceId = account.workspaceId ? account.workspaceId.toString() : null
-
-    const sessions = await ReconciliationSession.find({
-        ...buildScopedListFilter(userId, workspaceId),
-        accountId,
-    }).sort({ statementEndDate: -1 })
+    const sessions = await listSessions(getUserId(req), req.params.accountId)
 
     res.status(200).json({
         success: true,

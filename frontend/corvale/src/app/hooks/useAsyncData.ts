@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getApiErrorMessage } from '@lib/apiError'
 import { PREFS_CHANGED_TABLE } from '@lib/format'
 import { tableInvalidationBus } from '@lib/tableInvalidationBus'
@@ -22,14 +22,18 @@ export const useAsyncData = <T>(
         loading: true,
         error: null,
     })
+    const latestRequest = useRef(0)
 
     const refetch = useCallback(async () => {
+        const requestId = ++latestRequest.current
         setState((prev) => ({ ...prev, loading: true, error: null }))
 
         try {
             const data = await fetcher()
+            if (requestId !== latestRequest.current) return
             setState({ data, loading: false, error: null })
         } catch (error) {
+            if (requestId !== latestRequest.current) return
             setState({
                 data: null,
                 loading: false,
@@ -48,6 +52,13 @@ export const useAsyncData = <T>(
             void refetch()
         })
     }, [refetch])
+
+    useEffect(
+        () => () => {
+            latestRequest.current += 1
+        },
+        []
+    )
 
     return { ...state, refetch }
 }

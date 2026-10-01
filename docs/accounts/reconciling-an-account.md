@@ -16,6 +16,8 @@ Corvale shows your cleared balance, your pending (uncleared) balance, the statem
 
 The cleared balance starts from the account's opening balance. If the account has a **balance as of** date, only cleared transactions dated on or after it are added, since anything earlier is already part of the opening figure.
 
+The comparison counts the same transactions as the account balance: posted transactions only, with a split counted once as a whole. Drafts are left out. Transfers are included, so a credit card payment or a move between your own accounts reconciles like any other transaction.
+
 ## Clearing transactions
 
 Below the comparison, every unreconciled transaction on the account is listed. Click a transaction to toggle it between **pending** and **cleared** as you check it off against your statement. A running "live cleared total" updates as you go, so you can watch the differential close in on zero.

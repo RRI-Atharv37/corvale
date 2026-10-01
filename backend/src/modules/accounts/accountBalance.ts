@@ -3,7 +3,7 @@ import { Types } from 'mongoose'
 
 import { Saver } from '@modules/savers'
 import Account, { IAccount } from './account.model'
-import { Transaction } from '@modules/transactions'
+import { Transaction, type ITransaction } from '@modules/transactions'
 import { buildScopedListFilter } from '@core/access/workspace'
 import {
     AccountLike,
@@ -154,6 +154,46 @@ export const recomputeAccountBalanceMajor = async (
         .select('type amount status splitTransactionId transferPairId transferRole createdAt date')
         .lean()
 
+    const effectiveTypes = await resolveBalanceTypes(transactions, scope)
+
+    const isMinor = account.balanceUnit === 'minor'
+    const openingBalanceMajor = isMinor
+        ? fromMinorUnits(account.openingBalance)
+        : account.openingBalance
+
+    return recomputeAccountBalance(
+        {
+            openingBalance: openingBalanceMajor,
+            type: account.type,
+            openingBalanceDate: account.openingBalanceDate ?? null,
+        },
+        transactions.map((transaction, index) => ({
+            type: effectiveTypes[index],
+            amount: transaction.amount,
+            status: transaction.status,
+            splitTransactionId: transaction.splitTransactionId?.toString() ?? null,
+            date: transaction.date,
+        }))
+    )
+}
+
+interface TransferResolvableTransaction {
+    _id: Types.ObjectId
+    type: ITransaction['type']
+    transferPairId?: Types.ObjectId | null
+    transferRole?: ITransaction['transferRole']
+    createdAt: Date
+}
+
+/**
+ * The balance-bearing type of each transaction, in input order: an `income` or `expense` as stored,
+ * a transfer leg resolved to `income` (inbound) or `transfer` (outbound), so `getBalanceDeltaMajor`
+ * signs it correctly. See `recomputeAccountBalanceMajor` for how a leg's direction is decided.
+ */
+export const resolveBalanceTypes = async (
+    transactions: TransferResolvableTransaction[],
+    scope: Record<string, unknown>
+): Promise<Array<ITransaction['type']>> => {
     const pairIds = transactions
         .filter(
             (transaction) =>
@@ -170,49 +210,29 @@ export const recomputeAccountBalanceMajor = async (
         : []
     const pairStampById = new Map(pairs.map((pair) => [pair._id.toString(), pair]))
 
-    const isMinor = account.balanceUnit === 'minor'
-    const openingBalanceMajor = isMinor
-        ? fromMinorUnits(account.openingBalance)
-        : account.openingBalance
+    return transactions.map((transaction) => {
+        if (transaction.type !== 'transfer' || !transaction.transferPairId) {
+            return transaction.type
+        }
 
-    return recomputeAccountBalance(
-        {
-            openingBalance: openingBalanceMajor,
-            type: account.type,
-            openingBalanceDate: account.openingBalanceDate ?? null,
-        },
-        transactions.map((transaction) => {
-            let effectiveType = transaction.type
-
-            if (transaction.type === 'transfer' && transaction.transferPairId) {
-                const pair = pairStampById.get(transaction.transferPairId.toString())
-                const isInbound =
-                    transaction.transferRole != null || pair !== undefined
-                        ? isInboundTransferLeg(
-                              {
-                                  id: transaction._id.toString(),
-                                  createdAt: transaction.createdAt,
-                                  transferRole: transaction.transferRole,
-                              },
-                              {
-                                  id: transaction.transferPairId.toString(),
-                                  createdAt: pair?.createdAt ?? transaction.createdAt,
-                                  transferRole: pair?.transferRole,
-                              }
-                          )
-                        : false
-                effectiveType = isInbound ? 'income' : 'transfer'
-            }
-
-            return {
-                type: effectiveType,
-                amount: transaction.amount,
-                status: transaction.status,
-                splitTransactionId: transaction.splitTransactionId?.toString() ?? null,
-                date: transaction.date,
-            }
-        })
-    )
+        const pair = pairStampById.get(transaction.transferPairId.toString())
+        const isInbound =
+            transaction.transferRole != null || pair !== undefined
+                ? isInboundTransferLeg(
+                      {
+                          id: transaction._id.toString(),
+                          createdAt: transaction.createdAt,
+                          transferRole: transaction.transferRole,
+                      },
+                      {
+                          id: transaction.transferPairId.toString(),
+                          createdAt: pair?.createdAt ?? transaction.createdAt,
+                          transferRole: pair?.transferRole,
+                      }
+                  )
+                : false
+        return isInbound ? 'income' : 'transfer'
+    })
 }
 
 const MAX_REFRESH_ATTEMPTS = 5
