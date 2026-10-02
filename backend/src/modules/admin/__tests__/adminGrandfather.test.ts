@@ -58,8 +58,10 @@ const stored = (userId: string = user.userId) => Subscription.findOne({ userId }
 
 const setRegisteredAt = (userId: string, date: Date) => User.collection.updateOne({ _id: new Types.ObjectId(userId) }, { $set: { createdAt: date } })
 
+let cohortCount = 0
 const seedCohortMember = async (options: { daysAgo: number; providerLinked?: boolean; grandfatherKind?: 'free_forever' | 'locked_rate' | 'extended_trial' | null }) => {
-    const member = await registerUser(defaultApp)
+    cohortCount += 1
+    const member = await registerUser(defaultApp, { email: `cohort-${cohortCount}@example.com` })
     await setRegisteredAt(member.userId, daysFromNow(-options.daysAgo))
     await setSubscription(member.userId, {
         ...BILLING_STATES.trial_expired,
@@ -170,6 +172,7 @@ describe('POST /grandfather/cohort/dry-run', () => {
         await seedCohortMember({ daysAgo: 10 })
         await seedCohortMember({ daysAgo: 60, providerLinked: true })
         await seedCohortMember({ daysAgo: 60, grandfatherKind: 'locked_rate' })
+        const auditRowsBefore = await AdminAuditLog.countDocuments()
 
         const res = await postCohort('/dry-run', { kind: 'free_forever', registeredBefore: CUTOFF.toISOString() })
 
@@ -179,7 +182,7 @@ describe('POST /grandfather/cohort/dry-run', () => {
         expect(res.body.data.sample[0]).toMatch(/^.\*\*\*@/)
         expect(res.body.data.sample[0]).not.toContain(eligible.email)
         expect((await stored(eligible.userId))?.grandfatherKind ?? null).toBeNull()
-        expect(await AdminAuditLog.countDocuments()).toBe(0)
+        expect(await AdminAuditLog.countDocuments()).toBe(auditRowsBefore)
     })
 
     it('does not need a step-up', async () => {

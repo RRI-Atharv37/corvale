@@ -41,6 +41,12 @@ const workspace = (id: string): Workspace => ({
     members: [{ userId: mockUser._id, role: 'editor' }],
 })
 
+// "ready" also shows before sign-in resolves, so wait for the fetch itself to have run and settled.
+const settled = async (): Promise<void> => {
+    await waitFor(() => expect(fetchWorkspaces).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'))
+}
+
 const Probe = () => {
     const { loading } = useWorkspace()
     return <div data-testid="state">{loading ? 'loading' : 'ready'}</div>
@@ -83,7 +89,7 @@ describe('WorkspaceContext drops the local copy of workspaces the user has left 
 
         renderWithProviders(<Probe />)
 
-        await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'))
+        await settled()
         expect(purgeRemovedWorkspaces).not.toHaveBeenCalled()
     })
 
@@ -92,7 +98,7 @@ describe('WorkspaceContext drops the local copy of workspaces the user has left 
 
         renderWithProviders(<Probe />)
 
-        await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'))
+        await settled()
         expect(purgeRemovedWorkspaces).not.toHaveBeenCalled()
     })
 
@@ -102,7 +108,7 @@ describe('WorkspaceContext drops the local copy of workspaces the user has left 
 
         renderWithProviders(<Probe />)
 
-        await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready'))
+        await settled()
         expect(purgeRemovedWorkspaces).not.toHaveBeenCalled()
     })
 })

@@ -331,6 +331,7 @@ describe('workspace-scoped sync', () => {
     })
 
     it("SEC-71: a personal op in a workspace-envelope push still honours the caller's device limit", async () => {
+        await seedTestPlans({ limits: { syncDevices: 1 } })
         await setSubscription(editor.userId, BILLING_STATES.active)
         const first = await push(editor.token, { deviceId: 'device-first', ops: [accountOp(null, 'From first')] })
         expect(first.body.data.results[0].status).toBe('applied')

@@ -5,6 +5,7 @@ import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { Receipt } from '@modules/receipts'
 import { Workspace, WorkspaceInvite } from '@modules/workspaces'
 import {
+    DEFAULT_PLAN_CATALOGUE,
     Plan,
     SyncDevice,
     UsageCounter,
@@ -286,8 +287,9 @@ describe('reserveQuota / releaseQuota - against the plan', () => {
 
     it('an unseeded catalogue falls back to the launch limits instead of unlimited', async () => {
         await Plan.deleteMany({})
+        const launchLimit = DEFAULT_PLAN_CATALOGUE.find((entry) => entry.code === 'pro')!.limits.receiptStorageBytes!
 
-        await expect(reserveQuota(id, 'receiptBytes', 2 * 1024 ** 3)).rejects.toMatchObject({ statusCode: 402 })
+        await expect(reserveQuota(id, 'receiptBytes', launchLimit + 1)).rejects.toMatchObject({ statusCode: 402 })
     })
 
     it('release gives the units back', async () => {

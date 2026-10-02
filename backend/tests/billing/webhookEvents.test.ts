@@ -199,8 +199,11 @@ describe('payment.failed / payment.succeeded (dunning)', () => {
     })
 })
 
-describe('refund.issued / dispute.opened', () => {
-    it.each(['refund.issued', 'dispute.opened'] as const)('%s is recorded and acknowledged without altering entitlement', async (type) => {
+describe('refund.issued / dispute.opened (Refund Policy, 2026-09-28)', () => {
+    it.each([
+        ['refund.issued', 'active'],
+        ['dispute.opened', 'cancelled'],
+    ] as const)('%s is recorded and acknowledged, leaving the subscription %s', async (type, status) => {
         await setSubscription(user.userId, { status: 'active', ...ids() })
 
         const res = await send({ type })
@@ -208,7 +211,7 @@ describe('refund.issued / dispute.opened', () => {
         expect(res.status).toBe(200)
         const ledger = await BillingEvent.findOne({ type }).lean()
         expect(ledger?.processedAt).toBeTruthy()
-        expect((await sub())?.status).toBe('active')
+        expect((await sub())?.status).toBe(status)
     })
 })
 

@@ -316,7 +316,9 @@ describe('sync device limit (plan.limits.syncDevices)', () => {
         expect((await push(user.token)).status).toBe(200)
         expect((await push(user.token)).status).toBe(200)
 
-        expect((await push(user.token, 'device-a')).status).toBe(402)
+        // The first identified client adopts the implicit seat; a second one is over the limit.
+        expect((await push(user.token, 'device-a')).status).toBe(200)
+        expect((await push(user.token, 'device-b')).status).toBe(402)
     })
 
     it('registers each device once, however often it syncs', async () => {

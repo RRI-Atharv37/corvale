@@ -149,7 +149,7 @@ describe('GET /billing/devices', () => {
     })
 
     it('never lists another user\'s devices', async () => {
-        const other = await registerUser(app)
+        const other = await registerUser(app, { email: 'device-other-1@example.com' })
         await setSubscription(other.userId)
         await pull('mine')
         await pull('theirs', undefined, other.token)
@@ -216,7 +216,7 @@ describe('DELETE /billing/devices/:deviceId', () => {
     })
 
     it('cannot reach another user\'s device, even with the same id', async () => {
-        const other = await registerUser(app)
+        const other = await registerUser(app, { email: 'device-other-2@example.com' })
         await setSubscription(other.userId)
         await pull('shared-name', undefined, other.token)
 
@@ -287,13 +287,17 @@ describe('PATCH /billing/devices/:deviceId', () => {
             const res = await devices('patch', '/device-a').send({ name })
 
             expect(res.status).toBe(400)
-            expect(res.body.message).toBe(ERROR_MESSAGES.SYNC.INVALID_DEVICE_NAME)
+            // An operator object never reaches the route: sanitizeBody refuses it first.
+            const expected = typeof name === 'object' && name !== null && !Array.isArray(name)
+                ? ERROR_MESSAGES.GENERAL.UNSAFE_REQUEST_BODY
+                : ERROR_MESSAGES.SYNC.INVALID_DEVICE_NAME
+            expect(res.body.message).toBe(expected)
             expect((await stored('device-a'))?.name).toBeUndefined()
         }
     )
 
     it('is a 404 for an unknown device and never renames another user\'s', async () => {
-        const other = await registerUser(app)
+        const other = await registerUser(app, { email: 'device-other-3@example.com' })
         await setSubscription(other.userId)
         await pull('shared-name', undefined, other.token)
 

@@ -119,7 +119,7 @@ export const notifyAdminSecurityEvent = async (
             await sendAdminSecurityNotice(address, { event, when: now })
             delivered += 1
         } catch (error) {
-            logger.warn('Admin security notice could not be delivered', { event, message: error instanceof Error ? error.message : 'unknown' })
+            logger.warn('Admin security notice could not be delivered', { event, error: error instanceof Error ? error.message : 'unknown' })
         }
     }
     return delivered

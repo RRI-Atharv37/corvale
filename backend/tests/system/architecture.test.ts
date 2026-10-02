@@ -67,7 +67,10 @@ describe('architecture - module structure (RF0 guard, latent until RF3)', () => 
     })
 
     it('every src/modules/* exposes a *.routes.ts', () => {
+        // demo is seeded by a CLI script and guarded inside authenticateRequest; it serves no endpoint.
+        const ROUTELESS_MODULES = new Set(['demo'])
         const offenders = listDirs(MODULES_DIR).filter((mod) => {
+            if (ROUTELESS_MODULES.has(mod)) return false
             const files = existsSync(join(MODULES_DIR, mod))
                 ? readdirSync(join(MODULES_DIR, mod))
                 : []

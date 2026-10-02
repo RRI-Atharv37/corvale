@@ -130,9 +130,9 @@ describe('a member who leaves or is removed keeps no workspace rows on the devic
         await purgeWorkspacesNotIn(db, ['ws-kept'])
 
         expect(await ids(db, '_outbox', 'opId')).toEqual(['op-kept', 'op-personal'])
-        expect(await ids(db, '_conflicts')).toEqual(['k-kept'])
-        expect(await ids(db, '_blobs')).toEqual(['blob-kept'])
-        expect(await ids(db, '_receipt_uploads')).toEqual(['up-blob-kept'])
+        expect(await ids(db, '_conflicts', 'id')).toEqual(['k-kept'])
+        expect(await ids(db, '_blobs', 'id')).toEqual(['blob-kept'])
+        expect(await ids(db, '_receipt_uploads', 'id')).toEqual(['up-blob-kept'])
     })
 
     it("forgets the removed workspace's pull checkpoint so a later re-invite starts from the beginning", async () => {

@@ -47,6 +47,7 @@ const ALLOWED_STATE_KEYS = [
     'currentPeriodEnd',
     'cancelAtPeriodEnd',
     'pastDueSince',
+    'disputedAt',
     'grandfatherKind',
     'retentionHoldUntil',
     'role',

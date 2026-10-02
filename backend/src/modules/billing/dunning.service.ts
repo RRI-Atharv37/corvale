@@ -63,7 +63,7 @@ export const sendDunningEmails = async (now: Date = new Date()): Promise<Dunning
             })
         } catch (error) {
             failed += 1
-            logger.error('Dunning email failed', { stage, message: error instanceof Error ? error.message : 'unknown' })
+            logger.error('Dunning email failed', { stage, error: error instanceof Error ? error.message : 'unknown' })
             continue
         }
 

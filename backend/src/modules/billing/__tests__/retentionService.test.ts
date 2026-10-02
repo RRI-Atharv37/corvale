@@ -167,7 +167,8 @@ describe('runRetentionSweep - keeping lapsedAt true to the status', () => {
 
         const row = await stored()
         expect(row?.lapsedAt).toEqual(NOW)
-        expect(row?.retentionStage).toBeNull()
+        expect(row?.retentionStage).toBe('notice')
+        expect(row?.retentionStageAt).toEqual(NOW)
     })
 })
 

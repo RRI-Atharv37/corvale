@@ -69,6 +69,7 @@ describe('Reconciliation session - transfers (BUG-76)', () => {
             .post('/api/v1/transactions/transfer')
             .set(authHeader(token))
             .send({
+                title: 'Card payment',
                 amount: 300,
                 date: '2026-01-12T12:00:00.000Z',
                 fromAccountId: checking._id,
@@ -96,6 +97,7 @@ describe('Reconciliation session - transfers (BUG-76)', () => {
             .post('/api/v1/transactions/transfer')
             .set(authHeader(token))
             .send({
+                title: 'To savings',
                 amount: 250,
                 date: '2026-01-12T12:00:00.000Z',
                 fromAccountId: checking._id,

@@ -365,17 +365,19 @@ describe('Sync push - workspace-scoped checkpoint (BUG-09)', () => {
             .query({ workspaceId })
             .set(authHeader(owner.token))
 
-        // Nothing else touched this workspace between the push and this
-        // bootstrap call, so a workspace-scoped checkpoint must match
-        // exactly. A personal-scope checkpoint (today's bug) would not,
-        // because the personal scope has a transaction the workspace scope
-        // does not.
-        expect(pushRes.body.data.checkpoint).toBe(bootstrapRes.body.data.checkpoint)
+        // Fresh cursors are clamped to a moving safety watermark (BUG-60), so two checkpoints are
+        // never byte-equal; the scope shows in which entities carry a cursor. The personal scope has
+        // a transaction the workspace scope does not, so a personal-scope checkpoint (the bug) would
+        // carry a transaction cursor.
+        const cursorEntities = (checkpoint: string) =>
+            Object.keys(JSON.parse(Buffer.from(checkpoint, 'base64url').toString('utf8')).cursors).sort()
 
         const personalBootstrap = await request(app)
             .get('/api/v1/sync/bootstrap')
             .set(authHeader(owner.token))
-        expect(pushRes.body.data.checkpoint).not.toBe(personalBootstrap.body.data.checkpoint)
+        expect(cursorEntities(pushRes.body.data.checkpoint)).toEqual(cursorEntities(bootstrapRes.body.data.checkpoint))
+        expect(cursorEntities(pushRes.body.data.checkpoint)).not.toContain('transaction')
+        expect(cursorEntities(personalBootstrap.body.data.checkpoint)).toContain('transaction')
     })
 })
 

@@ -68,7 +68,8 @@ describe('resolveDunningStage', () => {
     })
 
     it('follows the grace window it is given', () => {
-        expect(resolveDunningStage(START, after(6), 14)).toBe('reminder')
+        expect(resolveDunningStage(START, after(6), 14)).toBe('payment_failed')
+        expect(resolveDunningStage(START, after(7), 14)).toBe('reminder')
         expect(resolveDunningStage(START, after(14), 14)).toBe('access_paused')
     })
 })

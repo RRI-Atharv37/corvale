@@ -224,7 +224,7 @@ describe('POST /subscribers/:userId/dispute/clear', () => {
         const row = await AdminAuditLog.findOne({ action: 'dispute.cleared' }).lean()
         expect(row?.adminId?.toString()).toBe(owner.id)
         expect(row?.subjectUserId?.toString()).toBe(user.userId)
-        expect(row?.before).toEqual({ disputedAt: new Date('2026-09-20T00:00:00.000Z') })
+        expect(row?.before).toEqual({ disputedAt: '2026-09-20T00:00:00.000Z' })
         expect(row?.after).toEqual({ disputedAt: null })
         expect(row?.reason).toBe(REASON)
     })

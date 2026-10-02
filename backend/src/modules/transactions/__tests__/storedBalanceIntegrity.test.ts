@@ -491,7 +491,8 @@ describe('S52 - concurrent writes to one account do not lose updates (BUG-70)', 
             ]),
         ])
 
-        await expectStoredMatchesRecompute(account._id, 996)
+        // REST amounts are major units, sync payloads minor: 1000 - 4 x 1.00 - 2 x 1.00
+        await expectStoredMatchesRecompute(account._id, 994)
     })
 
     it('ten parallel savings-goal contributions all count', async () => {

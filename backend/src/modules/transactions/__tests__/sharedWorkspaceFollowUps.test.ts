@@ -4,6 +4,7 @@ import request from 'supertest'
 import app from '@http/app'
 import { ERROR_MESSAGES } from '@core/errors/errorMessages'
 import { authHeader, seedUserDirectly } from '@tests/helpers'
+import { Transaction } from '@modules/transactions'
 
 async function seedWorkspace() {
     const author = await seedUserDirectly({ email: 'bug54-author@example.com' })
@@ -83,6 +84,8 @@ async function createSplitParent(token: string, workspaceId: string, accountId: 
     expect(res.status).toBe(201)
     return res.body.data._id as string
 }
+
+const liveSplitLines = (parentId: string) => Transaction.countDocuments({ splitTransactionId: parentId })
 
 async function listWorkspaceTransactionIds(token: string, workspaceId: string): Promise<string[]> {
     const res = await request(app)
@@ -217,7 +220,9 @@ describe('BUG-54 - a non-author editor acting on a co-member split parent', () =
         const { author, editor, workspaceId } = await seedWorkspace()
         const account = await createAccount(author.token, workspaceId, 'Shared')
         const parentId = await createSplitParent(author.token, workspaceId, account)
-        expect(await listWorkspaceTransactionIds(author.token, workspaceId)).toHaveLength(3)
+        // Split lines are not listed on their own; the list shows the parent only.
+        expect(await listWorkspaceTransactionIds(author.token, workspaceId)).toEqual([parentId])
+        expect(await liveSplitLines(parentId)).toBe(2)
         const balanceBefore = await balanceOf(editor.token, account)
 
         const res = await request(app)
@@ -226,6 +231,7 @@ describe('BUG-54 - a non-author editor acting on a co-member split parent', () =
         expect(res.status).toBe(200)
 
         expect(await listWorkspaceTransactionIds(author.token, workspaceId)).toHaveLength(0)
+        expect(await liveSplitLines(parentId)).toBe(0)
         expect(await balanceOf(editor.token, account)).toBe(balanceBefore + 60)
     })
 
@@ -244,6 +250,7 @@ describe('BUG-54 - a non-author editor acting on a co-member split parent', () =
         expect(res.body.data.results[0].status).toBe('applied')
 
         expect(await listWorkspaceTransactionIds(author.token, workspaceId)).toHaveLength(0)
+        expect(await liveSplitLines(parentId)).toBe(0)
     })
 })
 

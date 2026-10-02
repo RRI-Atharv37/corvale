@@ -96,7 +96,7 @@ export const sendLifecycleEmails = async (now: Date = new Date()): Promise<Lifec
             })
         } catch (error) {
             result.failed += 1
-            logger.error('Lifecycle email failed', { stage, message: error instanceof Error ? error.message : 'unknown' })
+            logger.error('Lifecycle email failed', { stage, error: error instanceof Error ? error.message : 'unknown' })
             continue
         }
 

@@ -154,11 +154,12 @@ describe('canDevicePush', () => {
 
     it('the implicit device ranks like any other', async () => {
         const id = userId()
-        await registerSyncDevice(id, undefined, later(0))
-        await registerSyncDevice(id, 'named', later(1))
+        await registerSyncDevice(id, 'named', later(0))
+        await registerSyncDevice(id, undefined, later(1))
 
-        expect(await canDevicePush(id, undefined, 1)).toBe(true)
-        expect(await canDevicePush(id, 'named', 1)).toBe(false)
+        expect(await canDevicePush(id, 'named', 1)).toBe(true)
+        expect(await canDevicePush(id, undefined, 1)).toBe(false)
+        expect(await canDevicePush(id, undefined, 2)).toBe(true)
     })
 
     it('raising the limit lets the waiting devices push without any re-registration', async () => {

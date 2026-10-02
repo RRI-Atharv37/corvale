@@ -24,5 +24,7 @@ track-m-notes.html
 docker-compose.override.yml
 /.cursor
 /.claude
-
+/.agents/
+AGENTS.md
+skills-lock.json
 /frontend/corvale/src/compare/

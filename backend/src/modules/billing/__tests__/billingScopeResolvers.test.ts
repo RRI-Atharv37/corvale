@@ -223,7 +223,9 @@ describe('scopeFromBodyResources - one scope for a whole list, every id verified
     })
 
     it('refuses a list that mixes two different workspaces', async () => {
-        const otherWorkspace = (await Workspace.create({ name: 'Second', ownerId: owner, members: [{ userId: owner, role: 'owner' }] }))._id
+        const otherWorkspace = (
+            await Workspace.create({ name: 'Second', ownerId: owner, members: [{ userId: owner, role: 'owner' }, { userId: editor, role: 'editor' }] })
+        )._id
         const a = await Probe.create({ userId: editor, workspaceId })
         const b = await Probe.create({ userId: editor, workspaceId: otherWorkspace })
 
@@ -253,11 +255,11 @@ describe('scopeFromBodyResources - one scope for a whole list, every id verified
         it('answers a workspace the caller is not in exactly like an unknown id', async () => {
             const hidden = await Probe.create({ userId: owner, workspaceId })
 
-            const asStranger = scope(asReq({ body: { probeIds: idsOf(hidden) } }, stranger))
-            const unknown = scope(asReq({ body: { probeIds: [new Types.ObjectId().toString()] } }, stranger))
-
-            await expect(asStranger).rejects.toMatchObject({ statusCode: 404, message: NOT_FOUND })
-            await expect(unknown).rejects.toMatchObject({ statusCode: 404, message: NOT_FOUND })
+            await expect(scope(asReq({ body: { probeIds: idsOf(hidden) } }, stranger))).rejects.toMatchObject({ statusCode: 404, message: NOT_FOUND })
+            await expect(scope(asReq({ body: { probeIds: [new Types.ObjectId().toString()] } }, stranger))).rejects.toMatchObject({
+                statusCode: 404,
+                message: NOT_FOUND,
+            })
         })
 
         it("answers another user's personal record as not found", async () => {

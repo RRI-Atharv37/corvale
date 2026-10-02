@@ -1,6 +1,6 @@
 import { RLS_BYPASS } from '@core/access/rowLevelSecurity'
 import type { PlanCode, SubscriptionStatus } from '@core/billing/constants'
-import { calculateMrr, dateKeyUtc, planMrrMinor, type MetricFlowField, type MetricFlows, type MetricStockSegment, type PlanPrices } from '@core/billing/metrics'
+import { METRIC_FLOW_FIELDS, calculateMrr, dateKeyUtc, planMrrMinor, type MetricFlowField, type MetricFlows, type MetricStockSegment, type PlanPrices } from '@core/billing/metrics'
 import { logger } from '@infra/observability/logger'
 
 import BillingEvent from './billingEvent.model'
@@ -16,7 +16,13 @@ export const recordMetric = async (field: MetricFlowField, amount: number, at: D
     if (amount === 0) return
     const date = dateKeyUtc(at)
 
-    const doc = await MetricDaily.findOneAndUpdate({ date }, { $inc: { [`flows.${field}`]: amount } }, { upsert: true, new: true })
+    // An upsert does not apply the flows subdocument's defaults, so a new day stores every other counter's zero itself.
+    const zeroes = Object.fromEntries(METRIC_FLOW_FIELDS.filter((other) => other !== field).map((other) => [`flows.${other}`, 0]))
+    const doc = await MetricDaily.findOneAndUpdate(
+        { date },
+        { $inc: { [`flows.${field}`]: amount }, $setOnInsert: zeroes },
+        { upsert: true, new: true }
+    )
     if (doc?.closed) await MetricDaily.updateOne({ date }, { $set: { flowRevisedAt: new Date() } })
 }
 

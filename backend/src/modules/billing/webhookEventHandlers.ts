@@ -237,7 +237,7 @@ const alertBillingDispute = async (event: NormalizedBillingEvent): Promise<void>
             currency: typeof event.payload?.currency === 'string' ? event.payload.currency : undefined,
         })
     } catch (error) {
-        logger.warn('Billing dispute alert could not be delivered', { message: error instanceof Error ? error.message : 'unknown' })
+        logger.warn('Billing dispute alert could not be delivered', { error: error instanceof Error ? error.message : 'unknown' })
     }
 }
 

@@ -34,7 +34,7 @@ const observeDevice = (source: 'query' | 'body'): RequestHandler =>
             try {
                 await registerSyncDevice(getUserId(req), deviceId, new Date(), kind)
             } catch (error) {
-                logger.warn('Sync device registration failed', { message: error instanceof Error ? error.message : 'unknown' })
+                logger.warn('Sync device registration failed', { error: error instanceof Error ? error.message : 'unknown' })
             }
             next()
         } catch (error) {

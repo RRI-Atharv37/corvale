@@ -40,6 +40,7 @@ export const disableBilling = (): void => {
 }
 
 export interface TestPlanOverrides {
+    prices?: { monthly: number | null; annual: number | null }
     features?: Partial<{ workspaces: boolean; prioritySupport: boolean; bankSync: boolean }>
     limits?: Partial<{
         receiptStorageBytes: number | null
@@ -60,6 +61,7 @@ export const seedTestPlans = async (overrides: TestPlanOverrides = {}): Promise<
     await Plan.create({
         code: 'pro',
         name: 'Pro',
+        ...(overrides.prices ? { prices: overrides.prices } : {}),
         features: { workspaces: true, prioritySupport: true, bankSync: true, ...overrides.features },
         limits: {
             receiptStorageBytes: 10 * 1024 * 1024,

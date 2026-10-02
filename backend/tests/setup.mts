@@ -1,6 +1,13 @@
-import { afterAll, afterEach } from 'vitest'
+import { afterAll, afterEach, vi } from 'vitest'
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
+
+// Modules that call dotenv.config() on import would otherwise pull a developer's backend/.env
+// (CAPTCHA_ENABLED, SMTP_HOST, BILLING_ENABLED, ...) into the suite; tests run on the env below only.
+vi.mock('dotenv', () => {
+    const config = () => ({ parsed: {} })
+    return { default: { config }, config }
+})
 
 // Set synchronously (with the Mongo URI awaited) at module top level, not inside
 // beforeAll: this setup file is imported and fully resolved before a test file's own

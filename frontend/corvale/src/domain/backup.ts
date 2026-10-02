@@ -3,7 +3,12 @@ import { Repository, enqueueGroupedTransactionCreate } from '@platform/db/reposi
 import { generateLocalObjectId } from '@platform/db/generateLocalId'
 import { fromMinorUnits } from '@shared/money'
 import { isTransferRole } from '@shared/transferDirection'
-import { BackupValidationError, reconcileGoal, validateBackupRecords } from '@shared/backupValidation'
+import {
+  BACKUP_VALIDATION_MESSAGES,
+  BackupValidationError,
+  reconcileGoal,
+  validateBackupRecords,
+} from '@shared/backupValidation'
 import { persistLocalAccountBalance } from './accountBalances'
 import type {
   LocalAccount,
@@ -318,6 +323,58 @@ export const parseLocalBackupPayload = (raw: unknown): CorvaleBackupPayload => {
 }
 
 /**
+ * The per-kind reference rules `restoreLocalBackup` enforces through its id maps, checked against the
+ * file alone so the preview reports what the restore would refuse. A category id the file does not
+ * carry may still be a local shared master (or be refiled under "Other"), so only the restore can
+ * decide that case.
+ */
+const hasBrokenLocalReference = (backup: CorvaleBackupPayload): boolean => {
+  const idsOf = (records: Record<string, unknown>[]) => new Set(records.map((record) => asString(record.id)))
+  const categories = idsOf(backup.categories)
+  const accounts = idsOf(backup.accounts)
+  const goals = idsOf(backup.savingsGoals)
+  const otherKinds = [
+    idsOf(backup.tags),
+    accounts,
+    idsOf(backup.budgets),
+    goals,
+    idsOf(backup.savingsGoalContributions),
+    idsOf(backup.recurringRules),
+    idsOf(backup.categorizationRules),
+    idsOf(backup.transactionTemplates),
+    idsOf(backup.transactions),
+  ]
+  const customCategories = new Set(
+    backup.categories.filter((record) => record.masterCategoryId != null && record.masterCategoryId !== '').map((record) => asString(record.id))
+  )
+
+  const isAbsent = (value: unknown) => value == null || value === ''
+  const brokenAccount = (value: unknown) => !accounts.has(asString(value))
+  const brokenOptionalAccount = (value: unknown) => !isAbsent(value) && brokenAccount(value)
+  const brokenCategory = (value: unknown) => {
+    if (isAbsent(value)) return false
+    const id = asString(value)
+    return !categories.has(id) && otherKinds.some((ids) => ids.has(id))
+  }
+
+  return (
+    backup.categories.some(
+      (record) => brokenCategory(record.masterCategoryId) || customCategories.has(asString(record.masterCategoryId))
+    ) ||
+    backup.budgets.some(
+      (record) =>
+        brokenCategory(record.categoryId) || (Array.isArray(record.accountIds) && record.accountIds.some(brokenAccount))
+    ) ||
+    backup.savingsGoals.some((record) => brokenOptionalAccount(record.accountId)) ||
+    backup.recurringRules.some((record) => brokenCategory(record.categoryId)) ||
+    backup.categorizationRules.some((record) => brokenOptionalAccount(record.accountId) || brokenCategory(record.categoryId)) ||
+    backup.transactionTemplates.some((record) => brokenAccount(record.accountId) || brokenCategory(record.categoryId)) ||
+    backup.transactions.some((record) => brokenCategory(record.categoryId)) ||
+    backup.savingsGoalContributions.some((record) => !goals.has(asString(record.goalId)))
+  )
+}
+
+/**
  * Local equivalent of `backend/utils/backupUtils.ts`'s `previewBackupRestore` - a pure report of
  * what a restore would create, with no local writes. `db` is accepted (rather than a bare function
  * of `backup`/`targetWorkspaceId`) for signature symmetry with `restoreLocalBackup` and so a future
@@ -363,6 +420,7 @@ export const previewLocalRestore = (
 
   try {
     validateBackupRecords(backup)
+    if (hasBrokenLocalReference(backup)) errors.push(BACKUP_VALIDATION_MESSAGES.BROKEN_REFERENCE)
   } catch (error) {
     if (!(error instanceof BackupValidationError)) throw error
     errors.push(error.message)

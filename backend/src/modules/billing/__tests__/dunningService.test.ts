@@ -192,7 +192,7 @@ describe('sendDunningEmails - delivery problems', () => {
     })
 
     it('one failing recipient does not stop the others', async () => {
-        const second = await registerUser(app)
+        const second = await registerUser(app, { email: 'dunning-second@example.com' })
         await Subscription.deleteMany({})
         await seedPastDue()
         await setSubscription(second.userId, { status: 'past_due', pastDueSince: ORIGIN })

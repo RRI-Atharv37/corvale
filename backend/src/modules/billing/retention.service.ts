@@ -137,7 +137,7 @@ const eraseIfStillLapsed = async (rowId: unknown, userId: string, lapsedAt: Date
         return 'deleted'
     } catch (error) {
         if (error instanceof CustomError && error.statusCode === 409) return 'blocked'
-        logger.error('Retention erasure failed', { message: error instanceof Error ? error.message : 'unknown' })
+        logger.error('Retention erasure failed', { error: error instanceof Error ? error.message : 'unknown' })
         return 'failed'
     }
 }
@@ -196,7 +196,7 @@ export const runRetentionSweep = async (now: Date = new Date()): Promise<Retenti
             await sendRetentionEmail(user.email, { stage, deletionDate, billingUrl: billingUrl() })
         } catch (error) {
             result.failed += 1
-            logger.error('Retention email failed', { stage, message: error instanceof Error ? error.message : 'unknown' })
+            logger.error('Retention email failed', { stage, error: error instanceof Error ? error.message : 'unknown' })
             continue
         }
 

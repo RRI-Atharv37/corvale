@@ -33,7 +33,7 @@ afterAll(() => {
 
 beforeEach(async () => {
     enableBilling()
-    await seedTestPlans()
+    await seedTestPlans({ prices: { monthly: 1200, annual: 12000 } })
     member = await registerUser(defaultApp)
 })
 
@@ -94,8 +94,8 @@ describe('getGrandfatherCohortReport', () => {
     })
 
     it('buckets a since-revoked grant as converted once the user is really paying, and lapsed otherwise', async () => {
-        const converted = await registerUser(defaultApp)
-        const lapsed = await registerUser(defaultApp)
+        const converted = await registerUser(defaultApp, { email: 'converted@example.com' })
+        const lapsed = await registerUser(defaultApp, { email: 'lapsed@example.com' })
         await setSubscription(converted.userId, { status: 'active', grandfatherKind: null })
         await setSubscription(lapsed.userId, { status: 'cancelled', providerCustomerId: null, providerSubscriptionId: null, grandfatherKind: null })
 

@@ -55,7 +55,7 @@ describe('billing models - tenancy (RLS)', () => {
 
         await runWithRlsContext({ userId: user.userId }, async () => {
             const plans = await Plan.find({})
-            expect(plans).toHaveLength(2)
+            expect(plans.map((plan) => plan.code)).toEqual(['pro'])
         })
     })
 })

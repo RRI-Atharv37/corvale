@@ -36,6 +36,8 @@
     "migrate:deferred-revenue-provider-ids:dry-run": "ts-node scripts/backfillDeferredRevenueProviderIds.ts --dry-run",
     "migrate:subscription-rows": "ts-node scripts/backfillSubscriptionRows.ts",
     "migrate:subscription-rows:dry-run": "ts-node scripts/backfillSubscriptionRows.ts --dry-run",
+    "migrate:default-account-index": "ts-node scripts/migrateDefaultAccountIndex.ts",
+    "migrate:default-account-index:dry-run": "ts-node scripts/migrateDefaultAccountIndex.ts --dry-run",
     "purge:tombstones": "ts-node scripts/purgeTombstones.ts",
     "purge:tombstones:dry-run": "ts-node scripts/purgeTombstones.ts --dry-run",
     "replay:erasures": "ts-node scripts/replayErasures.ts",

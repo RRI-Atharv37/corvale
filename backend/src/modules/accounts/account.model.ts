@@ -80,7 +80,8 @@ AccountSchema.index({ userId: 1, updatedAt: 1, _id: 1 })
 AccountSchema.index({ workspaceId: 1, updatedAt: 1, _id: 1 })
 AccountSchema.index(
     { userId: 1, isDefault: 1 },
-    { unique: true, partialFilterExpression: { isDefault: true, isArchived: false } }
+    // Personal accounts only (BUG-59); a deployment with the older index runs `migrate:default-account-index`.
+    { unique: true, partialFilterExpression: { isDefault: true, isArchived: false, workspaceId: null } }
 )
 
 applyRowLevelSecurity(AccountSchema, { supportsWorkspace: true })

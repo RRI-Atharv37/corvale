@@ -24,6 +24,7 @@ const seedAccountStampedAt = async (userId: string, name: string, updatedAt: Dat
         currentBalance: 0,
     })
     await Account.updateOne({ _id: account._id }, { $set: { updatedAt } }, { timestamps: false })
+    account.updatedAt = updatedAt
     return account
 }
 

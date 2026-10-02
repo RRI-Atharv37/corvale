@@ -161,6 +161,7 @@ const UNAUTHENTICATED: RouteCase[] = [
     { method: 'post', path: '/api/v1/auth/password-reset/confirm' },
     { method: 'post', path: '/api/v1/auth/email-verification/confirm' },
     { method: 'post', path: '/api/v1/auth/email-verification/resend' },
+    { method: 'post', path: '/api/v1/auth/email-preferences/unsubscribe' },
     { method: 'post', path: '/api/v1/billing/webhook' },
 ]
 
@@ -197,6 +198,9 @@ const ADMIN: RouteCase[] = [
     { method: 'post', path: `/api/v1/admin/subscribers/${id()}/recompute-usage` },
     { method: 'post', path: `/api/v1/admin/subscribers/${id()}/devices/abcdef01/revoke` },
     { method: 'post', path: `/api/v1/admin/billing-events/${id()}/replay` },
+    { method: 'post', path: '/api/v1/admin/finance/recognition/run' },
+    { method: 'post', path: '/api/v1/admin/finance/payouts' },
+    { method: 'patch', path: `/api/v1/admin/finance/payouts/${id()}` },
 ]
 
 /** Resolve their gate from the WORKSPACE OWNER's subscription - see workspaceEntitlements.test.ts. */

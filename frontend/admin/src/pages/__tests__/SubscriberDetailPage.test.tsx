@@ -198,7 +198,7 @@ describe('SubscriberDetailPage - what it shows', () => {
     renderPage()
 
     expect(await screen.findByText(/no subscription record/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /comp/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^comp/i })).toBeInTheDocument()
   })
 
   it('shows an error state, not a blank page, when the load fails', async () => {
@@ -217,7 +217,7 @@ describe('SubscriberDetailPage - actions', () => {
 
     await screen.findByRole('heading', { name: 'Account' })
 
-    for (const name of [/comp/i, /override/i, /extend trial/i, /erasure hold/i]) {
+    for (const name of [/^comp/i, /override/i, /extend trial/i, /erasure hold/i]) {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
     }
   })

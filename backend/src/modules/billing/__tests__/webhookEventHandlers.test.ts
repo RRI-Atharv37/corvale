@@ -49,7 +49,7 @@ const sub = (u: RegisteredUser = user) => Subscription.findOne({ userId: u.userI
 
 beforeEach(async () => {
     user = await registerUser(app)
-    other = await registerUser(app)
+    other = await registerUser(app, { email: 'webhook-other@example.com' })
     await Subscription.deleteMany({})
 })
 

@@ -290,13 +290,16 @@ describe('Onboarding - Step progression', () => {
                 categoriesReviewed: true,
             })
 
+        const categories = await request(app).get('/api/v1/categories').set(authHeader(token))
+        const categoryId = categories.body.data.masters[0]._id
+
         const res = await request(app)
             .post('/api/v1/onboarding/step/budget')
             .set(authHeader(token))
             .send({
                 budgetName: 'Monthly Budget',
                 budgetAmount: 2000,
-                categoryId: '123456789012345678901234',
+                categoryId,
             })
 
         expect(res.status).toBe(200)

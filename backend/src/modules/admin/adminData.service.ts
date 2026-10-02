@@ -184,7 +184,7 @@ export const replaceGrandfatherKind = (userId: string, kind: GrandfatherKind | n
 
 /**
  * The M7.4 bulk cohort: users who registered before a cutoff, have no payment-provider link and are not
- * already grandfathered. Two plain queries rather than a `$lookup` - the admin module is forbidden from
+ * already grandfathered. Two plain queries rather than an aggregation join - the admin module is forbidden from
  * cross-collection aggregation (adminBoundary.test.ts), and the User side of this is small in practice
  * (the pre-paywall cohort it targets).
  */

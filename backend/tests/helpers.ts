@@ -37,6 +37,9 @@ export async function registerUser(
     const res = await request(app)
         .post('/api/v1/auth/register')
         .send({ ...userData, acceptedTerms: true, ageAttested: true })
+    if (!res.body?.data?.user) {
+        throw new Error(`registerUser failed: ${res.status} ${JSON.stringify(res.body)}`)
+    }
 
     // Auto-verify so existing/unrelated tests can keep using protected routes right after
     // registering, without every caller needing to know about the email-verification flow.

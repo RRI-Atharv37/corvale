@@ -47,6 +47,22 @@ During migration, Corvale attempts to match legacy category strings to existing 
 - Legacy `/income` and `/expense` API routes remain available but return `Deprecation` headers
 - The frontend redirects `/income` and `/expense` to `/transactions`
 
+## Update the default-account index
+
+Only personal accounts can be marked as the default account. Deployments created before this rule keep an older database index that also counts shared workspace accounts, so a user with an old shared account flagged as default can't pick a personal default.
+
+Run this once after upgrading, from the `backend/` folder:
+
+```bash
+# Check whether the index needs updating
+npm run migrate:default-account-index:dry-run
+
+# Update it
+npm run migrate:default-account-index
+```
+
+The script rebuilds that one index and touches no account data. Running it again does nothing.
+
 ## Related pages
 
 - [Transactions API](../api/transactions-api.md)

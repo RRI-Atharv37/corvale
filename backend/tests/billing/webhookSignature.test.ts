@@ -159,7 +159,7 @@ describe('webhook - signature verification', () => {
 
 describe('webhook - the signature covers the raw bytes, not a re-serialised body', () => {
     it('accepts pretty-printed JSON with unusual whitespace and key order', async () => {
-        const raw = JSON.stringify(upgradeEvent(), null, 4).replace(/:/g, ' :  ')
+        const raw = JSON.stringify(upgradeEvent(), null, 4).replace(/": /g, '" :  ')
 
         const res = await postWebhook(app, raw)
 

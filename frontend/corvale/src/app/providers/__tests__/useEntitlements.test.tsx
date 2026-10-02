@@ -119,7 +119,16 @@ describe('useEntitlements', () => {
     })
 
     it('billing off is never read-only', () => {
-        renderFor(userWith(snapshot({ billingEnabled: false, planCode: null })))
+        renderFor(
+            userWith(
+                snapshot({
+                    billingEnabled: false,
+                    planCode: null,
+                    features: { workspaces: true, prioritySupport: true, bankSync: true },
+                    limits: { receiptStorageBytes: null, syncDevices: null, workspaceMembers: null },
+                })
+            )
+        )
 
         expect(text('readonly')).toBe('false')
         expect(text('bank')).toBe('true')

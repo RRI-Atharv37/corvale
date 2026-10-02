@@ -26,6 +26,7 @@ const buildLedgerPayload = (event: NormalizedBillingEvent): Record<string, unkno
         providerSubscriptionId: event.providerSubscriptionId,
         planCode: event.planCode,
         status: event.status,
+        interval: event.interval,
         currentPeriodEnd: event.currentPeriodEnd,
         trialEndsAt: event.trialEndsAt,
         cancelAtPeriodEnd: event.cancelAtPeriodEnd,

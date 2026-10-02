@@ -75,7 +75,7 @@ describe('SEC-90 - the deployment is documented', () => {
     })
 
     it('no longer tells operators to leave TRUST_PROXY unset behind a proxy', () => {
-        const section = /TRUST_PROXY[\s\S]{0,600}/.exec(BACKEND_ENV_EXAMPLE)?.[0] ?? ''
+        const section = /(?:^#.*\r?\n)+TRUST_PROXY=/m.exec(BACKEND_ENV_EXAMPLE)?.[0] ?? ''
         expect(BACKEND_ENV_EXAMPLE).toMatch(/TRUST_PROXY/)
         expect(section).toMatch(/compose/i)
     })

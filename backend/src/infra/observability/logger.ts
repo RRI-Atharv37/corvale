@@ -21,10 +21,10 @@ const emit = (level: LogLevel, message: string, meta?: Record<string, unknown>):
     write(
         level,
         JSON.stringify({
+            ...meta,
             timestamp: new Date().toISOString(),
             level,
             message,
-            ...meta,
         })
     )
 }

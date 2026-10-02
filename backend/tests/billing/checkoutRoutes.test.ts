@@ -95,12 +95,22 @@ describe('POST /billing/checkout', () => {
         expect(res.status).toBe(401)
     })
 
-    it.each(['trial_expired', 'cancelled', 'past_due_grace_elapsed'])('is available to a user in the read-only %s state', async (state) => {
+    it.each(['trial_expired', 'cancelled'])('is available to a user in the read-only %s state', async (state) => {
         await setSubscription(user.userId, BILLING_STATES[state])
 
         const res = await checkout(user.token, { planCode: 'pro', interval: 'annual' })
 
         expect(res.status).toBe(200)
+    })
+
+    it('refuses a read-only past_due user: the provider subscription is still live, so a new one would bill twice', async () => {
+        await setSubscription(user.userId, BILLING_STATES.past_due_grace_elapsed)
+
+        const res = await checkout(user.token, { planCode: 'pro', interval: 'annual' })
+
+        expect(res.status).toBe(409)
+        expect(res.body.message).toBe(ERROR_MESSAGES.BILLING.ALREADY_SUBSCRIBED)
+        expect(calls.createCheckoutSession).toHaveLength(0)
     })
 
     it('is available to a user with no subscription row', async () => {

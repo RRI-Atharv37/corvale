@@ -60,7 +60,7 @@ const run = async (remote: ProviderSubscriptionSnapshot[], options: Parameters<t
 beforeEach(async () => {
     enableBilling()
     user = await registerUser(app)
-    other = await registerUser(app)
+    other = await registerUser(app, { email: 'reconcile-other@example.com' })
     await Subscription.deleteMany({})
 
     captured = []
